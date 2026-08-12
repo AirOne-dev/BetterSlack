@@ -84,6 +84,20 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   `flex-direction: row` and append to it.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
+- **`[data-qa="member_profile_pane"]` + `.p-r_member_profile__avatar__img` is a
+  contract, not just Slack's markup.** Anything presenting a profile carries
+  both; `user-inspector` finds it and appends its sections, and reads the user
+  id off the avatar URL. `member-sidebar`'s dialog is the first non-Slack thing
+  to do it. `user-inspector` mounts **per pane** (stamped with
+  `data-slackmod-pane`) — a single `helpers.mount` filled whichever profile it
+  reached first and starved the other.
+- **Borrowing a Slack class borrows its layout.** The avatar class above is
+  `position: absolute` in Slack's stylesheet, which parked the dialog's avatar
+  on top of its title. Reset explicitly.
+- **Slack does not render while its window is hidden.** `visibilityState ===
+  'hidden'` and the channel-details modal never opens, so anything that drives
+  Slack's own UI fails in the background — which is also why measuring by
+  clicking through Slack from a terminal is flaky.
 - **A profile cannot be opened by URL.** Slack keeps it out of the address bar,
   and a synthesised `<a href="/team/U…">` is intercepted by nothing: clicking
   one navigates the window off the client entirely. The way in is Slack's own
@@ -170,6 +184,12 @@ by an earlier render in the same frame.
 
 - Comments explain *why*, especially where the code looks odd because Slack
   forced it. Several of the strangest lines here are load-bearing.
+- **Never put a backtick inside `PANEL_CSS`**, comments included. It is a
+  template literal, so a backticked `.c-dialog` in a comment closes the string
+  and the rest parses as JavaScript — `.c - dialog` — which builds cleanly and
+  then throws `ReferenceError: dialog is not defined` at boot, taking the whole
+  runtime down with no styling on the failure. This has happened twice.
+  `tests/requires.test.mjs` now fails if a backtick appears in there.
 - Mods are distributed through pull requests and reviewed by a human; that
   review is the security model, since plugins run unsandboxed in an
   authenticated Slack tab. `CONTRIBUTING.md` lists what gets rejected.

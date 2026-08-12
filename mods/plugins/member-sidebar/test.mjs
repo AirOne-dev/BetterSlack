@@ -124,33 +124,139 @@ test('does not claim everyone is offline before presence has answered', async ()
   }
 });
 
-test('clicking a member opens Slack’s own profile, matched on the user id', async () => {
+test('clicking a member opens a profile dialog, filled in from Slack', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  stub.web.userInfo = async (id) => ({
+    id,
+    name: 'zoe',
+    tz_label: 'Paris',
+    profile: { display_name: 'Zoe', title: 'Engineer', email: 'zoe@acme.test', image_512: 'a.png' },
+  });
+  stub.web.presence = async () => ({ presence: 'active' });
+  stub.web.dndInfo = async () => ({ dnd_enabled: false });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    assert.equal(recorded.modals.length, 1, 'a dialog, not Slack’s pane');
+    const body = recorded.modals[0].body;
+    assert.match(body.textContent, /Zoe/);
+    assert.match(body.textContent, /Engineer/);
+    assert.match(body.textContent, /zoe@acme\.test/, 'the fields Slack’s own pane shows');
+    assert.match(body.textContent, /Active/, 'presence is resolved, not guessed');
+    assert.ok(body.querySelector('.slackmod-profile__dot--active'));
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+/**
+ * The compatibility contract, and the reason it is a test rather than a note:
+ * the dialog is only extensible because it looks like a profile pane to the
+ * rest of the app. Rename either hook and User Inspector silently stops
+ * appearing inside it, with nothing else failing.
+ */
+test('the dialog is a profile pane as far as other plugins are concerned', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  stub.web.userInfo = async (id) => ({ id, profile: { display_name: 'Zoe', image_512: 'a.png' } });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const pane = recorded.modals[0].body.querySelector('[data-qa="member_profile_pane"]');
+    assert.ok(pane, 'the hook every profile add-on in this repo watches');
+
+    const avatar = pane.querySelector('.p-r_member_profile__avatar__img');
+    assert.ok(avatar, 'and the avatar they read the user id from');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('User Inspector fills in the dialog without knowing it exists', async () => {
+  // The shared fixture already contains one of Slack's own profile panes, which
+  // is the interesting case: User Inspector must fill both, not whichever it
+  // reached first.
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  const user = {
+    id: 'U041KF85GP5',
+    name: 'zoe',
+    profile: {
+      display_name: 'Zoe',
+      // The id User Inspector reads comes off this URL, so it has to be a real
+      // Slack avatar URL rather than a placeholder.
+      image_512: 'https://ca.slack-edge.com/T025V5WN2-U041KF85GP5-abc-512',
+    },
+  };
+  stub.web.userInfo = async () => user;
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    const inspector = (await import('../user-inspector/index.js')).default;
+    await plugin.start(api);
+    // Both plugins on at once, exactly as the panel would have them.
+    await inspector.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const pane = recorded.modals[0].body.querySelector('[data-qa="member_profile_pane"]');
+    assert.ok(
+      pane.querySelector('.slackmod-user-details'),
+      'User Inspector appended its sections into our dialog, with no code shared',
+    );
+    assert.equal(
+      document.querySelectorAll('.slackmod-user-details').length, 2,
+      'and into Slack’s own pane as well — one profile does not starve the other',
+    );
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('“Open in Slack” takes the details-modal route, matched on the user id', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
   const { api, recorded } = createTestApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
 
-    // Slack opens its channel-details modal when the avatar stack is pressed.
-    let profileOpened = null;
+    let opened = null;
     document.querySelector('[data-qa="avatar_stack"]').addEventListener('click', () => {
       const modal = document.createElement('div');
       modal.setAttribute('data-qa', 'channel_details_modal');
-      // Two people whose names are identical: only the id tells them apart.
+      // Two rows; only the avatar id tells them apart.
       for (const id of ['U9', 'U1']) {
         const row = document.createElement('button');
         row.setAttribute('data-qa', 'unstyled-button');
         row.innerHTML = `<img src="https://ca.slack-edge.com/T025V5WN2-${id}-abc-48">`;
-        row.addEventListener('click', () => { profileOpened = id; });
+        row.addEventListener('click', () => { opened = id; });
         modal.append(row);
       }
       document.body.append(modal);
     });
 
-    document.querySelector('.slackmod-members__row').click();
+    const action = recorded.modals[0].options.actions.find((a) => a.label === 'Open in Slack');
+    assert.ok(action, 'the dialog offers the way through to Slack’s own profile');
+    action.onClick();
     await new Promise((resolve) => setTimeout(resolve, 400));
-    assert.equal(profileOpened, 'U1');
+    assert.equal(opened, 'U1');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -190,4 +296,36 @@ test('the source keeps its own token discipline', () => {
   const source = readFileSync(path.join(here, 'index.js'), 'utf8');
   assert.doesNotMatch(source, /\blocalStorage\b/, 'the token is read only in web-api.ts');
   assert.doesNotMatch(source, /\bfetch\s*\(/, 'network access goes through api.slack.web');
+});
+
+test('undoes the layout that comes with Slack’s avatar class', () => {
+  // The class is borrowed for compatibility, and Slack positions it absolutely
+  // for its own pane — which parked it on top of the dialog title until this.
+  const css = readFileSync(path.join(here, 'index.js'), 'utf8');
+  const rule = css.match(/\.slackmod-profile \.slackmod-profile__avatar\s*\{[^}]*\}/);
+  assert.ok(rule, 'the avatar needs its own reset');
+  assert.match(rule[0], /position:\s*static\s*!important/);
+});
+
+test('never prints a raw emoji shortcode', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  stub.web.userInfo = async (id) => ({
+    id,
+    profile: { display_name: 'Zoe', status_emoji: ':tada:', status_text: 'On holiday' },
+  });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const text = recorded.modals[0].body.textContent;
+    assert.match(text, /On holiday/);
+    assert.doesNotMatch(text, /:tada:/, 'a custom shortcode has no unicode to fall back on');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
 });

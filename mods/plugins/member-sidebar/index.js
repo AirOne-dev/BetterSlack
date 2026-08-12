@@ -18,8 +18,16 @@
 //     which is why it is capped and polled slowly.
 //   * A profile cannot be opened by URL. Slack keeps it out of the address bar,
 //     and a synthesised `<a href="/team/U...">` is not intercepted by anything:
-//     clicking one navigates the whole window away from the client. The way in
-//     is Slack's own member list, in the channel details modal.
+//     clicking one navigates the whole window away from the client. Slack's own
+//     member list, in the channel details modal, is the only way in -- and it
+//     only renders while the window is visible, so it is the secondary action
+//     here rather than what a click does.
+//
+// Clicking a member opens a profile dialog of our own instead. It carries
+// `data-qa="member_profile_pane"` and Slack's avatar class, which is not
+// decoration: that is the contract every profile add-on in this repository
+// already watches, so User Inspector's extra sections appear inside this dialog
+// with no knowledge of it and no change to its code.
 
 const COLUMN_ID = 'slackmod-member-column';
 
@@ -115,6 +123,55 @@ const CSS = `
 
 /* Below this the column costs more width than it earns. */
 @media (max-width: 1100px) { #${COLUMN_ID} { display: none; } }
+
+/* The profile dialog. Slack has no class for any of this, so it is built from
+   its design tokens and follows whatever theme is on. */
+.slackmod-profile__head { display: flex; gap: 16px; align-items: flex-start; }
+/*
+ * The avatar wears Slack's own p-r_member_profile__avatar__img, because that is
+ * the hook other plugins read the user id from. Borrowing the class borrows its
+ * layout too: Slack positions it absolutely for its own pane, which here parked
+ * it on top of the dialog's title. Everything it sets has to be undone
+ * explicitly, hence the !important on a selector that is already specific.
+ * (No backticks in here: this whole block is inside a template literal.)
+ */
+.slackmod-profile .slackmod-profile__avatar {
+  position: static !important;
+  inset: auto !important;
+  width: 96px !important;
+  height: 96px !important;
+  max-width: none !important;
+  border-radius: 8px !important;
+  flex: 0 0 auto;
+  object-fit: cover;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
+}
+.slackmod-profile__identity { min-width: 0; padding-top: 2px; }
+.slackmod-profile__name {
+  font-size: 22px;
+  font-weight: var(--custom-font-weight-black, 900);
+  line-height: 1.2;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+.slackmod-profile__line {
+  margin-top: 4px;
+  font-size: 15px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.slackmod-profile__presence { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
+.slackmod-profile__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.5);
+}
+.slackmod-profile__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
+.slackmod-profile__fields { margin-top: 20px; }
+.slackmod-profile__note {
+  margin-top: 16px;
+  font-size: 12px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.55);
+}
 `;
 
 /** Channel id from the client URL: /client/<team>/<channel>. */
@@ -194,39 +251,186 @@ export default {
     };
 
     /**
-     * Open Slack's own profile for a member.
+     * Open Slack's own profile pane for a member, as a secondary action.
      *
      * The only route in is Slack's member list: open the channel details modal
      * (which lands on its Members tab) and click the row for this person. Rows
      * are matched on the user id inside the avatar URL rather than on the name
-     * beside it, so this does not depend on the display language or break when
-     * two people are called the same thing.
+     * beside it, so this does not depend on the display language and does not
+     * confuse two people called the same thing.
+     *
+     * It is not what a click does, for two reasons: it takes a second, and
+     * Slack does not render that modal at all while its window is in the
+     * background, so it fails exactly when a dialog of our own would not.
      */
-    const openProfile = async (userId) => {
-      if (document.querySelector('[data-qa="channel_details_modal"]')) return;
-      const opened = document.querySelector('[data-qa="avatar_stack"]');
-      if (!opened) {
+    const openSlackProfile = async (userId) => {
+      const stack = document.querySelector('[data-qa="avatar_stack"]');
+      if (!stack) {
         api.ui.toast('Slack is not showing a member list for this conversation.', { variant: 'warn' });
         return;
       }
-      opened.click();
+      stack.click();
 
-      const deadline = Date.now() + 4000;
+      const deadline = Date.now() + 5000;
       while (Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 120));
         const modal = document.querySelector('[data-qa="channel_details_modal"]');
         if (!modal) continue;
-        const row = [...modal.querySelectorAll('[data-qa="unstyled-button"]')].find((candidate) =>
+        const match = [...modal.querySelectorAll('[data-qa="unstyled-button"]')].find((candidate) =>
           (candidate.querySelector('img')?.getAttribute('src') ?? '').includes(`-${userId}-`));
-        if (row) {
-          row.click();
+        if (match) {
+          match.click();
           return;
         }
       }
-      // Slack loads long member lists a page at a time, so the row may simply
-      // not be there yet. Leaving the modal open is the useful failure: the
-      // person is one search away in it.
+      // Slack pages long member lists, so the row may not be there yet. Leaving
+      // its modal open is the useful failure: the person is one search away.
       api.log.warn(`could not find ${userId} in Slack's member list`);
+    };
+
+    /** Everything users.info holds, plus presence and do-not-disturb. */
+    const profiles = new Map();
+    const loadProfile = async (userId) => {
+      if (profiles.has(userId)) return profiles.get(userId);
+      const data = await (async () => {
+        try {
+          const user = await api.slack.web.userInfo(userId);
+          // Both may fail without the profile being unusable: bots have no
+          // presence, and dnd.info is not readable in every workspace.
+          const [state, dnd] = await Promise.all([
+            api.slack.web.presence(userId).catch(() => null),
+            api.slack.web.dndInfo(userId).catch(() => null),
+          ]);
+          return { user, presence: state, dnd };
+        } catch (err) {
+          return { error: err.message };
+        }
+      })();
+      profiles.set(userId, data);
+      return data;
+    };
+
+    const localTime = (offsetSeconds) => {
+      if (typeof offsetSeconds !== 'number') return null;
+      const now = new Date();
+      const there = new Date(now.getTime() + (offsetSeconds + now.getTimezoneOffset() * 60) * 1000);
+      return there.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    /**
+     * The dialog body.
+     *
+     * The root carries `data-qa="member_profile_pane"` and the avatar carries
+     * Slack's `p-r_member_profile__avatar__img`, which is the whole
+     * compatibility story: any plugin that extends profile panes -- User
+     * Inspector today -- finds this one the same way it finds Slack's, reads the
+     * user id off the avatar the same way, and appends to it. Renaming either
+     * of those breaks that, so do not.
+     */
+    const buildProfile = (userId, data) => {
+      const root = api.dom.h('div', {
+        class: 'slackmod-profile',
+        'data-qa': 'member_profile_pane',
+      });
+
+      if (data.error) {
+        root.append(api.dom.h('div', { class: 'slackmod-profile__note' }, [
+          `Slack refused the request: ${data.error}`,
+        ]));
+        return root;
+      }
+
+      const user = data.user;
+      const profile = user.profile ?? {};
+      const name = displayName(user);
+      const active = data.presence?.presence === 'active';
+
+      const avatar = api.dom.h('img', {
+        class: 'p-r_member_profile__avatar__img slackmod-profile__avatar',
+        alt: '',
+      });
+      const image = profile.image_512 ?? profile.image_192 ?? profile.image_72;
+      if (image) avatar.setAttribute('src', image);
+
+      const identity = api.dom.h('div', { class: 'slackmod-profile__identity' }, [
+        api.dom.h('div', { class: 'slackmod-profile__name' }, [name]),
+      ]);
+      const secondLine = [profile.pronouns, profile.title].filter(Boolean).join(' · ');
+      if (secondLine) {
+        identity.append(api.dom.h('div', { class: 'slackmod-profile__line' }, [secondLine]));
+      }
+      // status_emoji is a shortcode like `:tada:`, and a workspace's custom
+      // ones have no unicode to fall back on, so printing it raw is worse than
+      // leaving it out. The text is the part that carries meaning.
+      if (profile.status_text) {
+        identity.append(api.dom.h('div', { class: 'slackmod-profile__line' }, [profile.status_text]));
+      }
+
+      const where = [
+        active ? 'Active' : 'Away',
+        localTime(user.tz_offset) ? `${localTime(user.tz_offset)} local time` : null,
+        data.dnd?.dnd_enabled ? 'Do not disturb' : null,
+      ].filter(Boolean).join(' · ');
+      identity.append(api.dom.h('div', { class: 'slackmod-profile__presence' }, [
+        api.dom.h('span', {
+          class: `slackmod-profile__dot${active ? ' slackmod-profile__dot--active' : ''}`,
+        }),
+        where,
+      ]));
+
+      root.append(api.dom.h('div', { class: 'slackmod-profile__head' }, [avatar, identity]));
+
+      // Slack's own field markup, through the helper, so these rows look like
+      // the ones in Slack's pane rather than like something bolted on.
+      const rows = [
+        ['Display name', profile.display_name],
+        ['Full name', profile.real_name ?? user.real_name],
+        ['Title', profile.title],
+        ['Email', profile.email],
+        ['Phone', profile.phone],
+        ['Time zone', user.tz_label ?? user.tz],
+        ['Username', user.name ? `@${user.name}` : null],
+        ['Member ID', user.id],
+      ].filter(([, value]) => value);
+
+      const fields = api.dom.h('div', { class: 'slackmod-profile__fields' });
+      for (const [label, value] of rows) fields.append(api.helpers.field(label, String(value)));
+      root.append(fields);
+
+      root.append(api.dom.h('div', { class: 'slackmod-profile__note' }, [
+        'Messaging, huddles and the rest live in Slack\'s own profile — "Open in Slack" below.',
+      ]));
+      return root;
+    };
+
+    const openProfileDialog = async (userId) => {
+      const known = profiles.get(userId);
+      const handle = api.ui.modal({
+        title: 'Profile',
+        width: 560,
+        content: known
+          ? buildProfile(userId, known)
+          : api.dom.h('div', { class: 'slackmod-profile__note' }, ['Loading…']),
+        actions: [
+          {
+            label: 'Copy member ID',
+            // false keeps the dialog open: copying an id is usually the first
+            // of several things you came here to do, not the last.
+            onClick: () => {
+              void api.helpers.copy(userId, 'Copied the member ID');
+              return false;
+            },
+          },
+          {
+            label: 'Open in Slack',
+            onClick: () => void openSlackProfile(userId),
+          },
+        ],
+      });
+      if (known) return;
+      const data = await loadProfile(userId);
+      // The dialog may already be gone; body still exists but is detached.
+      if (handle.body.isConnected) handle.body.replaceChildren(buildProfile(userId, data));
     };
 
     const row = (user) => {
@@ -248,7 +452,7 @@ export default {
         api.dom.h('span', { class: 'slackmod-members__name' }, [name]),
       ]);
       button.dataset.userId = user.id;
-      button.addEventListener('click', () => void openProfile(user.id));
+      button.addEventListener('click', () => void openProfileDialog(user.id));
 
       // Slack's own tooltip markup rather than a native title: a native one
       // would show as well as this, and half a second later.
