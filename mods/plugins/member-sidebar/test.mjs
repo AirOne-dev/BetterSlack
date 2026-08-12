@@ -390,10 +390,13 @@ test('offers Message and an overflow, and nothing it cannot really do', async ()
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     const buttons = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')];
-    assert.equal(buttons.length, 2, 'Huddle and VIP have no public method, so they are not offered');
+    assert.equal(buttons.length, 3, 'Message, VIP and the overflow — Huddle cannot be done');
     assert.equal(buttons[0].textContent, 'Message');
-    assert.equal(buttons[1].getAttribute('aria-label'), 'More actions');
-    assert.equal(buttons[1].textContent, '', 'a glyph, not a word');
+    assert.match(buttons[1].textContent, /VIPs$/, 'VIP is a button of its own, as in Slack');
+    assert.equal(buttons[2].getAttribute('aria-label'), 'More actions');
+    assert.equal(buttons[2].textContent, '', 'a glyph, not a word');
+    // Slack pairs a glyph with the label on the first two.
+    for (const b of buttons.slice(0, 2)) assert.ok(b.querySelector('svg'), 'icon beside the text');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -460,13 +463,10 @@ test('VIP is a direct preference write, offering add or remove as appropriate', 
     recorded.modals[0].body.querySelector('.slackmod-profile__more').click();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const labels = [...document.querySelectorAll('#slackmod-profile-menu .c-menu_item__label')]
-      .map((e) => e.textContent);
-    assert.ok(labels.includes('Remove from VIPs'), 'already a VIP, so the entry offers removal');
-
-    const item = [...document.querySelectorAll('#slackmod-profile-menu .c-menu_item__button')]
-      .find((b) => b.textContent === 'Remove from VIPs');
-    item.click();
+    const vip = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')]
+      .find((b) => /VIP/.test(b.textContent));
+    assert.match(vip.textContent, /Remove from VIPs/, 'already a VIP, so the button offers removal');
+    vip.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.deepEqual(calls, [['U1', false]], 'one preference write, no UI driven anywhere');
   } finally {
