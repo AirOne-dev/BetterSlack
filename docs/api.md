@@ -358,6 +358,42 @@ Prefixed with your plugin id and visible in DevTools.
 
 ---
 
+## `api.i18n`
+
+Slack ships in many languages, and an English-only mod stands out inside a
+French client. Hand over one object of dictionaries and get back a lookup:
+
+```js
+const t = api.i18n.strings({
+  en: { members: 'Members', online: '{count} online', copied: 'Link copied' },
+  fr: { members: 'Membres', online: '{count} en ligne', copied: 'Lien copié' },
+});
+
+t('members');                 // "Membres" on a French client
+t('online', { count: 3 });    // "3 en ligne"
+```
+
+| | |
+| --- | --- |
+| `api.i18n.locale` | the app's language tag, e.g. `"fr-FR"` — pass it to `toLocaleString` |
+| `api.i18n.language` | its primary subtag, `"fr"` — what dictionaries are keyed by |
+| `api.i18n.strings(tables)` | returns `t(key, vars?)` |
+
+- **English is required** and is what everything falls back to: an unknown
+  language, and any key a translation is missing.
+- Lookup order is exact tag (`fr-CA`), then language (`fr`), then `en`.
+- `{name}` placeholders are filled from `vars`; unknown ones are left as they
+  are rather than blanked.
+- A key missing everywhere renders as the key itself. A blank label reads as a
+  rendering bug and gets reported as one; the key names what is missing.
+
+The language comes from Slack's `<html lang>`, so it follows the user's
+interface setting rather than their operating system.
+
+**Every plugin in this repository ships English and French**, and a test fails a
+mod whose two tables do not cover the same keys — half a translation is how
+French users end up with English holes nobody notices.
+
 ## Plugins a theme brings in
 
 Themes are CSS. When a look needs behaviour, the theme lists a plugin in

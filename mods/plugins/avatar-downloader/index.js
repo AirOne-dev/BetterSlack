@@ -62,11 +62,35 @@ export function fileNameFor(user, url, key) {
   return `${safe || 'slack-user'}-${size}.${ext}`;
 }
 
+const STRINGS = {
+  en: {
+    unknownUser: 'Could not tell which user this is',
+    noToken: 'No Slack session token for this workspace',
+    fetching: 'Fetching avatar…',
+    noAvatar: 'This user has no avatar',
+    saved: 'Saved {quality} · {size} kB',
+    failed: 'Download failed: {reason}',
+    download: 'Download avatar',
+    downloadTheirs: 'Download this person’s avatar',
+  },
+  fr: {
+    unknownUser: 'Impossible de déterminer de quel utilisateur il s’agit',
+    noToken: 'Aucun jeton de session Slack pour cet espace de travail',
+    fetching: 'Récupération de l’avatar…',
+    noAvatar: 'Cet utilisateur n’a pas d’avatar',
+    saved: 'Enregistré en {quality} · {size} ko',
+    failed: 'Échec du téléchargement : {reason}',
+    download: 'Télécharger l’avatar',
+    downloadTheirs: 'Télécharger l’avatar de cette personne',
+  },
+};
+
 export default {
   /**
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    const t = api.i18n.strings(STRINGS);
     api.css(`
       .slackmod-profile-row { padding: 8px 20px 12px; }
       .slackmod-profile-row .c-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
@@ -74,21 +98,21 @@ export default {
 
     const download = async (userId) => {
       if (!userId) {
-        api.ui.toast('Could not tell which user this is', { variant: 'error' });
+        api.ui.toast(t('unknownUser'), { variant: 'error' });
         return;
       }
       if (!api.slack.web.available) {
-        api.ui.toast('No Slack session token for this workspace', { variant: 'error' });
+        api.ui.toast(t('noToken'), { variant: 'error' });
         return;
       }
 
-      const pending = api.ui.toast('Fetching avatar…', { duration: 0 });
+      const pending = api.ui.toast(t('fetching'), { duration: 0 });
       try {
         const user = await api.slack.web.userInfo(userId);
         const best = pickBestAvatar(user.profile);
         if (!best) {
           pending.dismiss();
-          api.ui.toast('This user has no avatar', { variant: 'warning' });
+          api.ui.toast(t('noAvatar'), { variant: 'warning' });
           return;
         }
 
@@ -100,20 +124,20 @@ export default {
         pending.dismiss();
         const quality =
           best.key === 'image_original' ? 'the original' : best.key.replace('image_', '') + 'px';
-        api.ui.toast(`Saved ${quality} · ${Math.round(saved.bytes / 1024)} kB`, {
+        api.ui.toast(t('saved', { quality, size: Math.round(saved.bytes / 1024) }), {
           variant: 'success',
         });
         api.log.info(`saved to ${saved.path}`);
       } catch (err) {
         pending.dismiss();
         api.log.error(err);
-        api.ui.toast(`Download failed: ${err.message}`, { variant: 'error' });
+        api.ui.toast(t('failed', { reason: err.message }), { variant: 'error' });
       }
     };
 
     api.slack.addProfileButton({
       id: 'download-avatar',
-      label: 'Download avatar',
+      label: t('download'),
       icon: ICON_PROFILE,
       onClick: (pane) => download(pane.userId),
     });
@@ -121,7 +145,7 @@ export default {
     // Also from a message, so it works without opening the profile first.
     api.slack.addMessageAction({
       id: 'download-avatar',
-      label: "Download this person's avatar",
+      label: t('downloadTheirs'),
       icon: ICON_ACTION,
       onClick: (message) => download(api.slack.userIdFromMessage(message)),
     });
