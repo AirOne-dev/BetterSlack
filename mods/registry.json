@@ -117,10 +117,15 @@
       "id": "discord-dark",
       "name": "Discord Dark",
       "type": "theme",
-      "version": "2.0.0",
+      "version": "3.0.0",
       "author": "AirOne-dev",
-      "description": "Slack in Discord's dark theme, with every colour sampled from the real client rather than a published palette: near-black rail and sidebar, a lighter message pane, blurple mention chips, circular avatars and Discord's type metrics.",
+      "description": "Slack rebuilt as Discord: colours sampled from the real client, Discord's server-rail behaviour with round icons and the sliding pill, an account strip at the bottom of the sidebar and a member column down the right.",
       "entry": "theme.css",
+      "script": "layout.js",
+      "permissions": [
+        "layout",
+        "workspace"
+      ],
       "slackmodApi": 1,
       "slackVersion": "4.51",
       "tags": [

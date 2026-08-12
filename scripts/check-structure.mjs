@@ -90,6 +90,38 @@ for (const mod of mods) {
         if (css.trim() === '') problems.push('theme is empty');
       }
     }
+
+    // 2b. A theme's companion script, if it declares one. Imported for real,
+    // same as a plugin entry: the app will do exactly this, and a script that
+    // throws on import leaves the theme half-applied.
+    if (manifest.script !== undefined) {
+      const script = manifest.script;
+      const scriptPath = path.join(mod.dir, script);
+      if (expectedType !== 'theme') {
+        problems.push('"script" is for themes only');
+      } else if (typeof script !== 'string' || path.isAbsolute(script) || script.split(/[\\/]/).includes('..')) {
+        problems.push('"script" must be a path inside the mod folder');
+      } else if (!script.endsWith('.js')) {
+        problems.push('"script" must be a .js file');
+      } else if (!existsSync(scriptPath)) {
+        problems.push(`script file "${script}" does not exist`);
+      } else {
+        try {
+          const module = await import(pathToFileURL(scriptPath).href);
+          if (typeof module.start !== 'function') {
+            problems.push('script has no exported start(api) function');
+          }
+          if (module.stop !== undefined && typeof module.stop !== 'function') {
+            problems.push('script exports stop but it is not a function');
+          }
+        } catch (err) {
+          problems.push(`script does not import: ${err.message}`);
+        }
+        if (!(manifest.permissions ?? []).includes('layout')) {
+          problems.push('a theme with a script must declare the "layout" permission');
+        }
+      }
+    }
   }
 
   // 3. Tests. A mod with no tests cannot be gated, so this is not optional.
