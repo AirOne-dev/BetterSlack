@@ -1,0 +1,12 @@
+{
+  "id": "sidebar-account",
+  "name": "Sidebar Account Strip",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Your avatar, name and availability at the bottom of the channel sidebar, the way Discord and other chat apps put them; clicking it opens Slack's own account menu.",
+  "entry": "index.js",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["sidebar", "profile"]
+}

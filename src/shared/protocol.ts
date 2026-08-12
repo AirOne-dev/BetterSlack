@@ -19,6 +19,19 @@ export interface ModManifest {
   description: string;
   /** File to load, relative to the mod directory: a .css for themes, .js for plugins. */
   entry: string;
+  /**
+   * Themes only: plugin ids this theme needs to look right.
+   *
+   * A theme is CSS and nothing else. When a look genuinely needs behaviour --
+   * reading who is signed in, adding a column Slack does not have -- that
+   * behaviour belongs in a plugin, which is reviewed and installed as one, and
+   * the theme points at it here. The panel offers to install and enable them
+   * with the theme, and says so plainly when one is missing.
+   *
+   * Only themes may declare this, and only plugin ids, so there is no way to
+   * build a cycle.
+   */
+  requires?: string[];
   /** Manifest schema version. Mods declaring a newer version are refused. */
   slackmodApi: number;
   /** Optional: minimum tested Slack version, informational only. */
@@ -57,6 +70,11 @@ export const DEFAULT_SETTINGS: Settings = {
   customCss: '',
   hotReload: true,
 };
+
+/** Requirements of `manifest` that are not currently enabled. */
+export function missingRequirements(manifest: ModManifest, settings: Settings): string[] {
+  return (manifest.requires ?? []).filter((id) => !settings.enabled.includes(id));
+}
 
 /** Requests the renderer sends to the loader. */
 export type Request =

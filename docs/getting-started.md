@@ -122,6 +122,21 @@ and well commented), [`discord-dark`](../mods/themes/discord-dark/theme.css)
 glass), [`focus-rings`](../mods/themes/focus-rings/theme.css) (no tokens at all,
 just semantics).
 
+### If your look needs more than CSS
+
+CSS cannot move a node to a different parent, read who is signed in, or press a
+button. A theme that needs one of those puts that part in a **plugin** and names
+it in `mod.json`:
+
+```json
+"entry": "theme.css",
+"requires": ["member-sidebar"]
+```
+
+The panel offers to switch those on with the theme. Write the plugin so it is
+worth installing on its own — see
+**[docs/themes.md](themes.md#when-css-is-not-enough)**.
+
 ---
 
 ## Write a plugin
@@ -177,6 +192,9 @@ api.helpers.mount(container, id, factory);      // survives Slack's re-renders
 Then **`api.slack`** for Slack's own surfaces (toolbars, message actions,
 profile panes, the composer, Slack's web API), **`api.ui`** for toasts, modals
 and confirms that need no CSS, and `api.settings`, `api.files`, `api.css`.
+
+Anything your plugin says out loud goes through `api.i18n.strings()`, with at
+least English and French — see [api.md](api.md#apii18n).
 
 **→ [docs/api.md](api.md) is the full reference, with an example for every
 entry.**

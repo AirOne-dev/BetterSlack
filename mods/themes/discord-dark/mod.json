@@ -2,11 +2,18 @@
   "id": "discord-dark",
   "name": "Discord Dark",
   "type": "theme",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "author": "AirOne-dev",
-  "description": "Slack wearing Discord's default dark theme: the same greys, blurple accent, gg sans type stack, 8px corners, circular avatars and thin scrollbars.",
+  "description": "Slack rebuilt as Discord: colours sampled from the real client, round server icons with the sliding pill, and Discord's sidebar. Brings in the member column and account strip as plugins.",
   "entry": "theme.css",
+  "requires": [
+    "member-sidebar",
+    "sidebar-account"
+  ],
   "slackmodApi": 1,
   "slackVersion": "4.51",
-  "tags": ["dark", "discord"]
+  "tags": [
+    "dark",
+    "discord"
+  ]
 }

@@ -16,6 +16,7 @@ const ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,48}$/;
 
 const problems = [];
 const seenIds = new Map();
+const requirements = [];
 let checked = 0;
 
 /**
@@ -83,6 +84,36 @@ for (const kind of ['themes', 'plugins']) {
         }
       }
     }
+
+    // A theme's required plugins. Collected now and resolved after the scan,
+    // because a theme may require a plugin whose folder comes later.
+    if (manifest.requires !== undefined) {
+      if (!Array.isArray(manifest.requires)) {
+        fail('"requires" must be an array');
+      } else if (type !== 'theme') {
+        fail('"requires" is for themes only');
+      } else {
+        for (const value of manifest.requires) {
+          if (typeof value !== 'string' || !ID_PATTERN.test(value)) {
+            fail(`"requires" entries must be mod ids (got ${JSON.stringify(value)})`);
+          } else if (value === manifest.id) {
+            fail('a theme cannot require itself');
+          } else {
+            requirements.push({ rel, id: value });
+          }
+        }
+      }
+    }
+  }
+}
+
+// A theme pointing at a plugin nobody ships would install and quietly look
+// wrong, so the catalogue has to be self-contained.
+for (const { rel, id } of requirements) {
+  const target = seenIds.get(id);
+  if (!target) problems.push(`${rel}: requires "${id}", which is not in this repository`);
+  else if (!target.startsWith('mods/plugins/')) {
+    problems.push(`${rel}: requires "${id}", which is a theme; only plugins can be required`);
   }
 }
 

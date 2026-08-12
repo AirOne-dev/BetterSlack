@@ -133,8 +133,27 @@ export interface SlackUser {
 }
 
 export function createWebApi(): WebApi {
-  let cached: TeamConfig | null | undefined;
-  const config = () => (cached === undefined ? (cached = readTeamConfig()) : cached);
+  /**
+   * Cached per team, not once.
+   *
+   * Switching workspace does not reload the client: the same page, the same
+   * mods and the same api objects carry on with a new team id in the URL. A
+   * config read once at boot then belongs to the workspace you have left, so
+   * every call goes out with the wrong token and Slack answers with errors
+   * that read like missing features -- "Slack does not list members for this
+   * conversation" was this bug, and so was every other plugin quietly dying on
+   * a workspace switch.
+   */
+  let cachedTeam: string | null | undefined;
+  let cached: TeamConfig | null = null;
+  const config = () => {
+    const team = currentTeamId();
+    if (team !== cachedTeam) {
+      cachedTeam = team;
+      cached = readTeamConfig();
+    }
+    return cached;
+  };
 
   const call = async <T>(
     method: string,

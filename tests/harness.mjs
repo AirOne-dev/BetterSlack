@@ -8,29 +8,66 @@ import { JSDOM } from 'jsdom';
 // The real helpers, so a mod's test covers the helper code it leans on rather
 // than a stand-in that could drift from it.
 import { createHelpers } from '../dist/helpers.mjs';
+import { createI18n } from '../dist/i18n.mjs';
 
-/** A Slack-shaped fragment: a message, a composer and a profile pane. */
+/** A Slack-shaped fragment: rail, sidebar, a message, a composer, a profile pane. */
 export const SLACK_FIXTURE = `
 <div class="p-client_container">
-  <div class="p-view_header__actions"></div>
+  <div class="p-view_header__actions">
+    <button data-qa="avatar_stack" aria-label="View all members"></button>
+  </div>
   <div class="p-control_strip">
-    <div class="c-coachmark-anchor"><button data-qa="user-button"></button></div>
-  </div>
-
-  <div data-qa="message_container"
-       data-msg-ts="1786386808.130969"
-       data-msg-channel-id="C0BFQCYBRAB">
-    <div class="c-message_kit__avatar">
-      <img src="https://ca.slack-edge.com/T025V5WN2-U018V4TL14N-dc5119d9e23c-48">
+    <div class="c-coachmark-anchor">
+      <button data-qa="user-button">
+        <span class="c-avatar">
+          <img src="https://ca.slack-edge.com/T025V5WN2-U041KF85GP5-480e63356723-48">
+        </span>
+        <svg data-qa="presence_indicator" aria-label="Active"></svg>
+      </button>
     </div>
-    <a class="c-timestamp" href="https://acme.slack.com/archives/C0BFQCYBRAB/p1786386808130969"></a>
-    <div data-qa="message-text">hello world</div>
-    <div data-qa="message-actions"></div>
   </div>
 
-  <div data-qa="message_input">
-    <div class="ql-editor"><p><br></p></div>
-    <div><button data-qa="bold-composer-button"></button></div>
+  <div class="p-tab_rail p-tab_rail__desktop" data-qa="tab_rail_desktop">
+    <div class="p-tab_rail__tab_container" data-qa="tabs_full_height_class">
+      <div class="p-tab_rail__tab_menu" data-qa="tabs_full_width_class">
+        <button class="p-tab_rail__button p-tab_rail__button--active" data-qa="tab_rail_home_button">
+          <div class="p-tab_rail__button__icon"></div>
+          <div class="p-tab_rail__button__label">Home</div>
+        </button>
+        <button class="p-tab_rail__button" data-qa="tab_rail_dms_button">
+          <div class="p-tab_rail__button__icon"></div>
+          <div class="p-tab_rail__button__label">DMs</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-channel_sidebar" data-qa="channel-sidebar">
+    <div class="p-ia4_sidebar_header p-ia4_home_header">
+      <div class="p-ia4_sidebar_header__title">Acme</div>
+      <div class="p-ia4_sidebar_header__controls"></div>
+    </div>
+    <div class="p-channel_sidebar__list"></div>
+  </div>
+
+  <div class="p-view_contents p-view_contents--primary">
+    <div class="p-message_pane">
+      <div data-qa="message_container"
+           data-msg-ts="1786386808.130969"
+           data-msg-channel-id="C0BFQCYBRAB">
+        <div class="c-message_kit__avatar">
+          <img src="https://ca.slack-edge.com/T025V5WN2-U018V4TL14N-dc5119d9e23c-48">
+        </div>
+        <a class="c-timestamp" href="https://acme.slack.com/archives/C0BFQCYBRAB/p1786386808130969"></a>
+        <div data-qa="message-text">hello world</div>
+        <div data-qa="message-actions"></div>
+      </div>
+
+      <div data-qa="message_input">
+        <div class="ql-editor"><p><br></p></div>
+        <div><button data-qa="bold-composer-button"></button></div>
+      </div>
+    </div>
   </div>
 
   <div data-qa="member_profile_pane">
@@ -124,7 +161,7 @@ function h(tag, attrs = {}, children = []) {
  * handlers directly. Anything a mod is expected to render (modals, toasts) is
  * captured too.
  */
-export function createTestApi({ settings = {}, web = {} } = {}) {
+export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}) {
   const recorded = {
     css: [],
     toasts: [],
@@ -138,6 +175,10 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
     saved: [],
     disposers: [],
     logs: [],
+    navigations: [],
+    hidden: [],
+    huddles: [],
+    vips: new Set(),
   };
   const store = { ...settings };
   let confirmAnswer = true;
@@ -170,9 +211,23 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
         recorded.mounted.push({ container, id, node });
         return () => node.remove();
       },
+      // Observes, like the real one. A one-shot scan would quietly pass mods
+      // that only work on what is already on screen -- and Slack renders almost
+      // nothing before a mod starts.
       onEach: (selector, handler) => {
-        for (const el of document.querySelectorAll(selector)) handler(el);
-        return () => {};
+        const seen = new WeakSet();
+        const scan = () => {
+          for (const el of document.querySelectorAll(selector)) {
+            if (seen.has(el)) continue;
+            seen.add(el);
+            handler(el);
+          }
+        };
+        scan();
+        const observer = new MutationObserver(scan);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        recorded.disposers.push(() => observer.disconnect());
+        return () => observer.disconnect();
       },
       onShortcut: (match, handler) => {
         recorded.shortcuts.push({ match, handler });
@@ -195,6 +250,28 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
         return () => {};
       },
       onProfilePane: () => () => {},
+
+      // The navigation and conversation helpers. Recorded rather than
+      // performed, so a test can assert a mod called one instead of driving
+      // Slack's UI to the same place.
+      openConversation: (channelId) => recorded.navigations.push({ kind: 'channel', id: channelId }),
+      openDirectMessage: async (userId) => {
+        recorded.navigations.push({ kind: 'dm', id: userId });
+        return `D-${userId}`;
+      },
+      openUserProfile: (userId) => recorded.navigations.push({ kind: 'profile', id: userId }),
+      hideConversation: async (channelId) => { recorded.hidden.push(channelId); },
+      filesFrom: async () => [],
+      startHuddle: async (userId) => {
+        recorded.huddles.push(userId);
+        return true;
+      },
+      vipUsers: async () => [...recorded.vips],
+      setVip: async (userId, isVip) => {
+        if (isVip) recorded.vips.add(userId);
+        else recorded.vips.delete(userId);
+        return isVip;
+      },
       describeMessage: (element) => ({
         element,
         channelId: element.getAttribute('data-msg-channel-id'),
@@ -235,12 +312,22 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
         return { dismiss: () => { entry.dismissed = true; } };
       },
       modal: (options) => {
-        const body = h('div');
+        // Mounted for real, like the live one: a mod that fills a dialog in
+        // after an await checks `body.isConnected` before touching it, and a
+        // detached stand-in would make that check silently skip the update.
+        const body = h('div', { class: 'slackmod-test-modal' });
         if (typeof options.content === 'string') body.append(h('p', {}, [options.content]));
         else if (options.content) body.append(options.content);
+        document.body.append(body);
         const entry = { options, body, closed: false };
         recorded.modals.push(entry);
-        return { body, close: () => { entry.closed = true; } };
+        return {
+          body,
+          close: () => {
+            entry.closed = true;
+            body.remove();
+          },
+        };
       },
       confirm: async (options) => {
         recorded.confirms.push(options);
@@ -257,6 +344,10 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
         return { path: `/tmp/${filename}`, bytes: entry.bytes };
       },
     },
+
+    // The real implementation, so a mod's dictionaries are exercised rather
+    // than a stand-in that always answers in English.
+    i18n: createI18n(locale),
 
     css: (text) => recorded.css.push(text),
     settings: {

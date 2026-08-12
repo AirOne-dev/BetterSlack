@@ -7,9 +7,9 @@
 // Selectors verified against Slack 4.51 (Electron 43).
 
 import type { Cleanup } from './dom.js';
-import { h, keepMounted, onEach } from './dom.js';
+import { h, keepMounted, onEach, waitFor } from './dom.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
-import { createWebApi, userIdFromAvatarUrl, type WebApi } from './web-api.js';
+import { createWebApi, currentTeamId, userIdFromAvatarUrl, type WebApi } from './web-api.js';
 
 /** Hover toolbar that appears over a message. */
 const ACTIONS_GROUP = '[data-qa="message-actions"]';
@@ -402,6 +402,62 @@ export interface SlackApi {
   /** Run a handler each time a member profile pane opens. */
   onProfilePane(handler: (pane: ProfilePane) => void): Cleanup;
   /**
+   * Move the client to a conversation, without a page load.
+   *
+   * Slack's own navigation lives in a private closure: its router state is
+   * pushed with history.pushState and nothing outside reacts to a synthetic
+   * popstate, there is no exposed React Router instance, and an <a> to
+   * /archives/<id> leaves the client entirely. What does work is Slack's own
+   * documented deep-link scheme, which the desktop app handles in place --
+   * measured against 4.51: same document, no reload, view follows.
+   */
+  openConversation(channelId: string): void;
+
+  /**
+   * Open the direct message with someone, creating it if there is none.
+   *
+   * `conversations.open` returns the IM's id, and opening one that did not
+   * exist makes Slack navigate to it on its own; the deep link covers the rest.
+   */
+  openDirectMessage(userId: string): Promise<string | null>;
+
+  /** Show someone's profile in Slack, through the same deep-link scheme. */
+  openUserProfile(userId: string): void;
+
+  /** Remove a conversation from the sidebar. The history is untouched. */
+  hideConversation(channelId: string): Promise<void>;
+
+  /** Files someone shared, newest first. */
+  filesFrom(userId: string, limit?: number): Promise<Array<Record<string, unknown>>>;
+
+  /**
+   * Start a huddle with someone: open the conversation, then press Slack's own
+   * start control.
+   *
+   * This one really is a press, and there is no way around it -- measured:
+   * `rooms.join` provisions a room that rings nobody, there is no
+   * `slack://huddle` scheme, and the handler goes through Electron to open a
+   * separate window that no web API exposes. A plain element.click() reaches
+   * it, so at least no trusted gesture is needed.
+   *
+   * Resolves false when Slack shows no huddle control for that conversation.
+   */
+  startHuddle(userId: string): Promise<boolean>;
+
+  /** The people marked VIP, in Slack's own order. */
+  vipUsers(): Promise<string[]>;
+
+  /**
+   * Add or remove someone from your VIP list, and report the new state.
+   *
+   * VIP is a user preference, not an endpoint of its own: Slack keeps it in
+   * `vip_users` as a comma-separated list. Read, edit, write -- which also
+   * means two windows editing it at once can clobber each other, exactly as
+   * they would in Slack itself.
+   */
+  setVip(userId: string, isVip: boolean): Promise<boolean>;
+
+  /**
    * Slack's own web API, as the signed-in user. Reads the session token in one
    * audited place so mods never touch localStorage themselves; requests can
    * only reach Slack's own origin. See src/runtime/web-api.ts.
@@ -420,12 +476,76 @@ export interface SlackApi {
 }
 
 export function createSlackApi(pluginId: string): SlackApi {
+  const web = createWebApi();
   return {
     addMessageAction: (action) => addMessageAction(pluginId, action),
     addToolbarButton: (toolbar, button) => addToolbarButton(pluginId, toolbar, button),
     addProfileButton: (button) => addProfileButton(pluginId, button),
     onProfilePane,
-    web: createWebApi(),
+    web,
+
+    openConversation(channelId: string): void {
+      const team = currentTeamId();
+      if (!team) return;
+      // Assigning location.href hands the URL to the desktop app's protocol
+      // handler, which routes it internally. The page itself does not navigate.
+      window.location.href = `slack://channel?team=${team}&id=${encodeURIComponent(channelId)}`;
+    },
+
+    async openDirectMessage(userId: string): Promise<string | null> {
+      const res = await web.call<{ channel?: { id?: string } }>('conversations.open', {
+        users: userId,
+        return_im: true,
+      });
+      const id = res.channel?.id ?? null;
+      if (id) this.openConversation(id);
+      return id;
+    },
+
+    openUserProfile(userId: string): void {
+      const team = currentTeamId();
+      if (!team) return;
+      window.location.href = `slack://user?team=${team}&id=${encodeURIComponent(userId)}`;
+    },
+
+    async hideConversation(channelId: string): Promise<void> {
+      await web.call('conversations.close', { channel: channelId });
+    },
+
+    async startHuddle(userId: string): Promise<boolean> {
+      await this.openDirectMessage(userId);
+      // The header re-renders on the way in, so wait for its control rather
+      // than guessing at a delay.
+      const button = await waitFor<HTMLElement>(
+        '[data-qa="huddle_channel_header_button__start_button"]',
+        8000,
+      );
+      if (!button) return false;
+      button.click();
+      return true;
+    },
+
+    async vipUsers(): Promise<string[]> {
+      const res = await web.call<{ prefs?: { vip_users?: string } }>('users.prefs.get');
+      return String(res.prefs?.vip_users ?? '').split(',').map((id) => id.trim()).filter(Boolean);
+    },
+
+    async setVip(userId: string, isVip: boolean): Promise<boolean> {
+      const current = await this.vipUsers();
+      const next = isVip
+        ? [...new Set([...current, userId])]
+        : current.filter((id) => id !== userId);
+      await web.call('users.prefs.set', { name: 'vip_users', value: next.join(',') });
+      return isVip;
+    },
+
+    async filesFrom(userId: string, limit = 20): Promise<Array<Record<string, unknown>>> {
+      const res = await web.call<{ files?: Array<Record<string, unknown>> }>('files.list', {
+        user: userId,
+        count: limit,
+      });
+      return Array.isArray(res.files) ? res.files : [];
+    },
     describeMessage,
     composer,
     userIdFromMessage: (message) =>

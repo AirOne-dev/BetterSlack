@@ -28,6 +28,35 @@ One file to review instead of one per mod.
 Using the signed-in session to call Slack's own API is fine. Sending anything
 derived from it anywhere else is not.
 
+## Themes that require plugins
+
+A theme is CSS. When a look needs behaviour, that behaviour goes in a plugin and
+the theme lists it in `requires`. What a review looks for:
+
+- **The plugin has to stand on its own.** It should read Slack's design tokens
+  and be worth installing without the theme. A "plugin" that is really one
+  theme's implementation detail belongs in neither.
+- **The theme must not style the plugin's markup.** That couples them and breaks
+  the plugin for everyone using a different theme.
+- **Every id must exist here.** A theme naming a plugin nobody ships installs
+  fine and then quietly looks wrong.
+- **Say in the pull request why CSS could not do it.** "The account strip needs
+  a display name and CSS cannot fetch one" is an answer. "It was easier" is not.
+
+## Text a user reads
+
+Every plugin here ships **English and French**, through `api.i18n.strings()`.
+English is the source and the fallback; a test fails a mod whose two tables do
+not cover the same keys, because half a translation is how French users end up
+with English holes nobody notices.
+
+You are not expected to speak every language — two is the bar. If you add
+another, add it to every plugin or none: one plugin speaking German inside an
+otherwise English SlackMod is worse than consistency.
+
+Do not print emoji shortcodes. `status_emoji` is `:tada:`, and a workspace's
+custom ones have no unicode to fall back on, so show the text without them.
+
 ## What gets a pull request rejected
 
 - Network calls to anywhere other than a clearly stated, purpose-obvious

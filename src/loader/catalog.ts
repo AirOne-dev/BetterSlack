@@ -43,15 +43,37 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
   if (m.type !== expectedType) {
     throw new ManifestError(file, `"type" must be "${expectedType}" inside ${expectedType}s/`);
   }
-  const entry = assertString(m.entry, 'entry', file);
   // Entries come from pull requests; refuse anything that could read outside
   // its own directory even if a review misses it.
-  if (path.isAbsolute(entry) || entry.split(/[\\/]/).includes('..')) {
-    throw new ManifestError(file, `"entry" must stay inside the mod directory (got "${entry}")`);
-  }
+  const assertContained = (value: string, field: string): string => {
+    if (path.isAbsolute(value) || value.split(/[\\/]/).includes('..')) {
+      throw new ManifestError(file, `"${field}" must stay inside the mod directory (got "${value}")`);
+    }
+    return value;
+  };
+
+  const entry = assertContained(assertString(m.entry, 'entry', file), 'entry');
   const expectedExt = expectedType === 'theme' ? '.css' : '.js';
   if (!entry.endsWith(expectedExt)) {
     throw new ManifestError(file, `"entry" must end in ${expectedExt} for a ${expectedType}`);
+  }
+
+  let requires: string[] | undefined;
+  if (m.requires !== undefined) {
+    if (!Array.isArray(m.requires)) throw new ManifestError(file, '"requires" must be an array');
+    if (expectedType !== 'theme') {
+      // Only themes may require. A plugin requiring a plugin would let two mods
+      // depend on each other, and there is no case for it worth that.
+      throw new ManifestError(file, '"requires" is for themes only');
+    }
+    for (const value of m.requires) {
+      if (typeof value !== 'string' || !ID_PATTERN.test(value)) {
+        throw new ManifestError(file, `"requires" entries must be mod ids (got ${JSON.stringify(value)})`);
+      }
+      if (value === id) throw new ManifestError(file, 'a theme cannot require itself');
+    }
+    const unique = [...new Set(m.requires as string[])];
+    requires = unique.length > 0 ? unique : undefined;
   }
 
   const api = typeof m.slackmodApi === 'number' ? m.slackmodApi : 0;
@@ -71,6 +93,7 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     author: assertString(m.author, 'author', file),
     description: assertString(m.description, 'description', file),
     entry,
+    requires,
     slackmodApi: api,
     slackVersion: typeof m.slackVersion === 'string' ? m.slackVersion : undefined,
     tags: Array.isArray(m.tags) ? m.tags.filter((t): t is string => typeof t === 'string') : undefined,

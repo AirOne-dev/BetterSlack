@@ -169,6 +169,19 @@ names that have held up.
 | `.c-tooltip__tip`, `.c-tooltip__subtitle` | tooltips |
 | `.c-avatar`, `.c-base_icon--image` | avatars |
 
+## Matching another app
+
+If you are reproducing something, measure it — do not trust a published
+palette. Discord's redesign moved off the blurple-tinted greys every colour
+list still quotes (`#313338`, `#2b2d31`) onto near-black neutrals (`#1a1a1e`,
+`#121214`), so `discord-dark` was wrong in every surface until it was rebuilt
+from a screenshot.
+
+Sampling a screenshot takes a minute: decode the PNG, then take the *most
+common* colour in a flat region for a surface, and the *brightest* pixel in a
+text region for a text colour — antialiasing means the average is never the
+real value.
+
 ## Recipes
 
 **Round every avatar**
@@ -214,12 +227,44 @@ names that have held up.
 }
 ```
 
+## When CSS is not enough
+
+A theme is CSS and nothing else. CSS reaches everything about how Slack *looks*
+and nothing about how it is *arranged*: it cannot put a node under a different
+parent, read who is signed in, or press a button.
+
+When a look needs one of those, that part is a **plugin**, and the theme names
+it:
+
+```json
+{
+  "id": "discord-dark",
+  "type": "theme",
+  "entry": "theme.css",
+  "requires": ["member-sidebar", "sidebar-account"]
+}
+```
+
+The panel shows what the theme needs, offers to switch those plugins on when
+you enable it, and says plainly when one is missing. Declining still applies the
+theme — it is a stylesheet either way.
+
+Only themes may declare `requires`, and only plugin ids, so there is no way to
+build a cycle. Every id has to exist in this repository; CI fails a theme that
+points at a plugin nobody ships.
+
+**Write the plugin so it stands on its own.** `member-sidebar` is a member
+column for anyone who wants one, not a piece of Discord Dark: it takes its
+colours from Slack's tokens, so it follows whatever theme is on. A plugin that
+only makes sense with one theme, or a theme that reaches into a plugin's markup,
+ties the two together and makes both worse.
+
 ## Read the ones that ship
 
 | Theme | Shows |
 | --- | --- |
 | [`midnight`](../mods/themes/midnight/theme.css) | the plain three-family override, well commented |
-| [`discord-dark`](../mods/themes/discord-dark/theme.css) | a complete reskin: colour, type, radius, scrollbars |
+| [`discord-dark`](../mods/themes/discord-dark/theme.css) | a palette sampled from the real app, and two required plugins for the parts CSS cannot reach |
 | [`aurora`](../mods/themes/aurora/theme.css) | gradients, glass, translucent chrome |
 | [`cocoa`](../mods/themes/cocoa/theme.css) | a light theme, so every family had to be covered |
 | [`focus-rings`](../mods/themes/focus-rings/theme.css) | no tokens at all — pure `:focus-visible` semantics |

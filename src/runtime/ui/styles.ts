@@ -189,6 +189,59 @@ export const PANEL_CSS = `
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
 }
 
+/* A theme's required plugins, on its row and in the dialog. */
+.slackmod-row__requires {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+.slackmod-row__requires--missing {
+  color: var(--dt_color-content-warn, #b8730a);
+  font-weight: var(--custom-font-weight-bold, 700);
+}
+.slackmod-row__review {
+  color: var(--dt_color-content-link, #1264a3);
+  font-size: 12px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#slackmod-requires.c-dialog { opacity: 1; z-index: 1101; }
+.slackmod-content--narrow {
+  width: min(520px, calc(100% - 32px));
+  max-width: min(520px, calc(100% - 32px));
+  height: auto;
+  max-height: min(560px, calc(100% - 64px));
+}
+.slackmod-requires { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.slackmod-require {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  /* A tinted card rather than a warning triangle: this is a choice to make,
+     not an error the user is being blamed for. */
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08);
+}
+.slackmod-require__title {
+  font-size: 15px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+.slackmod-require__detail {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.slackmod-actions--dialog {
+  justify-content: flex-end;
+  padding: 4px 24px 20px;
+  margin-top: 0;
+}
+
 /* Slack has no reusable switch class, so this is built from its variables. */
 .slackmod-switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; cursor: pointer; }
 .slackmod-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -253,7 +306,13 @@ export const PANEL_CSS = `
 
 /* Dialogs opened by mods through api.ui.modal: the same Slack shell, sized to
    the content rather than to a fixed panel height. */
-.slackmod-widget_dialog { z-index: 1014; }
+/*
+ * Slack ships .c-dialog at opacity 0 and fades it in with its own transition,
+ * which never runs for a dialog we built. The panel has carried this override
+ * since it moved into the light DOM; api.ui.modal did not, so every dialog a
+ * mod opened was in the document, focusable, and completely invisible.
+ */
+.slackmod-widget_dialog { z-index: 1014; opacity: 1; }
 .slackmod-widget_content { height: auto; max-height: min(640px, calc(100% - 64px)); }
 .slackmod-widget_content .slackmod-body { flex: 0 1 auto; padding-bottom: 8px; }
 .slackmod-widget_titles { flex: 1; min-width: 0; }
