@@ -69,12 +69,22 @@ export function keepMounted(
     if (disposed) return;
     const container = document.querySelector(containerSelector);
     if (!container) return;
+    const anchor = before ? container.querySelector(before) : null;
+
     const current = document.getElementById(nodeId);
-    if (current && container.contains(current)) return;
+    if (current && container.contains(current)) {
+      // Already mounted, but possibly in the wrong place: when two mods both
+      // anchor on the same neighbour, whichever mounted first was placed before
+      // the other one existed. Correct the position rather than leaving it.
+      if (anchor && anchor !== current && current.nextElementSibling !== anchor) {
+        anchor.before(current);
+      }
+      return;
+    }
+
     current?.remove();
     const node = factory();
     node.id = nodeId;
-    const anchor = before ? container.querySelector(before) : null;
     if (anchor) anchor.before(node);
     else if (position === 'prepend') container.prepend(node);
     else container.append(node);

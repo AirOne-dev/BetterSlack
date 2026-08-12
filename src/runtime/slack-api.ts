@@ -243,6 +243,11 @@ export interface ToolbarButton {
   icon: string;
   /** Optional second line in the tooltip. */
   description?: string;
+  /**
+   * Selector, inside the toolbar, to insert before. Defaults to the toolbar's
+   * own anchor. Use it to sit above an existing button rather than after it.
+   */
+  before?: string;
   onClick: (event: MouseEvent) => void;
 }
 
@@ -284,7 +289,7 @@ export function addToolbarButton(
       });
       return element;
     },
-    spec.before ? { before: spec.before } : {},
+    button.before ?? spec.before ? { before: button.before ?? spec.before } : {},
   );
 
   return () => {
