@@ -394,6 +394,33 @@ interface setting rather than their operating system.
 mod whose two tables do not cover the same keys — half a translation is how
 French users end up with English holes nobody notices.
 
+## Doing things to Slack, directly
+
+These are calls, not clicks staged on Slack's UI. Everything here was found by
+probing Slack's API surface — it answers `unknown_method` for what does not
+exist — and verified against a running client.
+
+```js
+api.slack.openConversation(channelId);      // move the client, no page load
+await api.slack.openDirectMessage(userId);  // opens the DM, creating it if needed
+api.slack.openUserProfile(userId);          // Slack's own profile pane
+await api.slack.hideConversation(channelId);
+await api.slack.filesFrom(userId, 20);
+await api.slack.vipUsers();                 // ["U123", …]
+await api.slack.setVip(userId, true);
+```
+
+Navigation goes through Slack's own deep-link scheme (`slack://channel`,
+`slack://user`), which the desktop app routes in place — same document, no
+reload. There is no other way in: Slack's router is a private closure, a
+synthetic `popstate` moves the URL and nothing else, and an `<a>` to
+`/archives/…` leaves the client entirely.
+
+**What is not here, and will not be:** starting a huddle. `rooms.join` returns a
+room but never rings anyone — the call itself is a WebRTC session only Slack's
+client can open. Send people to `openUserProfile` instead of offering a button
+that cannot do what it says.
+
 ## Plugins a theme brings in
 
 Themes are CSS. When a look needs behaviour, the theme lists a plugin in

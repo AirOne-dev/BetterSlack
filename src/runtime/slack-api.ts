@@ -430,6 +430,19 @@ export interface SlackApi {
   /** Files someone shared, newest first. */
   filesFrom(userId: string, limit?: number): Promise<Array<Record<string, unknown>>>;
 
+  /** The people marked VIP, in Slack's own order. */
+  vipUsers(): Promise<string[]>;
+
+  /**
+   * Add or remove someone from your VIP list, and report the new state.
+   *
+   * VIP is a user preference, not an endpoint of its own: Slack keeps it in
+   * `vip_users` as a comma-separated list. Read, edit, write -- which also
+   * means two windows editing it at once can clobber each other, exactly as
+   * they would in Slack itself.
+   */
+  setVip(userId: string, isVip: boolean): Promise<boolean>;
+
   /**
    * Slack's own web API, as the signed-in user. Reads the session token in one
    * audited place so mods never touch localStorage themselves; requests can
@@ -483,6 +496,20 @@ export function createSlackApi(pluginId: string): SlackApi {
 
     async hideConversation(channelId: string): Promise<void> {
       await web.call('conversations.close', { channel: channelId });
+    },
+
+    async vipUsers(): Promise<string[]> {
+      const res = await web.call<{ prefs?: { vip_users?: string } }>('users.prefs.get');
+      return String(res.prefs?.vip_users ?? '').split(',').map((id) => id.trim()).filter(Boolean);
+    },
+
+    async setVip(userId: string, isVip: boolean): Promise<boolean> {
+      const current = await this.vipUsers();
+      const next = isVip
+        ? [...new Set([...current, userId])]
+        : current.filter((id) => id !== userId);
+      await web.call('users.prefs.set', { name: 'vip_users', value: next.join(',') });
+      return isVip;
     },
 
     async filesFrom(userId: string, limit = 20): Promise<Array<Record<string, unknown>>> {

@@ -444,3 +444,33 @@ test('speaks the app’s language', async () => {
     dom.cleanup();
   }
 });
+
+test('VIP is a direct preference write, offering add or remove as appropriate', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  const calls = [];
+  api.slack.vipUsers = async () => ['U1'];
+  api.slack.setVip = async (id, want) => { calls.push([id, want]); return want; };
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    recorded.modals[0].body.querySelector('.slackmod-profile__more').click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const labels = [...document.querySelectorAll('#slackmod-profile-menu .c-menu_item__label')]
+      .map((e) => e.textContent);
+    assert.ok(labels.includes('Remove from VIPs'), 'already a VIP, so the entry offers removal');
+
+    const item = [...document.querySelectorAll('#slackmod-profile-menu .c-menu_item__button')]
+      .find((b) => b.textContent === 'Remove from VIPs');
+    item.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.deepEqual(calls, [['U1', false]], 'one preference write, no UI driven anywhere');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
