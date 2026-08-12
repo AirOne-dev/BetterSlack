@@ -10,7 +10,6 @@
  *   #121214   server rail, channel sidebar, workspace header
  *   #1a1a1e   message pane, top bar
  *   #222327   composer field
- *   #202024   the account strip at the bottom of the sidebar
  *   #2d2d30   selected channel row
  *   #29292d   divider rules, neutral pills, raised buttons
  *   #efeff1   message text
@@ -38,7 +37,6 @@
   --dc-rail: #121214;
   --dc-chat: #1a1a1e;
   --dc-raised: #222327;
-  --dc-account: #202024;
   --dc-selected: #2d2d30;
   --dc-surface: #29292d;
   --dc-hover: #1f1f23;
@@ -356,11 +354,6 @@ html, body { background-color: var(--dc-chat); }
 .p-ia4_top_nav {
   background: var(--dc-chat) !important;
   border-bottom: none !important;
-}
-
-/* The account strip at the bottom of the sidebar is its own shade. */
-.p-control_strip {
-  background: var(--dc-account) !important;
 }
 
 /* Corners: 4px on rows and controls, 8px on surfaces, circles on avatars. */
