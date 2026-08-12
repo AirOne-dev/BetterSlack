@@ -80,16 +80,17 @@ export default {
 };
 ```
 
-`api.slack` covers toolbars, message actions, profile panes, permalinks, the
-composer and Slack's web API. `api.ui` gives you toasts, modals, confirms and
-tooltips with no CSS. Everything registered through `api` is undone when the
-plugin is disabled.
+Most of what a mod needs is one call on `api.helpers` — a persisted toggle, a
+hotkey, a badge, a Slack-styled button. `api.slack` covers Slack's own chrome,
+`api.ui` gives you toasts, modals and tooltips with no CSS, and everything
+registered through `api` is undone when the plugin is disabled.
 
 `mods/plugins/channel-notes` is the worked example — one of everything.
 
-**[CONTRIBUTING.md](CONTRIBUTING.md) has the full API reference**, the four
-families of Slack colour tokens, the CSP constraints, and what gets a pull
-request rejected. Read it before writing a mod; it will save you an afternoon.
+**[API.md](API.md) is the API reference.** [CONTRIBUTING.md](CONTRIBUTING.md)
+covers the four families of Slack colour tokens, the CSP constraints, and what
+gets a pull request rejected. Read both before writing a mod; they will save you
+an afternoon.
 
 ## Development
 

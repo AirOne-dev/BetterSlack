@@ -100,6 +100,33 @@ nav .count { margin-left: auto; font-size: 11px; opacity: 0.7; }
 
 main { flex: 1; overflow-y: auto; padding: 18px 20px; min-width: 0; }
 main h2 { font-size: 15px; margin: 0 0 4px; font-weight: 900; }
+
+/* Installed / Enabled / Browse */
+.shelf_bar {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  position: sticky; top: -18px; z-index: 1; padding: 6px 0 8px;
+  background: var(--sm-bg);
+}
+.shelves { display: flex; gap: 2px; }
+.shelf {
+  all: unset; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 7px; font-size: 13px; font-weight: 700;
+  color: var(--sm-text-dim);
+}
+.shelf:hover { background: var(--sm-bg-hover); color: var(--sm-text); }
+.shelf[aria-selected="true"] { background: var(--sm-bg-raised); color: var(--sm-text); }
+.shelf .count {
+  font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+  background: var(--sm-bg-hover); color: var(--sm-text-dim);
+}
+.shelf[aria-selected="true"] .count { color: var(--sm-text); }
+.search {
+  flex: 1; min-width: 0; font-size: 13px; padding: 7px 10px; border-radius: 7px;
+  color: var(--sm-text); background: var(--sm-bg-raised);
+  border: 1px solid var(--sm-border);
+}
+.search:focus { outline: 2px solid var(--sm-accent); outline-offset: -1px; }
+.shelf_list { display: block; }
 main .hint { font-size: 12.5px; color: var(--sm-text-dim); margin: 0 0 16px; line-height: 1.5; }
 main .hint a { color: inherit; }
 

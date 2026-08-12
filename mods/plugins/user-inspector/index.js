@@ -132,24 +132,8 @@ export default {
 
     const cache = new Map();
 
-    const field = (label, value) =>
-      api.dom.h('div', { class: 'p-rimeto_member_profile_field__contact_info' }, [
-        api.dom.h('div', { class: 'p-rimeto_member_profile_field' }, [
-          api.dom.h('div', { class: 'p-rimeto_member_profile_field__primary' }, [
-            api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, [label]),
-            api.dom.h('div', { class: 'p-rimeto_member_profile_field__value' }, [value]),
-          ]),
-        ]),
-      ]);
-
-    /** Slack's section shell: a header row and a content block. */
-    const section = (title, children) =>
-      api.dom.h('div', { class: 'p-r_member_profile_section' }, [
-        api.dom.h('div', { style: 'display: flex;' }, [
-          api.dom.h('div', { class: 'p-r_member_profile_section_header', style: 'flex: 1 1 0%;' }, [title]),
-        ]),
-        api.dom.h('div', { class: 'p-r_member_profile_section_content' }, children),
-      ]);
+    // Slack's own field and section shells, straight from the API.
+    const { field, section } = api.helpers;
 
     const render = (host, data) => {
       host.replaceChildren();
@@ -214,14 +198,8 @@ export default {
         class: 'c-button c-button--outline c-button--medium',
         type: 'button',
       }, ['Copy raw JSON']);
-      copy.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-          api.ui.toast('Copied the full API response', { variant: 'success' });
-        } catch (err) {
-          api.log.error(err);
-          api.ui.toast('Could not copy', { variant: 'error' });
-        }
+      copy.addEventListener('click', () => {
+        void api.helpers.copy(JSON.stringify(data, null, 2), 'Copied the full API response');
       });
       host.append(section('Raw data', [
         api.dom.h('div', { class: 'slackmod-muted' }, [
@@ -255,7 +233,7 @@ export default {
     // keepMounted rather than a one-shot insert: Slack re-renders the pane when
     // presence changes or the profile is reopened, and this puts the sections
     // back without ever producing two copies.
-    api.dom.keepMounted(PANE, NODE_ID, () => {
+    api.helpers.mount(PANE, NODE_ID, () => {
       const host = api.dom.h('div', {});
       const avatar = document.querySelector('.p-r_member_profile__avatar__img');
       const userId = (avatar?.src?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i) ?? [])[1]?.toUpperCase();

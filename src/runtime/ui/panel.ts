@@ -3,10 +3,11 @@
 import type { ModRecord } from '../../shared/protocol.js';
 import { h } from '../dom.js';
 import type { ModManager } from '../manager.js';
-import { contributeUrl, fetchModSource, fetchRegistry, repoUrl, toRecord, type RegistryEntry } from '../registry.js';
+import { contributeUrl, repoUrl } from '../registry.js';
 import { PANEL_CSS } from './styles.js';
 
-type TabId = 'themes' | 'plugins' | 'browse' | 'css' | 'about';
+type TabId = 'themes' | 'plugins' | 'css' | 'about';
+type ShelfId = 'installed' | 'enabled' | 'browse';
 
 const HOST_ID = 'slackmod-panel-host';
 
@@ -14,8 +15,11 @@ export class Panel {
   private host: HTMLDivElement | null = null;
   private root: ShadowRoot | null = null;
   private tab: TabId = 'themes';
-  private remote: RegistryEntry[] | null = null;
-  private remoteError: string | null = null;
+  /** Which shelf of the Themes/Plugins tabs is showing. */
+  private shelf: ShelfId = 'installed';
+  /** Kept across re-renders: toggling a mod used to jump the list to the top. */
+  private scrollTop = 0;
+  private search = '';
   private busy = new Set<string>();
   private entering = false;
 
@@ -54,6 +58,14 @@ export class Panel {
 
   private renderIfOpen(): void {
     if (this.isOpen) this.render();
+  }
+
+  /** Put the list back where the user left it after a re-render. */
+  private restoreScroll(): void {
+    const main = this.root?.querySelector<HTMLElement>('main');
+    if (main && this.scrollTop > 0 && main.scrollTop !== this.scrollTop) {
+      main.scrollTop = this.scrollTop;
+    }
   }
 
   private render(): void {
@@ -98,10 +110,11 @@ export class Panel {
     const themes = mods.filter((m) => m.type === 'theme');
     const plugins = mods.filter((m) => m.type === 'plugin');
 
+    const installedThemes = themes.filter((m) => this.manager.isInstalled(m.id));
+    const installedPlugins = plugins.filter((m) => this.manager.isInstalled(m.id));
     const tabs: { id: TabId; label: string; count?: number }[] = [
-      { id: 'themes', label: 'Themes', count: themes.length },
-      { id: 'plugins', label: 'Plugins', count: plugins.length },
-      { id: 'browse', label: 'Browse' },
+      { id: 'themes', label: 'Themes', count: installedThemes.length },
+      { id: 'plugins', label: 'Plugins', count: installedPlugins.length },
       { id: 'css', label: 'Custom CSS' },
       { id: 'about', label: 'About' },
     ];
@@ -115,23 +128,30 @@ export class Panel {
         button.append(h('span', { class: 'count' }, [String(tab.count)]));
       }
       button.addEventListener('click', () => {
+        if (this.tab === tab.id) return;
         this.tab = tab.id;
-        if (tab.id === 'browse' && this.remote === null) void this.loadRegistry();
+        this.scrollTop = 0;
         this.render();
       });
       nav.append(button);
     }
 
     const main = h('main', { role: 'tabpanel' });
+    // The panel re-renders wholesale on every change, and a toggle triggers
+    // several renders in one frame (busy on, state change, busy off). Reading
+    // the scroll position at render time therefore captured a 0 left by an
+    // earlier render in the same frame. The user's own scrolling is the only
+    // reliable source, so record that and replay it after each render.
+    main.addEventListener('scroll', () => {
+      this.scrollTop = main.scrollTop;
+    }, { passive: true });
+    requestAnimationFrame(() => this.restoreScroll());
     switch (this.tab) {
       case 'themes':
-        main.append(...this.renderModList(themes, 'theme'));
+        main.append(...this.renderShelves(themes, 'theme'));
         break;
       case 'plugins':
-        main.append(...this.renderModList(plugins, 'plugin'));
-        break;
-      case 'browse':
-        main.append(...this.renderBrowse());
+        main.append(...this.renderShelves(plugins, 'plugin'));
         break;
       case 'css':
         main.append(...this.renderCustomCss());
@@ -144,56 +164,129 @@ export class Panel {
     return h('div', { class: 'body' }, [nav, main]);
   }
 
-  private renderModList(mods: ModRecord[], kind: 'theme' | 'plugin'): Node[] {
-    const title = kind === 'theme' ? 'Themes' : 'Plugins';
-    const hint =
-      kind === 'theme'
-        ? 'Stylesheets layered over Slack. Several can run at once; the last one enabled wins on conflicts.'
-        : 'ES modules loaded into the Slack renderer. Disabling one runs its cleanup and undoes its DOM changes.';
+  /**
+   * Installed / Enabled / Browse, in the shape a plugin browser usually takes.
+   * The repository is a catalogue: nothing is installed until you say so, so a
+   * fresh install opens on an empty Installed shelf and a full Browse shelf.
+   */
+  private renderShelves(mods: ModRecord[], kind: 'theme' | 'plugin'): Node[] {
+    const installed = mods.filter((m) => this.manager.isInstalled(m.id));
+    const enabled = installed.filter((m) => this.manager.isEnabled(m.id));
+    const available = mods.filter((m) => !this.manager.isInstalled(m.id));
 
-    const nodes: Node[] = [h('h2', {}, [title]), h('p', { class: 'hint' }, [hint])];
+    const shelves: { id: ShelfId; label: string; list: ModRecord[] }[] = [
+      { id: 'installed', label: 'Installed', list: installed },
+      { id: 'enabled', label: 'Enabled', list: enabled },
+      { id: 'browse', label: 'Browse', list: available },
+    ];
 
-    if (mods.length === 0) {
-      nodes.push(
-        h('div', { class: 'empty' }, [
-          `No ${kind} installed yet. Check the Browse tab, or drop one in `,
-          h('code', {}, [`${this.manager.info.userModsRoot}/${kind}s/`]),
-        ]),
-      );
-      return nodes;
+    const bar = h('div', { class: 'shelves', role: 'tablist' });
+    for (const shelf of shelves) {
+      const button = h('button', {
+        class: 'shelf',
+        role: 'tab',
+        'aria-selected': String(this.shelf === shelf.id),
+      }, [shelf.label, h('span', { class: 'count' }, [String(shelf.list.length)])]);
+      button.addEventListener('click', () => {
+        if (this.shelf === shelf.id) return;
+        this.shelf = shelf.id;
+        this.scrollTop = 0;
+        this.render();
+      });
+      bar.append(button);
     }
 
-    for (const mod of mods) nodes.push(this.renderCard(mod));
-    return nodes;
+    const current = shelves.find((shelf) => shelf.id === this.shelf) ?? shelves[0]!;
+
+    const search = h('input', {
+      class: 'search',
+      type: 'search',
+      placeholder: 'Search…',
+      spellcheck: 'false',
+    }) as HTMLInputElement;
+    search.value = this.search;
+    // Rendered into its own container, so typing does not rebuild the panel
+    // and steal focus back from the input.
+    search.addEventListener('input', () => {
+      this.search = search.value;
+      this.renderList(current.list, kind);
+    });
+
+    queueMicrotask(() => this.renderList(current.list, kind));
+
+    return [
+      h('div', { class: 'shelf_bar' }, [bar, search]),
+      h('div', { class: 'shelf_list' }),
+    ];
+  }
+
+  private renderList(mods: ModRecord[], kind: 'theme' | 'plugin'): void {
+    const host = this.root?.querySelector('.shelf_list');
+    if (!host) return;
+
+    const query = this.search.trim().toLowerCase();
+    const list = query
+      ? mods.filter((m) =>
+          `${m.name} ${m.description} ${(m.tags ?? []).join(' ')}`.toLowerCase().includes(query))
+      : mods;
+
+    host.replaceChildren();
+
+    if (list.length === 0) {
+      const messages: Record<ShelfId, string> = {
+        installed: `No ${kind} installed yet. Open Browse to add one.`,
+        enabled: `Nothing switched on. Installed ${kind}s can be enabled here.`,
+        browse: 'Everything in the catalogue is already installed.',
+      };
+      host.append(h('div', { class: 'empty' }, [
+        query ? 'Nothing matches that search.' : messages[this.shelf],
+      ]));
+      return;
+    }
+
+    for (const mod of list) host.append(this.renderCard(mod));
+    // The cards only exist now, so this is the first moment the container is
+    // tall enough for a scroll position to survive being set.
+    this.restoreScroll();
   }
 
   private renderCard(mod: ModRecord): HTMLElement {
+    const installed = this.manager.isInstalled(mod.id);
     const enabled = this.manager.isEnabled(mod.id);
     const busy = this.busy.has(mod.id);
 
-    const input = h('input', { type: 'checkbox', 'aria-label': `Enable ${mod.name}` }) as HTMLInputElement;
-    input.checked = enabled;
-    input.disabled = busy;
-    input.addEventListener('change', () => {
-      void this.withBusy(mod.id, () => this.manager.setEnabled(mod.id, input.checked));
-    });
+    const actions = h('div', { class: 'actions' });
 
-    const toggle = h('label', { class: 'switch' }, [
-      input,
-      h('span', { class: 'track' }, [h('span', { class: 'thumb' })]),
-    ]);
+    if (installed) {
+      const input = h('input', { type: 'checkbox', 'aria-label': `Enable ${mod.name}` }) as HTMLInputElement;
+      input.checked = enabled;
+      input.disabled = busy;
+      input.addEventListener('change', () => {
+        void this.withBusy(mod.id, () => this.manager.setEnabled(mod.id, input.checked));
+      });
 
-    const actions = h('div', { class: 'actions' }, [toggle]);
-    if (mod.origin === 'installed') {
       const remove = h('button', { class: 'btn danger' }, ['Remove']);
       remove.addEventListener('click', () => {
-        void this.withBusy(mod.id, () => this.manager.uninstall(mod.id));
+        void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
       });
-      actions.prepend(remove);
+
+      actions.append(remove, h('label', { class: 'switch' }, [
+        input,
+        h('span', { class: 'track' }, [h('span', { class: 'thumb' })]),
+      ]));
+    } else {
+      const install = h('button', { class: 'btn primary' }, ['Install']) as HTMLButtonElement;
+      install.disabled = busy;
+      install.addEventListener('click', () => {
+        void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, true));
+      });
+      actions.append(install);
     }
 
     const name = h('div', { class: 'name' }, [mod.name]);
-    if (mod.origin === 'builtin') name.append(h('span', { class: 'badge builtin' }, ['repo']));
+    for (const tag of (mod.tags ?? []).slice(0, 3)) {
+      name.append(h('span', { class: 'badge' }, [tag]));
+    }
 
     return h('div', { class: 'card' }, [
       h('div', { class: 'meta' }, [
@@ -203,60 +296,6 @@ export class Panel {
       ]),
       actions,
     ]);
-  }
-
-  private renderBrowse(): Node[] {
-    const nodes: Node[] = [
-      h('h2', {}, ['Browse the repository']),
-      h('p', { class: 'hint' }, [
-        'Everything here was merged into the SlackMod repository through a pull request. ' +
-          'A plugin runs with full access to your Slack session, so that review is the only thing standing between you and a bad one — install what you would be willing to read.',
-      ]),
-    ];
-
-    if (this.remoteError) {
-      nodes.push(h('div', { class: 'empty' }, [`Could not reach the registry: ${this.remoteError}`]));
-      const retry = h('button', { class: 'btn' }, ['Retry']);
-      retry.addEventListener('click', () => void this.loadRegistry());
-      nodes.push(h('div', { class: 'row' }, [retry]));
-      return nodes;
-    }
-
-    if (this.remote === null) {
-      nodes.push(h('div', { class: 'empty' }, ['Loading…']));
-      return nodes;
-    }
-
-    const installedIds = new Set(this.manager.list().map((m) => m.id));
-    const available = this.remote.filter((entry) => !installedIds.has(entry.id));
-
-    if (available.length === 0) {
-      nodes.push(h('div', { class: 'empty' }, ['Everything in the registry is already on this machine.']));
-      return nodes;
-    }
-
-    for (const entry of available) {
-      const install = h('button', { class: 'btn primary' }, ['Install']) as HTMLButtonElement;
-      install.disabled = this.busy.has(entry.id);
-      install.addEventListener('click', () => {
-        void this.withBusy(entry.id, async () => {
-          const source = await fetchModSource(entry);
-          await this.manager.install(toRecord(entry), source);
-        });
-      });
-
-      nodes.push(
-        h('div', { class: 'card' }, [
-          h('div', { class: 'meta' }, [
-            h('div', { class: 'name' }, [entry.name, h('span', { class: 'badge' }, [entry.type])]),
-            h('div', { class: 'desc' }, [entry.description]),
-            h('div', { class: 'sub' }, [`v${entry.version} · by ${entry.author}`]),
-          ]),
-          h('div', { class: 'actions' }, [install]),
-        ]),
-      );
-    }
-    return nodes;
   }
 
   private renderCustomCss(): Node[] {
@@ -336,19 +375,6 @@ export class Panel {
         h('a', { href: contributeUrl, target: '_blank', rel: 'noreferrer' }, ['Submit a mod']),
       ]),
     ];
-  }
-
-  private async loadRegistry(): Promise<void> {
-    this.remoteError = null;
-    this.remote = null;
-    this.renderIfOpen();
-    try {
-      const registry = await fetchRegistry();
-      this.remote = registry.mods;
-    } catch (err) {
-      this.remoteError = (err as Error).message;
-    }
-    this.renderIfOpen();
   }
 
   private async withBusy(id: string, work: () => Promise<unknown>): Promise<void> {

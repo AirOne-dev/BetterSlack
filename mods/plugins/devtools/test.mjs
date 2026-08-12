@@ -1,26 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assertPluginShape, createTestApi, installDom } from '../../../tests/harness.mjs';
-import plugin, { PREFERENCE, TOGGLE_ACTION, toggleDevTools } from './index.js';
+import plugin, { toggleDevTools } from './index.js';
 
 /** A stand-in for Slack's preload bridge, recording what it is asked to do. */
-function fakeBridge({ enabled = false, withRedux = true } = {}) {
-  const calls = { preferences: [], dispatched: [] };
-  let value = enabled;
+function fakeBridge({ withToggle = true } = {}) {
+  const calls = { toggled: 0 };
   return {
     calls,
-    bridge: {
-      app: {
-        getPreference: (name) => (name === PREFERENCE ? value : undefined),
-        setPreference: ({ name, value: next }) => {
-          calls.preferences.push({ name, value: next });
-          if (name === PREFERENCE) value = next;
-        },
-      },
-      ...(withRedux
-        ? { redux: { dispatchUpdate: (action) => calls.dispatched.push(action) } }
-        : {}),
-    },
+    bridge: { app: withToggle ? { toggleDevTools: () => { calls.toggled++; } } : {} },
   };
 }
 
@@ -28,40 +16,32 @@ test('exports a plugin', () => {
   assertPluginShape(assert, plugin);
 });
 
-test('dispatches Slack’s own action, not a reimplementation', () => {
-  assert.deepEqual(TOGGLE_ACTION, { type: 'TOGGLE_DEV_TOOLS' });
-  // FSA compliance matters: Slack validates the action before dispatching it.
-  assert.equal(Object.keys(TOGGLE_ACTION).length, 1);
-  assert.equal(typeof TOGGLE_ACTION.type, 'string');
+test('calls Slack’s own bridge method', () => {
+  const { bridge, calls } = fakeBridge();
+  toggleDevTools(bridge);
+  assert.equal(calls.toggled, 1);
 });
 
-test('enables the setting the toggle epic is gated on, then toggles', () => {
-  const { bridge, calls } = fakeBridge({ enabled: false });
-  toggleDevTools(bridge);
-
-  assert.deepEqual(calls.preferences, [{ name: PREFERENCE, value: true }]);
-  assert.deepEqual(calls.dispatched, [TOGGLE_ACTION]);
-});
-
-test('does not rewrite the preference once it is already on', () => {
-  const { bridge, calls } = fakeBridge({ enabled: true });
-  toggleDevTools(bridge);
-  toggleDevTools(bridge);
-
-  assert.deepEqual(calls.preferences, [], 'left alone');
-  assert.equal(calls.dispatched.length, 2, 'still toggles every time');
-});
-
-test('toggling twice sends the same action twice, which is what closes it', () => {
+test('toggling twice calls it twice, which is what closes DevTools', () => {
   const { bridge, calls } = fakeBridge();
   toggleDevTools(bridge);
   toggleDevTools(bridge);
-  assert.deepEqual(calls.dispatched, [TOGGLE_ACTION, TOGGLE_ACTION]);
+  assert.equal(calls.toggled, 2);
 });
 
 test('explains itself when the desktop bridge is missing', () => {
   assert.throws(() => toggleDevTools(undefined), /bridge is not available/);
-  assert.throws(() => toggleDevTools(fakeBridge({ withRedux: false }).bridge), /bridge is not available/);
+  assert.throws(() => toggleDevTools(fakeBridge({ withToggle: false }).bridge), /bridge is not available/);
+});
+
+test('never goes through redux.dispatchUpdate', async () => {
+  // That path looks like a generic action forwarder but wraps the argument as
+  // the payload of REDUX_UPDATE_FROM_WEBAPP, whose reducer only reads
+  // payload.teams — so the toggle is silently dropped. This caught it once.
+  const { readFileSync } = await import('node:fs');
+  const raw = readFileSync(new URL('./index.js', import.meta.url), 'utf8');
+  const source = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  assert.doesNotMatch(source, /dispatchUpdate/);
 });
 
 test('sits above the SlackMod button in the control strip', async () => {
@@ -89,7 +69,7 @@ test('clicking the button toggles through the bridge', async () => {
     await plugin.start(api);
     recorded.toolbarButtons[0].button.onClick();
 
-    assert.deepEqual(calls.dispatched, [TOGGLE_ACTION]);
+    assert.equal(calls.toggled, 1);
     assert.equal(recorded.toasts.length, 0, 'nothing to report when it works');
   } finally {
     dom.cleanup();

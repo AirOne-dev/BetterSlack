@@ -20,12 +20,6 @@ const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true">
   <path fill="currentColor" d="M6.75 10a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Z"/>
 </svg>`;
 
-/** Slack puts the channel id in the URL: /client/<team>/<channel>. */
-function currentChannelId() {
-  const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
-  return match ? match[1] : null;
-}
-
 function currentChannelName() {
   const el = document.querySelector('[data-qa="channel_name"]');
   return el?.textContent?.trim() || 'this channel';
@@ -49,7 +43,7 @@ export default {
     };
 
     const open = () => {
-      const channelId = currentChannelId();
+      const channelId = api.slack.currentChannelId();
       if (!channelId) {
         api.ui.toast('Open a channel first', { variant: 'warning' });
         return;
@@ -112,11 +106,7 @@ export default {
       onClick: open,
     });
 
-    api.dom.onShortcut(
-      (event) =>
-        event.shiftKey && (event.metaKey || event.ctrlKey) && !event.altKey && event.code === 'KeyN',
-      open,
-    );
+    api.helpers.hotkey('mod+shift+n', open);
   },
 
   stop() {},
