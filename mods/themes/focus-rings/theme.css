@@ -1,0 +1,44 @@
+/*
+ * Focus Rings — make keyboard focus impossible to miss.
+ *
+ * Built on `:focus-visible` rather than `:focus`, so mouse clicks stay quiet
+ * and only keyboard navigation lights up. Targets element roles and states
+ * instead of Slack class names, which is what keeps it stable across releases.
+ */
+
+:root {
+  --sm-focus-color: #4cc8ff;
+  --sm-focus-width: 3px;
+}
+
+/* Slack ships its own focus treatment on a `c-button--focus-visible` class;
+ * this overrides it wherever the browser agrees the element is focused. */
+*:focus-visible {
+  outline: var(--sm-focus-width) solid var(--sm-focus-color) !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+/* The message composer is a contenteditable, so it never matches :focus-visible
+ * the way a button does. */
+[role="textbox"]:focus,
+[contenteditable="true"]:focus {
+  outline: var(--sm-focus-width) solid var(--sm-focus-color) !important;
+  outline-offset: -1px !important;
+}
+
+/* Menu and list items get a filled highlight instead of an outline, because an
+ * outline inside a dense scrolling list is hard to read. */
+[role="menuitem"]:focus-visible,
+[role="option"]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: none !important;
+  box-shadow: inset 0 0 0 var(--sm-focus-width) var(--sm-focus-color) !important;
+}
+
+/* Keep the ring visible over Slack's own hover backgrounds. */
+a:focus-visible,
+button:focus-visible {
+  position: relative;
+  z-index: 1;
+}

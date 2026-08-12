@@ -1,0 +1,79 @@
+name: Mod structure
+
+# Does each mod touched by this pull request have what it needs to load in the
+# app? Manifest, entry file, a default export that really exports start(), CSS
+# that parses, tests, a registry entry. Cheap, and it fails before the slower
+# test jobs do.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  changed:
+    name: which mods changed
+    runs-on: ubuntu-latest
+    outputs:
+      mods: ${{ steps.list.outputs.mods }}
+      any: ${{ steps.list.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # changed-mods.mjs diffs against the base, so it needs the history.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - id: list
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+        run: |
+          mods=$(node scripts/changed-mods.mjs --base "$BASE" --json)
+          echo "mods=$mods" >> "$GITHUB_OUTPUT"
+          if [ "$mods" = "[]" ]; then echo "any=false" >> "$GITHUB_OUTPUT"; else echo "any=true" >> "$GITHUB_OUTPUT"; fi
+          echo "Changed mods: $mods"
+
+  structure:
+    name: structure (${{ matrix.mod }})
+    needs: changed
+    if: needs.changed.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mod: ${{ fromJson(needs.changed.outputs.mods) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/check-structure.mjs ${{ matrix.mod }}
+
+  # A matrix produces a different set of check names on every pull request, so
+  # none of them can be a required check. This one always runs and has a stable
+  # name, which is what branch protection can be pointed at.
+  gate:
+    name: mod structure
+    needs: [changed, structure]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify
+        run: |
+          if [ "${{ needs.changed.result }}" != "success" ]; then
+            echo "::error::Could not work out which mods changed."
+            exit 1
+          fi
+          if [ "${{ needs.changed.outputs.any }}" != "true" ]; then
+            echo "No mods touched by this branch."
+            exit 0
+          fi
+          if [ "${{ needs.structure.result }}" != "success" ]; then
+            echo "::error::At least one mod is not structurally sound."
+            exit 1
+          fi
+          echo "All changed mods are structurally sound."

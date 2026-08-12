@@ -1,0 +1,12 @@
+{
+  "id": "terminal",
+  "name": "Terminal",
+  "type": "theme",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Slack as a phosphor terminal: monospace everywhere, zero rounded corners, hairline borders, amber and green on near-black. Square avatars included.",
+  "entry": "theme.css",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["dark", "monospace", "retro"]
+}
