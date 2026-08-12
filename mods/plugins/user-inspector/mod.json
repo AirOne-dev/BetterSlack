@@ -1,0 +1,12 @@
+{
+  "id": "user-inspector",
+  "name": "User Inspector",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Adds a Details button to a member's profile that shows everything Slack's API knows about them: identity, roles, timezone, presence, do-not-disturb, status, custom fields and every avatar size. Read-only; nothing leaves your machine.",
+  "entry": "index.js",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["profile", "api"]
+}

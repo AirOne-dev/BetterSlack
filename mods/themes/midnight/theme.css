@@ -1,0 +1,128 @@
+/*
+ * Midnight — a deeper dark theme for Slack.
+ *
+ * Slack builds its entire UI on CSS custom properties declared on
+ * `:root, .sk-client-theme--light` and `.sk-client-theme--dark`. Redefining
+ * those tokens re-skins the app without naming a single Slack component, which
+ * is why this file should survive Slack releases that rename classes.
+ *
+ * Two conventions to know:
+ *   --dt_color-<role>       holds a real CSS colour (#rrggbb / #rrggbbaa)
+ *   --dt_color-plt-<name>   holds a bare "r,g,b" triplet, usable only in rgb()
+ */
+
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  /* Surfaces, from the furthest back to the closest to the reader. */
+  --dt_color-base-pry: #0f1219;
+  --dt_color-base-sec: #151924;
+  --dt_color-base-ter: #1c2130;
+  --dt_color-base-modal: rgba(6, 8, 12, 0.72);
+
+  /* Hover and pressed states are translucent overlays, not solid colours. */
+  --dt_color-base-pry-hover: rgba(255, 255, 255, 0.055);
+  --dt_color-base-pry-pressed: rgba(255, 255, 255, 0.1);
+  --dt_color-base-sec-hover: rgba(255, 255, 255, 0.055);
+  --dt_color-base-sec-pressed: rgba(255, 255, 255, 0.1);
+  --dt_color-base-ter-hover: rgba(255, 255, 255, 0.055);
+  --dt_color-base-ter-pressed: rgba(255, 255, 255, 0.1);
+
+  /* Text. `pry` is body copy, `sec` is metadata, `ter` is the quietest. */
+  --dt_color-content-pry: #e7e9ee;
+  --dt_color-content-sec: #a4abb8;
+  --dt_color-content-ter: #7f8695;
+
+  /* Borders and dividers. */
+  --dt_color-otl-pry: #39405233;
+  --dt_color-otl-sec: rgba(228, 233, 242, 0.14);
+  --dt_color-otl-ter: rgba(228, 233, 242, 0.08);
+
+  /* Accents: links, mentions, unread badges. */
+  --dt_color-content-hgl-1: #7cc4ff;
+  --dt_color-content-hgl-2: #4cc894;
+  --dt_color-content-hgl-3: #ffd738;
+  --dt_color-content-imp: #ff8fae;
+
+  --dt_color-base-hgl-1: #16283a;
+  --dt_color-base-hgl-2: #102b23;
+  --dt_color-base-hgl-3: #2c2513;
+  --dt_color-base-imp: #331722;
+}
+
+/*
+ * The sidebar and tab rail use the "inverted" token family: on a dark theme
+ * they should sit at the same depth as everything else instead of inverting
+ * back to light.
+ */
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --dt_color-base-inv-pry: #0b0e14;
+  --dt_color-content-inv-pry: #e7e9ee;
+  --dt_color-content-inv-sec: #a4abb8;
+}
+
+/*
+ * Slack paints from three families of custom properties. The one above is
+ * content and controls; these two are the app chrome (rail, sidebar, headers)
+ * and the older components. Skip them and the chrome keeps Slack's default
+ * grey while everything else changes.
+ *
+ *   --dt_color-theme-*   the workspace theme
+ *   --sk_*               legacy family, bare "r, g, b" triplets
+ */
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --dt_color-theme-base-inv-pry: #0b0e14 !important;
+  --dt_color-theme-base-inv-sec: #131824 !important;
+  --dt_color-theme-content-inv-pry: #e7e9ee !important;
+  --dt_color-theme-content-inv-sec: rgba(231, 233, 238, 0.78) !important;
+  --dt_color-theme-content-inv-ter: rgba(231, 233, 238, 0.55) !important;
+  --dt_color-theme-otl-inv-pry: rgba(231, 233, 238, 0.16) !important;
+
+  --dt_color-theme-surf-inv-pry: rgba(231, 233, 238, 0.16) !important;
+  --dt_color-theme-surf-inv-sec: rgba(11, 14, 20, 0.72) !important;
+  --dt_color-theme-surf-inv-ter: rgba(231, 233, 238, 0.07) !important;
+  --dt_color-theme-surf-pry: rgba(124, 196, 255, 0.16) !important;
+  --dt_color-theme-surf-sec: rgba(28, 33, 48, 0.55) !important;
+  --dt_color-theme-surf-ter: rgba(15, 18, 25, 0.8) !important;
+
+  --dt_color-theme-base-pry: #0f1219 !important;
+  --dt_color-theme-base-sec: #151924 !important;
+  --dt_color-theme-content-pry: #e7e9ee !important;
+  --dt_color-theme-content-sec: #a4abb8 !important;
+  --dt_color-theme-content-ter: #7f8695 !important;
+
+  --sk_primary_background: 15, 18, 25 !important;
+  --sk_primary_foreground: 231, 233, 238 !important;
+  --sk_inverted_background: 231, 233, 238 !important;
+  --sk_inverted_foreground: 15, 18, 25 !important;
+  --sk_foreground_max: 231, 233, 238 !important;
+  --sk_foreground_high: 200, 205, 214 !important;
+  --sk_foreground_mid: 164, 171, 184 !important;
+  --sk_foreground_low: 127, 134, 149 !important;
+  --sk_foreground_min: 96, 103, 118 !important;
+  --sk_foreground_max_solid: 231, 233, 238 !important;
+  --sk_foreground_high_solid: 127, 134, 149 !important;
+  --sk_foreground_mid_solid: 74, 82, 98 !important;
+  --sk_foreground_low_solid: 40, 46, 60 !important;
+  --sk_foreground_min_solid: 26, 31, 42 !important;
+  --sk_highlight: 124, 196, 255 !important;
+  --sk_highlight_hover: 158, 214, 255 !important;
+  --sk_highlight_accent: 124, 196, 255 !important;
+}
+
+/* Slack paints the app frame before the client mounts; match it so there is
+ * no white flash on launch. */
+html,
+body {
+  background-color: #0f1219;
+}
+
+/* Slack paints a full-viewport layer above <body>; repaint it or its default
+ * grey shows through the seams between panes. */
+.p-theme_background {
+  background: #0f1219 !important;
+}
