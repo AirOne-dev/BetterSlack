@@ -1,45 +1,115 @@
 /**
- * User Inspector — everything Slack's API knows about a member.
+ * User Inspector — everything Slack's API knows, shown inside the profile.
  *
  * Slack's profile pane shows a handful of fields. `users.info` returns roughly
- * fifty, and `users.getPresence` / `dnd.info` add a few more. This surfaces all
- * of them.
+ * fifty, and `users.getPresence` / `dnd.info` add a few more. Rather than
+ * putting those in a dialog, this appends more sections to the pane itself,
+ * built from Slack's own section markup — same headers, same label/value rows,
+ * same spacing — so it reads as part of the profile rather than as an add-on.
  *
  * Where the data comes from: `api.slack.web`, the audited wrapper around
  * Slack's own API (src/runtime/web-api.ts). Requests can only reach Slack's own
  * origin, and this plugin never touches localStorage or the session token
- * itself. Nothing is sent anywhere; the responses are rendered and dropped.
+ * itself. Nothing is sent anywhere.
  */
 
-const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true" width="16" height="16" style="margin-right:6px">
-  <path fill="currentColor" fill-rule="evenodd" d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM3.5 10a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0Z" clip-rule="evenodd"/>
-  <path fill="currentColor" d="M10 8.75a.75.75 0 0 1 .75.75v4a.75.75 0 0 1-1.5 0v-4a.75.75 0 0 1 .75-.75Zm0-2.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"/>
-</svg>`;
+/**
+ * Anchor on the pane, not on `.p-r_member_profile__container` inside it: that
+ * inner container is present in some profile variants and absent in others, so
+ * targeting it means the sections silently fail to appear half the time.
+ */
+const PANE = '[data-qa="member_profile_pane"]';
+const NODE_ID = 'slackmod-user-details';
 
-/** Fields worth showing first, in a sensible reading order. */
-const IDENTITY = ['id', 'name', 'real_name', 'team_id', 'color', 'updated'];
-const ROLES = [
-  'is_admin', 'is_owner', 'is_primary_owner', 'is_bot', 'is_app_user',
-  'is_restricted', 'is_ultra_restricted', 'deleted', 'is_email_confirmed',
-];
-const LOCALE = ['tz', 'tz_label', 'tz_offset', 'locale'];
-const PROFILE = [
-  'display_name', 'real_name', 'title', 'phone', 'email', 'skype',
-  'status_text', 'status_emoji', 'status_expiration', 'avatar_hash', 'is_custom_image',
+/** Boolean flags worth surfacing, in the order they matter. */
+const ROLE_LABELS = [
+  ['is_primary_owner', 'Primary owner'],
+  ['is_owner', 'Owner'],
+  ['is_admin', 'Admin'],
+  ['is_bot', 'Bot'],
+  ['is_app_user', 'App user'],
+  ['is_restricted', 'Guest'],
+  ['is_ultra_restricted', 'Single-channel guest'],
+  ['deleted', 'Deactivated'],
+  ['is_email_confirmed', 'Email confirmed'],
 ];
 
-function formatValue(value) {
-  if (value === null || value === undefined || value === '') return '—';
-  if (typeof value === 'boolean') return value ? 'yes' : 'no';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
+const PRESENCE_LABELS = { active: 'Active', away: 'Away' };
+
+function formatTimestamp(seconds) {
+  if (typeof seconds !== 'number' || seconds <= 0) return null;
+  return new Date(seconds * 1000).toLocaleString();
 }
 
-/** Slack timestamps are seconds; show something a human can read. */
-function formatMaybeDate(key, value) {
-  if (typeof value !== 'number' || value <= 0) return formatValue(value);
-  if (!/updated|expiration|_ts$/.test(key)) return formatValue(value);
-  return `${new Date(value * 1000).toLocaleString()}  (${value})`;
+function localTimeFor(offsetSeconds) {
+  if (typeof offsetSeconds !== 'number') return null;
+  const now = new Date();
+  const local = new Date(now.getTime() + (offsetSeconds + now.getTimezoneOffset() * 60) * 1000);
+  return local.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/** Roles a user actually has, as readable labels. */
+export function rolesOf(user) {
+  return ROLE_LABELS.filter(([key]) => user?.[key] === true).map(([, label]) => label);
+}
+
+/** The rows this plugin adds, as [label, value] pairs, ready to render. */
+export function buildRows({ user, presence, dnd }) {
+  const profile = user?.profile ?? {};
+  const rows = [];
+  const push = (label, value) => {
+    if (value !== null && value !== undefined && value !== '') rows.push([label, String(value)]);
+  };
+
+  push('User ID', user?.id);
+  push('Username', user?.name);
+  push('Roles', rolesOf(user).join(' · '));
+  push('Title', profile.title);
+  push('Phone', profile.phone);
+
+  if (user?.tz) {
+    const local = localTimeFor(user.tz_offset);
+    push('Time zone', local ? `${user.tz_label ?? user.tz} — ${local} their time` : user.tz_label ?? user.tz);
+  }
+  push('Locale', user?.locale);
+
+  if (presence?.presence) {
+    const label = PRESENCE_LABELS[presence.presence] ?? presence.presence;
+    push('Presence', presence.auto_away ? `${label} (auto)` : label);
+  }
+  if (dnd?.dnd_enabled) {
+    const until = formatTimestamp(dnd.next_dnd_end_ts);
+    push('Do not disturb', until ? `On until ${until}` : 'On');
+  }
+
+  push('Status', [profile.status_emoji, profile.status_text].filter(Boolean).join(' '));
+  push('Profile updated', formatTimestamp(user?.updated));
+
+  // Workspace-defined fields vary per organisation; show whatever is filled in.
+  const custom = profile.fields;
+  if (custom && typeof custom === 'object') {
+    for (const [id, field] of Object.entries(custom)) {
+      push(field?.label ?? id, field?.value ?? field?.alt);
+    }
+  }
+
+  return rows;
+}
+
+/** Avatar renditions Slack holds, largest first. */
+export function avatarSizes(profile) {
+  return Object.keys(profile ?? {})
+    .filter((key) => key.startsWith('image_') && typeof profile[key] === 'string')
+    .sort((a, b) => {
+      if (a === 'image_original') return -1;
+      if (b === 'image_original') return 1;
+      return Number(b.slice(6)) - Number(a.slice(6));
+    })
+    .map((key) => ({
+      key,
+      label: key === 'image_original' ? 'original' : `${key.slice(6)}px`,
+      url: profile[key],
+    }));
 }
 
 export default {
@@ -47,153 +117,167 @@ export default {
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    // Slack's own classes do the heavy lifting; this only covers the few things
+    // it has no class for.
     api.css(`
-      .slackmod-profile-row { padding: 8px 20px 12px; }
-      .slackmod-profile-row .c-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
-      .sm-insp-section { margin: 0 0 18px; }
-      .sm-insp-section > h3 {
-        margin: 0 0 8px; font-size: 11px; letter-spacing: .6px; text-transform: uppercase;
+      #${NODE_ID} .slackmod-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+      #${NODE_ID} .slackmod-chip {
+        font-size: 12px; padding: 2px 8px; border-radius: 999px;
+        border: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
         color: var(--dt_color-content-sec, #454447);
       }
-      .sm-insp-grid { display: grid; grid-template-columns: minmax(120px, auto) 1fr; gap: 4px 16px; font-size: 13px; }
-      .sm-insp-grid dt { color: var(--dt_color-content-sec, #454447); }
-      .sm-insp-grid dd { margin: 0; word-break: break-word; font-variant-numeric: tabular-nums; }
-      .sm-insp-images { display: flex; flex-wrap: wrap; gap: 8px; }
-      .sm-insp-images a {
-        font-size: 12px; padding: 4px 8px; border-radius: 6px; text-decoration: none;
-        border: 1px solid var(--dt_color-otl-sec, rgba(94,93,96,.35));
-        color: var(--dt_color-content-hgl-1, #1264a3);
-      }
-      .sm-insp-raw {
-        width: 100%; min-height: 220px; font: 12px/1.5 Monaco, Menlo, monospace;
-        border-radius: 8px; padding: 10px; color: inherit;
-        background: var(--dt_color-base-sec, #f8f8f8);
-        border: 1px solid var(--dt_color-otl-sec, rgba(94,93,96,.35));
-      }
+      #${NODE_ID} .slackmod-muted { color: var(--dt_color-content-ter, #5e5d60); font-size: 13px; }
+      #${NODE_ID} .slackmod-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     `);
 
-    const section = (title, rows) => {
-      const grid = api.dom.h('dl', { class: 'sm-insp-grid' });
-      for (const [key, value] of rows) {
-        grid.append(api.dom.h('dt', {}, [key]));
-        grid.append(api.dom.h('dd', {}, [formatMaybeDate(key, value)]));
-      }
-      return api.dom.h('div', { class: 'sm-insp-section' }, [
-        api.dom.h('h3', {}, [title]),
-        grid,
+    const cache = new Map();
+
+    const field = (label, value) =>
+      api.dom.h('div', { class: 'p-rimeto_member_profile_field__contact_info' }, [
+        api.dom.h('div', { class: 'p-rimeto_member_profile_field' }, [
+          api.dom.h('div', { class: 'p-rimeto_member_profile_field__primary' }, [
+            api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, [label]),
+            api.dom.h('div', { class: 'p-rimeto_member_profile_field__value' }, [value]),
+          ]),
+        ]),
       ]);
-    };
 
-    const pick = (source, keys) =>
-      keys.filter((k) => source && k in source).map((k) => [k, source[k]]);
+    /** Slack's section shell: a header row and a content block. */
+    const section = (title, children) =>
+      api.dom.h('div', { class: 'p-r_member_profile_section' }, [
+        api.dom.h('div', { style: 'display: flex;' }, [
+          api.dom.h('div', { class: 'p-r_member_profile_section_header', style: 'flex: 1 1 0%;' }, [title]),
+        ]),
+        api.dom.h('div', { class: 'p-r_member_profile_section_content' }, children),
+      ]);
 
-    const render = (body, data) => {
-      const { user, presence, dnd, error } = data;
-      body.replaceChildren();
+    const render = (host, data) => {
+      host.replaceChildren();
 
-      if (error) {
-        body.append(api.dom.h('p', {}, [error]));
+      if (data.error) {
+        host.append(section('More details', [
+          api.dom.h('div', { class: 'slackmod-muted' }, [data.error]),
+        ]));
+        return;
+      }
+      if (!data.user) {
+        host.append(section('More details', [
+          api.dom.h('div', { class: 'slackmod-muted' }, ['Loading…']),
+        ]));
         return;
       }
 
-      const profile = user.profile ?? {};
+      const rows = buildRows(data);
+      const roleChips = rolesOf(data.user);
 
-      body.append(section('Identity', pick(user, IDENTITY)));
-      body.append(section('Roles', pick(user, ROLES)));
-      body.append(section('Locale and time', pick(user, LOCALE)));
-      body.append(section('Profile', pick(profile, PROFILE)));
+      const details = rows
+        .filter(([label]) => label !== 'Roles')
+        .map(([label, value]) => field(label, value));
 
-      // Custom workspace fields, which vary per organisation.
-      const custom = profile.fields;
-      if (custom && typeof custom === 'object' && Object.keys(custom).length > 0) {
-        body.append(
-          section(
-            'Custom fields',
-            Object.entries(custom).map(([id, field]) => [id, field?.value ?? field?.alt ?? '']),
-          ),
+      if (roleChips.length > 0) {
+        details.unshift(
+          api.dom.h('div', { class: 'p-rimeto_member_profile_field__contact_info' }, [
+            api.dom.h('div', { class: 'p-rimeto_member_profile_field' }, [
+              api.dom.h('div', { class: 'p-rimeto_member_profile_field__primary' }, [
+                api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, ['Roles']),
+                api.dom.h('div', { class: 'slackmod-chips' },
+                  roleChips.map((r) => api.dom.h('span', { class: 'slackmod-chip' }, [r]))),
+              ]),
+            ]),
+          ]),
         );
       }
 
-      if (presence) body.append(section('Presence', Object.entries(presence).filter(([k]) => k !== 'ok')));
-      if (dnd) body.append(section('Do not disturb', Object.entries(dnd).filter(([k]) => k !== 'ok')));
+      host.append(section('More details', details));
 
-      // Every avatar size Slack has, largest first.
-      const images = Object.keys(profile)
-        .filter((k) => k.startsWith('image_'))
-        .sort((a, b) => (a === 'image_original' ? -1 : b === 'image_original' ? 1 : Number(b.slice(6)) - Number(a.slice(6))));
-      if (images.length > 0) {
-        const row = api.dom.h('div', { class: 'sm-insp-images' });
-        for (const key of images) {
-          row.append(
-            api.dom.h('a', { href: profile[key], target: '_blank', rel: 'noreferrer' }, [
-              key.replace('image_', ''),
-            ]),
+      const sizes = avatarSizes(data.user.profile);
+      if (sizes.length > 0) {
+        const links = api.dom.h('div', { class: 'slackmod-chips' });
+        for (const size of sizes) {
+          links.append(
+            api.dom.h('a', {
+              class: 'slackmod-chip c-link',
+              href: size.url,
+              target: '_blank',
+              rel: 'noreferrer',
+            }, [size.label]),
           );
         }
-        body.append(api.dom.h('div', { class: 'sm-insp-section' }, [
-          api.dom.h('h3', {}, ['Avatars']),
-          row,
+        host.append(section('Avatar', [
+          api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, ['Available sizes']),
+          links,
         ]));
       }
 
-      const raw = api.dom.h('textarea', { class: 'sm-insp-raw', readonly: 'readonly', spellcheck: 'false' });
-      raw.value = JSON.stringify(data, null, 2);
-      body.append(api.dom.h('div', { class: 'sm-insp-section' }, [
-        api.dom.h('h3', {}, ['Raw response']),
-        raw,
+      // The full response, for anything the rows above do not cover.
+      const copy = api.dom.h('button', {
+        class: 'c-button c-button--outline c-button--medium',
+        type: 'button',
+      }, ['Copy raw JSON']);
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+          api.ui.toast('Copied the full API response', { variant: 'success' });
+        } catch (err) {
+          api.log.error(err);
+          api.ui.toast('Could not copy', { variant: 'error' });
+        }
+      });
+      host.append(section('Raw data', [
+        api.dom.h('div', { class: 'slackmod-muted' }, [
+          `${Object.keys(data.user).length} fields from users.info, plus presence and do-not-disturb.`,
+        ]),
+        api.dom.h('div', { class: 'slackmod-actions' }, [copy]),
       ]));
     };
 
-    const inspect = async (userId) => {
-      if (!userId) {
-        api.ui.toast('Could not tell which user this is', { variant: 'error' });
-        return;
-      }
-      if (!api.slack.web.available) {
-        api.ui.toast('No Slack session token for this workspace', { variant: 'error' });
-        return;
-      }
-
-      const handle = api.ui.modal({
-        title: 'User details',
-        subtitle: `Loading ${userId}…`,
-        content: api.dom.h('p', {}, ['…']),
-        width: 720,
-        actions: [
-          {
-            label: 'Copy JSON',
-            onClick: async () => {
-              const raw = handle.body.querySelector('.sm-insp-raw');
-              if (!raw) return false;
-              await navigator.clipboard.writeText(raw.value);
-              api.ui.toast('Copied', { variant: 'success' });
-              return false; // keep the dialog open
-            },
-          },
-          { label: 'Close', variant: 'primary' },
-        ],
-      });
-
-      try {
-        const user = await api.slack.web.userInfo(userId);
-        // These two are allowed to fail: bots have no presence, and dnd.info
-        // is not readable in every workspace.
-        const [presence, dnd] = await Promise.all([
-          api.slack.web.presence(userId).catch(() => null),
-          api.slack.web.dndInfo(userId).catch(() => null),
-        ]);
-        render(handle.body, { user, presence, dnd });
-      } catch (err) {
-        api.log.error(err);
-        render(handle.body, { error: `Slack refused the request: ${err.message}` });
-      }
+    const load = async (userId) => {
+      if (cache.has(userId)) return cache.get(userId);
+      const data = await (async () => {
+        try {
+          const user = await api.slack.web.userInfo(userId);
+          // Both are allowed to fail: bots have no presence, and dnd.info is
+          // not readable in every workspace.
+          const [presence, dnd] = await Promise.all([
+            api.slack.web.presence(userId).catch(() => null),
+            api.slack.web.dndInfo(userId).catch(() => null),
+          ]);
+          return { user, presence, dnd };
+        } catch (err) {
+          api.log.error(err);
+          return { error: `Slack refused the request: ${err.message}` };
+        }
+      })();
+      cache.set(userId, data);
+      return data;
     };
 
-    api.slack.addProfileButton({
-      id: 'details',
-      label: 'Details',
-      icon: ICON,
-      onClick: (pane) => inspect(pane.userId),
+    // keepMounted rather than a one-shot insert: Slack re-renders the pane when
+    // presence changes or the profile is reopened, and this puts the sections
+    // back without ever producing two copies.
+    api.dom.keepMounted(PANE, NODE_ID, () => {
+      const host = api.dom.h('div', {});
+      const avatar = document.querySelector('.p-r_member_profile__avatar__img');
+      const userId = (avatar?.src?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i) ?? [])[1]?.toUpperCase();
+
+      if (!userId) {
+        render(host, { error: 'Could not tell which user this profile belongs to.' });
+        return host;
+      }
+      if (!api.slack.web.available) {
+        render(host, { error: 'No Slack session token for this workspace.' });
+        return host;
+      }
+
+      // Cached profiles render on the spot; the rest fill in a moment later.
+      if (cache.has(userId)) render(host, cache.get(userId));
+      else {
+        render(host, {});
+        void load(userId).then((data) => {
+          if (host.isConnected) render(host, data);
+        });
+      }
+      return host;
     });
   },
 
