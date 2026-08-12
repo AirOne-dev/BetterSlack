@@ -1,21 +1,39 @@
 {
-  "name": "slack-mod",
-  "version": "1.0.0",
-  "description": "Inject custom CSS and JS into Slack",
-  "main": "src/main.py",
-  "scripts": {
-    "build-js": "webpack --config webpack.config.js",
-    "build-app-mac": "sh src/mac-app/build.sh",
-    "dev-watch": "nodemon --watch ./src/*.ts --exec 'npm run dev'",
-    "dev": "python3 src/main.py"
+  "name": "slackmod",
+  "version": "2.0.0",
+  "private": false,
+  "description": "Themes, plugins and mods for the Slack desktop app",
+  "type": "module",
+  "bin": {
+    "slackmod": "./bin/slackmod.mjs"
   },
-  "author": "",
-  "license": "ISC",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build-app": "node scripts/build.mjs && node scripts/build-app.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "start": "node bin/slackmod.mjs",
+    "registry": "node scripts/build-registry.mjs",
+    "typecheck": "tsc --noEmit",
+    "validate-mods": "node scripts/validate-mods.mjs",
+    "test": "node scripts/test-mods.mjs",
+    "test:mod": "node scripts/test-mods.mjs",
+    "check-structure": "node scripts/check-structure.mjs",
+    "changed-mods": "node scripts/changed-mods.mjs",
+    "test:core": "node --test tests/download.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
   "devDependencies": {
-    "nodemon": "^3.0.1",
-    "ts-loader": "^9.4.4",
-    "typescript": "^5.1.6",
-    "webpack": "^5.88.2",
-    "webpack-cli": "^5.1.4"
-  }
+    "@types/node": "^22.20.1",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.24.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.6.0"
+  },
+  "license": "MIT",
+  "author": "Erwan Martin"
 }

@@ -1,0 +1,187 @@
+/*
+ * Cocoa — warm paper instead of clinical white.
+ *
+ * The idea is to drop contrast a notch and replace every hard border with a
+ * soft shadow, so long reading sessions are less tiring. Corners are large and
+ * consistent: 18px on containers, 12px on controls.
+ */
+
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --cocoa-paper: #f7f1e8;
+  --cocoa-card: #fffaf3;
+  --cocoa-ink: #3a2f28;
+  --cocoa-accent: #a1553a;
+  --cocoa-shadow: rgba(88, 62, 46, 0.1);
+
+  --dt_color-base-pry: var(--cocoa-card);
+  --dt_color-base-sec: var(--cocoa-paper);
+  --dt_color-base-ter: #efe6da;
+  --dt_color-base-modal: rgba(58, 47, 40, 0.42);
+
+  --dt_color-base-pry-hover: rgba(161, 85, 58, 0.07);
+  --dt_color-base-pry-pressed: rgba(161, 85, 58, 0.13);
+  --dt_color-base-sec-hover: rgba(161, 85, 58, 0.07);
+  --dt_color-base-sec-pressed: rgba(161, 85, 58, 0.13);
+  --dt_color-base-ter-hover: rgba(161, 85, 58, 0.07);
+  --dt_color-base-ter-pressed: rgba(161, 85, 58, 0.13);
+
+  --dt_color-content-pry: var(--cocoa-ink);
+  --dt_color-content-sec: #6d5c51;
+  --dt_color-content-ter: #8a786c;
+
+  --dt_color-otl-pry: rgba(88, 62, 46, 0.26);
+  --dt_color-otl-sec: rgba(88, 62, 46, 0.12);
+  --dt_color-otl-ter: rgba(88, 62, 46, 0.07);
+
+  --dt_color-content-hgl-1: #1f6f8b;
+  --dt_color-content-hgl-2: #4f7a3a;
+  --dt_color-content-hgl-3: #8a6a1f;
+  --dt_color-content-imp: #a83a3a;
+
+  /* The sidebar is the "inverted" family; make it a deeper shade of the same
+   * paper rather than flipping to near-black. */
+  --dt_color-base-inv-pry: #4a3b32;
+  --dt_color-content-inv-pry: #f7f1e8;
+  --dt_color-content-inv-sec: #d5c5b8;
+}
+
+/*
+ * Slack paints from THREE families of custom properties, not one. Overriding
+ * only the first leaves the app chrome untouched, which is invisible on a dark
+ * theme and glaring on a light one:
+ *
+ *   --dt_color-*        semantic colours for content and controls
+ *   --dt_color-theme-*  the workspace "theme": rail, sidebar, chrome surfaces
+ *   --sk_*              the older family, still driving plenty of components.
+ *                       These hold bare "r, g, b" triplets, not colours.
+ */
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  /* Chrome: a deep cocoa sidebar rather than Slack's near-black. */
+  --dt_color-theme-base-inv-pry: #4a3b32 !important;
+  --dt_color-theme-base-inv-sec: #564539 !important;
+  --dt_color-theme-content-inv-pry: #f7f1e8 !important;
+  --dt_color-theme-content-inv-sec: rgba(247, 241, 232, 0.82) !important;
+  --dt_color-theme-content-inv-ter: rgba(247, 241, 232, 0.6) !important;
+  --dt_color-theme-otl-inv-pry: rgba(247, 241, 232, 0.2) !important;
+
+  --dt_color-theme-surf-inv-pry: rgba(74, 59, 50, 0.3) !important;
+  --dt_color-theme-surf-inv-sec: rgba(74, 59, 50, 0.85) !important;
+  --dt_color-theme-surf-inv-ter: rgba(247, 241, 232, 0.1) !important;
+  --dt_color-theme-surf-pry: rgba(161, 85, 58, 0.18) !important;
+  --dt_color-theme-surf-sec: rgba(88, 62, 46, 0.14) !important;
+  --dt_color-theme-surf-ter: rgba(255, 250, 243, 0.8) !important;
+
+  --dt_color-theme-base-pry: #fffaf3 !important;
+  --dt_color-theme-base-sec: #f7f1e8 !important;
+  --dt_color-theme-content-pry: #3a2f28 !important;
+  --dt_color-theme-content-sec: #6d5c51 !important;
+  --dt_color-theme-content-ter: #8a786c !important;
+
+  /* Legacy family: "r, g, b" triplets, only valid inside rgb()/rgba(). */
+  --sk_primary_background: 255, 250, 243 !important;
+  --sk_primary_foreground: 58, 47, 40 !important;
+  --sk_inverted_background: 74, 59, 50 !important;
+  --sk_inverted_foreground: 247, 241, 232 !important;
+  --sk_foreground_max: 58, 47, 40 !important;
+  --sk_foreground_high: 78, 65, 56 !important;
+  --sk_foreground_mid: 109, 92, 81 !important;
+  --sk_foreground_low: 138, 120, 108 !important;
+  --sk_foreground_min: 168, 152, 138 !important;
+  --sk_foreground_max_solid: 58, 47, 40 !important;
+  --sk_foreground_high_solid: 109, 92, 81 !important;
+  --sk_foreground_mid_solid: 168, 152, 138 !important;
+  --sk_foreground_low_solid: 226, 214, 201 !important;
+  --sk_foreground_min_solid: 240, 232, 222 !important;
+  --sk_highlight: 161, 85, 58 !important;
+  --sk_highlight_hover: 185, 104, 74 !important;
+  --sk_highlight_accent: 161, 85, 58 !important;
+}
+
+html, body { background-color: var(--cocoa-paper); }
+
+/* Slack's full-viewport backdrop layer sits above <body>; without this it stays
+ * dark grey behind a light theme and shows through at every seam. */
+.p-theme_background { background: var(--cocoa-paper) !important; }
+
+/* Soft everything. */
+.p-channel_sidebar__static_list__item,
+.p-channel_sidebar__channel,
+.p-channel_sidebar__section_heading,
+.c-button,
+.c-button-unstyled.c-icon_button,
+.p-tab_rail__button,
+.p-composer__button {
+  border-radius: 12px !important;
+}
+
+.c-message_attachment,
+.c-message_actions__group,
+[data-qa="message_input"],
+.c-message_kit__background {
+  border-radius: 18px !important;
+}
+
+.c-avatar,
+.c-avatar img,
+.p-channel_sidebar__user_avatar img {
+  border-radius: 38% !important;
+}
+
+/* Shadows instead of lines. */
+.p-channel_sidebar { border-right: none !important; box-shadow: 1px 0 12px var(--cocoa-shadow); }
+.p-ia4_top_nav { border-bottom: none !important; box-shadow: 0 1px 10px var(--cocoa-shadow); }
+
+[data-qa="message_input"] {
+  border: 1px solid rgba(88, 62, 46, 0.14) !important;
+  box-shadow: 0 6px 20px var(--cocoa-shadow) !important;
+  padding: 2px !important;
+}
+
+.c-message_actions__group {
+  border: 1px solid rgba(88, 62, 46, 0.12) !important;
+  box-shadow: 0 8px 24px var(--cocoa-shadow) !important;
+  overflow: hidden;
+}
+
+.c-message_kit__background {
+  transition: background-color 130ms ease;
+}
+.c-message_kit__background:hover {
+  background: rgba(161, 85, 58, 0.06) !important;
+}
+
+.p-channel_sidebar__channel--selected,
+.p-channel_sidebar__static_list__item--selected {
+  background: var(--cocoa-accent) !important;
+  color: #fff8f2 !important;
+}
+
+/* Unfurl cards, which is also what Quote Reply leans on. */
+.c-message_attachment {
+  border: 1px solid rgba(88, 62, 46, 0.14) !important;
+  border-left: 3px solid var(--cocoa-accent) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 4px 14px var(--cocoa-shadow);
+}
+.c-message_attachment__border { display: none !important; }
+
+/* A hair more room to breathe between messages. */
+.c-message_kit__gutter { padding-top: 3px; padding-bottom: 3px; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(88, 62, 46, 0.24);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  .c-message_kit__background { transition: none; }
+}

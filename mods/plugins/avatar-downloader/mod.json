@@ -1,0 +1,12 @@
+{
+  "id": "avatar-downloader",
+  "name": "Avatar Downloader",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Download a member's profile picture at the highest quality Slack stores — the original upload when there is one, otherwise the largest rendition. Adds a button to the profile pane and to the hover actions on a message.",
+  "entry": "index.js",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["profile", "files"]
+}
