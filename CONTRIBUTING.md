@@ -28,24 +28,20 @@ One file to review instead of one per mod.
 Using the signed-in session to call Slack's own API is fine. Sending anything
 derived from it anywhere else is not.
 
-## Themes that ship a script
+## Themes that require plugins
 
-A theme may declare a `script` and the permissions it needs. That turns a
-stylesheet into code running unsandboxed in an authenticated Slack tab, so the
-bar is higher, not the same:
+A theme is CSS. When a look needs behaviour, that behaviour goes in a plugin and
+the theme lists it in `requires`. What a review looks for:
 
-- **The permissions must be exactly what the script uses.** The consent dialog
-  quotes the manifest. A manifest asking for more than the code needs makes
-  that dialog a lie, and one asking for less means the script is reaching for
-  something nobody agreed to.
+- **The plugin has to stand on its own.** It should read Slack's design tokens
+  and be worth installing without the theme. A "plugin" that is really one
+  theme's implementation detail belongs in neither.
+- **The theme must not style the plugin's markup.** That couples them and breaks
+  the plugin for everyone using a different theme.
+- **Every id must exist here.** A theme naming a plugin nobody ships installs
+  fine and then quietly looks wrong.
 - **Say in the pull request why CSS could not do it.** "The account strip needs
   a display name and CSS cannot fetch one" is an answer. "It was easier" is not.
-- **No moving Slack's own nodes.** React owns that tree; see
-  [docs/themes.md](docs/themes.md#do-not-move-slacks-own-nodes).
-- **`workspace` is read-only.** A script that posts, edits or deletes anything
-  is a plugin pretending to be a theme.
-
-Expect a slower review. Most themes should never need any of this.
 
 ## What gets a pull request rejected
 

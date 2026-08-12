@@ -1,0 +1,12 @@
+{
+  "id": "member-sidebar",
+  "name": "Member Sidebar",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
+  "entry": "index.js",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["members", "sidebar", "presence"]
+}

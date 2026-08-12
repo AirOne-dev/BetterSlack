@@ -17,7 +17,6 @@ import {
   mergeSettings,
   readSettings,
   setModEnabled,
-  setModGrants,
   setModInstalled,
   USER_MODS_ROOT,
 } from './store.js';
@@ -108,11 +107,8 @@ class Loader {
       for (const id of changedIds) {
         const source = await this.catalog.readSource(id).catch(() => null);
         if (source === null) continue;
-        // Both files, always: a theme's stylesheet and its companion script are
-        // one mod, and reloading half of it leaves the two out of step.
-        const script = (await this.catalog.readScript(id).catch(() => null)) ?? undefined;
         console.log(`[slackmod] reloading "${id}"`);
-        this.broadcast({ type: 'mod.changed', id, source, script });
+        this.broadcast({ type: 'mod.changed', id, source });
       }
       this.broadcast({ type: 'catalog.changed', mods: this.catalog.list() });
     });
@@ -231,20 +227,14 @@ class Loader {
     const settings = await readSettings();
     const mods = this.catalog.list();
     const sources: Record<string, string> = {};
-    const scripts: Record<string, string> = {};
     for (const id of settings.enabled) {
       const source = await this.catalog.readSource(id).catch((err) => {
         console.warn(`[slackmod] enabled mod "${id}" is unreadable: ${err.message}`);
         return null;
       });
       if (source !== null) sources[id] = source;
-      // Shipped alongside, but the runtime still checks the grant before it
-      // loads: putting the code in the page is not the same as running it, and
-      // the decision belongs in one place rather than two.
-      const script = await this.catalog.readScript(id).catch(() => null);
-      if (script !== null) scripts[id] = script;
     }
-    const boot = { version: VERSION, settings, mods, sources, scripts, info: this.info };
+    const boot = { version: VERSION, settings, mods, sources, info: this.info };
     return `window.__SLACKMOD_BOOT__ = ${JSON.stringify(boot)};\n${this.runtimeSource}`;
   }
 
@@ -303,18 +293,8 @@ class Loader {
         return saved;
       }
 
-      case 'mod.grant': {
-        const saved = await setModGrants(request.id, request.permissions);
-        await this.refreshAllBootScripts();
-        this.broadcast({ type: 'settings.changed', settings: saved });
-        return saved;
-      }
-
       case 'mod.source':
         return this.catalog.readSource(request.id);
-
-      case 'mod.script':
-        return this.catalog.readScript(request.id);
 
       case 'mod.install':
         return this.install(request.id, request.manifest, request.source);

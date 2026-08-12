@@ -189,14 +189,14 @@ export const PANEL_CSS = `
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
 }
 
-/* What a mod is allowed to do, on its row and in the consent dialog. */
-.slackmod-row__perm {
+/* A theme's required plugins, on its row and in the dialog. */
+.slackmod-row__requires {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.4;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
 }
-.slackmod-row__perm--pending {
+.slackmod-row__requires--missing {
   color: var(--dt_color-content-warn, #b8730a);
   font-weight: var(--custom-font-weight-bold, 700);
 }
@@ -208,30 +208,30 @@ export const PANEL_CSS = `
   cursor: pointer;
 }
 
-#slackmod-consent.c-dialog { opacity: 1; z-index: 1101; }
+#slackmod-requires.c-dialog { opacity: 1; z-index: 1101; }
 .slackmod-content--narrow {
   width: min(520px, calc(100% - 32px));
   max-width: min(520px, calc(100% - 32px));
   height: auto;
   max-height: min(560px, calc(100% - 64px));
 }
-.slackmod-perms { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
-.slackmod-perm {
+.slackmod-requires { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.slackmod-require {
   display: flex;
   flex-direction: column;
   gap: 3px;
   padding: 12px 14px;
   border-radius: 8px;
-  /* A tinted card rather than a warning triangle: it should read as something
-     to weigh, not as an error the user is being blamed for. */
+  /* A tinted card rather than a warning triangle: this is a choice to make,
+     not an error the user is being blamed for. */
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08);
 }
-.slackmod-perm__title {
+.slackmod-require__title {
   font-size: 15px;
   font-weight: var(--custom-font-weight-bold, 700);
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
 }
-.slackmod-perm__detail {
+.slackmod-require__detail {
   font-size: 13px;
   line-height: 1.5;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);

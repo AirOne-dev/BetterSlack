@@ -13,12 +13,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modsRoot = path.join(root, 'mods');
 const API_VERSION = 1;
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,48}$/;
-// Kept in step with PERMISSIONS in src/shared/protocol.ts by hand: this script
-// runs without a build step, so it cannot import the TypeScript source.
-const PERMISSIONS = ['layout', 'workspace'];
 
 const problems = [];
 const seenIds = new Map();
+const requirements = [];
 let checked = 0;
 
 /**
@@ -87,46 +85,35 @@ for (const kind of ['themes', 'plugins']) {
       }
     }
 
-    // A theme's companion script. Every rule here exists so that the consent
-    // dialog cannot be lying: it names exactly what the manifest declares, so
-    // the manifest has to declare exactly what the mod can do.
-    if (manifest.permissions !== undefined) {
-      if (!Array.isArray(manifest.permissions)) {
-        fail('"permissions" must be an array');
+    // A theme's required plugins. Collected now and resolved after the scan,
+    // because a theme may require a plugin whose folder comes later.
+    if (manifest.requires !== undefined) {
+      if (!Array.isArray(manifest.requires)) {
+        fail('"requires" must be an array');
+      } else if (type !== 'theme') {
+        fail('"requires" is for themes only');
       } else {
-        for (const value of manifest.permissions) {
-          if (!PERMISSIONS.includes(value)) {
-            fail(`unknown permission ${JSON.stringify(value)} (known: ${PERMISSIONS.join(', ')})`);
+        for (const value of manifest.requires) {
+          if (typeof value !== 'string' || !ID_PATTERN.test(value)) {
+            fail(`"requires" entries must be mod ids (got ${JSON.stringify(value)})`);
+          } else if (value === manifest.id) {
+            fail('a theme cannot require itself');
+          } else {
+            requirements.push({ rel, id: value });
           }
         }
       }
     }
+  }
+}
 
-    if (manifest.script !== undefined) {
-      const script = manifest.script;
-      if (type !== 'theme') {
-        fail('"script" is for themes only; a plugin\'s entry is already its script');
-      } else if (typeof script !== 'string' || script.trim() === '') {
-        fail('"script" must be a non-empty string');
-      } else if (path.isAbsolute(script) || script.split(/[\\/]/).includes('..')) {
-        fail('"script" must stay inside the mod folder');
-      } else if (!script.endsWith('.js')) {
-        fail('"script" must end in .js');
-      } else {
-        const source = await fs.readFile(path.join(modDir, script), 'utf8').catch(() => null);
-        if (source === null) fail(`script file "${script}" does not exist`);
-        else if (!/export\s+(async\s+)?function\s+start\b|export\s+const\s+start\b/.test(source)) {
-          fail('a theme script must export a start(api) function');
-        } else if (/\beval\s*\(|new\s+Function\s*\(/.test(stripComments(source))) {
-          fail("uses eval()/new Function(), which Slack's CSP blocks at runtime");
-        }
-        if (!(manifest.permissions ?? []).includes('layout')) {
-          fail('"script" requires "layout" in "permissions"');
-        }
-      }
-    } else if (type === 'theme' && (manifest.permissions ?? []).length > 0) {
-      fail('"permissions" declared but there is no "script" to use them');
-    }
+// A theme pointing at a plugin nobody ships would install and quietly look
+// wrong, so the catalogue has to be self-contained.
+for (const { rel, id } of requirements) {
+  const target = seenIds.get(id);
+  if (!target) problems.push(`${rel}: requires "${id}", which is not in this repository`);
+  else if (!target.startsWith('mods/plugins/')) {
+    problems.push(`${rel}: requires "${id}", which is a theme; only plugins can be required`);
   }
 }
 

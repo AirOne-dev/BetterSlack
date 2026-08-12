@@ -7,7 +7,7 @@
 import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { DEFAULT_SETTINGS, isPermission, type Permission, type Settings } from '../shared/protocol.js';
+import { DEFAULT_SETTINGS, type Settings } from '../shared/protocol.js';
 
 export const USER_ROOT = process.env.SLACKMOD_HOME ?? path.join(homedir(), '.slackmod');
 export const USER_MODS_ROOT = path.join(USER_ROOT, 'mods');
@@ -15,17 +15,6 @@ const SETTINGS_FILE = path.join(USER_ROOT, 'settings.json');
 
 export async function ensureUserRoot(): Promise<void> {
   await fs.mkdir(USER_MODS_ROOT, { recursive: true });
-}
-
-function readGrants(raw: unknown): Record<string, Permission[]> {
-  if (!raw || typeof raw !== 'object') return {};
-  const out: Record<string, Permission[]> = {};
-  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (!Array.isArray(value)) continue;
-    const permissions = [...new Set(value.filter(isPermission))];
-    if (permissions.length > 0) out[id] = permissions;
-  }
-  return out;
 }
 
 export async function readSettings(): Promise<Settings> {
@@ -46,11 +35,6 @@ export async function readSettings(): Promise<Settings> {
         parsed.modSettings && typeof parsed.modSettings === 'object' ? parsed.modSettings : {},
       customCss: typeof parsed.customCss === 'string' ? parsed.customCss : '',
       hotReload: typeof parsed.hotReload === 'boolean' ? parsed.hotReload : true,
-      // Filtered rather than trusted. This file decides whether a theme's script
-      // runs, so a stray string in it must not become a permission that no
-      // dialog ever described -- and a permission removed from a later build
-      // must stop being honoured everywhere at once.
-      grants: readGrants(parsed.grants),
     };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -113,33 +97,13 @@ export function setModEnabled(id: string, enabled: boolean): Promise<Settings> {
 export function setModInstalled(id: string, installed: boolean): Promise<Settings> {
   return serialize(async () => {
     const current = await readSettings();
-    const grants = { ...current.grants };
-    // Removing a mod revokes what it was allowed to do. Otherwise reinstalling
-    // it later would silently reuse consent given to an older version, which is
-    // the one moment a user is most likely to want to be asked again.
-    if (!installed) delete grants[id];
     const next: Settings = {
       ...current,
       installed: installed
         ? [...new Set([...current.installed, id])]
         : current.installed.filter((x) => x !== id),
       enabled: installed ? current.enabled : current.enabled.filter((x) => x !== id),
-      grants,
     };
-    await writeSettings(next);
-    return next;
-  });
-}
-
-/** Record a consent answer. An empty list revokes. */
-export function setModGrants(id: string, permissions: Permission[]): Promise<Settings> {
-  return serialize(async () => {
-    const current = await readSettings();
-    const grants = { ...current.grants };
-    const clean = [...new Set(permissions.filter(isPermission))];
-    if (clean.length > 0) grants[id] = clean;
-    else delete grants[id];
-    const next: Settings = { ...current, grants };
     await writeSettings(next);
     return next;
   });

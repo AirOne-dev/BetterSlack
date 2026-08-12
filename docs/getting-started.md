@@ -125,20 +125,17 @@ just semantics).
 ### If your look needs more than CSS
 
 CSS cannot move a node to a different parent, read who is signed in, or press a
-button. A theme that genuinely needs one of those may ship a companion script,
-declared in `mod.json` along with the permissions it needs:
+button. A theme that needs one of those puts that part in a **plugin** and names
+it in `mod.json`:
 
 ```json
 "entry": "theme.css",
-"script": "layout.js",
-"permissions": ["layout"]
+"requires": ["member-sidebar"]
 ```
 
-The user sees those permissions in a dialog before anything installs, and the
-script does not load until they agree. Reach for it last, and read
-**[docs/themes.md](themes.md#when-css-is-not-enough)** first — it explains the
-small API a script gets and why there is no helper for moving Slack's own
-nodes.
+The panel offers to switch those on with the theme. Write the plugin so it is
+worth installing on its own — see
+**[docs/themes.md](themes.md#when-css-is-not-enough)**.
 
 ---
 
