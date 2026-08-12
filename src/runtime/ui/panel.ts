@@ -1,23 +1,45 @@
-// The Mods panel: themes, plugins, the remote catalogue, custom CSS.
+// The Mods panel.
+//
+// Built from Slack's own dialog and menu markup — `c-dialog`, `c-dialog__content`,
+// `c-menu_item__button` and friends — and rendered into the light DOM rather
+// than a shadow root, so Slack's stylesheet applies to it directly.
+//
+// That is the point. A shadow root meant reimplementing Slack's look from
+// tokens, which lands close but never exactly, and never follows a theme the
+// way Slack's own dialogs do.
+//
+// The trade-off, stated plainly: a theme that restyles `.c-dialog` restyles
+// this panel too. Here that is the intended behaviour — the panel should look
+// like it belongs to whatever theme is on — but it does mean a careless theme
+// can make it ugly. Everything under `mods/themes/` is reviewed, so that is a
+// fair deal.
 
 import type { ModRecord } from '../../shared/protocol.js';
 import { h } from '../dom.js';
 import type { ModManager } from '../manager.js';
-import { contributeUrl, fetchModSource, fetchRegistry, repoUrl, toRecord, type RegistryEntry } from '../registry.js';
-import { PANEL_CSS } from './styles.js';
+import { contributeUrl, repoUrl } from '../registry.js';
 
-type TabId = 'themes' | 'plugins' | 'browse' | 'css' | 'about';
+type TabId = 'themes' | 'plugins' | 'css' | 'about';
+type ShelfId = 'installed' | 'enabled' | 'browse';
 
-const HOST_ID = 'slackmod-panel-host';
+const HOST_ID = 'slackmod-panel';
+const MENU_ID = 'slackmod-panel-menu';
+
+const CLOSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px">
+  <path fill="currentColor" d="M5.72 5.72a.75.75 0 0 1 1.06 0L10 8.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L11.06 10l3.22 3.22a.75.75 0 1 1-1.06 1.06L10 11.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L8.94 10 5.72 6.78a.75.75 0 0 1 0-1.06Z"/>
+</svg>`;
+
+const OVERFLOW_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px">
+  <path fill="currentColor" d="M5 10a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm6.5 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm5 1.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
+</svg>`;
 
 export class Panel {
-  private host: HTMLDivElement | null = null;
-  private root: ShadowRoot | null = null;
+  private host: HTMLElement | null = null;
   private tab: TabId = 'themes';
-  private remote: RegistryEntry[] | null = null;
-  private remoteError: string | null = null;
+  private shelf: ShelfId = 'installed';
+  private scrollTop = 0;
+  private search = '';
   private busy = new Set<string>();
-  private entering = false;
 
   constructor(private readonly manager: ModManager) {
     manager.onChange(() => this.renderIfOpen());
@@ -34,258 +56,374 @@ export class Panel {
 
   open(): void {
     if (this.isOpen) return;
-    const host = document.createElement('div');
-    host.id = HOST_ID;
-    this.root = host.attachShadow({ mode: 'open' });
-    document.body.append(host);
-    this.host = host;
-    this.entering = true;
+    this.host = h('div', { id: HOST_ID, class: 'c-dialog slackmod-dialog', role: 'presentation' });
+    document.body.append(this.host);
+    document.addEventListener('keydown', this.onKeyDown, true);
     this.render();
-    this.entering = false;
-    // Focus something inside so Escape and Tab behave.
-    queueMicrotask(() => this.root?.querySelector<HTMLElement>('nav button')?.focus());
+    queueMicrotask(() => this.host?.querySelector<HTMLElement>('.slackmod-nav__item')?.focus());
   }
 
   close(): void {
+    this.closeMenu();
     this.host?.remove();
     this.host = null;
-    this.root = null;
+    document.removeEventListener('keydown', this.onKeyDown, true);
   }
+
+  private onKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape' || !this.isOpen) return;
+    event.stopPropagation();
+    if (document.getElementById(MENU_ID)) this.closeMenu();
+    else this.close();
+  };
 
   private renderIfOpen(): void {
     if (this.isOpen) this.render();
   }
 
+  /** Put the list back where the user left it after a re-render. */
+  private restoreScroll(): void {
+    const body = this.host?.querySelector<HTMLElement>('.c-dialog__body');
+    if (body && this.scrollTop > 0 && body.scrollTop !== this.scrollTop) {
+      body.scrollTop = this.scrollTop;
+    }
+  }
+
   private render(): void {
-    const root = this.root;
-    if (!root) return;
-    root.replaceChildren();
+    const host = this.host;
+    if (!host) return;
+    this.closeMenu();
+    host.replaceChildren();
 
-    const style = document.createElement('style');
-    style.textContent = PANEL_CSS;
-    root.append(style);
-
-    const backdrop = h('div', { class: this.entering ? 'backdrop entering' : 'backdrop' });
-    backdrop.addEventListener('mousedown', (event) => {
-      if (event.target === backdrop) this.close();
+    const close = h('button', {
+      class:
+        'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default slackmod-close',
+      type: 'button',
+      'aria-label': 'Close',
     });
-    backdrop.addEventListener('keydown', (event) => {
-      if ((event as KeyboardEvent).key === 'Escape') {
-        event.stopPropagation();
-        this.close();
-      }
-    });
-
-    const dialog = h('div', { class: 'dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'SlackMod' });
-    dialog.append(this.renderHeader(), this.renderBody());
-    backdrop.append(dialog);
-    root.append(backdrop);
-  }
-
-  private renderHeader(): HTMLElement {
-    const close = h('button', { class: 'icon', 'aria-label': 'Close' }, ['×']);
+    close.innerHTML = CLOSE_ICON;
     close.addEventListener('click', () => this.close());
-    return h('header', {}, [
-      h('h1', {}, ['SlackMod']),
-      h('span', { class: 'version' }, [`v${this.manager.version}`]),
-      h('span', { class: 'spacer' }),
-      close,
+
+    const body = h('div', { class: 'c-dialog__body slackmod-body' });
+    // The panel re-renders wholesale on every change, and one toggle triggers
+    // several renders in a frame; the user's own scrolling is the only
+    // reliable source of position.
+    body.addEventListener('scroll', () => {
+      this.scrollTop = body.scrollTop;
+    }, { passive: true });
+
+    const content = h('div', {
+      class: 'c-dialog__content slackmod-content',
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-label': 'SlackMod',
+    }, [
+      h('div', { class: 'c-dialog__header slackmod-header' }, [
+        h('h1', { class: 'c-dialog__title' }, ['SlackMod']),
+        close,
+      ]),
+      h('div', { class: 'slackmod-layout' }, [this.renderNav(), body]),
     ]);
+
+    host.append(content);
+    host.addEventListener('mousedown', (event) => {
+      if (event.target === host) this.close();
+    });
+
+    this.renderBody(body);
+    requestAnimationFrame(() => this.restoreScroll());
   }
 
-  private renderBody(): HTMLElement {
+  private renderNav(): HTMLElement {
     const mods = this.manager.list();
-    const themes = mods.filter((m) => m.type === 'theme');
-    const plugins = mods.filter((m) => m.type === 'plugin');
+    const count = (type: 'theme' | 'plugin') =>
+      mods.filter((m) => m.type === type && this.manager.isInstalled(m.id)).length;
 
-    const tabs: { id: TabId; label: string; count?: number }[] = [
-      { id: 'themes', label: 'Themes', count: themes.length },
-      { id: 'plugins', label: 'Plugins', count: plugins.length },
-      { id: 'browse', label: 'Browse' },
+    const items: { id: TabId; label: string; count?: number }[] = [
+      { id: 'themes', label: 'Themes', count: count('theme') },
+      { id: 'plugins', label: 'Plugins', count: count('plugin') },
       { id: 'css', label: 'Custom CSS' },
       { id: 'about', label: 'About' },
     ];
 
-    const nav = h('nav', { role: 'tablist' });
-    for (const tab of tabs) {
-      const button = h('button', { role: 'tab', 'aria-selected': String(this.tab === tab.id) }, [
-        tab.label,
-      ]);
-      if (tab.count !== undefined) {
-        button.append(h('span', { class: 'count' }, [String(tab.count)]));
+    const nav = h('nav', { class: 'slackmod-nav', role: 'tablist' });
+    for (const item of items) {
+      const button = h('button', {
+        class: 'c-button-unstyled slackmod-nav__item',
+        role: 'tab',
+        'aria-selected': String(this.tab === item.id),
+        type: 'button',
+      }, [item.label]);
+      if (item.count !== undefined) {
+        button.append(h('span', { class: 'slackmod-count' }, [String(item.count)]));
       }
       button.addEventListener('click', () => {
-        this.tab = tab.id;
-        if (tab.id === 'browse' && this.remote === null) void this.loadRegistry();
+        if (this.tab === item.id) return;
+        this.tab = item.id;
+        this.scrollTop = 0;
+        this.search = '';
         this.render();
       });
       nav.append(button);
     }
+    return nav;
+  }
 
-    const main = h('main', { role: 'tabpanel' });
+  private renderBody(body: HTMLElement): void {
+    const mods = this.manager.list();
     switch (this.tab) {
       case 'themes':
-        main.append(...this.renderModList(themes, 'theme'));
+        body.append(...this.renderShelves(mods.filter((m) => m.type === 'theme'), 'theme'));
         break;
       case 'plugins':
-        main.append(...this.renderModList(plugins, 'plugin'));
-        break;
-      case 'browse':
-        main.append(...this.renderBrowse());
+        body.append(...this.renderShelves(mods.filter((m) => m.type === 'plugin'), 'plugin'));
         break;
       case 'css':
-        main.append(...this.renderCustomCss());
+        body.append(...this.renderCustomCss());
         break;
       case 'about':
-        main.append(...this.renderAbout());
+        body.append(...this.renderAbout());
         break;
     }
-
-    return h('div', { class: 'body' }, [nav, main]);
   }
 
-  private renderModList(mods: ModRecord[], kind: 'theme' | 'plugin'): Node[] {
-    const title = kind === 'theme' ? 'Themes' : 'Plugins';
-    const hint =
-      kind === 'theme'
-        ? 'Stylesheets layered over Slack. Several can run at once; the last one enabled wins on conflicts.'
-        : 'ES modules loaded into the Slack renderer. Disabling one runs its cleanup and undoes its DOM changes.';
+  /**
+   * Installed / Enabled / Browse. The repository is a catalogue: nothing is
+   * installed until you say so, so a fresh setup opens on an empty Installed
+   * shelf and a full Browse shelf.
+   */
+  private renderShelves(mods: ModRecord[], kind: 'theme' | 'plugin'): Node[] {
+    const installed = mods.filter((m) => this.manager.isInstalled(m.id));
+    const shelves: { id: ShelfId; label: string; list: ModRecord[] }[] = [
+      { id: 'installed', label: 'Installed', list: installed },
+      { id: 'enabled', label: 'Enabled', list: installed.filter((m) => this.manager.isEnabled(m.id)) },
+      { id: 'browse', label: 'Browse', list: mods.filter((m) => !this.manager.isInstalled(m.id)) },
+    ];
 
-    const nodes: Node[] = [h('h2', {}, [title]), h('p', { class: 'hint' }, [hint])];
-
-    if (mods.length === 0) {
-      nodes.push(
-        h('div', { class: 'empty' }, [
-          `No ${kind} installed yet. Check the Browse tab, or drop one in `,
-          h('code', {}, [`${this.manager.info.userModsRoot}/${kind}s/`]),
-        ]),
-      );
-      return nodes;
+    const tabs = h('div', { class: 'slackmod-shelves', role: 'tablist' });
+    for (const shelf of shelves) {
+      const button = h('button', {
+        class: 'c-button-unstyled slackmod-shelf',
+        role: 'tab',
+        'aria-selected': String(this.shelf === shelf.id),
+        type: 'button',
+      }, [shelf.label, h('span', { class: 'slackmod-count' }, [String(shelf.list.length)])]);
+      button.addEventListener('click', () => {
+        if (this.shelf === shelf.id) return;
+        this.shelf = shelf.id;
+        this.scrollTop = 0;
+        this.render();
+      });
+      tabs.append(button);
     }
 
-    for (const mod of mods) nodes.push(this.renderCard(mod));
-    return nodes;
+    const current = shelves.find((shelf) => shelf.id === this.shelf) ?? shelves[0]!;
+
+    const search = h('input', {
+      class: 'slackmod-search',
+      type: 'text',
+      placeholder: `Search ${kind}s`,
+      spellcheck: 'false',
+    }) as HTMLInputElement;
+    search.value = this.search;
+    // Its own container, so typing does not rebuild the panel and take focus
+    // back off the input.
+    search.addEventListener('input', () => {
+      this.search = search.value;
+      this.renderList(current.list, kind);
+    });
+
+    queueMicrotask(() => this.renderList(current.list, kind));
+
+    return [
+      h('div', { class: 'slackmod-toolbar' }, [tabs, search]),
+      h('div', { class: 'slackmod-list' }),
+    ];
   }
 
-  private renderCard(mod: ModRecord): HTMLElement {
+  private renderList(mods: ModRecord[], kind: 'theme' | 'plugin'): void {
+    const host = this.host?.querySelector('.slackmod-list');
+    if (!host) return;
+
+    const query = this.search.trim().toLowerCase();
+    const list = query
+      ? mods.filter((m) =>
+          `${m.name} ${m.description} ${(m.tags ?? []).join(' ')}`.toLowerCase().includes(query))
+      : mods;
+
+    host.replaceChildren();
+
+    if (list.length === 0) {
+      const messages: Record<ShelfId, string> = {
+        installed: `No ${kind} installed yet. Open Browse to add one.`,
+        enabled: `Nothing switched on. Installed ${kind}s can be enabled here.`,
+        browse: 'Everything in the catalogue is already installed.',
+      };
+      host.append(h('div', { class: 'slackmod-empty' }, [
+        query ? 'Nothing matches that search.' : messages[this.shelf],
+      ]));
+      return;
+    }
+
+    for (const mod of list) host.append(this.renderRow(mod));
+    this.restoreScroll();
+  }
+
+  private renderRow(mod: ModRecord): HTMLElement {
+    const installed = this.manager.isInstalled(mod.id);
     const enabled = this.manager.isEnabled(mod.id);
     const busy = this.busy.has(mod.id);
 
-    const input = h('input', { type: 'checkbox', 'aria-label': `Enable ${mod.name}` }) as HTMLInputElement;
-    input.checked = enabled;
-    input.disabled = busy;
-    input.addEventListener('change', () => {
-      void this.withBusy(mod.id, () => this.manager.setEnabled(mod.id, input.checked));
-    });
+    const actions = h('div', { class: 'slackmod-row__actions' });
 
-    const toggle = h('label', { class: 'switch' }, [
-      input,
-      h('span', { class: 'track' }, [h('span', { class: 'thumb' })]),
-    ]);
-
-    const actions = h('div', { class: 'actions' }, [toggle]);
-    if (mod.origin === 'installed') {
-      const remove = h('button', { class: 'btn danger' }, ['Remove']);
-      remove.addEventListener('click', () => {
-        void this.withBusy(mod.id, () => this.manager.uninstall(mod.id));
+    if (installed) {
+      const input = h('input', {
+        type: 'checkbox',
+        id: `slackmod-toggle-${mod.id}`,
+        'aria-label': `Enable ${mod.name}`,
+      }) as HTMLInputElement;
+      input.checked = enabled;
+      input.disabled = busy;
+      input.addEventListener('change', () => {
+        void this.withBusy(mod.id, () => this.manager.setEnabled(mod.id, input.checked));
       });
-      actions.prepend(remove);
+
+      // A Remove button on every row shouted louder than anything else in the
+      // dialog. Slack puts destructive actions behind an overflow menu.
+      const overflow = h('button', {
+        class:
+          'c-button-unstyled c-icon_button c-icon_button--size_smedium c-icon_button--default slackmod-row__more',
+        type: 'button',
+        'aria-label': `More actions for ${mod.name}`,
+        'aria-haspopup': 'menu',
+      });
+      overflow.innerHTML = OVERFLOW_ICON;
+      overflow.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.openMenu(overflow, mod);
+      });
+
+      actions.append(overflow, h('label', { class: 'slackmod-switch', for: input.id }, [
+        input,
+        h('span', { class: 'slackmod-switch__track' }, [
+          h('span', { class: 'slackmod-switch__thumb' }),
+        ]),
+      ]));
+    } else {
+      const install = h('button', {
+        class: 'c-button c-button--outline c-button--medium',
+        type: 'button',
+      }, ['Install']) as HTMLButtonElement;
+      install.disabled = busy;
+      install.addEventListener('click', () => {
+        void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, true));
+      });
+      actions.append(install);
     }
 
-    const name = h('div', { class: 'name' }, [mod.name]);
-    if (mod.origin === 'builtin') name.append(h('span', { class: 'badge builtin' }, ['repo']));
+    const title = h('div', { class: 'slackmod-row__name' }, [mod.name]);
+    for (const tag of (mod.tags ?? []).slice(0, 3)) {
+      title.append(h('span', { class: 'slackmod-tag' }, [tag]));
+    }
 
-    return h('div', { class: 'card' }, [
-      h('div', { class: 'meta' }, [
-        name,
-        h('div', { class: 'desc' }, [mod.description]),
-        h('div', { class: 'sub' }, [`v${mod.version} · by ${mod.author}`]),
+    return h('div', { class: 'slackmod-row' }, [
+      h('div', { class: 'slackmod-row__meta' }, [
+        title,
+        h('div', { class: 'slackmod-row__desc' }, [mod.description]),
+        h('div', { class: 'slackmod-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
       ]),
       actions,
     ]);
   }
 
-  private renderBrowse(): Node[] {
-    const nodes: Node[] = [
-      h('h2', {}, ['Browse the repository']),
-      h('p', { class: 'hint' }, [
-        'Everything here was merged into the SlackMod repository through a pull request. ' +
-          'A plugin runs with full access to your Slack session, so that review is the only thing standing between you and a bad one — install what you would be willing to read.',
-      ]),
-    ];
+  /** Slack's own menu markup, in a layer we position ourselves. */
+  private openMenu(anchor: HTMLElement, mod: ModRecord): void {
+    this.closeMenu();
 
-    if (this.remoteError) {
-      nodes.push(h('div', { class: 'empty' }, [`Could not reach the registry: ${this.remoteError}`]));
-      const retry = h('button', { class: 'btn' }, ['Retry']);
-      retry.addEventListener('click', () => void this.loadRegistry());
-      nodes.push(h('div', { class: 'row' }, [retry]));
-      return nodes;
-    }
-
-    if (this.remote === null) {
-      nodes.push(h('div', { class: 'empty' }, ['Loading…']));
-      return nodes;
-    }
-
-    const installedIds = new Set(this.manager.list().map((m) => m.id));
-    const available = this.remote.filter((entry) => !installedIds.has(entry.id));
-
-    if (available.length === 0) {
-      nodes.push(h('div', { class: 'empty' }, ['Everything in the registry is already on this machine.']));
-      return nodes;
-    }
-
-    for (const entry of available) {
-      const install = h('button', { class: 'btn primary' }, ['Install']) as HTMLButtonElement;
-      install.disabled = this.busy.has(entry.id);
-      install.addEventListener('click', () => {
-        void this.withBusy(entry.id, async () => {
-          const source = await fetchModSource(entry);
-          await this.manager.install(toRecord(entry), source);
-        });
+    const item = (label: string, onClick: () => void, danger = false) => {
+      const button = h('button', {
+        class: 'c-button-unstyled c-menu_item__button',
+        role: 'menuitem',
+        type: 'button',
+      }, [
+        h('div', { class: `c-menu_item__label${danger ? ' slackmod-danger' : ''}` }, [label]),
+      ]);
+      button.addEventListener('click', () => {
+        this.closeMenu();
+        onClick();
       });
+      return h('div', { class: 'c-menu_item__li', 'data-qa': 'menu_item_button-wrapper' }, [button]);
+    };
 
-      nodes.push(
-        h('div', { class: 'card' }, [
-          h('div', { class: 'meta' }, [
-            h('div', { class: 'name' }, [entry.name, h('span', { class: 'badge' }, [entry.type])]),
-            h('div', { class: 'desc' }, [entry.description]),
-            h('div', { class: 'sub' }, [`v${entry.version} · by ${entry.author}`]),
-          ]),
-          h('div', { class: 'actions' }, [install]),
-        ]),
-      );
-    }
-    return nodes;
+    const items = h('div', { class: 'c-menu__items', role: 'menu', tabindex: '-1' }, [
+      item(this.manager.isEnabled(mod.id) ? 'Disable' : 'Enable', () => {
+        void this.withBusy(mod.id, () =>
+          this.manager.setEnabled(mod.id, !this.manager.isEnabled(mod.id)));
+      }),
+      item('Remove', () => {
+        void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
+      }, true),
+    ]);
+
+    // `.c-popover__content` pins `top` in Slack's stylesheet, so the positioned
+    // layer is ours and only the menu inside wears Slack's classes.
+    const layer = h('div', { id: MENU_ID, class: 'slackmod-menu_layer' }, [
+      h('div', { class: 'c-menu' }, [h('div', { class: 'c-menu__items_scroller' }, [items])]),
+    ]);
+    document.body.append(layer);
+
+    const rect = anchor.getBoundingClientRect();
+    const { width, height } = layer.getBoundingClientRect();
+    const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+    const top = rect.bottom + height > window.innerHeight ? rect.top - height - 4 : rect.bottom + 4;
+    layer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+
+    setTimeout(() => document.addEventListener('mousedown', this.onDocumentDown, true), 0);
+  }
+
+  private onDocumentDown = (event: MouseEvent): void => {
+    const menu = document.getElementById(MENU_ID);
+    if (menu && !menu.contains(event.target as Node)) this.closeMenu();
+  };
+
+  private closeMenu(): void {
+    document.getElementById(MENU_ID)?.remove();
+    document.removeEventListener('mousedown', this.onDocumentDown, true);
   }
 
   private renderCustomCss(): Node[] {
-    const textarea = h('textarea', { spellcheck: 'false' }) as HTMLTextAreaElement;
+    const textarea = h('textarea', {
+      class: 'slackmod-css',
+      spellcheck: 'false',
+      rows: '16',
+    }) as HTMLTextAreaElement;
     textarea.value = this.manager.getSettings().customCss;
 
-    const status = h('span', { class: 'status' }, []);
-    const save = h('button', { class: 'btn primary' }, ['Save and apply']);
+    const status = h('span', { class: 'slackmod-status' });
+    const save = h('button', {
+      class: 'c-button c-button--primary c-button--medium',
+      type: 'button',
+    }, ['Save and apply']);
     save.addEventListener('click', () => {
       void this.manager
         .setCustomCss(textarea.value)
         .then(() => {
-          status.className = 'status';
+          status.className = 'slackmod-status';
           status.textContent = 'Applied.';
         })
         .catch((err: Error) => {
-          status.className = 'status error';
+          status.className = 'slackmod-status slackmod-danger';
           status.textContent = err.message;
         });
     });
 
     return [
-      h('h2', {}, ['Custom CSS']),
-      h('p', { class: 'hint' }, [
-        'Applied after every theme, so it always wins. Slack exposes its palette as CSS custom properties ' +
-          '(--dt_color-*), which is usually a steadier target than its class names.',
+      h('p', { class: 'slackmod-hint' }, [
+        'Applied after every theme, so it always wins. Slack exposes its palette as CSS custom ' +
+          'properties (--dt_color-*), which is a steadier target than its class names.',
       ]),
       textarea,
-      h('div', { class: 'row' }, [save, h('span', { class: 'spacer' }), status]),
+      h('div', { class: 'slackmod-actions' }, [save, status]),
     ];
   }
 
@@ -293,62 +431,57 @@ export class Panel {
     const info = this.manager.info;
     const settings = this.manager.getSettings();
 
-    const hotReload = h('input', { type: 'checkbox', 'aria-label': 'Hot reload' }) as HTMLInputElement;
+    const hotReload = h('input', {
+      type: 'checkbox',
+      id: 'slackmod-hot-reload',
+      'aria-label': 'Hot reload',
+    }) as HTMLInputElement;
     hotReload.checked = settings.hotReload;
     hotReload.addEventListener('change', () => {
       void this.manager.patchSettings({ hotReload: hotReload.checked });
     });
 
     return [
-      h('h2', {}, ['About']),
-      h('p', { class: 'hint' }, [
-        'SlackMod injects into the Slack renderer over the Chrome DevTools Protocol, carried on a private pipe ' +
-          'rather than a debugging port — nothing listens on the network, so no other program on this machine can ' +
-          'reach the connection. It does not modify ',
-        h('code', {}, ['Slack.app']),
-        ', so Slack updates cannot break your install — but the mods only stay loaded while the loader runs.',
+      h('p', { class: 'slackmod-hint' }, [
+        'SlackMod injects into the Slack renderer over the Chrome DevTools Protocol, carried on a ' +
+          'private pipe rather than a debugging port — nothing listens on the network. It does not ' +
+          'modify Slack.app, so Slack updates cannot break your install, but mods stay loaded only ' +
+          'while the loader runs.',
       ]),
-      h('div', { class: 'card' }, [
-        h('div', { class: 'meta' }, [
-          h('div', { class: 'name' }, ['Hot reload']),
-          h('div', { class: 'desc' }, ['Reapply a mod as soon as its file changes on disk.']),
+      h('div', { class: 'slackmod-row' }, [
+        h('div', { class: 'slackmod-row__meta' }, [
+          h('div', { class: 'slackmod-row__name' }, ['Hot reload']),
+          h('div', { class: 'slackmod-row__desc' }, [
+            'Reapply a mod as soon as its file changes on disk.',
+          ]),
         ]),
-        h('div', { class: 'actions' }, [
-          h('label', { class: 'switch' }, [
+        h('div', { class: 'slackmod-row__actions' }, [
+          h('label', { class: 'slackmod-switch', for: hotReload.id }, [
             hotReload,
-            h('span', { class: 'track' }, [h('span', { class: 'thumb' })]),
+            h('span', { class: 'slackmod-switch__track' }, [
+              h('span', { class: 'slackmod-switch__thumb' }),
+            ]),
           ]),
         ]),
       ]),
-      h('dl', { class: 'info' }, [
-        h('dt', {}, ['Repo mods']),
+      h('dl', { class: 'slackmod-info' }, [
+        h('dt', {}, ['Version']),
+        h('dd', {}, [info.version]),
+        h('dt', {}, ['Catalogue']),
         h('dd', {}, [info.modsRoot]),
         h('dt', {}, ['Your mods']),
         h('dd', {}, [info.userModsRoot]),
-        h('dt', {}, ['Slack']),
-        h('dd', {}, [info.slackPath]),
         h('dt', {}, ['Transport']),
         h('dd', {}, [info.transport]),
       ]),
-      h('p', { class: 'hint', style: 'margin-top:16px' }, [
-        h('a', { href: repoUrl, target: '_blank', rel: 'noreferrer' }, ['Repository']),
+      h('p', { class: 'slackmod-hint' }, [
+        h('a', { class: 'c-link', href: repoUrl, target: '_blank', rel: 'noreferrer' }, ['Repository']),
         ' · ',
-        h('a', { href: contributeUrl, target: '_blank', rel: 'noreferrer' }, ['Submit a mod']),
+        h('a', { class: 'c-link', href: contributeUrl, target: '_blank', rel: 'noreferrer' }, [
+          'Submit a mod',
+        ]),
       ]),
     ];
-  }
-
-  private async loadRegistry(): Promise<void> {
-    this.remoteError = null;
-    this.remote = null;
-    this.renderIfOpen();
-    try {
-      const registry = await fetchRegistry();
-      this.remote = registry.mods;
-    } catch (err) {
-      this.remoteError = (err as Error).message;
-    }
-    this.renderIfOpen();
   }
 
   private async withBusy(id: string, work: () => Promise<unknown>): Promise<void> {
@@ -358,7 +491,6 @@ export class Panel {
       await work();
     } catch (err) {
       console.error('[slackmod]', err);
-      alert(`SlackMod: ${(err as Error).message}`);
     } finally {
       this.busy.delete(id);
       this.renderIfOpen();

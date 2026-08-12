@@ -5,6 +5,9 @@
 // The DOM comes from jsdom; nothing here needs Slack, Electron or a network.
 
 import { JSDOM } from 'jsdom';
+// The real helpers, so a mod's test covers the helper code it leans on rather
+// than a stand-in that could drift from it.
+import { createHelpers } from '../dist/helpers.mjs';
 
 /** A Slack-shaped fragment: a message, a composer and a profile pane. */
 export const SLACK_FIXTURE = `
@@ -213,6 +216,15 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
         },
         isEmpty: () => true,
       },
+      userIdFromMessage: (message) => {
+        const src = message.element?.querySelector('.c-message_kit__avatar img, .c-avatar img')?.src;
+        const m = src?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i);
+        return m ? m[1].toUpperCase() : null;
+      },
+      currentChannelId: () => {
+        const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
+        return match ? match[1].toUpperCase() : null;
+      },
       selectors: {},
     },
 
@@ -252,6 +264,8 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
       get: (key, fallback) => (key in store ? store[key] : fallback),
       set: async (key, value) => { store[key] = value; },
     },
+    helpers: undefined, // assigned below, once `api` exists
+
     onDispose: (fn) => recorded.disposers.push(fn),
     log: {
       info: (...args) => recorded.logs.push(['info', ...args]),
@@ -259,6 +273,17 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
       error: (...args) => recorded.logs.push(['error', ...args]),
     },
   };
+
+  api.helpers = createHelpers({
+    pluginId: api.id,
+    css: (text) => recorded.css.push(text),
+    toast: (message, options) => api.ui.toast(message, options),
+    settings: api.settings,
+    track: (cleanup) => {
+      recorded.disposers.push(cleanup);
+      return cleanup;
+    },
+  });
 
   return {
     api,
