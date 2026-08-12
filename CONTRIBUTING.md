@@ -43,6 +43,20 @@ the theme lists it in `requires`. What a review looks for:
 - **Say in the pull request why CSS could not do it.** "The account strip needs
   a display name and CSS cannot fetch one" is an answer. "It was easier" is not.
 
+## Text a user reads
+
+Every plugin here ships **English and French**, through `api.i18n.strings()`.
+English is the source and the fallback; a test fails a mod whose two tables do
+not cover the same keys, because half a translation is how French users end up
+with English holes nobody notices.
+
+You are not expected to speak every language — two is the bar. If you add
+another, add it to every plugin or none: one plugin speaking German inside an
+otherwise English SlackMod is worse than consistency.
+
+Do not print emoji shortcodes. `status_emoji` is `:tada:`, and a workspace's
+custom ones have no unicode to fall back on, so show the text without them.
+
 ## What gets a pull request rejected
 
 - Network calls to anywhere other than a clearly stated, purpose-obvious

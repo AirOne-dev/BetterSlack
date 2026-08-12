@@ -72,19 +72,25 @@ export async function toggleDevTools(bridge) {
   bridge.app.toggleDevTools();
 }
 
+const STRINGS = {
+  en: { label: 'DevTools', description: 'Open or close Slack’s developer tools' },
+  fr: { label: 'DevTools', description: 'Ouvrir ou fermer les outils de développement de Slack' },
+};
+
 export default {
   /**
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    const t = api.i18n.strings(STRINGS);
     // Ask for the preference up front, so the first click is not the one that
     // has to wait for it.
     enableDevTools(window.desktop);
 
     api.slack.addToolbarButton('controlStrip', {
       id: 'devtools',
-      label: 'DevTools',
-      description: 'Open or close Slack’s developer tools',
+      label: t('label'),
+      description: t('description'),
       icon: ICON,
       // Both this and SlackMod's button anchor on the avatar; without an
       // explicit anchor this one would land underneath it.

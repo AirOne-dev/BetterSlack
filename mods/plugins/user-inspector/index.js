@@ -29,20 +29,111 @@ const PANE = '[data-qa="member_profile_pane"]';
 // look for.
 const NODE_CLASS = 'slackmod-user-details';
 
-/** Boolean flags worth surfacing, in the order they matter. */
-const ROLE_LABELS = [
-  ['is_primary_owner', 'Primary owner'],
-  ['is_owner', 'Owner'],
-  ['is_admin', 'Admin'],
-  ['is_bot', 'Bot'],
-  ['is_app_user', 'App user'],
-  ['is_restricted', 'Guest'],
-  ['is_ultra_restricted', 'Single-channel guest'],
-  ['deleted', 'Deactivated'],
-  ['is_email_confirmed', 'Email confirmed'],
+/**
+ * Boolean flags worth surfacing, in the order they matter, as translation keys.
+ *
+ * Keys rather than English text so `rolesOf` can stay a pure function: it takes
+ * the translator, which keeps it testable without a running api.
+ */
+const ROLE_KEYS = [
+  ['is_primary_owner', 'rolePrimaryOwner'],
+  ['is_owner', 'roleOwner'],
+  ['is_admin', 'roleAdmin'],
+  ['is_bot', 'roleBot'],
+  ['is_app_user', 'roleAppUser'],
+  ['is_restricted', 'roleGuest'],
+  ['is_ultra_restricted', 'roleSingleChannelGuest'],
+  ['deleted', 'roleDeactivated'],
+  ['is_email_confirmed', 'roleEmailConfirmed'],
 ];
 
-const PRESENCE_LABELS = { active: 'Active', away: 'Away' };
+const STRINGS = {
+  en: {
+    rolePrimaryOwner: 'Primary owner',
+    roleOwner: 'Owner',
+    roleAdmin: 'Admin',
+    roleBot: 'Bot',
+    roleAppUser: 'App user',
+    roleGuest: 'Guest',
+    roleSingleChannelGuest: 'Single-channel guest',
+    roleDeactivated: 'Deactivated',
+    roleEmailConfirmed: 'Email confirmed',
+    active: 'Active',
+    away: 'Away',
+    userId: 'User ID',
+    username: 'Username',
+    roles: 'Roles',
+    title: 'Title',
+    phone: 'Phone',
+    timeZone: 'Time zone',
+    theirTime: '{zone} — {time} their time',
+    locale: 'Locale',
+    presence: 'Presence',
+    presenceAuto: '{state} (auto)',
+    dnd: 'Do not disturb',
+    dndUntil: 'On until {when}',
+    dndOn: 'On',
+    status: 'Status',
+    updated: 'Profile updated',
+    moreDetails: 'More details',
+    avatar: 'Avatar',
+    availableSizes: 'Available sizes',
+    original: 'original',
+    rawData: 'Raw data',
+    rawSummary: '{count} fields from users.info, plus presence and do-not-disturb.',
+    copyRaw: 'Copy raw JSON',
+    copiedRaw: 'Copied the full API response',
+    loading: 'Loading…',
+    unknownUser: 'Could not tell which user this profile belongs to.',
+    noToken: 'No Slack session token for this workspace.',
+    refused: 'Slack refused the request: {reason}',
+  },
+  fr: {
+    rolePrimaryOwner: 'Propriétaire principal',
+    roleOwner: 'Propriétaire',
+    roleAdmin: 'Administrateur',
+    roleBot: 'Bot',
+    roleAppUser: 'Utilisateur d’application',
+    roleGuest: 'Invité',
+    roleSingleChannelGuest: 'Invité à un seul canal',
+    roleDeactivated: 'Désactivé',
+    roleEmailConfirmed: 'E-mail confirmé',
+    active: 'Disponible',
+    away: 'Absent(e)',
+    userId: 'ID utilisateur',
+    username: 'Nom d’utilisateur',
+    roles: 'Rôles',
+    title: 'Fonction',
+    phone: 'Téléphone',
+    timeZone: 'Fuseau horaire',
+    theirTime: '{zone} — {time} chez cette personne',
+    locale: 'Langue',
+    presence: 'Présence',
+    presenceAuto: '{state} (automatique)',
+    dnd: 'Ne pas déranger',
+    dndUntil: 'Actif jusqu’à {when}',
+    dndOn: 'Actif',
+    status: 'Statut',
+    updated: 'Profil mis à jour',
+    moreDetails: 'Plus de détails',
+    avatar: 'Avatar',
+    availableSizes: 'Tailles disponibles',
+    original: 'original',
+    rawData: 'Données brutes',
+    rawSummary: '{count} champs de users.info, plus la présence et le mode Ne pas déranger.',
+    copyRaw: 'Copier le JSON brut',
+    copiedRaw: 'Réponse complète de l’API copiée',
+    loading: 'Chargement…',
+    unknownUser: 'Impossible de déterminer à qui appartient ce profil.',
+    noToken: 'Aucun jeton de session Slack pour cet espace de travail.',
+    refused: 'Slack a refusé la requête : {reason}',
+  },
+};
+
+/** English, for callers with no translator of their own (tests, mostly). */
+const fallbackT = (key, vars = {}) =>
+  String(STRINGS.en[key] ?? key).replace(/\{(\w+)\}/g, (whole, name) =>
+    name in vars ? String(vars[name]) : whole);
 
 function formatTimestamp(seconds) {
   if (typeof seconds !== 'number' || seconds <= 0) return null;
@@ -57,41 +148,43 @@ function localTimeFor(offsetSeconds) {
 }
 
 /** Roles a user actually has, as readable labels. */
-export function rolesOf(user) {
-  return ROLE_LABELS.filter(([key]) => user?.[key] === true).map(([, label]) => label);
+export function rolesOf(user, t = fallbackT) {
+  return ROLE_KEYS.filter(([flag]) => user?.[flag] === true).map(([, key]) => t(key));
 }
 
 /** The rows this plugin adds, as [label, value] pairs, ready to render. */
-export function buildRows({ user, presence, dnd }) {
+export function buildRows({ user, presence, dnd }, t = fallbackT) {
   const profile = user?.profile ?? {};
   const rows = [];
   const push = (label, value) => {
     if (value !== null && value !== undefined && value !== '') rows.push([label, String(value)]);
   };
 
-  push('User ID', user?.id);
-  push('Username', user?.name);
-  push('Roles', rolesOf(user).join(' · '));
-  push('Title', profile.title);
-  push('Phone', profile.phone);
+  push(t('userId'), user?.id);
+  push(t('username'), user?.name);
+  push(t('roles'), rolesOf(user, t).join(' · '));
+  push(t('title'), profile.title);
+  push(t('phone'), profile.phone);
 
   if (user?.tz) {
     const local = localTimeFor(user.tz_offset);
-    push('Time zone', local ? `${user.tz_label ?? user.tz} — ${local} their time` : user.tz_label ?? user.tz);
+    const zone = user.tz_label ?? user.tz;
+    push(t('timeZone'), local ? t('theirTime', { zone, time: local }) : zone);
   }
-  push('Locale', user?.locale);
+  push(t('locale'), user?.locale);
 
   if (presence?.presence) {
-    const label = PRESENCE_LABELS[presence.presence] ?? presence.presence;
-    push('Presence', presence.auto_away ? `${label} (auto)` : label);
+    const state = presence.presence === 'active' ? t('active')
+      : presence.presence === 'away' ? t('away') : presence.presence;
+    push(t('presence'), presence.auto_away ? t('presenceAuto', { state }) : state);
   }
   if (dnd?.dnd_enabled) {
     const until = formatTimestamp(dnd.next_dnd_end_ts);
-    push('Do not disturb', until ? `On until ${until}` : 'On');
+    push(t('dnd'), until ? t('dndUntil', { when: until }) : t('dndOn'));
   }
 
-  push('Status', [profile.status_emoji, profile.status_text].filter(Boolean).join(' '));
-  push('Profile updated', formatTimestamp(user?.updated));
+  push(t('status'), profile.status_text);
+  push(t('updated'), formatTimestamp(user?.updated));
 
   // Workspace-defined fields vary per organisation; show whatever is filled in.
   const custom = profile.fields;
@@ -105,7 +198,7 @@ export function buildRows({ user, presence, dnd }) {
 }
 
 /** Avatar renditions Slack holds, largest first. */
-export function avatarSizes(profile) {
+export function avatarSizes(profile, t = fallbackT) {
   return Object.keys(profile ?? {})
     .filter((key) => key.startsWith('image_') && typeof profile[key] === 'string')
     .sort((a, b) => {
@@ -115,7 +208,7 @@ export function avatarSizes(profile) {
     })
     .map((key) => ({
       key,
-      label: key === 'image_original' ? 'original' : `${key.slice(6)}px`,
+      label: key === 'image_original' ? t('original') : `${key.slice(6)}px`,
       url: profile[key],
     }));
 }
@@ -125,6 +218,7 @@ export default {
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    const t = api.i18n.strings(STRINGS);
     // Slack's own classes do the heavy lifting; this only covers the few things
     // it has no class for.
     api.css(`
@@ -147,23 +241,23 @@ export default {
       host.replaceChildren();
 
       if (data.error) {
-        host.append(section('More details', [
+        host.append(section(t('moreDetails'), [
           api.dom.h('div', { class: 'slackmod-muted' }, [data.error]),
         ]));
         return;
       }
       if (!data.user) {
-        host.append(section('More details', [
-          api.dom.h('div', { class: 'slackmod-muted' }, ['Loading…']),
+        host.append(section(t('moreDetails'), [
+          api.dom.h('div', { class: 'slackmod-muted' }, [t('loading')]),
         ]));
         return;
       }
 
-      const rows = buildRows(data);
-      const roleChips = rolesOf(data.user);
+      const rows = buildRows(data, t);
+      const roleChips = rolesOf(data.user, t);
 
       const details = rows
-        .filter(([label]) => label !== 'Roles')
+        .filter(([label]) => label !== t('roles'))
         .map(([label, value]) => field(label, value));
 
       if (roleChips.length > 0) {
@@ -171,7 +265,7 @@ export default {
           api.dom.h('div', { class: 'p-rimeto_member_profile_field__contact_info' }, [
             api.dom.h('div', { class: 'p-rimeto_member_profile_field' }, [
               api.dom.h('div', { class: 'p-rimeto_member_profile_field__primary' }, [
-                api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, ['Roles']),
+                api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, [t('roles')]),
                 api.dom.h('div', { class: 'slackmod-chips' },
                   roleChips.map((r) => api.dom.h('span', { class: 'slackmod-chip' }, [r]))),
               ]),
@@ -180,9 +274,9 @@ export default {
         );
       }
 
-      host.append(section('More details', details));
+      host.append(section(t('moreDetails'), details));
 
-      const sizes = avatarSizes(data.user.profile);
+      const sizes = avatarSizes(data.user.profile, t);
       if (sizes.length > 0) {
         const links = api.dom.h('div', { class: 'slackmod-chips' });
         for (const size of sizes) {
@@ -195,8 +289,8 @@ export default {
             }, [size.label]),
           );
         }
-        host.append(section('Avatar', [
-          api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, ['Available sizes']),
+        host.append(section(t('avatar'), [
+          api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, [t('availableSizes')]),
           links,
         ]));
       }
@@ -205,13 +299,13 @@ export default {
       const copy = api.dom.h('button', {
         class: 'c-button c-button--outline c-button--medium',
         type: 'button',
-      }, ['Copy raw JSON']);
+      }, [t('copyRaw')]);
       copy.addEventListener('click', () => {
-        void api.helpers.copy(JSON.stringify(data, null, 2), 'Copied the full API response');
+        void api.helpers.copy(JSON.stringify(data, null, 2), t('copiedRaw'));
       });
-      host.append(section('Raw data', [
+      host.append(section(t('rawData'), [
         api.dom.h('div', { class: 'slackmod-muted' }, [
-          `${Object.keys(data.user).length} fields from users.info, plus presence and do-not-disturb.`,
+          t('rawSummary', { count: Object.keys(data.user).length }),
         ]),
         api.dom.h('div', { class: 'slackmod-actions' }, [copy]),
       ]));
@@ -231,7 +325,7 @@ export default {
           return { user, presence, dnd };
         } catch (err) {
           api.log.error(err);
-          return { error: `Slack refused the request: ${err.message}` };
+          return { error: t('refused', { reason: err.message }) };
         }
       })();
       cache.set(userId, data);
@@ -243,11 +337,11 @@ export default {
         ?.toUpperCase();
 
       if (!userId) {
-        render(host, { error: 'Could not tell which user this profile belongs to.' });
+        render(host, { error: t('unknownUser') });
         return;
       }
       if (!api.slack.web.available) {
-        render(host, { error: 'No Slack session token for this workspace.' });
+        render(host, { error: t('noToken') });
         return;
       }
 

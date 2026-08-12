@@ -133,6 +133,13 @@ Shape of it:
   `addProfileButton`, `onProfilePane`, `describeMessage`, `userIdFromMessage`,
   `currentChannelId`, `composer`, `web`, `selectors`.
 - `api.ui` — `toast`, `modal`, `confirm`, `tooltip`, in shadow roots.
+- `api.i18n` — `strings({ en, fr, ... })` returns `t(key, vars)`; `locale` and
+  `language` come from Slack's `<html lang>`, never from `localConfig_v2` (that
+  is the token file, and only `web-api.ts` reads it). English is required and is
+  the fallback for an unknown language *and* for a missing key; a key missing
+  everywhere renders as the key rather than as a blank. Every shipped plugin has
+  `en` and `fr`, and `tests/i18n.test.mjs` fails a mod whose tables do not cover
+  the same keys.
 - `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
 
 When two mods want the same block, it belongs in `helpers.ts`, and the mods get

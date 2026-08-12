@@ -14,22 +14,32 @@ const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true">
   <path fill="currentColor" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM4 10a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z" opacity=".35"/>
 </svg>`;
 
+const STRINGS = {
+  en: { action: 'Copy link to message', noLink: 'No link for this message', copied: 'Link copied' },
+  fr: {
+    action: 'Copier le lien du message',
+    noLink: 'Aucun lien pour ce message',
+    copied: 'Lien copié',
+  },
+};
+
 export default {
   /**
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    const t = api.i18n.strings(STRINGS);
     api.slack.addMessageAction({
       id: 'copy-link',
-      label: 'Copy link to message',
+      label: t('action'),
       icon: ICON,
       onClick: async (message) => {
         if (!message.permalink) {
-          api.ui.toast('No link for this message', { variant: 'error' });
+          api.ui.toast(t('noLink'), { variant: 'error' });
           return;
         }
         // copy() handles the clipboard, the confirmation and the failure toast.
-        await api.helpers.copy(message.permalink, 'Link copied');
+        await api.helpers.copy(message.permalink, t('copied'));
       },
     });
   },

@@ -8,6 +8,7 @@ import type { ModRecord, Settings } from '../shared/protocol.js';
 import { h, keepMounted, onEach, onShortcut, waitFor, type Cleanup } from './dom.js';
 import { collectCleanups } from './plugins.js';
 import { createHelpers, type Helpers } from './helpers.js';
+import { createI18n, type I18n } from './i18n.js';
 import { createSlackApi, type SlackApi } from './slack-api.js';
 import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
@@ -38,6 +39,16 @@ export interface PluginApi {
 
   /** Slack-aware helpers: toolbars, message actions, permalinks, the composer. */
   readonly slack: SlackApi;
+
+  /**
+   * The app's language, and translations for your own strings.
+   *
+   * Slack ships in many languages and an English-only mod stands out inside a
+   * French client. `strings()` takes one object of dictionaries and returns a
+   * lookup; English is required and is what a missing language or key falls
+   * back to.
+   */
+  readonly i18n: I18n;
 
   /**
    * Higher-level shortcuts for the shapes most mods need: a persisted toggle,
@@ -139,6 +150,8 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
         onProfilePane: track(slack.onProfilePane.bind(slack)),
       };
     })(),
+
+    i18n: createI18n(),
 
     helpers: createHelpers({
       pluginId: record.id,

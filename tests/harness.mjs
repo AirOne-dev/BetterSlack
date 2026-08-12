@@ -8,6 +8,7 @@ import { JSDOM } from 'jsdom';
 // The real helpers, so a mod's test covers the helper code it leans on rather
 // than a stand-in that could drift from it.
 import { createHelpers } from '../dist/helpers.mjs';
+import { createI18n } from '../dist/i18n.mjs';
 
 /** A Slack-shaped fragment: rail, sidebar, a message, a composer, a profile pane. */
 export const SLACK_FIXTURE = `
@@ -160,7 +161,7 @@ function h(tag, attrs = {}, children = []) {
  * handlers directly. Anything a mod is expected to render (modals, toasts) is
  * captured too.
  */
-export function createTestApi({ settings = {}, web = {} } = {}) {
+export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}) {
   const recorded = {
     css: [],
     toasts: [],
@@ -317,6 +318,10 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
         return { path: `/tmp/${filename}`, bytes: entry.bytes };
       },
     },
+
+    // The real implementation, so a mod's dictionaries are exercised rather
+    // than a stand-in that always answers in English.
+    i18n: createI18n(locale),
 
     css: (text) => recorded.css.push(text),
     settings: {

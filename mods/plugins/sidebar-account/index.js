@@ -107,8 +107,14 @@ function avatarAt(url, size) {
   return typeof url === 'string' ? url.replace(/-\d+$/, `-${size}`) : null;
 }
 
+const STRINGS = {
+  en: { account: 'Your account' },
+  fr: { account: 'Votre compte' },
+};
+
 export default {
   async start(api) {
+    const t = api.i18n.strings(STRINGS);
     api.css(CSS);
 
     api.dom.keepMounted('.p-channel_sidebar', STRIP_ID, () => {
@@ -157,7 +163,7 @@ export default {
         name.textContent = '';
       }
 
-      api.helpers.tooltip(me, 'Your account', presence || undefined);
+      api.helpers.tooltip(me, t('account'), presence || undefined);
       return api.dom.h('div', {}, [me]);
     });
   },
