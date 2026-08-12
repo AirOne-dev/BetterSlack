@@ -65,6 +65,13 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   repaint it or any gradient is invisible.
 - Reuse Slack's button classes rather than styling your own. Watch for
   `c-icon_button--default`: without it, icon buttons render 36px instead of 28px.
+- Slack's real DevTools are reachable: `desktop.redux.dispatchUpdate({type:
+  'TOGGLE_DEV_TOOLS'})` forwards to the main-process store over IPC, the same
+  action its hidden ⌘⌥I menu item dispatches. The epic is gated on
+  `settings.devToolsEnabled` (set it with `desktop.app.setPreference`) and only
+  acts on a *focused* webContents, so it does nothing when Slack is in the
+  background. `SLACK_DEVELOPER_MENU` only reveals the menu; it does not satisfy
+  the gate. See mods/plugins/devtools.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
