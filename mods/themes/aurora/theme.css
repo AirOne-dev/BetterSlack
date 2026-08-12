@@ -1,0 +1,244 @@
+/*
+ * Aurora — frosted glass over a moving gradient.
+ *
+ * The trick: paint the gradient once on <body>, then make every Slack surface
+ * translucent so it shows through, and blur what is behind each panel. Slack's
+ * design tokens do the colour work; a short list of structural classes does the
+ * shape work.
+ *
+ * Cost: backdrop-filter is GPU work on large surfaces. On an older machine,
+ * Midnight will feel snappier.
+ */
+
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --aurora-glow: 139, 122, 255;
+  --aurora-glow-2: 88, 216, 255;
+
+  /* Surfaces are mostly transparent so the gradient reads through them.
+   * Two panes stack over most of the window, so alpha here is roughly squared
+   * in practice -- hence the low values. */
+  --dt_color-base-pry: rgba(18, 16, 34, 0.34);
+  --dt_color-base-sec: rgba(24, 21, 44, 0.36);
+  --dt_color-base-ter: rgba(32, 28, 58, 0.42);
+  --dt_color-base-modal: rgba(10, 8, 22, 0.72);
+
+  --dt_color-base-pry-hover: rgba(var(--aurora-glow), 0.14);
+  --dt_color-base-pry-pressed: rgba(var(--aurora-glow), 0.22);
+  --dt_color-base-sec-hover: rgba(var(--aurora-glow), 0.14);
+  --dt_color-base-sec-pressed: rgba(var(--aurora-glow), 0.22);
+  --dt_color-base-ter-hover: rgba(var(--aurora-glow), 0.14);
+  --dt_color-base-ter-pressed: rgba(var(--aurora-glow), 0.22);
+
+  --dt_color-content-pry: #f2f0ff;
+  --dt_color-content-sec: #b9b4dd;
+  --dt_color-content-ter: #948fbb;
+
+  --dt_color-otl-pry: rgba(255, 255, 255, 0.22);
+  --dt_color-otl-sec: rgba(255, 255, 255, 0.13);
+  --dt_color-otl-ter: rgba(255, 255, 255, 0.07);
+
+  --dt_color-content-hgl-1: #8ad6ff;
+  --dt_color-content-hgl-2: #7cf0c4;
+  --dt_color-content-hgl-3: #ffd98a;
+  --dt_color-content-imp: #ff9ec4;
+
+  --dt_color-base-inv-pry: rgba(14, 12, 28, 0.62);
+  --dt_color-content-inv-pry: #f2f0ff;
+  --dt_color-content-inv-sec: #b9b4dd;
+}
+
+/*
+ * The chrome (rail, sidebar, headers) is painted from two further families:
+ * --dt_color-theme-* and the legacy --sk_* triplets. They have to be made
+ * translucent as well, or the sidebar stays opaque Slack-grey and the gradient
+ * only shows in the message pane.
+ */
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --dt_color-theme-base-inv-pry: rgba(14, 12, 28, 0.42) !important;
+  --dt_color-theme-base-inv-sec: rgba(20, 17, 38, 0.46) !important;
+  --dt_color-theme-content-inv-pry: #f2f0ff !important;
+  --dt_color-theme-content-inv-sec: rgba(242, 240, 255, 0.78) !important;
+  --dt_color-theme-content-inv-ter: rgba(242, 240, 255, 0.55) !important;
+  --dt_color-theme-otl-inv-pry: rgba(255, 255, 255, 0.18) !important;
+
+  --dt_color-theme-surf-inv-pry: rgba(var(--aurora-glow), 0.22) !important;
+  --dt_color-theme-surf-inv-sec: rgba(14, 12, 28, 0.42) !important;
+  --dt_color-theme-surf-inv-ter: rgba(255, 255, 255, 0.08) !important;
+  --dt_color-theme-surf-pry: rgba(var(--aurora-glow), 0.25) !important;
+  --dt_color-theme-surf-sec: rgba(32, 28, 58, 0.35) !important;
+  --dt_color-theme-surf-ter: rgba(18, 16, 34, 0.5) !important;
+
+  --dt_color-theme-base-pry: rgba(18, 16, 34, 0.34) !important;
+  --dt_color-theme-base-sec: rgba(24, 21, 44, 0.36) !important;
+  --dt_color-theme-content-pry: #f2f0ff !important;
+  --dt_color-theme-content-sec: #b9b4dd !important;
+  --dt_color-theme-content-ter: #948fbb !important;
+
+  --sk_primary_background: 18, 16, 34 !important;
+  --sk_primary_foreground: 242, 240, 255 !important;
+  --sk_inverted_background: 242, 240, 255 !important;
+  --sk_inverted_foreground: 18, 16, 34 !important;
+  --sk_foreground_max: 242, 240, 255 !important;
+  --sk_foreground_high: 213, 209, 244 !important;
+  --sk_foreground_mid: 185, 180, 221 !important;
+  --sk_foreground_low: 148, 143, 187 !important;
+  --sk_foreground_min: 116, 111, 156 !important;
+  --sk_foreground_max_solid: 242, 240, 255 !important;
+  --sk_foreground_high_solid: 148, 143, 187 !important;
+  --sk_foreground_mid_solid: 88, 82, 132 !important;
+  --sk_foreground_low_solid: 48, 43, 82 !important;
+  --sk_foreground_min_solid: 32, 28, 58 !important;
+  --sk_highlight: 139, 122, 255 !important;
+  --sk_highlight_hover: 168, 154, 255 !important;
+  --sk_highlight_accent: 88, 216, 255 !important;
+}
+
+/*
+ * The gradient itself. Centres sit inside the viewport, not past its edges, or
+ * the vivid part of each blob is cropped away and all that is left is a wash.
+ * `fixed` keeps it still while the message list scrolls; the slow drift is what
+ * makes it read as an aurora rather than as wallpaper.
+ */
+html,
+body {
+  background-color: #0a0818;
+  background-image:
+    radial-gradient(52vw 46vh at 22% 18%, rgba(var(--aurora-glow), 0.85), transparent 68%),
+    radial-gradient(46vw 40vh at 82% 12%, rgba(var(--aurora-glow-2), 0.62), transparent 66%),
+    radial-gradient(56vw 48vh at 62% 92%, rgba(255, 122, 199, 0.55), transparent 68%),
+    radial-gradient(40vw 40vh at 8% 86%, rgba(120, 255, 214, 0.34), transparent 70%);
+  background-attachment: fixed;
+  background-size: 160% 160%;
+  animation: aurora-drift 46s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift {
+  0%   { background-position: 0% 50%, 100% 0%, 50% 100%, 0% 100%; }
+  50%  { background-position: 18% 38%, 78% 18%, 36% 78%, 22% 82%; }
+  100% { background-position: 4% 62%, 92% 10%, 62% 88%, 8% 92%; }
+}
+
+/* Slack paints a full-viewport opaque layer, `.p-theme_background`, behind the
+ * whole client. Any theme that wants a gradient, an image or translucency has
+ * to clear this first -- otherwise the work on <body> is simply covered up. */
+.p-theme_background {
+  background: transparent !important;
+}
+
+/* Slack's own panes paint an opaque background of their own; clear it so the
+ * gradient is not hidden behind three stacked layers. */
+.p-client_container,
+.p-workspace__primary_view,
+.p-view_contents,
+.p-message_pane,
+.c-virtual_list__scroll_container {
+  background: transparent !important;
+}
+
+/* Glass panels. */
+.p-channel_sidebar,
+.p-tab_rail,
+.p-ia4_top_nav,
+.c-message_attachment,
+[data-qa="message_input"] {
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+}
+
+.p-channel_sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+/* Rounded everything. Slack's components are square by default; these are the
+ * ones a person actually looks at. */
+.p-channel_sidebar__static_list__item,
+.p-channel_sidebar__channel,
+.p-channel_sidebar__section_heading,
+.c-button,
+.c-button-unstyled.c-icon_button,
+.p-tab_rail__button,
+.c-message_actions__group,
+.c-message_attachment,
+[data-qa="message_input"] {
+  border-radius: 14px !important;
+}
+
+.c-avatar,
+.c-avatar img,
+.c-base_icon,
+.p-channel_sidebar__user_avatar img {
+  border-radius: 34% !important;
+}
+
+/* Messages lift slightly on hover instead of just changing colour. */
+.c-message_kit__background {
+  border-radius: 14px;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+.c-message_kit__background:hover {
+  background: rgba(var(--aurora-glow), 0.1) !important;
+  box-shadow: 0 0 0 1px rgba(var(--aurora-glow), 0.22), 0 8px 26px rgba(8, 6, 20, 0.45);
+}
+
+/* The selected channel gets the gradient rather than a flat fill. */
+.p-channel_sidebar__channel--selected,
+.p-channel_sidebar__static_list__item--selected {
+  background: linear-gradient(
+    100deg,
+    rgba(var(--aurora-glow), 0.85),
+    rgba(var(--aurora-glow-2), 0.55)
+  ) !important;
+  box-shadow: 0 6px 20px rgba(var(--aurora-glow), 0.3);
+}
+
+/* Link unfurls read as cards, which is also what makes Quote Reply look right. */
+.c-message_attachment {
+  border-left: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  padding: 10px 14px !important;
+  background: rgba(255, 255, 255, 0.045) !important;
+}
+.c-message_attachment__border { display: none !important; }
+
+.c-message_actions__group {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 10px 30px rgba(6, 4, 16, 0.5);
+  overflow: hidden;
+}
+
+/*
+ * Tooltips inherit --dt_color-base-inv-pry, which is translucent here — over a
+ * busy message list that makes them hard to read. Frost them instead of making
+ * them opaque, so they still belong to the theme.
+ */
+.c-tooltip__tip {
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 26px rgba(6, 4, 16, 0.5);
+}
+
+[data-qa="message_input"] {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 10px 34px rgba(6, 4, 16, 0.4);
+}
+
+/* Slimmer, less industrial scrollbars. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--aurora-glow), 0.35);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--aurora-glow), 0.55); background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  .c-message_kit__background { transition: none; }
+  html, body { animation: none; }
+}

@@ -1,69 +1,109 @@
 # SlackMod
 
-## Description
+Themes, plugins and custom CSS for the Slack desktop app, with a Mods panel
+inside Slack itself.
 
-Inject custom css / javascript to Slack app !
+```
+⌘⇧M  (Ctrl+Shift+M on Windows/Linux)   or the sliders button above your avatar
+```
 
-The process includes a Python script, `src/main.py`, which injects `src/injected-script.ts` into the Slack app.
+## Install
 
-## Building the Application
+Requires Node 18+.
 
-### Prerequisites
+```bash
+git clone https://github.com/AirOne-dev/SlackMod.git
+cd SlackMod
+npm install && npm run build
+npm start
+```
 
-Before building the application, ensure you have the following installed:
+`npm start` restarts Slack and injects the runtime. If Slack lives somewhere
+unusual, set `SLACKMOD_SLACK_PATH=/path/to/Slack`.
 
-- [Node.js and npm](https://nodejs.org/)
-- [Python 3](https://www.python.org/downloads/)
+On macOS, `npm run build-app` produces `dist/SlackMod.app`, which starts the
+loader without a terminal. It is unsigned, so the first launch needs
+right-click → Open.
 
-### Steps
+## What ships with it
 
-Follow the steps below to build the application:
+**Themes** — Midnight, Aurora (frosted glass over a drifting gradient),
+Terminal (monospace, square corners, phosphor), Cocoa (warm light), Focus Rings.
 
-1. **Clone the repository**:
+**Plugins** — Quote Reply (answer in-channel with an unfurl of the message),
+Copy Message Link, Focus Mode (⌘⇧F), Composer Character Count, Channel Notes,
+User Inspector, Avatar Downloader.
 
-    ```bash
-    git clone https://github.com/AirOne-dev/SlackMod.git
-    cd SlackMod
-    ```
+Several themes can run at once. Terminal is the exception: it restyles through
+`*` selectors, so run it on its own.
 
-2. **Install Node.js dependencies**:
+## How it works
 
-    ```bash
-    npm i
-    ```
+SlackMod attaches to Slack over the Chrome DevTools Protocol and injects a
+runtime into the renderer. It never modifies `Slack.app`, so Slack updates
+cannot break your install.
 
-3. **Install Python dependencies**:
+It talks to Slack over `--remote-debugging-pipe`, not `--remote-debugging-port`.
+The port version opens an unauthenticated TCP listener that any local process
+can use to drive your Slack session; the pipe uses two file descriptors handed
+over at spawn time, and nothing listens on the network:
 
-    ```bash
-    pip3 install -r requirements.txt
-    ```
+```console
+$ lsof -nP -iTCP -sTCP:LISTEN -a -p $(pgrep -x Slack)
+$                     # nothing
+```
 
-    or
+That does not protect against a program already running as your user — nothing
+in user space can. Mods are active only while the loader runs, and Slack has to
+be started by it.
 
-    ```bash
-    python3 -m pip3 install -r requirements.txt
-    ```
+## Writing a mod
 
-4. **Run the app**:
+Mods live in `mods/`, one folder each, picked up live with no rebuild:
 
-    ```bash
-    npm run dev
-    ```
+```
+mods/themes/<id>/mod.json    + theme.css
+mods/plugins/<id>/mod.json   + index.js  + test.mjs
+```
 
-    or
+A theme is one CSS file, best written by redefining Slack's design tokens. A
+plugin is an ES module exporting `start(api)`:
 
-    ```bash
-    python3 src/main.py
-    ```
+```js
+export default {
+  start(api) {
+    api.slack.addToolbarButton('channelHeader', {
+      id: 'hello', label: 'Say hello', icon: '<svg …>',
+      onClick: () => api.ui.toast('Hello', { variant: 'success' }),
+    });
+  },
+};
+```
 
-5. **Dev - Run the app with file change watcher**:
+`api.slack` covers toolbars, message actions, profile panes, permalinks, the
+composer and Slack's web API. `api.ui` gives you toasts, modals, confirms and
+tooltips with no CSS. Everything registered through `api` is undone when the
+plugin is disabled.
 
-    ```bash
-    npm run dev-watch
-    ```
+`mods/plugins/channel-notes` is the worked example — one of everything.
 
-    When you update `src/injected-script.ts`, it will restart Slack for you
+**[CONTRIBUTING.md](CONTRIBUTING.md) has the full API reference**, the four
+families of Slack colour tokens, the CSP constraints, and what gets a pull
+request rejected. Read it before writing a mod; it will save you an afternoon.
 
-6. **Build the app**:
+## Development
 
-    MacOS only : `npm run build`, build SlackMod.app in `dist` folder
+```bash
+npm run dev              # rebuild on change
+npm test                 # every mod's tests
+npm run test:mod -- <id> # one mod
+npm run check-structure  # is each mod loadable
+npm run typecheck
+```
+
+Mods in `~/.slackmod/mods/` shadow the repo copies, which is handy for iterating
+on something already merged.
+
+## License
+
+MIT
