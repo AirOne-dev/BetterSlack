@@ -15,6 +15,12 @@
 
 const STRIP_ID = 'slackmod-account-strip';
 
+/** Slack's own gear, so the control reads as the settings it opens. */
+const GEAR_ICON =
+  '<svg viewBox="0 0 20 20" aria-hidden="true" style="height:18px;width:18px">' +
+  '<path fill="currentColor" d="M8.32 2.5a.75.75 0 0 0-.74.63l-.2 1.2a5.9 5.9 0 0 0-1.1.64l-1.14-.44a.75.75 0 0 0-.92.33l-1.18 2.04a.75.75 0 0 0 .18.95l.95.76a6 6 0 0 0 0 1.28l-.95.76a.75.75 0 0 0-.18.95l1.18 2.04c.18.32.57.45.92.33l1.14-.44q.51.39 1.1.64l.2 1.2c.06.36.37.63.74.63h2.36c.37 0 .68-.27.74-.63l.2-1.2q.59-.25 1.1-.64l1.14.44c.35.12.74-.01.92-.33l1.18-2.04a.75.75 0 0 0-.18-.95l-.95-.76a6 6 0 0 0 0-1.28l.95-.76a.75.75 0 0 0 .18-.95l-1.18-2.04a.75.75 0 0 0-.92-.33l-1.14.44a5.9 5.9 0 0 0-1.1-.64l-.2-1.2a.75.75 0 0 0-.74-.63zM10 12.25a2.25 2.25 0 1 1 0-4.5 2.25 2.25 0 0 1 0 4.5"/></svg>';
+
+
 const CSS = `
 /* The sidebar becomes a column so the strip can sit under a scrolling list. */
 .p-channel_sidebar { display: flex !important; flex-direction: column !important; }
@@ -54,9 +60,12 @@ const CSS = `
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  gap: 4px;
   height: 52px;
   padding: 0 8px;
-  background: var(--dt_color-theme-base-inv-sec, var(--dt_color-base-sec, rgba(0, 0, 0, 0.16)));
+  /* The same surface as a member list, so the two read as one family rather
+     than as two add-ons that happened to land in the same window. */
+  background: var(--dt_color-base-sec, rgba(var(--sk_foreground_min_solid, 248, 248, 248), 1));
 }
 #${STRIP_ID} .slackmod-me {
   display: flex;
@@ -65,22 +74,47 @@ const CSS = `
   flex: 1 1 auto;
   min-width: 0;
   padding: 4px 6px;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: left;
-  background: none;
-  border: 0;
-  font: inherit;
-  color: inherit;
+  /* Not a control: it shows who you are, and the gear beside it is what you
+     press. A hover state here would promise a click that does nothing. */
+  cursor: default;
 }
-#${STRIP_ID} .slackmod-me:hover {
-  background: var(--dt_color-theme-surf-inv-ter, rgba(255, 255, 255, 0.08));
+#${STRIP_ID} .slackmod-me__figure { position: relative; flex: 0 0 auto; }
+#${STRIP_ID} .slackmod-me__dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 3px solid var(--dt_color-base-sec, #f8f8f8);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.45);
+}
+/* Availability, in the theme's own colours rather than Discord's literals. */
+#${STRIP_ID} .slackmod-me__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
+#${STRIP_ID} .slackmod-me__dot--dnd { background: var(--dt_color-content-imp, #c01343); }
+
+#${STRIP_ID} .slackmod-me__settings {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--dt_color-theme-content-inv-sec, rgba(255, 255, 255, 0.7));
+}
+#${STRIP_ID} .slackmod-me__settings:hover {
+  background: var(--dt_color-base-pry-hover, rgba(var(--sk_foreground_low, 29, 28, 29), 0.1));
+  color: var(--dt_color-theme-content-inv-pry, #fff);
 }
 #${STRIP_ID} .slackmod-me__avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  flex: 0 0 auto;
+  display: block;
   object-fit: cover;
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
 }
@@ -108,8 +142,8 @@ function avatarAt(url, size) {
 }
 
 const STRINGS = {
-  en: { account: 'Your account' },
-  fr: { account: 'Votre compte' },
+  en: { account: 'Your account', settings: 'Account settings' },
+  fr: { account: 'Votre compte', settings: 'Réglages du compte' },
 };
 
 export default {
@@ -136,13 +170,45 @@ export default {
         ?.getAttribute('aria-label') ?? '';
       const status = api.dom.h('div', { class: 'slackmod-me__status' }, [presence]);
 
-      const me = api.dom.h('button', { class: 'slackmod-me', type: 'button' }, [
-        avatar,
+      const dot = api.dom.h('span', { class: 'slackmod-me__dot' });
+      const me = api.dom.h('div', { class: 'slackmod-me' }, [
+        api.dom.h('span', { class: 'slackmod-me__figure' }, [avatar, dot]),
         api.dom.h('div', { class: 'slackmod-me__text' }, [name, status]),
       ]);
-      me.addEventListener('click', () => {
+
+      // The gear is the control. Pressing it opens Slack's own account menu,
+      // which is what clicking the whole strip used to do.
+      const settings = api.dom.h('button', {
+        class: 'slackmod-me__settings',
+        type: 'button',
+        'aria-label': t('settings'),
+      });
+      settings.innerHTML = GEAR_ICON;
+      settings.addEventListener('click', () => {
         document.querySelector('[data-qa="user-button"]')?.click();
       });
+      api.helpers.tooltip(settings, t('settings'));
+
+      /** Availability, from Slack rather than from the label beside it. */
+      const paintDot = () => {
+        if (!userId || !api.slack.web.available) return;
+        void Promise.all([
+          api.slack.web.presence(userId).catch(() => null),
+          api.slack.web.dndInfo(userId).catch(() => null),
+        ]).then(([state, dnd]) => {
+          if (!dot.isConnected) return;
+          dot.classList.toggle('slackmod-me__dot--dnd', dnd?.dnd_enabled === true);
+          dot.classList.toggle(
+            'slackmod-me__dot--active',
+            dnd?.dnd_enabled !== true && state?.presence === 'active',
+          );
+        });
+      };
+      paintDot();
+      // Your own availability changes while you sit there, so it is polled --
+      // one request a minute, about yourself.
+      const timer = setInterval(paintDot, 60_000);
+      api.onDispose(() => clearInterval(timer));
 
       if (userId && api.slack.web.available) {
         api.slack.web
@@ -163,8 +229,7 @@ export default {
         name.textContent = '';
       }
 
-      api.helpers.tooltip(me, t('account'), presence || undefined);
-      return api.dom.h('div', {}, [me]);
+      return api.dom.h('div', {}, [me, settings]);
     });
   },
 };
