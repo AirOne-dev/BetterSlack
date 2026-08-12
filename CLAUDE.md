@@ -127,6 +127,17 @@ install starts with `installed: []` and the user installs from the Browse shelf.
 `enabled` is always a subset of `installed`, enforced in `store.ts` so a
 hand-edited settings file cannot produce an enabled-but-not-installed state.
 
+The panel and `api.ui.modal` render into the **light DOM** wearing Slack's own
+`c-dialog` / `c-menu` / `c-button` classes, so Slack's stylesheet styles them
+directly and they follow every theme exactly. They used to live in a shadow
+root, reimplementing the look from tokens — which lands close but never right.
+The trade-off is deliberate: a theme that restyles `.c-dialog` restyles them
+too. Toasts stay in a shadow root, since Slack has no toast to borrow from and
+an unreadable error message is worse than an off-brand one.
+
+Destructive actions belong behind the row overflow menu, not on the row: a
+Remove button on every line shouted louder than anything else in the dialog.
+
 The panel re-renders wholesale on every change, and one toggle triggers several
 renders in a frame. Scroll position therefore comes from the user's own scroll
 events, not from reading the DOM at render time — reading it captured a 0 left
