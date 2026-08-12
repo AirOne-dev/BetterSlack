@@ -115,3 +115,17 @@ test('no backtick can sneak into the panel stylesheet', () => {
   assert.ok(body, 'PANEL_CSS must be a template literal');
   assert.doesNotMatch(body, /`/, 'a backtick inside PANEL_CSS ends the string early');
 });
+
+/**
+ * Switching workspace does not reload the client, so anything cached at boot
+ * outlives the workspace it belongs to. The session token is the one that
+ * matters: keep it past a switch and every call goes out for the wrong team,
+ * which Slack reports as ordinary errors and which looks like broken plugins.
+ */
+test('the session token is cached per workspace, not once', () => {
+  const source = read('src/runtime/web-api.ts');
+  const fn = source.match(/export function createWebApi[\s\S]*?const call =/);
+  assert.ok(fn, 'createWebApi must exist');
+  assert.match(fn[0], /currentTeamId\(\)/, 'the cache has to be keyed by the team in the URL');
+  assert.match(fn[0], /team !== cachedTeam/, 'and re-read when it changes');
+});

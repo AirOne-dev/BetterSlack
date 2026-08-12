@@ -47,6 +47,15 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 - **Slack's CDN has no CORS headers.** `fetch('https://ca.slack-edge.com/…')`
   from the renderer always fails; downloads go through `api.files.save`, which
   the loader performs.
+- **Switching workspace does not reload the client.** Same page, same mods,
+  same api objects, new team id in the URL. Anything a mod cached at boot then
+  belongs to the workspace the user has left. `web-api.ts` keys its config on
+  `currentTeamId()` for exactly this reason — caching the token once made every
+  call go out for the wrong team, which Slack reports as ordinary errors and
+  which reads as "this plugin is broken". If a mod holds per-workspace state
+  (members, VIPs, anything from `users.info`), it has to watch the team in the
+  URL and drop it. Two workspaces can also use the same channel id, so compare
+  the team, not only the channel.
 - **Slack's API refuses cookie-only auth.** It needs the `xoxc-` token from
   `localStorage`. Only `src/runtime/web-api.ts` may read it; mods use
   `api.slack.web`.

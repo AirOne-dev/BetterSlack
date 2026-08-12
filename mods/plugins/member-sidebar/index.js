@@ -191,6 +191,10 @@ const CSS = `
   order: 99;
   display: flex;
   flex-direction: column;
+  /* Without these a flex item is sized by its content, so a long list grows
+     the column past the window instead of scrolling inside it. */
+  min-height: 0;
+  max-height: 100%;
   overflow-y: auto;
   padding: 16px 8px;
   background: var(--dt_color-base-sec, rgba(var(--sk_foreground_min_solid, 248, 248, 248), 1));
@@ -335,6 +339,12 @@ const CSS = `
 }
 `;
 
+/** Team id from the client URL: /client/<team>/<channel>. */
+function currentTeamId() {
+  const match = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
 /** Channel id from the client URL: /client/<team>/<channel>. */
 function currentChannelId() {
   const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
@@ -418,8 +428,12 @@ export default {
      * VIP is a preference holding a comma-separated list, so the menu needs to
      * know the current state to offer add or remove rather than a blind toggle.
      */
-    const vips = new Set();
-    void api.slack.vipUsers().then((ids) => ids.forEach((id) => vips.add(id))).catch(() => {});
+    let vips = new Set();
+    const loadVips = () => {
+      vips = new Set();
+      void api.slack.vipUsers().then((ids) => ids.forEach((id) => vips.add(id))).catch(() => {});
+    };
+    loadVips();
 
     /** Everything users.info holds, plus presence and do-not-disturb. */
     const profiles = new Map();
@@ -572,6 +586,10 @@ export default {
       const root = api.dom.h('div', {
         class: 'slackmod-profile',
         'data-qa': 'member_profile_pane',
+        // Say who this is instead of leaving it to be read off the avatar URL:
+        // a custom or bot avatar is not served from Slack's CDN and carries no
+        // id at all, which left add-ons announcing they could not tell.
+        'data-user-id': userId,
       });
 
       if (data.error) {
@@ -894,8 +912,22 @@ export default {
     // Slack changes channel without any navigation event a mod can hook, so the
     // URL is polled. One string comparison a second is cheaper than the
     // MutationObserver on the header it would otherwise take.
+    let seenTeam = currentTeamId();
     let seen = currentChannelId();
     const watcher = setInterval(() => {
+      const team = currentTeamId();
+      if (team !== seenTeam) {
+        // A different workspace: different people, different VIPs, and the
+        // cached users belong to the one we left.
+        seenTeam = team;
+        users.clear();
+        presence.clear();
+        profiles.clear();
+        loadVips();
+        // Force the redraw: two workspaces can have the same channel id in the
+        // URL, and then nothing below would notice anything had changed.
+        seen = null;
+      }
       const channel = currentChannelId();
       if (channel === seen) return;
       seen = channel;

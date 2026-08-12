@@ -282,7 +282,7 @@ test('the overflow opens our own menu and never Slack’s profile pane', async (
   }
 });
 
-test('uses the Slack-styled tooltip, never a native title', async () => {
+test('a member row carries no tooltip, only its label', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
   const { api, recorded } = createTestApi({ web: stub.web });
@@ -290,8 +290,10 @@ test('uses the Slack-styled tooltip, never a native title', async () => {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
     const row = document.querySelector('.slackmod-members__row');
-    assert.equal(row.getAttribute('title'), null, 'a native title would show as well, and later');
-    assert.ok(row.getAttribute('aria-label'), 'the helper labels it for screen readers instead');
+    // The row already shows the name; hovering only repeated it.
+    assert.equal(row.getAttribute('title'), null, 'no native tooltip');
+    assert.equal(document.querySelector('.c-tooltip__tip'), null, 'and none of ours either');
+    assert.ok(row.getAttribute('aria-label'), 'the name is still announced');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -491,6 +493,55 @@ test('Huddle asks Slack to open its own preview', async () => {
     huddle.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.deepEqual(recorded.huddles, ['U1']);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('says who the profile belongs to, rather than leaving it to be guessed', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  // A bot avatar: not on Slack's CDN, so the URL carries no user id at all.
+  stub.web.userInfo = async (id) => ({
+    id, profile: { display_name: 'Bot', image_512: 'https://a.slack-edge.com/bot_icons/x_48.png' },
+  });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const pane = recorded.modals[0].body.querySelector('[data-qa="member_profile_pane"]');
+    assert.equal(pane.getAttribute('data-user-id'), 'U1');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('forgets a workspace’s people when the workspace changes', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  let lookups = 0;
+  stub.web.call = async (method, params) => {
+    if (method === 'conversations.members') return { ok: true, members: ['U1'] };
+    if (method === 'users.info') { lookups++; return { ok: true, users: [{ id: 'U1', profile: {} }] }; }
+    return { ok: true };
+  };
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(lookups, 1);
+
+    // Same channel id, different team: the cached people belong to the old one.
+    dom.dom.reconfigure({ url: 'https://app.slack.com/client/T999OTHER/C0BFQCYBRAB' });
+    await new Promise((resolve) => setTimeout(resolve, 1300));
+    document.getElementById('slackmod-member-column').replaceChildren();
+    await new Promise((resolve) => setTimeout(resolve, 1300));
+    assert.ok(lookups >= 2, 'it looked them up again instead of reusing the other workspace');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
