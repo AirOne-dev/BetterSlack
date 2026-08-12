@@ -227,7 +227,7 @@ test('User Inspector fills in the dialog without knowing it exists', async () =>
   }
 });
 
-test('“Open in Slack” takes the details-modal route, matched on the user id', async () => {
+test('the Slack actions press Slack’s own buttons, matched on the user id', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
   const { api, recorded } = createTestApi({ web: stub.web });
@@ -252,11 +252,35 @@ test('“Open in Slack” takes the details-modal route, matched on the user id'
       document.body.append(modal);
     });
 
-    const action = recorded.modals[0].options.actions.find((a) => a.label === 'Open in Slack');
-    assert.ok(action, 'the dialog offers the way through to Slack’s own profile');
-    action.onClick();
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    assert.equal(opened, 'U1');
+    // Slack's pane appears once its member row is clicked, carrying the
+    // buttons this proxies to.
+    let pressed = null;
+    document.body.addEventListener('slackmod-test-pane', () => {
+      const pane = document.createElement('div');
+      pane.setAttribute('data-qa', 'member_profile_pane');
+      pane.innerHTML =
+        '<img class="p-r_member_profile__avatar__img" src="https://ca.slack-edge.com/T025V5WN2-U1-abc-512">';
+      for (const hook of ['member_profile_message_btn', 'member_profile_huddle_btn']) {
+        const b = document.createElement('button');
+        b.setAttribute('data-qa', hook);
+        b.addEventListener('click', () => { pressed = hook; });
+        pane.append(b);
+      }
+      document.body.append(pane);
+    });
+
+    const message = [...recorded.modals[0].body.querySelectorAll('button')]
+      .find((b) => b.textContent === 'Message');
+    assert.ok(message, 'the dialog offers Message, like Slack’s pane');
+    message.click();
+
+    // The details modal opens first; the pane follows once its row is clicked.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    document.body.dispatchEvent(new window.Event('slackmod-test-pane'));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    assert.equal(opened, 'U1', 'it reached the right person’s row');
+    assert.equal(pressed, 'member_profile_message_btn', 'and pressed Slack’s own button');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -324,6 +348,55 @@ test('never prints a raw emoji shortcode', async () => {
     const text = recorded.modals[0].body.textContent;
     assert.match(text, /On holiday/);
     assert.doesNotMatch(text, /:tada:/, 'a custom shortcode has no unicode to fall back on');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('the copy actions need nothing from Slack', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  stub.web.userInfo = async (id) => ({ id, name: 'zoe.b', profile: { display_name: 'Zoe' } });
+  stub.web.teamDomain = 'acme';
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const actions = recorded.modals[0].options.actions;
+    const labels = actions.map((a) => a.label);
+    assert.deepEqual(labels, ['Copy name', 'Copy member ID', 'Copy profile link']);
+
+    for (const action of actions) {
+      // Every one keeps the dialog open: copying is rarely the last thing.
+      assert.equal(action.onClick(), false);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const { clipboard } = dom.recorded;
+    assert.deepEqual(clipboard, ['@zoe.b', 'U1', 'https://acme.slack.com/team/U1']);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('offers the same four actions Slack’s pane does', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const labels = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')]
+      .map((b) => b.textContent);
+    assert.deepEqual(labels, ['Message', 'Huddle', 'VIP', 'More…']);
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

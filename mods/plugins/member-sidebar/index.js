@@ -23,6 +23,14 @@
 //     only renders while the window is visible, so it is the secondary action
 //     here rather than what a click does.
 //
+// What Slack's pane offers beyond information -- Message, Huddle, VIP and its
+// overflow menu -- has no public API and no in-client URL, so the dialog does
+// not reimplement any of it: those buttons open Slack's own pane and press
+// Slack's own button, found by the stable data-qa hooks it puts on them
+// (member_profile_message_btn and friends). The overflow is proxied as a whole
+// rather than item by item, because its entries carry no distinguishing
+// attribute -- only a localised label and an id that changes every render.
+//
 // Clicking a member opens a profile dialog of our own instead. It carries
 // `data-qa="member_profile_pane"` and Slack's avatar class, which is not
 // decoration: that is the contract every profile add-on in this repository
@@ -166,6 +174,12 @@ const CSS = `
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.5);
 }
 .slackmod-profile__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
+.slackmod-profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
 .slackmod-profile__fields { margin-top: 20px; }
 .slackmod-profile__note {
   margin-top: 16px;
@@ -251,7 +265,22 @@ export default {
     };
 
     /**
-     * Open Slack's own profile pane for a member, as a secondary action.
+     * The open pane belonging to this person, if there is one.
+     *
+     * All of them are checked rather than the first: this plugin's own dialog
+     * is a profile pane too, and Slack's may be open behind it, so "the first
+     * one in the document" is reliably the wrong answer.
+     */
+    const openPaneFor = (userId) => {
+      for (const pane of document.querySelectorAll('[data-qa="member_profile_pane"]')) {
+        const src = pane.querySelector('.p-r_member_profile__avatar__img')?.getAttribute('src') ?? '';
+        if (src.includes(`-${userId}-`)) return pane;
+      }
+      return null;
+    };
+
+    /**
+     * Bring up Slack's own profile pane for a member and resolve with it.
      *
      * The only route in is Slack's member list: open the channel details modal
      * (which lands on its Members tab) and click the row for this person. Rows
@@ -259,33 +288,60 @@ export default {
      * beside it, so this does not depend on the display language and does not
      * confuse two people called the same thing.
      *
-     * It is not what a click does, for two reasons: it takes a second, and
-     * Slack does not render that modal at all while its window is in the
-     * background, so it fails exactly when a dialog of our own would not.
+     * Slack renders none of this while its window is in the background, which
+     * is the other half of why the dialog exists rather than this being what a
+     * click does.
      */
     const openSlackProfile = async (userId) => {
+      const already = openPaneFor(userId);
+      if (already) return already;
+
       const stack = document.querySelector('[data-qa="avatar_stack"]');
       if (!stack) {
         api.ui.toast('Slack is not showing a member list for this conversation.', { variant: 'warn' });
-        return;
+        return null;
       }
       stack.click();
 
-      const deadline = Date.now() + 5000;
+      const deadline = Date.now() + 6000;
+      let clicked = false;
       while (Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 120));
-        const modal = document.querySelector('[data-qa="channel_details_modal"]');
-        if (!modal) continue;
-        const match = [...modal.querySelectorAll('[data-qa="unstyled-button"]')].find((candidate) =>
-          (candidate.querySelector('img')?.getAttribute('src') ?? '').includes(`-${userId}-`));
-        if (match) {
-          match.click();
-          return;
+        if (!clicked) {
+          const modal = document.querySelector('[data-qa="channel_details_modal"]');
+          const match = modal && [...modal.querySelectorAll('[data-qa="unstyled-button"]')].find((c) =>
+            (c.querySelector('img')?.getAttribute('src') ?? '').includes(`-${userId}-`));
+          if (match) {
+            match.click();
+            clicked = true;
+          }
+          continue;
         }
+        const pane = openPaneFor(userId);
+        if (pane) return pane;
       }
-      // Slack pages long member lists, so the row may not be there yet. Leaving
-      // its modal open is the useful failure: the person is one search away.
-      api.log.warn(`could not find ${userId} in Slack's member list`);
+      // Slack pages long member lists, so the row may never have been rendered.
+      api.ui.toast('Slack did not open that profile. Its window may be in the background.', {
+        variant: 'warn',
+      });
+      return null;
+    };
+
+    /**
+     * Press one of Slack's own profile buttons on the user's behalf.
+     *
+     * Slack marks these with stable data-qa hooks, so this is a proxy rather
+     * than a reimplementation: whatever Message, Huddle or VIP do, they keep
+     * doing, including whatever they grow into later.
+     */
+    const pressInSlack = async (userId, hook) => {
+      const pane = await openSlackProfile(userId);
+      const button = pane?.querySelector(`[data-qa="${hook}"]`);
+      if (!button) {
+        if (pane) api.ui.toast('Slack does not offer that for this person.', { variant: 'warn' });
+        return;
+      }
+      button.click();
     };
 
     /** Everything users.info holds, plus presence and do-not-disturb. */
@@ -327,7 +383,7 @@ export default {
      * user id off the avatar the same way, and appends to it. Renaming either
      * of those breaks that, so do not.
      */
-    const buildProfile = (userId, data) => {
+    const buildProfile = (userId, data, close = () => {}) => {
       const root = api.dom.h('div', {
         class: 'slackmod-profile',
         'data-qa': 'member_profile_pane',
@@ -380,6 +436,29 @@ export default {
 
       root.append(api.dom.h('div', { class: 'slackmod-profile__head' }, [avatar, identity]));
 
+      // The same four Slack offers, in the same order, doing the same things --
+      // by pressing Slack's own buttons. The overflow opens Slack's menu whole:
+      // its entries have no attribute to aim at, only a localised label and an
+      // id that changes on every render.
+      const actions = api.dom.h('div', { class: 'slackmod-profile__actions' });
+      for (const [label, hook] of [
+        ['Message', 'member_profile_message_btn'],
+        ['Huddle', 'member_profile_huddle_btn'],
+        ['VIP', 'member_profile_vip_btn'],
+        ['More…', 'member_profile_more_btn'],
+      ]) {
+        const button = api.dom.h('button', {
+          class: 'c-button c-button--outline c-button--medium',
+          type: 'button',
+        }, [label]);
+        button.addEventListener('click', () => {
+          close();
+          void pressInSlack(userId, hook);
+        });
+        actions.append(button);
+      }
+      root.append(actions);
+
       // Slack's own field markup, through the helper, so these rows look like
       // the ones in Slack's pane rather than like something bolted on.
       const rows = [
@@ -397,40 +476,60 @@ export default {
       for (const [label, value] of rows) fields.append(api.helpers.field(label, String(value)));
       root.append(fields);
 
-      root.append(api.dom.h('div', { class: 'slackmod-profile__note' }, [
-        'Messaging, huddles and the rest live in Slack\'s own profile — "Open in Slack" below.',
-      ]));
       return root;
     };
 
     const openProfileDialog = async (userId) => {
       const known = profiles.get(userId);
+      // The dialog has to be able to close itself from inside its own body, and
+      // the handle only exists after the call, so the buttons go through a box.
+      const box = { close: () => {} };
+      const close = () => box.close();
       const handle = api.ui.modal({
         title: 'Profile',
         width: 560,
         content: known
-          ? buildProfile(userId, known)
+          ? buildProfile(userId, known, close)
           : api.dom.h('div', { class: 'slackmod-profile__note' }, ['Loading…']),
+        // The copies Slack keeps in its overflow menu. They need nothing from
+        // Slack, so they are instant and work with its window in the
+        // background; false keeps the dialog open, since copying something is
+        // rarely the last thing you came here to do.
         actions: [
           {
+            label: 'Copy name',
+            onClick: () => {
+              const user = profiles.get(userId)?.user;
+              const handleName = user?.name ?? user?.profile?.display_name ?? userId;
+              void api.helpers.copy(`@${handleName}`, 'Copied the display name');
+              return false;
+            },
+          },
+          {
             label: 'Copy member ID',
-            // false keeps the dialog open: copying an id is usually the first
-            // of several things you came here to do, not the last.
             onClick: () => {
               void api.helpers.copy(userId, 'Copied the member ID');
               return false;
             },
           },
           {
-            label: 'Open in Slack',
-            onClick: () => void openSlackProfile(userId),
+            label: 'Copy profile link',
+            onClick: () => {
+              const domain = api.slack.web.teamDomain;
+              const link = domain
+                ? `https://${domain}.slack.com/team/${userId}`
+                : `${location.origin}/team/${userId}`;
+              void api.helpers.copy(link, 'Copied the profile link');
+              return false;
+            },
           },
         ],
       });
+      box.close = () => handle.close();
       if (known) return;
       const data = await loadProfile(userId);
       // The dialog may already be gone; body still exists but is detached.
-      if (handle.body.isConnected) handle.body.replaceChildren(buildProfile(userId, data));
+      if (handle.body.isConnected) handle.body.replaceChildren(buildProfile(userId, data, close));
     };
 
     const row = (user) => {
