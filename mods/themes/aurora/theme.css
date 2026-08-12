@@ -144,7 +144,7 @@ body {
 .p-tab_rail,
 .p-ia4_top_nav,
 .c-message_attachment,
-[data-qa="message_input"] {
+.c-wysiwyg_container {
   backdrop-filter: blur(22px) saturate(140%);
   -webkit-backdrop-filter: blur(22px) saturate(140%);
 }
@@ -163,7 +163,7 @@ body {
 .p-tab_rail__button,
 .c-message_actions__group,
 .c-message_attachment,
-[data-qa="message_input"] {
+.c-wysiwyg_container {
   border-radius: 14px !important;
 }
 
@@ -222,7 +222,14 @@ body {
   box-shadow: 0 8px 26px rgba(6, 4, 16, 0.5);
 }
 
-[data-qa="message_input"] {
+/*
+ * The composer's box — background, border and corners — belongs to
+ * .c-wysiwyg_container, three levels above [data-qa="message_input"].
+ * That inner element is transparent and border-less by default, so styling it
+ * draws a second box inside Slack's own.
+ */
+.c-wysiwyg_container {
+  background: rgba(18, 16, 34, 0.45) !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   box-shadow: 0 10px 34px rgba(6, 4, 16, 0.4);
 }
