@@ -169,7 +169,7 @@ html, body { background-color: var(--dc-bg-primary); }
 
 .c-message_attachment,
 .c-message_actions__group,
-[data-qa="message_input"],
+.c-wysiwyg_container,
 .c-tooltip__tip,
 .p-control_strip__circle_button {
   border-radius: 8px !important;
@@ -206,7 +206,13 @@ html, body { background-color: var(--dc-bg-primary); }
 }
 
 /* Composer: a raised rounded field, the way Discord's is. */
-[data-qa="message_input"] {
+/*
+ * The composer's box — background, border and corners — belongs to
+ * .c-wysiwyg_container, three levels above [data-qa="message_input"].
+ * That inner element is transparent and border-less by default, so styling it
+ * draws a second box inside Slack's own.
+ */
+.c-wysiwyg_container {
   background: var(--dc-composer) !important;
   border: none !important;
   box-shadow: none !important;

@@ -105,6 +105,18 @@ A dark theme can skip the chrome families and mostly get away with it, because
 Slack's default chrome is already dark. A light theme cannot — it comes out as
 light content inside a dark frame.
 
+### The composer is two elements
+
+`[data-qa="message_input"]` is the editable area, and it is transparent and
+border-less by default. The visible box — background, 1px border, 8px corners —
+belongs to `.c-wysiwyg_container`, three levels up. Styling the inner one draws
+a second box inside Slack's own, which is exactly as bad as it sounds:
+
+```css
+[data-qa="message_input"] { background: #222; border: 1px solid #444; }  /* wrong */
+.c-wysiwyg_container      { background: #222; border: 1px solid #444; }  /* right */
+```
+
 ### Opaque panes
 
 Slack's own panes paint their own background. For a gradient or glass effect,
@@ -128,7 +140,8 @@ names that have held up.
 | `[data-qa="message_container"]` | one message; carries `data-msg-ts`, `data-msg-channel-id` |
 | `[data-qa="message-text"]` | its body |
 | `[data-qa="message-actions"]` | the hover toolbar |
-| `[data-qa="message_input"]` | the composer |
+| `.c-wysiwyg_container` | the composer's **box** — background, border, corners |
+| `[data-qa="message_input"]` | the editable inside it; transparent by default |
 | `[data-qa="channel-sidebar"]`, `.p-channel_sidebar` | the sidebar |
 | `.p-channel_sidebar__channel--selected` | the open channel row |
 | `[data-qa="tab_rail_desktop"]`, `.p-tab_rail` | the icon rail |
@@ -180,7 +193,7 @@ names that have held up.
 **Frosted panels** — note `.p-theme_background` has to be cleared first:
 
 ```css
-.p-channel_sidebar, .p-tab_rail, [data-qa="message_input"] {
+.p-channel_sidebar, .p-tab_rail, .c-wysiwyg_container {
   backdrop-filter: blur(22px) saturate(140%);
 }
 ```
