@@ -108,7 +108,6 @@ html, body { background-color: var(--cocoa-paper); }
 .p-theme_background { background: var(--cocoa-paper) !important; }
 
 /* Soft everything. */
-.p-channel_sidebar__static_list__item,
 .p-channel_sidebar__channel,
 .p-channel_sidebar__section_heading,
 .c-button,
@@ -125,7 +124,11 @@ html, body { background-color: var(--cocoa-paper); }
   border-radius: 18px !important;
 }
 
+/* .c-base_icon__width_only_container carries the same tinted background as the
+ * image and keeps Slack's 4px corners, so rounding only the image leaves four
+ * square nubs poking out from behind it. */
 .c-avatar,
+.c-base_icon__width_only_container,
 .c-avatar img,
 .p-channel_sidebar__user_avatar img {
   border-radius: 38% !important;
@@ -160,8 +163,13 @@ html, body { background-color: var(--cocoa-paper); }
   background: rgba(161, 85, 58, 0.06) !important;
 }
 
-.p-channel_sidebar__channel--selected,
-.p-channel_sidebar__static_list__item--selected {
+/*
+ * Only the inner element is painted. Its parent
+ * (.p-channel_sidebar__static_list__item--selected) is transparent and exists
+ * to give the row an 8px gutter, so styling both draws a full-width slab
+ * behind the inset pill.
+ */
+.p-channel_sidebar__channel--selected {
   background: var(--cocoa-accent) !important;
   color: #fff8f2 !important;
 }
