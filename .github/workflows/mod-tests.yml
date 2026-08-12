@@ -1,0 +1,81 @@
+name: Mod tests
+
+# One job per mod touched by this pull request, and only those. A contributor
+# is judged on their own mod: somebody else's failing tests cannot block their
+# merge, and their failing tests cannot block anybody else's.
+#
+# The one exception is deliberate — when the shared runtime API or the test
+# harness changes, changed-mods.mjs returns every mod, because the contract they
+# were all written against has moved.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  changed:
+    name: which mods changed
+    runs-on: ubuntu-latest
+    outputs:
+      mods: ${{ steps.list.outputs.mods }}
+      any: ${{ steps.list.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - id: list
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+        run: |
+          mods=$(node scripts/changed-mods.mjs --base "$BASE" --json)
+          echo "mods=$mods" >> "$GITHUB_OUTPUT"
+          if [ "$mods" = "[]" ]; then echo "any=false" >> "$GITHUB_OUTPUT"; else echo "any=true" >> "$GITHUB_OUTPUT"; fi
+          echo "Changed mods: $mods"
+
+  test:
+    name: test (${{ matrix.mod }})
+    needs: changed
+    if: needs.changed.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mod: ${{ fromJson(needs.changed.outputs.mods) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:mod -- ${{ matrix.mod }}
+
+  # Stable name for branch protection; see the note in mod-structure.yml.
+  gate:
+    name: mod tests
+    needs: [changed, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify
+        run: |
+          if [ "${{ needs.changed.result }}" != "success" ]; then
+            echo "::error::Could not work out which mods changed."
+            exit 1
+          fi
+          if [ "${{ needs.changed.outputs.any }}" != "true" ]; then
+            echo "No mods touched by this branch."
+            exit 0
+          fi
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "::error::At least one mod's tests failed. See the 'test (…)' jobs."
+            exit 1
+          fi
+          echo "Every changed mod passed its tests."

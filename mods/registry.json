@@ -1,0 +1,196 @@
+{
+  "generatedAt": "on-commit",
+  "mods": [
+    {
+      "id": "aurora",
+      "name": "Aurora",
+      "type": "theme",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Frosted glass over a slow aurora gradient. Translucent panels, soft 14px corners, a violet glow that follows what you hover. Heavier on the GPU than a flat theme.",
+      "entry": "theme.css",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "dark",
+        "glass",
+        "colourful"
+      ],
+      "path": "themes/aurora"
+    },
+    {
+      "id": "avatar-downloader",
+      "name": "Avatar Downloader",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Download a member's profile picture at the highest quality Slack stores — the original upload when there is one, otherwise the largest rendition. Adds a button to the profile pane and to the hover actions on a message.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "profile",
+        "files"
+      ],
+      "path": "plugins/avatar-downloader"
+    },
+    {
+      "id": "channel-notes",
+      "name": "Channel Notes",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "A private scratchpad per channel, opened from a button in the channel header. Notes are stored locally and never sent anywhere. Doubles as the worked example of the SlackMod widget API.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "productivity",
+        "example"
+      ],
+      "path": "plugins/channel-notes"
+    },
+    {
+      "id": "cocoa",
+      "name": "Cocoa",
+      "type": "theme",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "A warm, low-contrast light theme: cream paper, cocoa text, generous 18px corners and soft shadows instead of borders. Easy on the eyes for a long day of reading.",
+      "entry": "theme.css",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "light",
+        "warm",
+        "soft"
+      ],
+      "path": "themes/cocoa"
+    },
+    {
+      "id": "composer-char-count",
+      "name": "Composer Character Count",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Shows a live character count under the message composer, and warns before you cross Slack's 4000-character limit and get split into two messages.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "composer"
+      ],
+      "path": "plugins/composer-char-count"
+    },
+    {
+      "id": "copy-message-link",
+      "name": "Copy Message Link",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "One-click permalink copy in the hover actions, instead of opening the overflow menu and hunting for Copy link. Confirms with a small toast.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "messages"
+      ],
+      "path": "plugins/copy-message-link"
+    },
+    {
+      "id": "focus-mode",
+      "name": "Focus Mode",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Press Cmd/Ctrl+Shift+F to fold away the sidebar, the rail and the top bar, leaving just the conversation on a narrower, centred column. Press again to bring it all back.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "productivity",
+        "layout"
+      ],
+      "path": "plugins/focus-mode"
+    },
+    {
+      "id": "focus-rings",
+      "name": "Focus Rings",
+      "type": "theme",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Thicker, higher-contrast keyboard focus outlines everywhere in Slack. Useful if you drive Slack from the keyboard or lose the cursor on a large screen.",
+      "entry": "theme.css",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "accessibility"
+      ],
+      "path": "themes/focus-rings"
+    },
+    {
+      "id": "midnight",
+      "name": "Midnight",
+      "type": "theme",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "A deeper, cooler dark theme. Overrides Slack's design tokens rather than its class names, so it keeps working across Slack updates.",
+      "entry": "theme.css",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "dark"
+      ],
+      "path": "themes/midnight"
+    },
+    {
+      "id": "quote-reply",
+      "name": "Quote Reply",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Adds a Reply button to the hover actions on a message. It drops a link to that message into the composer as a single \".\" and focuses it, so your answer posts in the channel with Slack's own preview of the message you are answering.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "messages",
+        "composer"
+      ],
+      "path": "plugins/quote-reply"
+    },
+    {
+      "id": "terminal",
+      "name": "Terminal",
+      "type": "theme",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Slack as a phosphor terminal: monospace everywhere, zero rounded corners, hairline borders, amber and green on near-black. Square avatars included.",
+      "entry": "theme.css",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "dark",
+        "monospace",
+        "retro"
+      ],
+      "path": "themes/terminal"
+    },
+    {
+      "id": "user-inspector",
+      "name": "User Inspector",
+      "type": "plugin",
+      "version": "1.1.0",
+      "author": "AirOne-dev",
+      "description": "Shows everything Slack's API knows about a member — roles, timezone, presence, do-not-disturb, custom fields and every avatar size — as extra sections inside their profile, styled like Slack's own. Read-only; nothing leaves your machine.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "profile",
+        "api"
+      ],
+      "path": "plugins/user-inspector"
+    }
+  ]
+}

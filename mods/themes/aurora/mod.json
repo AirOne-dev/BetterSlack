@@ -1,0 +1,12 @@
+{
+  "id": "aurora",
+  "name": "Aurora",
+  "type": "theme",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Frosted glass over a slow aurora gradient. Translucent panels, soft 14px corners, a violet glow that follows what you hover. Heavier on the GPU than a flat theme.",
+  "entry": "theme.css",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["dark", "glass", "colourful"]
+}
