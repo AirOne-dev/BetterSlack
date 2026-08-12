@@ -227,7 +227,32 @@ test('User Inspector fills in the dialog without knowing it exists', async () =>
   }
 });
 
-test('the Slack actions press Slack’s own buttons, matched on the user id', async () => {
+test('Message opens the direct message directly, with no staged clicks', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  let opened = null;
+  api.slack.openDirectMessage = async (id) => { opened = id; return 'D1'; };
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const message = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')]
+      .find((b) => b.textContent === 'Message');
+    assert.ok(message, 'the dialog offers Message');
+    message.click();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(opened, 'U1', 'one API call, not a walk through Slack’s UI');
+    assert.equal(document.querySelector('[data-qa="avatar_stack"]').dataset.clicked, undefined);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('the overflow opens our own menu and never Slack’s profile pane', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
   const { api, recorded } = createTestApi({ web: stub.web });
@@ -235,52 +260,22 @@ test('the Slack actions press Slack’s own buttons, matched on the user id', as
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
     document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const before = document.querySelectorAll('[data-qa="member_profile_pane"]').length;
+    const more = recorded.modals[0].body.querySelector('.slackmod-profile__more');
+    assert.ok(more.querySelector('svg'), 'the ellipsis glyph, like Slack’s');
+    more.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    let opened = null;
-    document.querySelector('[data-qa="avatar_stack"]').addEventListener('click', () => {
-      const modal = document.createElement('div');
-      modal.setAttribute('data-qa', 'channel_details_modal');
-      // Two rows; only the avatar id tells them apart.
-      for (const id of ['U9', 'U1']) {
-        const row = document.createElement('button');
-        row.setAttribute('data-qa', 'unstyled-button');
-        row.innerHTML = `<img src="https://ca.slack-edge.com/T025V5WN2-${id}-abc-48">`;
-        row.addEventListener('click', () => { opened = id; });
-        modal.append(row);
-      }
-      document.body.append(modal);
-    });
-
-    // Slack's pane appears once its member row is clicked, carrying the
-    // buttons this proxies to.
-    let pressed = null;
-    document.body.addEventListener('slackmod-test-pane', () => {
-      const pane = document.createElement('div');
-      pane.setAttribute('data-qa', 'member_profile_pane');
-      pane.innerHTML =
-        '<img class="p-r_member_profile__avatar__img" src="https://ca.slack-edge.com/T025V5WN2-U1-abc-512">';
-      for (const hook of ['member_profile_message_btn', 'member_profile_huddle_btn']) {
-        const b = document.createElement('button');
-        b.setAttribute('data-qa', hook);
-        b.addEventListener('click', () => { pressed = hook; });
-        pane.append(b);
-      }
-      document.body.append(pane);
-    });
-
-    const message = [...recorded.modals[0].body.querySelectorAll('button')]
-      .find((b) => b.getAttribute('aria-label') === 'Message');
-    assert.ok(message, 'the dialog offers Message, like Slack’s pane');
-    message.click();
-
-    // The details modal opens first; the pane follows once its row is clicked.
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    document.body.dispatchEvent(new window.Event('slackmod-test-pane'));
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    assert.equal(opened, 'U1', 'it reached the right person’s row');
-    assert.equal(pressed, 'member_profile_message_btn', 'and pressed Slack’s own button');
+    const menu = document.getElementById('slackmod-profile-menu');
+    assert.ok(menu, 'our own menu');
+    assert.ok(menu.querySelector('.c-menu__items'), 'in Slack’s menu markup, so it follows the theme');
+    assert.ok(menu.querySelectorAll('.c-menu_item__button').length >= 5, 'with its entries');
+    assert.equal(
+      document.querySelectorAll('[data-qa="member_profile_pane"]').length, before,
+      'and no profile pane was reopened',
+    );
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -384,7 +379,7 @@ test('the copy actions need nothing from Slack', async () => {
   }
 });
 
-test('offers the same four actions Slack’s pane does', async () => {
+test('offers Message and an overflow, and nothing it cannot really do', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
   const { api, recorded } = createTestApi({ web: stub.web });
@@ -395,11 +390,10 @@ test('offers the same four actions Slack’s pane does', async () => {
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     const buttons = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')];
-    assert.deepEqual(buttons.map((b) => b.getAttribute('aria-label')),
-      ['Message', 'Huddle', 'VIP', 'More actions']);
-    // Slack's overflow is a glyph, not a word; a copy has to be the glyph too.
-    assert.equal(buttons[3].textContent, '');
-    assert.ok(buttons[3].querySelector('svg'), 'the ellipsis icon, like Slack’s');
+    assert.equal(buttons.length, 2, 'Huddle and VIP have no public method, so they are not offered');
+    assert.equal(buttons[0].textContent, 'Message');
+    assert.equal(buttons[1].getAttribute('aria-label'), 'More actions');
+    assert.equal(buttons[1].textContent, '', 'a glyph, not a word');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

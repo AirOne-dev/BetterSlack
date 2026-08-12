@@ -9,7 +9,7 @@
 import type { Cleanup } from './dom.js';
 import { h, keepMounted, onEach } from './dom.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
-import { createWebApi, userIdFromAvatarUrl, type WebApi } from './web-api.js';
+import { createWebApi, currentTeamId, userIdFromAvatarUrl, type WebApi } from './web-api.js';
 
 /** Hover toolbar that appears over a message. */
 const ACTIONS_GROUP = '[data-qa="message-actions"]';
@@ -402,6 +402,35 @@ export interface SlackApi {
   /** Run a handler each time a member profile pane opens. */
   onProfilePane(handler: (pane: ProfilePane) => void): Cleanup;
   /**
+   * Move the client to a conversation, without a page load.
+   *
+   * Slack's own navigation lives in a private closure: its router state is
+   * pushed with history.pushState and nothing outside reacts to a synthetic
+   * popstate, there is no exposed React Router instance, and an <a> to
+   * /archives/<id> leaves the client entirely. What does work is Slack's own
+   * documented deep-link scheme, which the desktop app handles in place --
+   * measured against 4.51: same document, no reload, view follows.
+   */
+  openConversation(channelId: string): void;
+
+  /**
+   * Open the direct message with someone, creating it if there is none.
+   *
+   * `conversations.open` returns the IM's id, and opening one that did not
+   * exist makes Slack navigate to it on its own; the deep link covers the rest.
+   */
+  openDirectMessage(userId: string): Promise<string | null>;
+
+  /** Show someone's profile in Slack, through the same deep-link scheme. */
+  openUserProfile(userId: string): void;
+
+  /** Remove a conversation from the sidebar. The history is untouched. */
+  hideConversation(channelId: string): Promise<void>;
+
+  /** Files someone shared, newest first. */
+  filesFrom(userId: string, limit?: number): Promise<Array<Record<string, unknown>>>;
+
+  /**
    * Slack's own web API, as the signed-in user. Reads the session token in one
    * audited place so mods never touch localStorage themselves; requests can
    * only reach Slack's own origin. See src/runtime/web-api.ts.
@@ -420,12 +449,49 @@ export interface SlackApi {
 }
 
 export function createSlackApi(pluginId: string): SlackApi {
+  const web = createWebApi();
   return {
     addMessageAction: (action) => addMessageAction(pluginId, action),
     addToolbarButton: (toolbar, button) => addToolbarButton(pluginId, toolbar, button),
     addProfileButton: (button) => addProfileButton(pluginId, button),
     onProfilePane,
-    web: createWebApi(),
+    web,
+
+    openConversation(channelId: string): void {
+      const team = currentTeamId();
+      if (!team) return;
+      // Assigning location.href hands the URL to the desktop app's protocol
+      // handler, which routes it internally. The page itself does not navigate.
+      window.location.href = `slack://channel?team=${team}&id=${encodeURIComponent(channelId)}`;
+    },
+
+    async openDirectMessage(userId: string): Promise<string | null> {
+      const res = await web.call<{ channel?: { id?: string } }>('conversations.open', {
+        users: userId,
+        return_im: true,
+      });
+      const id = res.channel?.id ?? null;
+      if (id) this.openConversation(id);
+      return id;
+    },
+
+    openUserProfile(userId: string): void {
+      const team = currentTeamId();
+      if (!team) return;
+      window.location.href = `slack://user?team=${team}&id=${encodeURIComponent(userId)}`;
+    },
+
+    async hideConversation(channelId: string): Promise<void> {
+      await web.call('conversations.close', { channel: channelId });
+    },
+
+    async filesFrom(userId: string, limit = 20): Promise<Array<Record<string, unknown>>> {
+      const res = await web.call<{ files?: Array<Record<string, unknown>> }>('files.list', {
+        user: userId,
+        count: limit,
+      });
+      return Array.isArray(res.files) ? res.files : [];
+    },
     describeMessage,
     composer,
     userIdFromMessage: (message) =>
