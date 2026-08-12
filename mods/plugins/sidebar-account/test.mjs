@@ -128,22 +128,45 @@ test('survives having no session token', async () => {
   }
 });
 
-test('lifts Slack’s unread pill clear of the strip and collapses the duplicate avatar', async () => {
+test('collapses the duplicate avatar without breaking Slack’s menu', async () => {
   const dom = installDom();
   const { api, recorded } = createTestApi();
   try {
     await plugin.start(api);
     const css = recorded.css.join('\n');
-
-    // The pill is absolutely positioned 8px off the bottom, which is now the strip.
-    assert.match(css, /\.p-channel_sidebar__banner\s*\{[^}]*bottom:\s*60px/);
-
     // display:none stops Slack's account menu opening at all; collapsing it
     // keeps the menu anchored exactly where it was. Measured, not assumed.
     const rule = css.match(/\.p-control_strip \[data-qa="user-button"\]\s*\{[^}]*\}/);
     assert.ok(rule, 'the rail avatar must be hidden, it is the same person twice');
     assert.match(rule[0], /visibility:\s*hidden/);
     assert.doesNotMatch(rule[0], /display:\s*none/, 'display:none breaks the menu');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('lifts only the unread pill the strip is in the way of', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi();
+  try {
+    const sidebar = document.querySelector('.p-channel_sidebar');
+    // jsdom has no layout, so both pills are given one.
+    const place = (top) => {
+      const el = document.createElement('button');
+      el.className = 'p-channel_sidebar__banner';
+      el.getBoundingClientRect = () => ({ top, height: 28 });
+      sidebar.append(el);
+      return el;
+    };
+    sidebar.getBoundingClientRect = () => ({ top: 100, height: 800 });
+    const above = place(140);   // near the top: unread earlier in the list
+    const below = place(860);   // near the bottom: where the strip now sits
+
+    await plugin.start(api);
+
+    assert.equal(below.style.bottom, '60px', 'the bottom pill clears the strip');
+    assert.equal(above.style.bottom, '', 'the top one is left alone');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -171,6 +194,31 @@ test('moves Slack’s account menu next to the gear that opened it', async () =>
 
     assert.notEqual(panel.style.top, '946px', 'it was moved off Slack’s anchor');
     assert.notEqual(panel.style.left, '65px');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('re-checks the pills when the window is resized', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi();
+  try {
+    const sidebar = document.querySelector('.p-channel_sidebar');
+    sidebar.getBoundingClientRect = () => ({ top: 100, height: 800 });
+    await plugin.start(api);
+
+    // A pill that appears after start, then a resize: onEach saw it, but this
+    // is the path that matters when its position changes rather than its
+    // existence.
+    const pill = document.createElement('button');
+    pill.className = 'p-channel_sidebar__banner';
+    pill.getBoundingClientRect = () => ({ top: 860, height: 28 });
+    sidebar.append(pill);
+    pill.style.bottom = '';
+
+    window.dispatchEvent(new window.Event('resize'));
+    assert.equal(pill.style.bottom, '60px');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

@@ -62,6 +62,12 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 
 ## Slack DOM and CSS
 
+- **Slack has two "jump to unread" pills** in the sidebar, one for unread above
+  and one for below, and they share every class except a hashed CSS-module name
+  (`sidebarBannerBottom__8F6br`) that changes with each build. Tell them apart
+  by which half of the sidebar they sit in, not by that class: a rule matching
+  both sets `top` and `bottom` on the same element, and the top one stretches
+  between them.
 - Class names churn. Anchor on `data-qa` attributes first, then design tokens.
   `.circleButton__cMiUK`-style names are CSS-module output and change per build;
   `.p-channel_sidebar__channel`-style BEM names are stable.

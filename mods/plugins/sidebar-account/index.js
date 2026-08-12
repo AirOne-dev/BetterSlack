@@ -14,6 +14,8 @@
 // of its behaviour intact, and nothing here has to reimplement it.
 
 const STRIP_ID = 'slackmod-account-strip';
+const STRIP_HEIGHT = 52;
+const BANNER_GAP = 8;
 
 /** Slack's own gear, so the control reads as the settings it opens. */
 const GEAR_ICON =
@@ -25,12 +27,6 @@ const CSS = `
 /* The sidebar becomes a column so the strip can sit under a scrolling list. */
 .p-channel_sidebar { display: flex !important; flex-direction: column !important; }
 .p-channel_sidebar__list { flex: 1 1 auto !important; min-height: 0 !important; }
-
-/*
- * Slack's "jump to unread" pill is absolutely positioned 8px off the bottom of
- * the sidebar, which is now where the strip is. Lift it clear of it.
- */
-.p-channel_sidebar__banner { bottom: 60px !important; }
 
 /*
  * The same avatar twice -- once in the rail, once here -- so the rail's copy
@@ -185,9 +181,41 @@ async function placeMenuBy(anchor) {
   panel.style.left = `${Math.round(left)}px`;
 }
 
+/**
+ * Lift Slack's "jump to unread" pill clear of the strip.
+ *
+ * There are two of these pills -- one for unread above, one for unread below --
+ * and they share every class except a hashed CSS-module name that changes with
+ * each Slack build. So they are told apart by where they sit: only the one
+ * anchored to the bottom half of the sidebar has the strip in its way, and
+ * moving the other would stretch it between a top and a bottom offset.
+ *
+ * Nothing is measured against the window, so a resize changes nothing here.
+ */
+function liftBanner(el) {
+  const sidebar = el.closest('.p-channel_sidebar');
+  if (!sidebar) return;
+  const bar = el.getBoundingClientRect();
+  const area = sidebar.getBoundingClientRect();
+  if (bar.top < area.top + area.height / 2) return; // the one for unread above
+  el.style.bottom = `${STRIP_HEIGHT + BANNER_GAP}px`;
+}
+
 export default {
   async start(api) {
     const t = api.i18n.strings(STRINGS);
+
+    // Slack mounts and unmounts these as you scroll, so every one that appears
+    // gets the same treatment.
+    api.dom.onEach('.p-channel_sidebar__banner', liftBanner);
+
+    // And again on resize: which half of the sidebar a pill sits in is a
+    // measurement, and a shorter window can move it across the middle.
+    const onResize = () => {
+      for (const el of document.querySelectorAll('.p-channel_sidebar__banner')) liftBanner(el);
+    };
+    window.addEventListener('resize', onResize);
+    api.onDispose(() => window.removeEventListener('resize', onResize));
     api.css(CSS);
 
     api.dom.keepMounted('.p-channel_sidebar', STRIP_ID, () => {
