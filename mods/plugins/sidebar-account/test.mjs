@@ -75,3 +75,25 @@ test('survives having no session token', async () => {
     dom.cleanup();
   }
 });
+
+test('lifts Slack’s unread pill clear of the strip and collapses the duplicate avatar', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi();
+  try {
+    await plugin.start(api);
+    const css = recorded.css.join('\n');
+
+    // The pill is absolutely positioned 8px off the bottom, which is now the strip.
+    assert.match(css, /\.p-channel_sidebar__banner\s*\{[^}]*bottom:\s*60px/);
+
+    // display:none stops Slack's account menu opening at all; collapsing it
+    // keeps the menu anchored exactly where it was. Measured, not assumed.
+    const rule = css.match(/\.p-control_strip \[data-qa="user-button"\]\s*\{[^}]*\}/);
+    assert.ok(rule, 'the rail avatar must be hidden, it is the same person twice');
+    assert.match(rule[0], /visibility:\s*hidden/);
+    assert.doesNotMatch(rule[0], /display:\s*none/, 'display:none breaks the menu');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

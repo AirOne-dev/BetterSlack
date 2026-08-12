@@ -20,6 +20,29 @@ const CSS = `
 .p-channel_sidebar { display: flex !important; flex-direction: column !important; }
 .p-channel_sidebar__list { flex: 1 1 auto !important; min-height: 0 !important; }
 
+/*
+ * Slack's "jump to unread" pill is absolutely positioned 8px off the bottom of
+ * the sidebar, which is now where the strip is. Lift it clear of it.
+ */
+.p-channel_sidebar__banner { bottom: 60px !important; }
+
+/*
+ * The same avatar twice -- once in the rail, once here -- so the rail's copy
+ * goes. Collapsed rather than display:none, which is not cosmetic hair-
+ * splitting: with display:none Slack's account menu does not open at all, while
+ * collapsed it opens at exactly the same coordinates as when the button is
+ * visible. Measured both ways against 4.51.
+ *
+ * This is CSS in the plugin's own sheet, so switching the plugin off puts the
+ * rail back with nothing to undo.
+ */
+.p-control_strip [data-qa="user-button"] {
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
 #${STRIP_ID} {
   flex: 0 0 auto;
   display: flex;
