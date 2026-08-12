@@ -109,11 +109,6 @@ export class ModManager {
           url,
           filename,
         }),
-      evaluate: (expression) =>
-        this.bridge.request<{ value?: unknown; type?: string; error?: string }>({
-          type: 'devtools.eval',
-          expression,
-        }),
     });
     await this.plugins.load(record, source, api);
   }

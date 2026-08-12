@@ -291,29 +291,6 @@ class Loader {
       case 'loader.info':
         return this.info;
 
-      case 'devtools.eval': {
-        const target = [...this.attachments.values()][0];
-        if (!target) throw new Error('no Slack window attached');
-        const res = await target.session.send<any>('Runtime.evaluate', {
-          expression: request.expression,
-          returnByValue: true,
-          awaitPromise: true,
-          userGesture: true,
-          replMode: true,
-        });
-        if (res.exceptionDetails) {
-          const d = res.exceptionDetails;
-          return { error: d.exception?.description ?? d.text ?? 'evaluation failed' };
-        }
-        // Not everything survives returnByValue (DOM nodes, functions); fall
-        // back to the description CDP gives us.
-        const remote = res.result ?? {};
-        return {
-          value: 'value' in remote ? remote.value : (remote.description ?? String(remote.type)),
-          type: remote.type,
-        };
-      }
-
       case 'file.download': {
         const result = await downloadFile(request.url, request.filename);
         console.log(`[slackmod] saved ${result.path} (${Math.round(result.bytes / 1024)} kB)`);

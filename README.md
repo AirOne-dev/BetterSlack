@@ -32,7 +32,7 @@ Terminal (monospace, square corners, phosphor), Cocoa (warm light), Focus Rings.
 
 **Plugins** — Quote Reply (answer in-channel with an unfurl of the message),
 Copy Message Link, Focus Mode (⌘⇧F), Composer Character Count, Channel Notes,
-User Inspector, Avatar Downloader.
+User Inspector, Avatar Downloader, DevTools.
 
 Several themes can run at once. Terminal is the exception: it restyles through
 `*` selectors, so run it on its own.

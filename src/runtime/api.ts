@@ -63,17 +63,6 @@ export interface PluginApi {
     save(url: string, filename: string): Promise<{ path: string; bytes: number }>;
   };
 
-  /**
-   * Evaluate an expression through the loader.
-   *
-   * Slack's CSP has no 'unsafe-eval', so the page cannot evaluate a string at
-   * all; the loader's CDP session can. This is what a console mod needs, and
-   * the only thing in the API that grants more reach than the page has.
-   */
-  readonly devtools: {
-    evaluate(expression: string): Promise<{ value?: unknown; type?: string; error?: string }>;
-  };
-
   /** Stylesheet owned by this plugin; replaced wholesale on each call. */
   css(text: string): void;
 
@@ -103,7 +92,6 @@ export interface ApiContext {
   getSettings: () => Settings;
   saveModSettings: (id: string, values: Record<string, unknown>) => Promise<void>;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
-  evaluate: (expression: string) => Promise<{ value?: unknown; type?: string; error?: string }>;
 }
 
 export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
@@ -158,10 +146,6 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
 
     files: {
       save: (url, filename) => ctx.download(url, filename),
-    },
-
-    devtools: {
-      evaluate: (expression) => ctx.evaluate(expression),
     },
 
     css(text: string) {
