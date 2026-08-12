@@ -18,12 +18,12 @@ npm install && npm run build
 npm start
 ```
 
-`npm start` restarts Slack and injects the runtime. If Slack lives somewhere
-unusual, set `SLACKMOD_SLACK_PATH=/path/to/Slack`.
+`npm start` restarts Slack with SlackMod attached and stays running — mods are
+active as long as it does. Nothing is installed on a fresh setup: open the panel
+and install what you want from **Browse**.
 
-On macOS, `npm run build-app` produces `dist/SlackMod.app`, which starts the
-loader without a terminal. It is unsigned, so the first launch needs
-right-click → Open.
+**→ [docs/getting-started.md](docs/getting-started.md)** covers running it,
+writing a theme, writing a plugin, testing and shipping.
 
 ## What ships with it
 
@@ -66,8 +66,8 @@ mods/themes/<id>/mod.json    + theme.css
 mods/plugins/<id>/mod.json   + index.js  + test.mjs
 ```
 
-A theme is one CSS file, best written by redefining Slack's design tokens. A
-plugin is an ES module exporting `start(api)`:
+A theme is one CSS file. A plugin is an ES module exporting `start(api)` — and
+most of what a mod needs is one call:
 
 ```js
 export default {
@@ -80,17 +80,14 @@ export default {
 };
 ```
 
-Most of what a mod needs is one call on `api.helpers` — a persisted toggle, a
-hotkey, a badge, a Slack-styled button. `api.slack` covers Slack's own chrome,
-`api.ui` gives you toasts, modals and tooltips with no CSS, and everything
-registered through `api` is undone when the plugin is disabled.
+## Documentation
 
-`mods/plugins/channel-notes` is the worked example — one of everything.
-
-**[API.md](API.md) is the API reference.** [CONTRIBUTING.md](CONTRIBUTING.md)
-covers the four families of Slack colour tokens, the CSP constraints, and what
-gets a pull request rejected. Read both before writing a mod; they will save you
-an afternoon.
+| | |
+| --- | --- |
+| **[Getting started](docs/getting-started.md)** | Run it · write a theme · write a plugin · test · ship |
+| [API reference](docs/api.md) | Every entry, with an example |
+| [Theming Slack](docs/themes.md) | The four colour token families, traps, recipes |
+| [Contributing](CONTRIBUTING.md) | Review rules and the PR checklist |
 
 ## Development
 

@@ -80,8 +80,11 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 
 ## The plugin API
 
-**[API.md](API.md) is the reference — keep it in step with the code.** Adding a
-helper or changing a signature without updating it is an incomplete change.
+**[docs/api.md](docs/api.md) is the reference — keep it in step with the code.**
+Adding a helper or changing a signature without updating it, with an example, is
+an incomplete change. [docs/getting-started.md](docs/getting-started.md) is the
+human entry point and [docs/themes.md](docs/themes.md) holds the CSS knowledge;
+both are part of the same contract.
 
 Shape of it:
 
