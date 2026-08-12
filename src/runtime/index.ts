@@ -6,6 +6,7 @@
 import { ModManager, type BootPayload } from './manager.js';
 import { Bridge } from './rpc.js';
 import { installLauncher } from './ui/launcher.js';
+import { PANEL_CSS } from './ui/styles.js';
 import { Panel } from './ui/panel.js';
 
 declare global {
@@ -50,6 +51,9 @@ async function boot(): Promise<void> {
   // keeps Slack from flashing its default palette on the way up.
   await manager.applyInitial();
 
+  // The panel renders into the light DOM with Slack's own classes, so its
+  // stylesheet is a normal layer rather than something scoped to a shadow root.
+  manager.styles.set('plugin', '__panel', PANEL_CSS);
   const panel = new Panel(manager);
 
   let unmountUi: (() => void) | undefined;
