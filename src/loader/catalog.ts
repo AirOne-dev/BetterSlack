@@ -9,7 +9,15 @@
 
 import { promises as fs, watch as fsWatch, type FSWatcher } from 'node:fs';
 import path from 'node:path';
-import { MOD_API_VERSION, type ModManifest, type ModRecord, type ModType } from '../shared/protocol.js';
+import {
+  isPermission,
+  MOD_API_VERSION,
+  PERMISSIONS,
+  type ModManifest,
+  type ModRecord,
+  type ModType,
+  type Permission,
+} from '../shared/protocol.js';
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,48}$/;
 
@@ -43,15 +51,55 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
   if (m.type !== expectedType) {
     throw new ManifestError(file, `"type" must be "${expectedType}" inside ${expectedType}s/`);
   }
-  const entry = assertString(m.entry, 'entry', file);
   // Entries come from pull requests; refuse anything that could read outside
   // its own directory even if a review misses it.
-  if (path.isAbsolute(entry) || entry.split(/[\\/]/).includes('..')) {
-    throw new ManifestError(file, `"entry" must stay inside the mod directory (got "${entry}")`);
-  }
+  const assertContained = (value: string, field: string): string => {
+    if (path.isAbsolute(value) || value.split(/[\\/]/).includes('..')) {
+      throw new ManifestError(file, `"${field}" must stay inside the mod directory (got "${value}")`);
+    }
+    return value;
+  };
+
+  const entry = assertContained(assertString(m.entry, 'entry', file), 'entry');
   const expectedExt = expectedType === 'theme' ? '.css' : '.js';
   if (!entry.endsWith(expectedExt)) {
     throw new ManifestError(file, `"entry" must end in ${expectedExt} for a ${expectedType}`);
+  }
+
+  let permissions: Permission[] | undefined;
+  if (m.permissions !== undefined) {
+    if (!Array.isArray(m.permissions)) throw new ManifestError(file, '"permissions" must be an array');
+    for (const value of m.permissions) {
+      if (!isPermission(value)) {
+        throw new ManifestError(
+          file,
+          `unknown permission ${JSON.stringify(value)} (known: ${Object.keys(PERMISSIONS).join(', ')})`,
+        );
+      }
+    }
+    const unique = [...new Set(m.permissions as Permission[])];
+    permissions = unique.length > 0 ? unique : undefined;
+  }
+
+  let script: string | undefined;
+  if (m.script !== undefined) {
+    if (expectedType !== 'theme') {
+      // A plugin's entry is already JavaScript; a second one would just be a
+      // way to run code that the "plugin" label had not prepared anyone for.
+      throw new ManifestError(file, '"script" is for themes only; a plugin\'s entry is its script');
+    }
+    script = assertContained(assertString(m.script, 'script', file), 'script');
+    if (!script.endsWith('.js')) throw new ManifestError(file, '"script" must end in .js');
+    if (!permissions?.includes('layout')) {
+      throw new ManifestError(file, '"script" requires the "layout" permission to be declared');
+    }
+  }
+
+  // A permission with nothing to use it is either a leftover or a manifest
+  // padded to look more capable than it is. Both are worth failing on: the
+  // consent dialog must never ask for something the mod cannot exercise.
+  if (permissions && !script && expectedType === 'theme') {
+    throw new ManifestError(file, '"permissions" declared but there is no "script" to use them');
   }
 
   const api = typeof m.slackmodApi === 'number' ? m.slackmodApi : 0;
@@ -71,6 +119,8 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     author: assertString(m.author, 'author', file),
     description: assertString(m.description, 'description', file),
     entry,
+    script,
+    permissions,
     slackmodApi: api,
     slackVersion: typeof m.slackVersion === 'string' ? m.slackVersion : undefined,
     tags: Array.isArray(m.tags) ? m.tags.filter((t): t is string => typeof t === 'string') : undefined,
@@ -107,6 +157,7 @@ async function scanKind(
       }
       // Fail here rather than at enable-time in the UI.
       await fs.access(path.join(dir, dirent.name, manifest.entry));
+      if (manifest.script) await fs.access(path.join(dir, dirent.name, manifest.script));
       out.mods.push({ ...manifest, origin, path: `${kind}s/${dirent.name}` });
     } catch (err) {
       const e = err as NodeJS.ErrnoException;
@@ -165,6 +216,20 @@ export class Catalog {
   async readSource(id: string): Promise<string> {
     const file = this.entryPath(id);
     if (!file) throw new Error(`unknown mod "${id}"`);
+    return fs.readFile(file, 'utf8');
+  }
+
+  /** Absolute path of a theme's companion script, if it declares one. */
+  scriptPath(id: string): string | undefined {
+    const entry = this.records.get(id);
+    if (!entry?.record.script) return undefined;
+    return path.join(entry.root, entry.record.path, entry.record.script);
+  }
+
+  /** A theme's companion script, or null when it has none. */
+  async readScript(id: string): Promise<string | null> {
+    const file = this.scriptPath(id);
+    if (!file) return null;
     return fs.readFile(file, 'utf8');
   }
 

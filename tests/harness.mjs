@@ -9,28 +9,62 @@ import { JSDOM } from 'jsdom';
 // than a stand-in that could drift from it.
 import { createHelpers } from '../dist/helpers.mjs';
 
-/** A Slack-shaped fragment: a message, a composer and a profile pane. */
+/** A Slack-shaped fragment: rail, sidebar, a message, a composer, a profile pane. */
 export const SLACK_FIXTURE = `
 <div class="p-client_container">
   <div class="p-view_header__actions"></div>
   <div class="p-control_strip">
-    <div class="c-coachmark-anchor"><button data-qa="user-button"></button></div>
-  </div>
-
-  <div data-qa="message_container"
-       data-msg-ts="1786386808.130969"
-       data-msg-channel-id="C0BFQCYBRAB">
-    <div class="c-message_kit__avatar">
-      <img src="https://ca.slack-edge.com/T025V5WN2-U018V4TL14N-dc5119d9e23c-48">
+    <div class="c-coachmark-anchor">
+      <button data-qa="user-button">
+        <span class="c-avatar">
+          <img src="https://ca.slack-edge.com/T025V5WN2-U041KF85GP5-480e63356723-48">
+        </span>
+        <svg data-qa="presence_indicator" aria-label="Active"></svg>
+      </button>
     </div>
-    <a class="c-timestamp" href="https://acme.slack.com/archives/C0BFQCYBRAB/p1786386808130969"></a>
-    <div data-qa="message-text">hello world</div>
-    <div data-qa="message-actions"></div>
   </div>
 
-  <div data-qa="message_input">
-    <div class="ql-editor"><p><br></p></div>
-    <div><button data-qa="bold-composer-button"></button></div>
+  <div class="p-tab_rail p-tab_rail__desktop" data-qa="tab_rail_desktop">
+    <div class="p-tab_rail__tab_container" data-qa="tabs_full_height_class">
+      <div class="p-tab_rail__tab_menu" data-qa="tabs_full_width_class">
+        <button class="p-tab_rail__button p-tab_rail__button--active" data-qa="tab_rail_home_button">
+          <div class="p-tab_rail__button__icon"></div>
+          <div class="p-tab_rail__button__label">Home</div>
+        </button>
+        <button class="p-tab_rail__button" data-qa="tab_rail_dms_button">
+          <div class="p-tab_rail__button__icon"></div>
+          <div class="p-tab_rail__button__label">DMs</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-channel_sidebar" data-qa="channel-sidebar">
+    <div class="p-ia4_sidebar_header p-ia4_home_header">
+      <div class="p-ia4_sidebar_header__title">Acme</div>
+      <div class="p-ia4_sidebar_header__controls"></div>
+    </div>
+    <div class="p-channel_sidebar__list"></div>
+  </div>
+
+  <div class="p-view_contents p-view_contents--primary">
+    <div class="p-message_pane">
+      <div data-qa="message_container"
+           data-msg-ts="1786386808.130969"
+           data-msg-channel-id="C0BFQCYBRAB">
+        <div class="c-message_kit__avatar">
+          <img src="https://ca.slack-edge.com/T025V5WN2-U018V4TL14N-dc5119d9e23c-48">
+        </div>
+        <a class="c-timestamp" href="https://acme.slack.com/archives/C0BFQCYBRAB/p1786386808130969"></a>
+        <div data-qa="message-text">hello world</div>
+        <div data-qa="message-actions"></div>
+      </div>
+
+      <div data-qa="message_input">
+        <div class="ql-editor"><p><br></p></div>
+        <div><button data-qa="bold-composer-button"></button></div>
+      </div>
+    </div>
   </div>
 
   <div data-qa="member_profile_pane">
@@ -291,6 +325,86 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
     store,
     setConfirmAnswer: (value) => { confirmAnswer = value; },
   };
+}
+
+/**
+ * A stand-in for the API a theme's companion script receives.
+ *
+ * Much smaller than the plugin one, on purpose: it should be uncomfortable to
+ * write a plugin's worth of behaviour against it. `keepMounted` really mounts,
+ * because what a layout script is for is putting nodes on the page, and a test
+ * that cannot see them tests nothing.
+ */
+export function createLayoutTestApi({
+  permissions = ['layout'],
+  self = {},
+  web = {},
+} = {}) {
+  const recorded = { css: [], mounted: [], observed: [], clicked: [], disposers: [], logs: [] };
+
+  const workspace = permissions.includes('workspace')
+    ? {
+        available: true,
+        teamDomain: 'acme',
+        selfId: 'U000SELF',
+        call: async () => ({ ok: true }),
+        userInfo: async (id) => ({ id, profile: { display_name: 'Tester' } }),
+        presence: async () => ({ presence: 'active' }),
+        teamInfo: async () => ({ team: { id: 'T025V5WN2' } }),
+        dndInfo: async () => ({ dnd_enabled: false }),
+        ...web,
+      }
+    : undefined;
+
+  const api = {
+    id: 'test-theme',
+    manifest: { id: 'test-theme', name: 'Test theme', type: 'theme' },
+    permissions: [...permissions],
+
+    dom: {
+      h,
+      waitFor: async (selector) => document.querySelector(selector),
+      keepMounted: (container, id, factory, options = {}) => {
+        const target = document.querySelector(container);
+        const node = factory();
+        node.id = id;
+        const before = typeof options === 'object' && options.before
+          ? target?.querySelector(options.before)
+          : null;
+        if (before) before.before(node);
+        else if (options === 'prepend' || options?.position === 'prepend') target?.prepend(node);
+        else target?.append(node);
+        recorded.mounted.push({ container, id, node });
+        return () => node.remove();
+      },
+      onEach: (selector, handler) => {
+        recorded.observed.push(selector);
+        for (const el of document.querySelectorAll(selector)) handler(el);
+        return () => {};
+      },
+    },
+
+    click: (selector) => {
+      recorded.clicked.push(selector);
+      const target = document.querySelector(selector);
+      if (!target) return false;
+      target.click();
+      return true;
+    },
+
+    self: () => ({ id: 'U000SELF', avatar: null, presence: 'Active', ...self }),
+    workspace,
+
+    css: (text) => recorded.css.push(text),
+    onDispose: (fn) => recorded.disposers.push(fn),
+    log: {
+      info: (...args) => recorded.logs.push(['info', ...args]),
+      warn: (...args) => recorded.logs.push(['warn', ...args]),
+      error: (...args) => recorded.logs.push(['error', ...args]),
+    },
+  };
+
+  return { api, recorded };
 }
 
 /** Every mod must satisfy this, whatever else its own test checks. */

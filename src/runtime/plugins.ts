@@ -8,23 +8,35 @@
 // real ES module, with no string evaluation anywhere.
 
 import type { ModRecord } from '../shared/protocol.js';
-import type { PluginApi } from './api.js';
 import type { Cleanup } from './dom.js';
 
-export interface PluginModule {
-  start?: (api: PluginApi) => void | Promise<void>;
+/**
+ * The least a host needs from whatever it hands the module. Plugins get the
+ * full plugin API and themes get the much smaller layout one, but both are
+ * loaded, started and torn down the same way, so the host is written against
+ * this instead of either of them.
+ */
+export interface HostedApi {
+  __disposeAll(): void;
+}
+
+export interface PluginModule<A extends HostedApi = HostedApi> {
+  start?: (api: A) => void | Promise<void>;
   stop?: () => void | Promise<void>;
 }
 
-interface LoadedPlugin {
+interface LoadedPlugin<A extends HostedApi> {
   record: ModRecord;
-  module: PluginModule;
-  api: PluginApi;
+  module: PluginModule<A>;
+  api: A;
   blobUrl: string;
 }
 
-export class PluginHost {
-  private loaded = new Map<string, LoadedPlugin>();
+export class PluginHost<A extends HostedApi = HostedApi> {
+  private loaded = new Map<string, LoadedPlugin<A>>();
+
+  /** What to call the thing in error messages: "plugin" or "theme script". */
+  constructor(private readonly kind: string = 'plugin') {}
 
   isLoaded(id: string): boolean {
     return this.loaded.has(id);
@@ -34,26 +46,26 @@ export class PluginHost {
     return [...this.loaded.keys()];
   }
 
-  async load(record: ModRecord, source: string, api: PluginApi): Promise<void> {
+  async load(record: ModRecord, source: string, api: A): Promise<void> {
     if (this.loaded.has(record.id)) await this.unload(record.id);
 
     const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
-    let module: PluginModule;
+    let module: PluginModule<A>;
     try {
       // Each load gets a fresh blob URL, which is also what makes hot reload
       // work: the module cache is keyed by URL.
       const namespace = (await import(/* @vite-ignore */ blobUrl)) as {
-        default?: PluginModule;
-      } & PluginModule;
+        default?: PluginModule<A>;
+      } & PluginModule<A>;
       module = namespace.default ?? namespace;
     } catch (err) {
       URL.revokeObjectURL(blobUrl);
-      throw new Error(`could not load plugin "${record.id}": ${(err as Error).message}`);
+      throw new Error(`could not load ${this.kind} "${record.id}": ${(err as Error).message}`);
     }
 
     if (typeof module.start !== 'function') {
       URL.revokeObjectURL(blobUrl);
-      throw new Error(`plugin "${record.id}" has no start() export`);
+      throw new Error(`${this.kind} "${record.id}" has no start() export`);
     }
 
     this.loaded.set(record.id, { record, module, api, blobUrl });
@@ -62,7 +74,7 @@ export class PluginHost {
     } catch (err) {
       this.loaded.delete(record.id);
       URL.revokeObjectURL(blobUrl);
-      throw new Error(`plugin "${record.id}" threw during start(): ${(err as Error).message}`);
+      throw new Error(`${this.kind} "${record.id}" threw during start(): ${(err as Error).message}`);
     }
   }
 
@@ -73,10 +85,10 @@ export class PluginHost {
     try {
       await plugin.module.stop?.();
     } catch (err) {
-      console.error(`[slackmod] plugin "${id}" threw during stop():`, err);
+      console.error(`[slackmod] ${this.kind} "${id}" threw during stop():`, err);
     }
-    // Run whatever the plugin registered through the api, even if stop() failed
-    // or never existed: a plugin that leaks observers degrades the whole app.
+    // Run whatever it registered through the api, even if stop() failed or
+    // never existed: a mod that leaks observers degrades the whole app.
     plugin.api.__disposeAll();
     URL.revokeObjectURL(plugin.blobUrl);
   }
