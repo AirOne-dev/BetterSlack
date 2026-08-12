@@ -7,6 +7,7 @@
 import type { ModRecord, Settings } from '../shared/protocol.js';
 import { h, keepMounted, onEach, onShortcut, waitFor, type Cleanup } from './dom.js';
 import { collectCleanups } from './plugins.js';
+import { createHelpers, type Helpers } from './helpers.js';
 import { createSlackApi, type SlackApi } from './slack-api.js';
 import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
@@ -37,6 +38,14 @@ export interface PluginApi {
 
   /** Slack-aware helpers: toolbars, message actions, permalinks, the composer. */
   readonly slack: SlackApi;
+
+  /**
+   * Higher-level shortcuts for the shapes most mods need: a persisted toggle,
+   * a hotkey, a badge, a copy-and-confirm, Slack-styled buttons, fields and
+   * sections. All of it is built on the rest of this API, and all of it is
+   * torn down with the plugin.
+   */
+  readonly helpers: Helpers;
 
   /**
    * Ready-made widgets, so a mod never has to write its own CSS for common UI.
@@ -130,6 +139,20 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
         onProfilePane: track(slack.onProfilePane.bind(slack)),
       };
     })(),
+
+    helpers: createHelpers({
+      pluginId: record.id,
+      css: (text) => api.css(text),
+      toast: (message, options) => api.ui.toast(message, options),
+      settings: {
+        get: (key, fallback) => api.settings.get(key, fallback),
+        set: (key, value) => api.settings.set(key, value),
+      },
+      track: (cleanup) => {
+        cleanups.add(cleanup);
+        return cleanup;
+      },
+    }),
 
     ui: {
       toast,

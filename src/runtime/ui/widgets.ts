@@ -1,11 +1,11 @@
 // Widgets mods can use without writing any CSS: toasts, modals, confirmations.
 //
-// These live in a shadow root rather than borrowing Slack's modal classes.
-// Slack's dialogs are React-driven with hashed class names, so anything built
-// on them would break on a Slack release and could be knocked out by a badly
-// written theme. A shadow root is immune to both. Colours still come from
-// Slack's --dt_color-* tokens, which cross the shadow boundary, so widgets
-// follow the active theme.
+// Modals wear Slack's own `c-dialog` classes and render into the light DOM, so
+// a mod's dialog is indistinguishable from Slack's and from the SlackMod panel.
+// Toasts stay in a shadow root: Slack has no toast of its own to borrow from,
+// and isolating them means a theme cannot make an error message unreadable.
+// Their colours still come from Slack's --dt_color-* tokens, which cross the
+// shadow boundary, so they follow the active theme.
 
 import { h, type Cleanup } from '../dom.js';
 import { WIDGET_CSS } from './styles.js';
@@ -118,16 +118,14 @@ export function modal(options: ModalOptions): ModalHandle {
     onClose,
   } = options;
 
-  // Its own host per modal: two modals must not share a stacking context.
-  const host = h('div', { class: 'slackmod-modal-host' });
-  const root = host.attachShadow({ mode: 'open' });
-  const style = document.createElement('style');
-  style.textContent = WIDGET_CSS;
-  root.append(style);
+  const host = h('div', {
+    class: 'c-dialog slackmod-dialog slackmod-widget_dialog',
+    role: 'presentation',
+  });
   document.body.append(host);
 
-  const body = h('div', { class: 'modal__body' });
-  if (typeof content === 'string') body.append(h('p', { class: 'modal__text' }, [content]));
+  const body = h('div', { class: 'c-dialog__body slackmod-body' });
+  if (typeof content === 'string') body.append(h('p', { class: 'slackmod-hint' }, [content]));
   else if (content) body.append(content);
 
   let closed = false;
@@ -147,13 +145,36 @@ export function modal(options: ModalOptions): ModalHandle {
   };
   document.addEventListener('keydown', onKeyDown, true);
 
-  const footer = h('div', { class: 'modal__footer' });
+  const closeButton = h('button', {
+    class:
+      'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default slackmod-close',
+    type: 'button',
+    'aria-label': 'Close',
+  });
+  closeButton.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px">' +
+    '<path fill="currentColor" d="M5.72 5.72a.75.75 0 0 1 1.06 0L10 8.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L11.06 10l3.22 3.22a.75.75 0 1 1-1.06 1.06L10 11.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L8.94 10 5.72 6.78a.75.75 0 0 1 0-1.06Z"/></svg>';
+  closeButton.addEventListener('click', close);
+
+  const titles = h('div', { class: 'slackmod-widget_titles' }, [
+    h('h1', { class: 'c-dialog__title' }, [title]),
+    ...(subtitle ? [h('p', { class: 'slackmod-hint slackmod-widget_subtitle' }, [subtitle])] : []),
+  ]);
+
+  const header = h('div', { class: 'c-dialog__header slackmod-header' }, [titles]);
+  if (dismissible) header.append(closeButton);
+
+  const footer = h('div', { class: 'c-dialog__footer slackmod-widget_footer' });
   for (const action of actions) {
-    const button = h(
-      'button',
-      { class: `btn btn--${action.variant ?? 'default'}`, type: 'button' },
-      [action.label],
-    );
+    // Slack's own button variants, so a mod's dialog buttons look like Slack's.
+    const variant =
+      action.variant === 'primary' ? 'c-button--primary'
+        : action.variant === 'danger' ? 'c-button--danger'
+          : 'c-button--outline';
+    const button = h('button', {
+      class: `c-button ${variant} c-button--medium`,
+      type: 'button',
+    }, [action.label]);
     button.addEventListener('click', async () => {
       const keepOpen = (await action.onClick?.()) === false;
       if (!keepOpen) close();
@@ -161,34 +182,22 @@ export function modal(options: ModalOptions): ModalHandle {
     footer.append(button);
   }
 
-  const closeButton = h('button', { class: 'modal__close', type: 'button', 'aria-label': 'Close' }, ['×']);
-  closeButton.addEventListener('click', close);
-
-  const header = h('div', { class: 'modal__header' }, [
-    h('div', { class: 'modal__titles' }, [
-      h('h2', { class: 'modal__title' }, [title]),
-      ...(subtitle ? [h('p', { class: 'modal__subtitle' }, [subtitle])] : []),
-    ]),
-  ]);
-  if (dismissible) header.append(closeButton);
-
-  const dialog = h('div', {
-    class: 'modal',
+  const content_ = h('div', {
+    class: 'c-dialog__content slackmod-content slackmod-widget_content',
     role: 'dialog',
     'aria-modal': 'true',
     'aria-label': title,
-    style: `width: min(${width}px, 92vw)`,
+    style: `width: min(${width}px, calc(100% - 32px)); max-width: min(${width}px, calc(100% - 32px));`,
   }, [header, body, ...(actions.length > 0 ? [footer] : [])]);
 
-  const backdrop = h('div', { class: 'modal__backdrop' }, [dialog]);
+  host.append(content_);
   if (dismissible) {
-    backdrop.addEventListener('mousedown', (event) => {
-      if (event.target === backdrop) close();
+    host.addEventListener('mousedown', (event) => {
+      if (event.target === host) close();
     });
   }
-  root.append(backdrop);
 
-  queueMicrotask(() => root.querySelector<HTMLElement>('.btn, .modal__close')?.focus());
+  queueMicrotask(() => host.querySelector<HTMLElement>('.c-button, .slackmod-close')?.focus());
 
   return { close, body };
 }

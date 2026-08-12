@@ -65,9 +65,47 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   repaint it or any gradient is invisible.
 - Reuse Slack's button classes rather than styling your own. Watch for
   `c-icon_button--default`: without it, icon buttons render 36px instead of 28px.
+- Slack's real DevTools open with **`desktop.app.toggleDevTools()`** — its own
+  preload method, posting to the TOGGLE_DEV_TOOLS IPC channel. Confirmed in
+  `~/Library/Application Support/Slack/logs`: `openDevToolsEpic: Received action
+  { willOpen: true }`. The epic only acts on a *focused* webContents, so it does
+  nothing while Slack is in the background.
+  `desktop.redux.dispatchUpdate` looks like a generic action forwarder and is
+  **not**: it wraps the argument as the payload of REDUX_UPDATE_FROM_WEBAPP,
+  whose reducer only reads `payload.teams`, so anything else is silently
+  dropped. That cost an afternoon.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
+
+## The plugin API
+
+**[docs/api.md](docs/api.md) is the reference — keep it in step with the code.**
+Adding a helper or changing a signature without updating it, with an example, is
+an incomplete change. [docs/getting-started.md](docs/getting-started.md) is the
+human entry point and [docs/themes.md](docs/themes.md) holds the CSS knowledge;
+both are part of the same contract.
+
+Shape of it:
+
+- `api.helpers` — the first thing to reach for. `toggle` (persisted flag + a
+  class on `<html>` so behaviour is pure CSS), `hotkey` (`mod+shift+f`, with a
+  `when` guard that gates the *match* so an inapplicable shortcut does not
+  swallow the key), `mount`, `each`, `badge`, `tooltip`, `copy`, `iconButton`,
+  `field`, `section`, `debounce`.
+- `api.slack` — Slack's chrome: `addToolbarButton` (controlStrip / composer /
+  channelHeader, with `before` to sit above another button), `addMessageAction`,
+  `addProfileButton`, `onProfilePane`, `describeMessage`, `userIdFromMessage`,
+  `currentChannelId`, `composer`, `web`, `selectors`.
+- `api.ui` — `toast`, `modal`, `confirm`, `tooltip`, in shadow roots.
+- `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
+
+When two mods want the same block, it belongs in `helpers.ts`, and the mods get
+refactored onto it in the same change.
+
+The helpers take their `css`, `toast` and `settings` from a context object
+rather than importing them, so they go through the same layer a mod would use
+and the test harness can observe them. `dist/helpers.mjs` is emitted for that.
 
 ## Working on mods
 
@@ -81,6 +119,29 @@ CI runs two workflows per **changed** mod, one job each: structure
 Use `api.dom.keepMounted` rather than a raw `MutationObserver`: Slack re-renders
 constantly and a naive observer inserts duplicates. Register teardown through
 `api.onDispose` so disabling a plugin really leaves the DOM as it was found.
+
+## The Mods panel
+
+The repository is a **catalogue**, not a set of pre-installed mods: a fresh
+install starts with `installed: []` and the user installs from the Browse shelf.
+`enabled` is always a subset of `installed`, enforced in `store.ts` so a
+hand-edited settings file cannot produce an enabled-but-not-installed state.
+
+The panel and `api.ui.modal` render into the **light DOM** wearing Slack's own
+`c-dialog` / `c-menu` / `c-button` classes, so Slack's stylesheet styles them
+directly and they follow every theme exactly. They used to live in a shadow
+root, reimplementing the look from tokens — which lands close but never right.
+The trade-off is deliberate: a theme that restyles `.c-dialog` restyles them
+too. Toasts stay in a shadow root, since Slack has no toast to borrow from and
+an unreadable error message is worse than an off-brand one.
+
+Destructive actions belong behind the row overflow menu, not on the row: a
+Remove button on every line shouted louder than anything else in the dialog.
+
+The panel re-renders wholesale on every change, and one toggle triggers several
+renders in a frame. Scroll position therefore comes from the user's own scroll
+events, not from reading the DOM at render time — reading it captured a 0 left
+by an earlier render in the same frame.
 
 ## Conventions
 

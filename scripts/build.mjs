@@ -39,6 +39,20 @@ const runtime = {
 };
 
 /**
+ * Emitted so the test harness can exercise the *real* helpers rather than a
+ * stand-in: a mod's test then covers the helper code its behaviour depends on.
+ */
+const runtimeHelpers = {
+  entryPoints: [`${root}/src/runtime/helpers.ts`],
+  outfile: `${root}/dist/helpers.mjs`,
+  bundle: true,
+  platform: 'browser',
+  format: 'esm',
+  target: 'es2022',
+  logLevel: 'warning',
+};
+
+/**
  * Pure loader helpers, emitted so `tests/download.test.mjs` can exercise the
  * download guards without pulling in the whole loader entry point.
  */
@@ -53,9 +67,9 @@ const loaderLib = {
 };
 
 if (watch) {
-  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib)]);
+  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers)]);
   await Promise.all(contexts.map((c) => c.watch()));
   console.log('[slackmod] watching for changes...');
 } else {
-  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib)]);
+  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers)]);
 }

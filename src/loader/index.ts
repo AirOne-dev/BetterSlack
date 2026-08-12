@@ -12,7 +12,14 @@ import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo 
 import { Catalog, parseManifest } from './catalog.js';
 import { downloadFile } from './download.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack } from './slack.js';
-import { ensureUserRoot, mergeSettings, readSettings, setModEnabled, USER_MODS_ROOT } from './store.js';
+import {
+  ensureUserRoot,
+  mergeSettings,
+  readSettings,
+  setModEnabled,
+  setModInstalled,
+  USER_MODS_ROOT,
+} from './store.js';
 import {
   BINDING_NAME,
   RECEIVER_NAME,
@@ -268,6 +275,13 @@ class Loader {
         // this, the next reload would come back with whatever was enabled when
         // the loader first attached.
         await this.refreshAllBootScripts();
+        return saved;
+      }
+
+      case 'mod.setInstalled': {
+        const saved = await setModInstalled(request.id, request.installed);
+        await this.refreshAllBootScripts();
+        this.broadcast({ type: 'settings.changed', settings: saved });
         return saved;
       }
 

@@ -55,6 +55,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # The harness imports dist/helpers.mjs so that a mod's tests exercise the
+      # real helpers; dist/ is not committed, so it has to be built first.
+      - run: npm run build
       - run: npm run test:mod -- ${{ matrix.mod }}
 
   # Stable name for branch protection; see the note in mod-structure.yml.

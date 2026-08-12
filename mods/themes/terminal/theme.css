@@ -123,14 +123,26 @@ html, body { background-color: var(--term-bg); }
 .p-ia4_top_nav { border-bottom: 1px solid var(--term-line); }
 .p-tab_rail { border-right: 1px solid var(--term-line); }
 
-[data-qa="message_input"] {
+/*
+ * The composer's box — background, border and corners — belongs to
+ * .c-wysiwyg_container, three levels above [data-qa="message_input"].
+ * That inner element is transparent and border-less by default, so styling it
+ * draws a second box inside Slack's own.
+ */
+.c-wysiwyg_container {
+  background: var(--dt_color-base-sec, #070c0f) !important;
   border: 1px solid var(--term-line) !important;
   box-shadow: none !important;
 }
 
 /* A caret-style marker on the selected channel, the way a shell would. */
-.p-channel_sidebar__channel--selected,
-.p-channel_sidebar__static_list__item--selected {
+/*
+ * Only the inner element is painted. Its parent
+ * (.p-channel_sidebar__static_list__item--selected) is transparent and exists
+ * to give the row an 8px gutter, so styling both draws a full-width slab
+ * behind the inset pill.
+ */
+.p-channel_sidebar__channel--selected {
   background: rgba(53, 224, 127, 0.12) !important;
   box-shadow: inset 2px 0 0 var(--term-green);
 }
