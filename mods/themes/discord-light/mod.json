@@ -1,0 +1,12 @@
+{
+  "id": "discord-light",
+  "name": "Discord Light",
+  "type": "theme",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Slack wearing Discord's default light theme: white chat on grey chrome, blurple accent, gg sans type stack, 8px corners and circular avatars.",
+  "entry": "theme.css",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["light", "discord"]
+}

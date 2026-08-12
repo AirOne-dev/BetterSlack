@@ -98,6 +98,38 @@
       "path": "plugins/copy-message-link"
     },
     {
+      "id": "discord-dark",
+      "name": "Discord Dark",
+      "type": "theme",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Slack wearing Discord's default dark theme: the same greys, blurple accent, gg sans type stack, 8px corners, circular avatars and thin scrollbars.",
+      "entry": "theme.css",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "dark",
+        "discord"
+      ],
+      "path": "themes/discord-dark"
+    },
+    {
+      "id": "discord-light",
+      "name": "Discord Light",
+      "type": "theme",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Slack wearing Discord's default light theme: white chat on grey chrome, blurple accent, gg sans type stack, 8px corners and circular avatars.",
+      "entry": "theme.css",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "light",
+        "discord"
+      ],
+      "path": "themes/discord-light"
+    },
+    {
       "id": "focus-mode",
       "name": "Focus Mode",
       "type": "plugin",
@@ -191,6 +223,22 @@
         "api"
       ],
       "path": "plugins/user-inspector"
+    },
+    {
+      "id": "web-inspector",
+      "name": "Web Inspector",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "A console and an element picker inside Slack, from a button above the SlackMod one. The picker names the stable selector for whatever you click, which is what writing a mod actually needs.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "developer",
+        "tools"
+      ],
+      "path": "plugins/web-inspector"
     }
   ]
 }

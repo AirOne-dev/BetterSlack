@@ -72,6 +72,13 @@ export type Request =
    * though an <img> loads fine. The loader has no such restriction.
    */
   | { type: 'file.download'; url: string; filename: string }
+  /**
+   * Evaluate an expression in the page through the loader's CDP session.
+   * Code injected that way is exempt from Slack's CSP, which is what makes a
+   * working JavaScript console possible at all -- the page itself cannot
+   * evaluate a string.
+   */
+  | { type: 'devtools.eval'; expression: string }
   | { type: 'log'; level: 'log' | 'warn' | 'error'; message: string };
 
 /** Push notifications the loader sends to the renderer unprompted. */

@@ -1,0 +1,12 @@
+{
+  "id": "web-inspector",
+  "name": "Web Inspector",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "A console and an element picker inside Slack, from a button above the SlackMod one. The picker names the stable selector for whatever you click, which is what writing a mod actually needs.",
+  "entry": "index.js",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["developer", "tools"]
+}
