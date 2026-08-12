@@ -169,6 +169,19 @@ names that have held up.
 | `.c-tooltip__tip`, `.c-tooltip__subtitle` | tooltips |
 | `.c-avatar`, `.c-base_icon--image` | avatars |
 
+## Matching another app
+
+If you are reproducing something, measure it — do not trust a published
+palette. Discord's redesign moved off the blurple-tinted greys every colour
+list still quotes (`#313338`, `#2b2d31`) onto near-black neutrals (`#1a1a1e`,
+`#121214`), so `discord-dark` was wrong in every surface until it was rebuilt
+from a screenshot.
+
+Sampling a screenshot takes a minute: decode the PNG, then take the *most
+common* colour in a flat region for a surface, and the *brightest* pixel in a
+text region for a text colour — antialiasing means the average is never the
+real value.
+
 ## Recipes
 
 **Round every avatar**
@@ -219,7 +232,7 @@ names that have held up.
 | Theme | Shows |
 | --- | --- |
 | [`midnight`](../mods/themes/midnight/theme.css) | the plain three-family override, well commented |
-| [`discord-dark`](../mods/themes/discord-dark/theme.css) | a complete reskin: colour, type, radius, scrollbars |
+| [`discord-dark`](../mods/themes/discord-dark/theme.css) | a complete reskin whose palette was sampled from a screenshot of the real app |
 | [`aurora`](../mods/themes/aurora/theme.css) | gradients, glass, translucent chrome |
 | [`cocoa`](../mods/themes/cocoa/theme.css) | a light theme, so every family had to be covered |
 | [`focus-rings`](../mods/themes/focus-rings/theme.css) | no tokens at all — pure `:focus-visible` semantics |
