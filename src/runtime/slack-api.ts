@@ -7,7 +7,7 @@
 // Selectors verified against Slack 4.51 (Electron 43).
 
 import type { Cleanup } from './dom.js';
-import { h, keepMounted, onEach } from './dom.js';
+import { h, keepMounted, onEach, waitFor } from './dom.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
 import { createWebApi, currentTeamId, userIdFromAvatarUrl, type WebApi } from './web-api.js';
 
@@ -430,6 +430,20 @@ export interface SlackApi {
   /** Files someone shared, newest first. */
   filesFrom(userId: string, limit?: number): Promise<Array<Record<string, unknown>>>;
 
+  /**
+   * Start a huddle with someone: open the conversation, then press Slack's own
+   * start control.
+   *
+   * This one really is a press, and there is no way around it -- measured:
+   * `rooms.join` provisions a room that rings nobody, there is no
+   * `slack://huddle` scheme, and the handler goes through Electron to open a
+   * separate window that no web API exposes. A plain element.click() reaches
+   * it, so at least no trusted gesture is needed.
+   *
+   * Resolves false when Slack shows no huddle control for that conversation.
+   */
+  startHuddle(userId: string): Promise<boolean>;
+
   /** The people marked VIP, in Slack's own order. */
   vipUsers(): Promise<string[]>;
 
@@ -496,6 +510,19 @@ export function createSlackApi(pluginId: string): SlackApi {
 
     async hideConversation(channelId: string): Promise<void> {
       await web.call('conversations.close', { channel: channelId });
+    },
+
+    async startHuddle(userId: string): Promise<boolean> {
+      await this.openDirectMessage(userId);
+      // The header re-renders on the way in, so wait for its control rather
+      // than guessing at a delay.
+      const button = await waitFor<HTMLElement>(
+        '[data-qa="huddle_channel_header_button__start_button"]',
+        8000,
+      );
+      if (!button) return false;
+      button.click();
+      return true;
     },
 
     async vipUsers(): Promise<string[]> {
