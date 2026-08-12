@@ -155,6 +155,9 @@ Other things worth knowing before you write code:
 - Use `api.dom.keepMounted` rather than your own `MutationObserver` when you
   insert a node. Slack re-renders constantly, and a naive observer inserts
   duplicates.
+- Start from `api.helpers` — see [API.md](API.md). Most mods are one or two
+  calls, and a pull request that hand-rolls something the API provides will be
+  asked why.
 - Reach for `api.slack.addToolbarButton` and `api.ui.*` before writing your own
   markup. A hand-styled button drifts out of step with Slack the moment its
   palette changes; one built from Slack's classes cannot. Reviewers will ask why

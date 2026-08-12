@@ -3,26 +3,25 @@
  *
  * HOW THIS REACHES THE MAIN PROCESS
  *
- * Slack has a hidden menu item, "Toggle DevTools" (⌘⌥I), that only appears
- * once the developer menu is on. Clicking it dispatches `TOGGLE_DEV_TOOLS` to
- * the main-process store, where an epic calls `openDevTools({mode:'undocked'})`
- * on the focused webContents.
+ * Slack's preload exposes `desktop.app.toggleDevTools()`, which posts to the
+ * TOGGLE_DEV_TOOLS IPC channel. The main process dispatches the same action its
+ * hidden ⌘⌥I menu item does, and `openDevToolsEpic` calls
+ * `openDevTools({mode:'undocked'})` on the focused webContents. These are
+ * Slack's own DevTools, not a reimplementation.
  *
- * Slack's preload exposes that same store: `desktop.redux.dispatchUpdate(action)`
- * forwards an FSA-compliant action over IPC to the main process. So this button
- * dispatches exactly what the menu item dispatches — it is Slack's own DevTools,
- * not a reimplementation.
+ * Confirmed in Slack's own log (~/Library/Application Support/Slack/logs):
  *
- * Two conditions, both read straight out of Slack's bundle:
+ *   info: Store: TOGGLE_DEV_TOOLS
+ *   info: openDevToolsEpic: Received action { willClose: false, willOpen: true }
  *
- *   1. The epic is gated on `settings.devToolsEnabled`. Setting the env var
- *      SLACK_DEVELOPER_MENU only reveals the menu; it does not satisfy this.
- *      `desktop.app.setPreference` flips it, and it persists, so this happens
- *      once and then never again.
- *   2. The epic only acts on a *focused* webContents. Clicking a button inside
- *      Slack means Slack is focused, so this is satisfied by construction —
- *      but it is why the same call does nothing when Slack is in the
- *      background, which is worth knowing if you ever script it.
+ * Do not reach for `desktop.redux.dispatchUpdate` here. It looks like a generic
+ * action forwarder and is not: it wraps whatever you pass as the *payload* of a
+ * REDUX_UPDATE_FROM_WEBAPP action whose reducer only reads `payload.teams`, so
+ * a toggle sent that way is silently dropped.
+ *
+ * One condition worth knowing: the epic only acts on a *focused* webContents,
+ * so the call does nothing while Slack is in the background. Clicking a button
+ * inside Slack satisfies that by construction.
  */
 
 const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true">
@@ -30,24 +29,16 @@ const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-h
   <path fill="currentColor" d="M5.7 10.2a.75.75 0 0 1 1.06 0l1.5 1.5a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 1 1-1.06-1.06l.97-.97-.97-.97a.75.75 0 0 1 0-1.06Zm4.05 2.55a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 0-1.5h-3Z"/>
 </svg>`;
 
-/** Slack's action type, taken from its own bundle. */
-export const TOGGLE_ACTION = { type: 'TOGGLE_DEV_TOOLS' };
-export const PREFERENCE = 'devToolsEnabled';
-
 /**
- * Enable the setting the toggle epic is gated on, then dispatch the toggle.
- * Split out so it can be tested without a Slack window.
+ * Toggle Slack's DevTools. Split out so it can be tested without a Slack window.
  *
  * @param {any} bridge window.desktop
  */
 export function toggleDevTools(bridge) {
-  if (!bridge?.redux?.dispatchUpdate) {
+  if (typeof bridge?.app?.toggleDevTools !== 'function') {
     throw new Error('Slack’s desktop bridge is not available in this window');
   }
-  if (bridge.app?.getPreference?.(PREFERENCE) !== true) {
-    bridge.app?.setPreference?.({ name: PREFERENCE, value: true });
-  }
-  bridge.redux.dispatchUpdate(TOGGLE_ACTION);
+  bridge.app.toggleDevTools();
 }
 
 export default {

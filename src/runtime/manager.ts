@@ -48,6 +48,23 @@ export class ModManager {
   isEnabled(id: string): boolean {
     return this.settings.enabled.includes(id);
   }
+  isInstalled(id: string): boolean {
+    return this.settings.installed.includes(id);
+  }
+
+  /** Add a catalogue mod to the installed set, or remove it. */
+  async setInstalled(id: string, installed: boolean): Promise<void> {
+    if (!installed && this.isEnabled(id)) {
+      const record = this.mods.find((m) => m.id === id);
+      if (record) await this.unapply(record);
+    }
+    this.settings = await this.bridge.request<Settings>({
+      type: 'mod.setInstalled',
+      id,
+      installed,
+    });
+    this.notify();
+  }
 
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);

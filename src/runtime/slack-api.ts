@@ -76,10 +76,12 @@ export interface MessageRef {
 export interface MessageAction {
   /** Unique within your plugin; becomes part of the DOM id. */
   id: string;
-  /** Tooltip and accessible name. */
+  /** Tooltip title and accessible name. */
   label: string;
   /** Inline SVG markup for a 20x20 viewBox icon. */
   icon: string;
+  /** Optional second line in the tooltip, like Slack's own actions have. */
+  description?: string;
   onClick: (message: MessageRef, event: MouseEvent) => void;
 }
 
@@ -146,14 +148,20 @@ export function addMessageAction(pluginId: string, action: MessageAction): Clean
       class: 'c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button slackmod-action',
       type: 'button',
       'aria-label': action.label,
-      'data-sk': 'tooltip_parent',
-      title: action.label,
+      'data-qa': `slackmod_${pluginId}_${action.id}`,
     });
     button.innerHTML = action.icon;
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
       action.onClick(describeMessage(message), event as MouseEvent);
+    });
+    // Slack's neighbouring buttons get a styled tooltip above them; a native
+    // `title` here looked obviously foreign next to Reply and Forward.
+    attachTooltip(button, {
+      title: action.label,
+      subtitle: action.description,
+      placement: 'top',
     });
 
     const item = h('div', { class: ACTIONS_ITEM_CLASS, id: nodeId }, [button]);
@@ -403,6 +411,10 @@ export interface SlackApi {
   describeMessage(element: HTMLElement): MessageRef;
   /** The message composer. */
   composer: ComposerApi;
+  /** The channel currently open, read from the client URL. */
+  currentChannelId(): string | null;
+  /** The author of a message, read from their avatar URL. */
+  userIdFromMessage(message: MessageRef): string | null;
   /** Stable selectors, for mods that need to go beyond these helpers. */
   selectors: Readonly<Record<string, string>>;
 }
@@ -416,6 +428,14 @@ export function createSlackApi(pluginId: string): SlackApi {
     web: createWebApi(),
     describeMessage,
     composer,
+    userIdFromMessage: (message) =>
+      userIdFromAvatarUrl(
+        message.element.querySelector<HTMLImageElement>('.c-message_kit__avatar img, .c-avatar img')?.src,
+      ),
+    currentChannelId: () => {
+      const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
+      return match ? match[1]!.toUpperCase() : null;
+    },
     selectors: Object.freeze({
       message: MESSAGE,
       messageActions: ACTIONS_GROUP,

@@ -123,11 +123,7 @@ export default {
       id: 'download-avatar',
       label: "Download this person's avatar",
       icon: ICON_ACTION,
-      onClick: (message) => {
-        const avatar = message.element.querySelector('.c-message_kit__avatar img, .c-avatar img');
-        const match = avatar?.src?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i);
-        download(match ? match[1].toUpperCase() : null);
-      },
+      onClick: (message) => download(api.slack.userIdFromMessage(message)),
     });
   },
 
