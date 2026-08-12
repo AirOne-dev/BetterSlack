@@ -146,6 +146,45 @@ const STRINGS = {
   fr: { account: 'Votre compte', settings: 'Réglages du compte' },
 };
 
+/**
+ * Move Slack's account menu next to the gear that opened it.
+ *
+ * Slack anchors that menu to the user button in the rail, which this plugin
+ * hides -- so it opened at the bottom-left of the window, nowhere near the
+ * control that summoned it. Slack positions it by writing inline `top` and
+ * `left` on the ReactModal content wrapper, which is why this can move it and
+ * why it stays moved: there is no layout pass waiting to put it back.
+ *
+ * Everything here fails quietly. A mis-placed menu is a small annoyance; a
+ * plugin that throws while Slack is opening one is not.
+ */
+async function placeMenuBy(anchor) {
+  const deadline = Date.now() + 1500;
+  let panel = null;
+  while (Date.now() < deadline && !panel) {
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    const menu = document.querySelector('.c-menu');
+    panel = menu?.closest('.ReactModal__Content') ?? null;
+  }
+  if (!panel) return;
+
+  const gear = anchor.getBoundingClientRect();
+  const box = panel.getBoundingClientRect();
+  const margin = 8;
+
+  // Above the gear, since the strip sits at the foot of the sidebar, and
+  // clamped so a tall menu cannot end up off-screen.
+  let top = gear.top - box.height - margin;
+  if (top < margin) top = Math.min(gear.bottom + margin, window.innerHeight - box.height - margin);
+  const left = Math.max(
+    margin,
+    Math.min(gear.right - box.width, window.innerWidth - box.width - margin),
+  );
+
+  panel.style.top = `${Math.round(Math.max(margin, top))}px`;
+  panel.style.left = `${Math.round(left)}px`;
+}
+
 export default {
   async start(api) {
     const t = api.i18n.strings(STRINGS);
@@ -186,6 +225,7 @@ export default {
       settings.innerHTML = GEAR_ICON;
       settings.addEventListener('click', () => {
         document.querySelector('[data-qa="user-button"]')?.click();
+        void placeMenuBy(settings);
       });
       api.helpers.tooltip(settings, t('settings'));
 
