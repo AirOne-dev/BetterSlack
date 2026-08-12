@@ -1,0 +1,245 @@
+/*
+ * Discord Light — Slack in Discord's default light theme.
+ *
+ * The dark theme's twin; see mods/themes/discord-dark/theme.css for how the
+ * three Slack token families are mapped. Discord's light tokens:
+ *
+ *   background-primary    #ffffff   the chat surface
+ *   background-secondary  #f2f3f5   channel sidebar
+ *   background-tertiary   #e3e5e8   server rail, search field
+ *   background-floating   #ffffff   popovers, with a shadow rather than a fill
+ *   composer              #ebedef
+ *   divider               #e3e5e8
+ *   text-normal           #313338
+ *   text-muted            #5c5e66
+ *   header-primary        #060607
+ *   interactive-normal    #4e5058
+ *   blurple               #5865f2
+ *   link                  #006ce7
+ *
+ * "gg sans" is not redistributable and is not installed on your machine; the
+ * stack below is Discord's own fallback chain.
+ */
+
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --dc-bg-primary: #ffffff;
+  --dc-bg-secondary: #f2f3f5;
+  --dc-bg-secondary-alt: #ebedef;
+  --dc-bg-tertiary: #e3e5e8;
+  --dc-bg-floating: #ffffff;
+  --dc-composer: #ebedef;
+  --dc-divider: #e3e5e8;
+  --dc-text: #313338;
+  --dc-muted: #5c5e66;
+  --dc-header: #060607;
+  --dc-interactive: #4e5058;
+  --dc-blurple: #5865f2;
+  --dc-link: #006ce7;
+  --dc-green: #248046;
+  --dc-red: #d83a42;
+  --dc-yellow: #a84300;
+  --dc-hover: rgba(116, 127, 141, 0.16);
+  --dc-selected: rgba(116, 127, 141, 0.24);
+
+  --dt_color-base-pry: var(--dc-bg-primary);
+  --dt_color-base-sec: var(--dc-bg-secondary);
+  --dt_color-base-ter: var(--dc-bg-secondary-alt);
+  --dt_color-base-modal: rgba(0, 0, 0, 0.7);
+
+  --dt_color-base-pry-hover: var(--dc-hover);
+  --dt_color-base-pry-pressed: var(--dc-selected);
+  --dt_color-base-sec-hover: var(--dc-hover);
+  --dt_color-base-sec-pressed: var(--dc-selected);
+  --dt_color-base-ter-hover: var(--dc-hover);
+  --dt_color-base-ter-pressed: var(--dc-selected);
+
+  --dt_color-content-pry: var(--dc-text);
+  --dt_color-content-sec: var(--dc-muted);
+  --dt_color-content-ter: #80848e;
+
+  --dt_color-otl-pry: #c4c9ce;
+  --dt_color-otl-sec: var(--dc-divider);
+  --dt_color-otl-ter: rgba(227, 229, 232, 0.7);
+
+  --dt_color-content-hgl-1: var(--dc-link);
+  --dt_color-content-hgl-2: var(--dc-green);
+  --dt_color-content-hgl-3: var(--dc-yellow);
+  --dt_color-content-imp: var(--dc-red);
+
+  --dt_color-base-hgl-1: rgba(0, 108, 231, 0.08);
+  --dt_color-base-hgl-2: rgba(36, 128, 70, 0.08);
+  --dt_color-base-hgl-3: rgba(168, 67, 0, 0.08);
+  --dt_color-base-imp: rgba(216, 58, 66, 0.08);
+
+  /* Discord's light theme keeps a light sidebar, not an inverted dark one. */
+  --dt_color-base-inv-pry: var(--dc-bg-secondary);
+  --dt_color-content-inv-pry: var(--dc-header);
+  --dt_color-content-inv-sec: var(--dc-interactive);
+}
+
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --dt_color-theme-base-inv-pry: var(--dc-bg-secondary) !important;
+  --dt_color-theme-base-inv-sec: var(--dc-bg-tertiary) !important;
+  --dt_color-theme-content-inv-pry: var(--dc-header) !important;
+  --dt_color-theme-content-inv-sec: var(--dc-interactive) !important;
+  --dt_color-theme-content-inv-ter: var(--dc-muted) !important;
+  --dt_color-theme-otl-inv-pry: var(--dc-divider) !important;
+
+  --dt_color-theme-surf-inv-pry: var(--dc-selected) !important;
+  --dt_color-theme-surf-inv-sec: var(--dc-bg-tertiary) !important;
+  --dt_color-theme-surf-inv-ter: var(--dc-hover) !important;
+  --dt_color-theme-surf-pry: var(--dc-selected) !important;
+  --dt_color-theme-surf-sec: var(--dc-hover) !important;
+  --dt_color-theme-surf-ter: var(--dc-bg-secondary) !important;
+
+  --dt_color-theme-base-pry: var(--dc-bg-primary) !important;
+  --dt_color-theme-base-sec: var(--dc-bg-secondary) !important;
+  --dt_color-theme-content-pry: var(--dc-text) !important;
+  --dt_color-theme-content-sec: var(--dc-muted) !important;
+  --dt_color-theme-content-ter: #80848e !important;
+
+  --sk_primary_background: 255, 255, 255 !important;
+  --sk_primary_foreground: 49, 51, 56 !important;
+  --sk_inverted_background: 49, 51, 56 !important;
+  --sk_inverted_foreground: 255, 255, 255 !important;
+  --sk_foreground_max: 6, 6, 7 !important;
+  --sk_foreground_high: 49, 51, 56 !important;
+  --sk_foreground_mid: 78, 80, 88 !important;
+  --sk_foreground_low: 92, 94, 102 !important;
+  --sk_foreground_min: 128, 132, 142 !important;
+  --sk_foreground_max_solid: 6, 6, 7 !important;
+  --sk_foreground_high_solid: 92, 94, 102 !important;
+  --sk_foreground_mid_solid: 196, 201, 206 !important;
+  --sk_foreground_low_solid: 227, 229, 232 !important;
+  --sk_foreground_min_solid: 242, 243, 245 !important;
+  --sk_highlight: 88, 101, 242 !important;
+  --sk_highlight_hover: 71, 82, 196 !important;
+  --sk_highlight_accent: 88, 101, 242 !important;
+}
+
+html, body { background-color: var(--dc-bg-primary); }
+.p-theme_background { background: var(--dc-bg-primary) !important; }
+
+*:not(.c-emoji):not(.c-emoji *) {
+  font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
+[data-qa="message-text"],
+.p-rich_text_section {
+  font-size: 16px;
+  line-height: 1.375rem;
+  color: var(--dc-text);
+}
+
+.c-message__sender_button,
+.c-message_kit__sender {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  color: var(--dc-header) !important;
+}
+
+.c-timestamp__label {
+  font-size: 12px !important;
+  color: var(--dc-muted) !important;
+}
+
+.p-channel_sidebar__static_list__item,
+.p-channel_sidebar__channel,
+.p-channel_sidebar__section_heading,
+.c-button,
+.c-button-unstyled.c-icon_button,
+.p-tab_rail__button,
+.p-composer__button {
+  border-radius: 4px !important;
+}
+
+.c-message_attachment,
+.c-message_actions__group,
+[data-qa="message_input"],
+.c-tooltip__tip,
+.p-control_strip__circle_button {
+  border-radius: 8px !important;
+}
+
+.c-avatar,
+.c-avatar img,
+.c-base_icon--image,
+.p-channel_sidebar__user_avatar img,
+.c-message_kit__avatar img {
+  border-radius: 50% !important;
+}
+
+.p-channel_sidebar__name { color: var(--dc-muted) !important; }
+.p-channel_sidebar__static_list__item:hover .p-channel_sidebar__name { color: var(--dc-text) !important; }
+.p-channel_sidebar__channel--selected,
+.p-channel_sidebar__static_list__item--selected {
+  background: var(--dc-selected) !important;
+}
+.p-channel_sidebar__channel--selected .p-channel_sidebar__name,
+.p-channel_sidebar__static_list__item--selected .p-channel_sidebar__name {
+  color: var(--dc-header) !important;
+  font-weight: 500 !important;
+}
+
+.c-message_kit__background {
+  border-radius: 0 !important;
+  transition: background-color 60ms ease;
+}
+.c-message_kit__background:hover {
+  background: #f7f8f9 !important;
+}
+
+[data-qa="message_input"] {
+  background: var(--dc-composer) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.p-channel_sidebar { border-right: none !important; }
+.p-tab_rail { border-right: none !important; }
+.p-ia4_top_nav { border-bottom: 1px solid var(--dc-divider) !important; }
+
+.c-message_attachment {
+  background: var(--dc-bg-secondary) !important;
+  border: none !important;
+  border-left: 4px solid #c4c9ce !important;
+  padding: 8px 16px 16px 12px !important;
+}
+.c-message_attachment__border { display: none !important; }
+
+/* Discord's light popovers are white with a shadow instead of a darker fill. */
+.c-menu,
+.c-popover__content {
+  background: var(--dc-bg-floating) !important;
+  color: var(--dc-text) !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16) !important;
+}
+/* Tooltips stay dark in Discord's light theme. */
+.c-tooltip__tip {
+  background: #111214 !important;
+  color: #f2f3f5 !important;
+}
+.c-tooltip__subtitle { color: #b5bac1 !important; }
+
+::-webkit-scrollbar { width: 16px; height: 16px; }
+::-webkit-scrollbar-thumb {
+  background: #c4c9ce;
+  border: 4px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--dc-bg-secondary-alt);
+  border: 4px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-message_kit__background { transition: none; }
+}
