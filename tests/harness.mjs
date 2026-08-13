@@ -352,6 +352,13 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
 
     css: (text) => recorded.css.push(text),
     saveTheme: async (options) => { recorded.savedThemes.push(options); },
+    themes: {
+      list: () => [
+        { id: 'midnight', name: 'Midnight', description: 'A dark theme', enabled: false },
+        { id: 'aurora', name: 'Aurora', description: 'Gradients', enabled: true },
+      ],
+      source: async (id) => `/* ${id} */ :root { --dt_color-base-pry: #101014; }`,
+    },
     settings: {
       all: () => ({ ...store }),
       get: (key, fallback) => (key in store ? store[key] : fallback),
@@ -371,6 +378,13 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
     pluginId: api.id,
     css: (text) => recorded.css.push(text),
     saveTheme: async (options) => { recorded.savedThemes.push(options); },
+    themes: {
+      list: () => [
+        { id: 'midnight', name: 'Midnight', description: 'A dark theme', enabled: false },
+        { id: 'aurora', name: 'Aurora', description: 'Gradients', enabled: true },
+      ],
+      source: async (id) => `/* ${id} */ :root { --dt_color-base-pry: #101014; }`,
+    },
     toast: (message, options) => api.ui.toast(message, options),
     settings: api.settings,
     track: (cleanup) => {

@@ -97,6 +97,17 @@ export interface PluginApi {
    */
   saveTheme(options: { id: string; name: string; description: string; css: string }): Promise<void>;
 
+  /**
+   * The themes the user has, for tools that build on top of them.
+   *
+   * Read-only and themes-only: a plugin can see what stylesheets exist and read
+   * one, which is what a theme editor needs and nothing more.
+   */
+  readonly themes: {
+    list(): Array<{ id: string; name: string; description: string; enabled: boolean }>;
+    source(id: string): Promise<string>;
+  };
+
   /** Per-plugin persisted settings, stored by the loader in ~/.slackmod. */
   readonly settings: {
     get<T = unknown>(key: string, fallback?: T): T | undefined;
@@ -124,6 +135,8 @@ export interface ApiContext {
   saveModSettings: (id: string, values: Record<string, unknown>) => Promise<void>;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
+  listThemes: () => Array<{ id: string; name: string; description: string; enabled: boolean }>;
+  themeSource: (id: string) => Promise<string>;
 }
 
 export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
@@ -202,6 +215,11 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
     },
 
     saveTheme: (options) => ctx.saveTheme(options),
+
+    themes: {
+      list: () => ctx.listThemes(),
+      source: (id) => ctx.themeSource(id),
+    },
 
     settings: {
       all: () => ctx.getSettings().modSettings[record.id] ?? {},

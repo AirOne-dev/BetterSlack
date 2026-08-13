@@ -143,6 +143,16 @@ export class ModManager {
           url,
           filename,
         }),
+      listThemes: () =>
+        this.mods
+          .filter((m) => m.type === 'theme')
+          .map((m) => ({
+            id: m.id,
+            name: m.name,
+            description: m.description,
+            enabled: this.isEnabled(m.id),
+          })),
+      themeSource: async (id) => this.sources[id] ?? (await this.fetchSource(id)),
       saveTheme: async ({ id, name, description, css }) => {
         // Through the same route the Browse shelf uses, so the loader validates
         // the manifest it writes exactly as it would for anything installed.
