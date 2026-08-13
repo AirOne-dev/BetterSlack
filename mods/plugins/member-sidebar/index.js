@@ -39,6 +39,91 @@
 
 const COLUMN_ID = 'slackmod-member-column';
 
+/** Slack's own overflow glyph, so the button reads as the one it stands in for. */
+const MORE_ICON =
+  '<svg data-qa="more-actions" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px;height:20px;width:20px">' +
+  '<path fill="currentColor" d="M5 10a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm6.5 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z' +
+  'm5 1.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>';
+
+const STRINGS = {
+  en: {
+    loading: 'Loading…',
+    members: 'Members',
+    online: 'Online',
+    offline: 'Offline',
+    noMembers: 'Slack does not list members for this conversation.',
+    noToken: 'No Slack session token in this window.',
+    presenceCap:
+      'Online status covers the first {count}. Slack answers about one person per request, and ' +
+      'asking about everyone here would hit its rate limit.',
+    profile: 'Profile',
+    active: 'Active',
+    away: 'Away',
+    localTime: '{time} local time',
+    dnd: 'Do not disturb',
+    message: 'Message',
+    huddle: 'Huddle',
+    vip: 'VIP',
+    more: 'More actions',
+    displayName: 'Display name',
+    fullName: 'Full name',
+    title: 'Title',
+    email: 'Email',
+    phone: 'Phone',
+    timeZone: 'Time zone',
+    username: 'Username',
+    memberId: 'Member ID',
+    copyName: 'Copy name',
+    copyId: 'Copy member ID',
+    copyLink: 'Copy profile link',
+    copiedName: 'Copied the display name',
+    copiedId: 'Copied the member ID',
+    copiedLink: 'Copied the profile link',
+    noMemberList: 'Slack is not showing a member list for this conversation.',
+    profileRefused: 'Slack did not open that profile. Its window may be in the background.',
+    notOffered: 'Slack does not offer that for this person.',
+    refused: 'Slack refused the request: {reason}',
+  },
+  fr: {
+    loading: 'Chargement…',
+    members: 'Membres',
+    online: 'En ligne',
+    offline: 'Hors ligne',
+    noMembers: 'Slack ne donne pas la liste des membres de cette conversation.',
+    noToken: 'Aucun jeton de session Slack dans cette fenêtre.',
+    presenceCap:
+      'La présence ne couvre que les {count} premiers. Slack répond pour une personne par requête, ' +
+      'et les demander toutes atteindrait sa limite.',
+    profile: 'Profil',
+    active: 'Disponible',
+    away: 'Absent(e)',
+    localTime: '{time} heure locale',
+    dnd: 'Ne pas déranger',
+    message: 'Message',
+    huddle: 'Appel d’équipe',
+    vip: 'VIP',
+    more: 'Plus d’actions',
+    displayName: 'Nom d’affichage',
+    fullName: 'Nom complet',
+    title: 'Fonction',
+    email: 'E-mail',
+    phone: 'Téléphone',
+    timeZone: 'Fuseau horaire',
+    username: 'Nom d’utilisateur',
+    memberId: 'ID de membre',
+    copyName: 'Copier le nom',
+    copyId: 'Copier l’ID de membre',
+    copyLink: 'Copier le lien du profil',
+    copiedName: 'Nom d’affichage copié',
+    copiedId: 'ID de membre copié',
+    copiedLink: 'Lien du profil copié',
+    noMemberList: 'Slack n’affiche pas de liste de membres pour cette conversation.',
+    profileRefused: 'Slack n’a pas ouvert ce profil. Sa fenêtre est peut-être en arrière-plan.',
+    notOffered: 'Slack ne propose pas cette action pour cette personne.',
+    refused: 'Slack a refusé la requête : {reason}',
+  },
+};
+
 /** Members to render at most. Slack pages `conversations.members` beyond this. */
 const MEMBER_LIMIT = 100;
 
@@ -180,6 +265,14 @@ const CSS = `
   gap: 8px;
   margin-top: 18px;
 }
+/* Slack's own overflow button is square and icon-only; match it. */
+.slackmod-profile__more {
+  min-width: 0;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .slackmod-profile__fields { margin-top: 20px; }
 .slackmod-profile__note {
   margin-top: 16px;
@@ -202,9 +295,10 @@ function displayName(user) {
 export default {
   async start(api) {
     api.css(CSS);
+    const t = api.i18n.strings(STRINGS);
 
     if (!api.slack.web.available) {
-      api.log.warn('no Slack session token in this window, so the member column is not available');
+      api.log.warn(t('noToken'));
       return;
     }
 
@@ -298,7 +392,7 @@ export default {
 
       const stack = document.querySelector('[data-qa="avatar_stack"]');
       if (!stack) {
-        api.ui.toast('Slack is not showing a member list for this conversation.', { variant: 'warn' });
+        api.ui.toast(t('noMemberList'), { variant: 'warn' });
         return null;
       }
       stack.click();
@@ -321,9 +415,7 @@ export default {
         if (pane) return pane;
       }
       // Slack pages long member lists, so the row may never have been rendered.
-      api.ui.toast('Slack did not open that profile. Its window may be in the background.', {
-        variant: 'warn',
-      });
+      api.ui.toast(t('profileRefused'), { variant: 'warn' });
       return null;
     };
 
@@ -338,7 +430,7 @@ export default {
       const pane = await openSlackProfile(userId);
       const button = pane?.querySelector(`[data-qa="${hook}"]`);
       if (!button) {
-        if (pane) api.ui.toast('Slack does not offer that for this person.', { variant: 'warn' });
+        if (pane) api.ui.toast(t('notOffered'), { variant: 'warn' });
         return;
       }
       button.click();
@@ -391,7 +483,7 @@ export default {
 
       if (data.error) {
         root.append(api.dom.h('div', { class: 'slackmod-profile__note' }, [
-          `Slack refused the request: ${data.error}`,
+          t('refused', { reason: data.error }),
         ]));
         return root;
       }
@@ -422,10 +514,11 @@ export default {
         identity.append(api.dom.h('div', { class: 'slackmod-profile__line' }, [profile.status_text]));
       }
 
+      const clock = localTime(user.tz_offset);
       const where = [
-        active ? 'Active' : 'Away',
-        localTime(user.tz_offset) ? `${localTime(user.tz_offset)} local time` : null,
-        data.dnd?.dnd_enabled ? 'Do not disturb' : null,
+        active ? t('active') : t('away'),
+        clock ? t('localTime', { time: clock }) : null,
+        data.dnd?.dnd_enabled ? t('dnd') : null,
       ].filter(Boolean).join(' · ');
       identity.append(api.dom.h('div', { class: 'slackmod-profile__presence' }, [
         api.dom.h('span', {
@@ -441,16 +534,20 @@ export default {
       // its entries have no attribute to aim at, only a localised label and an
       // id that changes on every render.
       const actions = api.dom.h('div', { class: 'slackmod-profile__actions' });
-      for (const [label, hook] of [
-        ['Message', 'member_profile_message_btn'],
-        ['Huddle', 'member_profile_huddle_btn'],
-        ['VIP', 'member_profile_vip_btn'],
-        ['More…', 'member_profile_more_btn'],
+      for (const [label, hook, icon] of [
+        [t('message'), 'member_profile_message_btn'],
+        [t('huddle'), 'member_profile_huddle_btn'],
+        [t('vip'), 'member_profile_vip_btn'],
+        [t('more'), 'member_profile_more_btn', MORE_ICON],
       ]) {
         const button = api.dom.h('button', {
-          class: 'c-button c-button--outline c-button--medium',
+          class: `c-button c-button--outline c-button--medium${icon ? ' slackmod-profile__more' : ''}`,
           type: 'button',
-        }, [label]);
+          'aria-label': label,
+        }, icon ? [] : [label]);
+        // Slack shows an ellipsis glyph, not the word; a faithful copy has to
+        // be the icon, with the label left to assistive technology.
+        if (icon) button.innerHTML = icon;
         button.addEventListener('click', () => {
           close();
           void pressInSlack(userId, hook);
@@ -462,14 +559,14 @@ export default {
       // Slack's own field markup, through the helper, so these rows look like
       // the ones in Slack's pane rather than like something bolted on.
       const rows = [
-        ['Display name', profile.display_name],
-        ['Full name', profile.real_name ?? user.real_name],
-        ['Title', profile.title],
-        ['Email', profile.email],
-        ['Phone', profile.phone],
-        ['Time zone', user.tz_label ?? user.tz],
-        ['Username', user.name ? `@${user.name}` : null],
-        ['Member ID', user.id],
+        [t('displayName'), profile.display_name],
+        [t('fullName'), profile.real_name ?? user.real_name],
+        [t('title'), profile.title],
+        [t('email'), profile.email],
+        [t('phone'), profile.phone],
+        [t('timeZone'), user.tz_label ?? user.tz],
+        [t('username'), user.name ? `@${user.name}` : null],
+        [t('memberId'), user.id],
       ].filter(([, value]) => value);
 
       const fields = api.dom.h('div', { class: 'slackmod-profile__fields' });
@@ -479,14 +576,20 @@ export default {
       return root;
     };
 
+    /** The dialog currently on screen, so a second click replaces it. */
+    let openDialog = null;
+
     const openProfileDialog = async (userId) => {
+      // Slack replaces its profile rather than stacking them, and two of these
+      // on top of each other is nobody's idea of a profile view.
+      openDialog?.close();
       const known = profiles.get(userId);
       // The dialog has to be able to close itself from inside its own body, and
       // the handle only exists after the call, so the buttons go through a box.
       const box = { close: () => {} };
       const close = () => box.close();
       const handle = api.ui.modal({
-        title: 'Profile',
+        title: t('profile'),
         width: 560,
         content: known
           ? buildProfile(userId, known, close)
@@ -497,35 +600,36 @@ export default {
         // rarely the last thing you came here to do.
         actions: [
           {
-            label: 'Copy name',
+            label: t('copyName'),
             onClick: () => {
               const user = profiles.get(userId)?.user;
               const handleName = user?.name ?? user?.profile?.display_name ?? userId;
-              void api.helpers.copy(`@${handleName}`, 'Copied the display name');
+              void api.helpers.copy(`@${handleName}`, t('copiedName'));
               return false;
             },
           },
           {
-            label: 'Copy member ID',
+            label: t('copyId'),
             onClick: () => {
-              void api.helpers.copy(userId, 'Copied the member ID');
+              void api.helpers.copy(userId, t('copiedId'));
               return false;
             },
           },
           {
-            label: 'Copy profile link',
+            label: t('copyLink'),
             onClick: () => {
               const domain = api.slack.web.teamDomain;
               const link = domain
                 ? `https://${domain}.slack.com/team/${userId}`
                 : `${location.origin}/team/${userId}`;
-              void api.helpers.copy(link, 'Copied the profile link');
+              void api.helpers.copy(link, t('copiedLink'));
               return false;
             },
           },
         ],
       });
       box.close = () => handle.close();
+      openDialog = handle;
       if (known) return;
       const data = await loadProfile(userId);
       // The dialog may already be gone; body still exists but is detached.
@@ -579,10 +683,10 @@ export default {
       const online = people.filter((user) => presence.get(user.id) === 'active');
       const groups = online.length > 0
         ? [
-            { label: 'Online', list: online },
-            { label: 'Offline', list: people.filter((user) => presence.get(user.id) !== 'active') },
+            { label: t('online'), list: online },
+            { label: t('offline'), list: people.filter((user) => presence.get(user.id) !== 'active') },
           ]
-        : [{ label: 'Members', list: people }];
+        : [{ label: t('members'), list: people }];
 
       host.replaceChildren();
       for (const group of groups) {
@@ -595,15 +699,14 @@ export default {
 
       if (people.length > PRESENCE_LIMIT) {
         host.append(api.dom.h('div', { class: 'slackmod-members__note' }, [
-          `Online status covers the first ${PRESENCE_LIMIT}. Slack answers about one person per ` +
-            'request, and asking about everyone here would hit its rate limit.',
+          t('presenceCap', { count: PRESENCE_LIMIT }),
         ]));
       }
     };
 
     const render = async (host, channel) => {
       const mine = ++generation;
-      host.replaceChildren(api.dom.h('div', { class: 'slackmod-members__note' }, ['Loading…']));
+      host.replaceChildren(api.dom.h('div', { class: 'slackmod-members__note' }, [t('loading')]));
 
       let ids = [];
       let truncated = false;
@@ -616,9 +719,7 @@ export default {
         truncated = Boolean(res.response_metadata?.next_cursor);
       } catch (err) {
         if (mine !== generation) return;
-        host.replaceChildren(api.dom.h('div', { class: 'slackmod-members__note' }, [
-          'Slack does not list members for this conversation.',
-        ]));
+        host.replaceChildren(api.dom.h('div', { class: 'slackmod-members__note' }, [t('noMembers')]));
         api.log.warn(`could not list members of ${channel}:`, err.message);
         return;
       }

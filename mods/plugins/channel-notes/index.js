@@ -25,11 +25,43 @@ function currentChannelName() {
   return el?.textContent?.trim() || 'this channel';
 }
 
+const STRINGS = {
+  en: {
+    openChannelFirst: 'Open a channel first',
+    placeholder: 'Anything you want to remember about this channel…',
+    title: 'Notes — {channel}',
+    subtitle: 'Stored on this machine only. Nothing is sent to Slack.',
+    clear: 'Clear',
+    clearTitle: 'Clear these notes?',
+    clearMessage: 'The notes for {channel} will be deleted. This cannot be undone.',
+    cleared: 'Notes cleared',
+    save: 'Save',
+    saved: 'Notes saved',
+    button: 'Channel notes',
+    buttonHint: 'A private scratchpad for this channel',
+  },
+  fr: {
+    openChannelFirst: 'Ouvrez d’abord un canal',
+    placeholder: 'Tout ce que vous voulez retenir sur ce canal…',
+    title: 'Notes — {channel}',
+    subtitle: 'Conservées sur cette machine uniquement. Rien n’est envoyé à Slack.',
+    clear: 'Effacer',
+    clearTitle: 'Effacer ces notes ?',
+    clearMessage: 'Les notes de {channel} seront supprimées. Cette action est irréversible.',
+    cleared: 'Notes effacées',
+    save: 'Enregistrer',
+    saved: 'Notes enregistrées',
+    button: 'Notes du canal',
+    buttonHint: 'Un bloc-notes privé pour ce canal',
+  },
+};
+
 export default {
   /**
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    const t = api.i18n.strings(STRINGS);
     const notesFor = (channelId) => {
       const all = api.settings.get('notes', {}) ?? {};
       return all[channelId] ?? '';
@@ -45,14 +77,14 @@ export default {
     const open = () => {
       const channelId = api.slack.currentChannelId();
       if (!channelId) {
-        api.ui.toast('Open a channel first', { variant: 'warning' });
+        api.ui.toast(t('openChannelFirst'), { variant: 'warning' });
         return;
       }
 
       const textarea = api.dom.h('textarea', {
         rows: '12',
         spellcheck: 'false',
-        placeholder: 'Anything you want to remember about this channel…',
+        placeholder: t('placeholder'),
         style:
           'width:100%; resize:vertical; padding:10px; border-radius:8px; font:13px/1.6 inherit;' +
           ' color:inherit; background:var(--dt_color-base-sec, #f8f8f8);' +
@@ -61,34 +93,34 @@ export default {
       textarea.value = notesFor(channelId);
 
       const handle = api.ui.modal({
-        title: `Notes — ${currentChannelName()}`,
-        subtitle: 'Stored on this machine only. Nothing is sent to Slack.',
+        title: t('title', { channel: currentChannelName() }),
+        subtitle: t('subtitle'),
         content: textarea,
         width: 560,
         actions: [
           {
-            label: 'Clear',
+            label: t('clear'),
             variant: 'default',
             onClick: async () => {
               if (textarea.value.trim() === '') return false;
               const sure = await api.ui.confirm({
-                title: 'Clear these notes?',
-                message: `The notes for ${currentChannelName()} will be deleted. This cannot be undone.`,
-                confirmLabel: 'Clear',
+                title: t('clearTitle'),
+                message: t('clearMessage', { channel: currentChannelName() }),
+                confirmLabel: t('clear'),
                 danger: true,
               });
               if (!sure) return false; // keep the modal open
               await saveNotes(channelId, '');
-              api.ui.toast('Notes cleared');
+              api.ui.toast(t('cleared'));
               return true;
             },
           },
           {
-            label: 'Save',
+            label: t('save'),
             variant: 'primary',
             onClick: async () => {
               await saveNotes(channelId, textarea.value);
-              api.ui.toast('Notes saved', { variant: 'success' });
+              api.ui.toast(t('saved'), { variant: 'success' });
             },
           },
         ],
@@ -100,8 +132,8 @@ export default {
 
     api.slack.addToolbarButton('channelHeader', {
       id: 'notes',
-      label: 'Channel notes',
-      description: 'A private scratchpad for this channel',
+      label: t('button'),
+      description: t('buttonHint'),
       icon: ICON,
       onClick: open,
     });

@@ -270,7 +270,7 @@ test('the Slack actions press Slack’s own buttons, matched on the user id', as
     });
 
     const message = [...recorded.modals[0].body.querySelectorAll('button')]
-      .find((b) => b.textContent === 'Message');
+      .find((b) => b.getAttribute('aria-label') === 'Message');
     assert.ok(message, 'the dialog offers Message, like Slack’s pane');
     message.click();
 
@@ -394,9 +394,57 @@ test('offers the same four actions Slack’s pane does', async () => {
     document.querySelector('.slackmod-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
 
-    const labels = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')]
-      .map((b) => b.textContent);
-    assert.deepEqual(labels, ['Message', 'Huddle', 'VIP', 'More…']);
+    const buttons = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')];
+    assert.deepEqual(buttons.map((b) => b.getAttribute('aria-label')),
+      ['Message', 'Huddle', 'VIP', 'More actions']);
+    // Slack's overflow is a glyph, not a word; a copy has to be the glyph too.
+    assert.equal(buttons[3].textContent, '');
+    assert.ok(buttons[3].querySelector('svg'), 'the ellipsis icon, like Slack’s');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('a second click replaces the dialog rather than stacking one on it', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1', 'U2'] });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const rows = [...document.querySelectorAll('.slackmod-members__row')];
+    rows[0].click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    rows[1].click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    assert.equal(recorded.modals.length, 2, 'two were opened');
+    assert.equal(document.querySelectorAll('.slackmod-test-modal').length, 1, 'one is on screen');
+    assert.equal(recorded.modals[0].closed, true, 'the first was closed, not buried');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('speaks the app’s language', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  const { api, recorded } = createTestApi({ web: stub.web, locale: 'fr-FR' });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const column = document.getElementById('slackmod-member-column');
+    assert.match(column.textContent, /Membres/, 'the column heading is French');
+
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(recorded.modals[0].options.title, 'Profil');
+    assert.deepEqual(recorded.modals[0].options.actions.map((a) => a.label),
+      ['Copier le nom', 'Copier l’ID de membre', 'Copier le lien du profil']);
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
