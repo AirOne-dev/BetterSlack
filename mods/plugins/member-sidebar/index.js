@@ -200,6 +200,18 @@ const CSS = `
   background: var(--dt_color-base-sec, rgba(var(--sk_foreground_min_solid, 248, 248, 248), 1));
   border-left: 1px solid var(--dt_color-otl-ter, rgba(var(--sk_foreground_low, 29, 28, 29), 0.13));
 }
+/*
+ * Nothing in the column may shrink.
+ *
+ * These are flex items in a flex column, so by default they give up height
+ * before the container overflows: the rows quietly rendered at 34px instead of
+ * 42, tightening as the window got shorter, and there was never any overflow
+ * for the scrollbar to appear on. Both reported symptoms were this one line.
+ */
+#${COLUMN_ID} .slackmod-members__heading,
+#${COLUMN_ID} .slackmod-members__row,
+#${COLUMN_ID} .slackmod-members__note { flex: 0 0 auto; }
+
 #${COLUMN_ID} .slackmod-members__heading {
   padding: 12px 8px 4px;
   font-size: 12px;
