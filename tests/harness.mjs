@@ -177,6 +177,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
     logs: [],
     navigations: [],
     hidden: [],
+    huddles: [],
     vips: new Set(),
   };
   const store = { ...settings };
@@ -261,6 +262,10 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
       openUserProfile: (userId) => recorded.navigations.push({ kind: 'profile', id: userId }),
       hideConversation: async (channelId) => { recorded.hidden.push(channelId); },
       filesFrom: async () => [],
+      startHuddle: async (userId) => {
+        recorded.huddles.push(userId);
+        return true;
+      },
       vipUsers: async () => [...recorded.vips],
       setVip: async (userId, isVip) => {
         if (isVip) recorded.vips.add(userId);

@@ -69,6 +69,13 @@ interface Attachment {
 class Loader {
   private catalog: Catalog;
   private attachments = new Map<string, Attachment>();
+  /**
+   * Slack's other windows -- the huddle preview, mostly. They are separate
+   * renderers, so nothing injected into the client reaches them, and they
+   * would otherwise sit there in Slack's default colours in the middle of a
+   * themed app. They get the stylesheet only: no runtime, no panel, no plugins.
+   */
+  private auxiliary = new Map<string, CdpSession>();
   private runtimeSource = '';
   private info!: LoaderInfo;
 
@@ -130,9 +137,16 @@ class Loader {
         console.log('[slackmod] Slack closed, exiting');
         return;
       }
-      const clients = targets.filter((t) => t.type === 'page' && /app\.slack\.com/.test(t.url));
+      const pages = targets.filter((t) => t.type === 'page');
+      const clients = pages.filter((t) => /app\.slack\.com/.test(t.url));
       for (const target of clients) {
         if (!this.attachments.has(target.targetId)) await this.attach(target);
+      }
+      // Everything else Slack opens. They start as about:blank and are filled
+      // in afterwards, so the styles go in on every load rather than once.
+      for (const target of pages) {
+        if (clients.includes(target) || this.auxiliary.has(target.targetId)) continue;
+        await this.attachAuxiliary(target);
       }
       await sleep(1500);
     }
@@ -170,6 +184,57 @@ class Loader {
     await this.inject(attachment);
 
     console.log(`[slackmod] injected into ${target.title || target.url}`);
+  }
+
+  /** Give one of Slack's other windows the active theme, and nothing else. */
+  private async attachAuxiliary(target: TargetInfo): Promise<void> {
+    let session: CdpSession;
+    try {
+      session = await this.connection.attach(target.targetId);
+    } catch {
+      return; // it may have closed already; it is only a huddle window
+    }
+    this.auxiliary.set(target.targetId, session);
+    session.on('__closed', () => this.auxiliary.delete(target.targetId));
+
+    await session.send('Runtime.enable').catch(() => undefined);
+    await session.send('Page.enable').catch(() => undefined);
+    const paint = () => void this.paintAuxiliary(session);
+    session.on('Page.loadEventFired', paint);
+    session.on('Page.frameStoppedLoading', paint);
+    paint();
+    console.log(`[slackmod] theming ${target.title || 'an auxiliary window'}`);
+  }
+
+  private async paintAuxiliary(session: CdpSession): Promise<void> {
+    const css = await this.buildThemeCss();
+    // Re-applied wholesale each time, keyed by one element, so a reload or a
+    // second call cannot leave two stylesheets fighting.
+    const script = `(() => {
+      const id = 'slackmod-aux-theme';
+      let node = document.getElementById(id);
+      if (!node) {
+        node = document.createElement('style');
+        node.id = id;
+        (document.head || document.documentElement).append(node);
+      }
+      node.textContent = ${JSON.stringify(css)};
+    })()`;
+    await session.evaluate(script, false).catch(() => undefined);
+  }
+
+  /** Every enabled theme, then the user's own CSS, in the order they apply. */
+  private async buildThemeCss(): Promise<string> {
+    const settings = await readSettings();
+    const parts: string[] = [];
+    for (const id of settings.enabled) {
+      const record = this.catalog.get(id);
+      if (record?.type !== 'theme') continue;
+      const source = await this.catalog.readSource(id).catch(() => null);
+      if (source !== null) parts.push(source);
+    }
+    if (settings.customCss.trim()) parts.push(settings.customCss);
+    return parts.join('\n\n');
   }
 
   /** Re-register the document-start script so it carries current settings. */
@@ -365,11 +430,14 @@ class Loader {
 
   private async refreshAllBootScripts(): Promise<void> {
     await Promise.all([...this.attachments.values()].map((a) => this.refreshBootScript(a)));
+    // A theme switched on or off has to reach the other windows too.
+    await Promise.all([...this.auxiliary.values()].map((s) => this.paintAuxiliary(s)));
   }
 
   dispose(): void {
     this.catalog.dispose();
     for (const { session } of this.attachments.values()) session.close();
+    for (const session of this.auxiliary.values()) session.close();
   }
 }
 
