@@ -33,7 +33,17 @@ const TOOLBARS = {
   controlStrip: {
     container: '.p-control_strip',
     buttonClass: 'c-button-unstyled p-control_strip__circle_button',
-    before: '.c-coachmark-anchor:has([data-qa="user-button"])',
+    /*
+     * Anchored on SlackMod's own launcher, not on Slack's coachmark wrapper.
+     *
+     * Inserting next to `.c-coachmark-anchor:has([data-qa="user-button"])`
+     * freezes the renderer solid -- grey window, no error, no console, Slack
+     * has to be killed. Slack's coachmark code evidently reacts to changes
+     * around that node and ends up in a loop with whatever put them there.
+     * Bisected against a running client: the same button anchored here is fine,
+     * anchored there hangs every time.
+     */
+    before: '#slackmod-control-button',
     placement: 'right' as Placement,
   },
   /**
@@ -297,7 +307,9 @@ export function addToolbarButton(
       });
       return element;
     },
-    button.before ?? spec.before ? { before: button.before ?? spec.before } : {},
+    // Prepend rather than append when the anchor is missing: the end of a
+    // container is where the app's own re-renders land.
+    { before: button.before ?? spec.before, position: 'prepend' },
   );
 
   return () => {
