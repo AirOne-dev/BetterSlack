@@ -13,219 +13,273 @@
 // -content-*, -otl-*) hold CSS colours, while the palette tokens
 // (--dt_color-plt-*) hold bare "r,g,b" triplets and only work inside rgb().
 
+/**
+ * What Slack has no class for.
+ *
+ * The panel wears Slack's own `c-dialog` / `c-menu` classes, so almost nothing
+ * needs styling here — only layout, and the few controls Slack has no reusable
+ * class for. Every colour comes from a Slack variable, so the panel follows the
+ * active theme exactly rather than approximating it:
+ *
+ *   rgba(var(--sk_primary_foreground), 1)   text
+ *   rgba(var(--sk_foreground_max), .7)      secondary text
+ *   rgba(var(--sk_foreground_low), .13)     hairlines
+ *   var(--dt_color-*)                       semantic colours
+ */
 export const PANEL_CSS = `
-:host {
-  --sm-bg: var(--dt_color-base-pry, #ffffff);
-  --sm-bg-raised: var(--dt_color-base-sec, #f8f8f8);
-  --sm-bg-hover: var(--dt_color-base-pry-hover, rgba(69, 68, 71, 0.06));
-  --sm-text: var(--dt_color-content-pry, #1d1c1d);
-  --sm-text-dim: var(--dt_color-content-sec, #454447);
-  --sm-border: var(--dt_color-otl-sec, rgba(94, 93, 96, 0.45));
-  --sm-accent: #611f69;
-  --sm-accent-text: #ffffff;
-  --sm-green: var(--dt_color-content-hgl-2, #007a5a);
-  --sm-danger: var(--dt_color-content-imp, #c01343);
-  --sm-radius: 10px;
-  --sm-font: Lato, Slack-Lato, appleLogo, sans-serif;
-  all: initial;
-}
+/* .c-dialog ships opacity:0 and is faded in by Slack's own transition. */
+#slackmod-panel.c-dialog { opacity: 1; }
 
-* { box-sizing: border-box; }
-
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  font-family: var(--sm-font);
-  color: var(--sm-text);
-}
-/* Only on the way in. The panel re-renders on every toggle and tab change, and
- * animating those replays the fade as a flicker. */
-.backdrop.entering { animation: sm-fade 120ms ease-out; }
-@keyframes sm-fade { from { opacity: 0; } to { opacity: 1; } }
-
-.dialog {
-  width: min(920px, 92vw);
-  height: min(640px, 88vh);
+.slackmod-content {
   display: flex;
   flex-direction: column;
-  background: var(--sm-bg);
-  border: 1px solid var(--sm-border);
-  border-radius: var(--sm-radius);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
+  width: min(880px, calc(100% - 32px));
+  max-width: min(880px, calc(100% - 32px));
+  height: min(620px, calc(100% - 64px));
+  max-height: min(620px, calc(100% - 64px));
+  opacity: 1;
 }
 
-header {
+.slackmod-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--sm-border);
-  flex: 0 0 auto;
+  gap: 12px;
+  padding: 20px 24px 12px;
 }
-header h1 { font-size: 17px; font-weight: 900; margin: 0; letter-spacing: -0.2px; }
-header .version { font-size: 11px; color: var(--sm-text-dim); padding-top: 3px; }
-header .spacer { flex: 1; }
+.slackmod-close { margin-left: auto; flex: 0 0 auto; }
 
-.body { display: flex; flex: 1; min-height: 0; }
+.slackmod-layout { display: flex; flex: 1; min-height: 0; }
 
-nav {
-  flex: 0 0 172px;
-  padding: 12px 10px;
-  border-right: 1px solid var(--sm-border);
+/* Left rail, in the shape Slack's Preferences dialog uses. */
+.slackmod-nav {
+  flex: 0 0 176px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 4px 8px 16px 16px;
   overflow-y: auto;
 }
-nav button {
-  all: unset;
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  color: var(--sm-text-dim);
+.slackmod-nav__item {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-nav button:hover { background: var(--sm-bg-hover); color: var(--sm-text); }
-nav button[aria-selected="true"] { background: var(--sm-accent); color: var(--sm-accent-text); font-weight: 700; }
-nav .count { margin-left: auto; font-size: 11px; opacity: 0.7; }
-
-main { flex: 1; overflow-y: auto; padding: 18px 20px; min-width: 0; }
-main h2 { font-size: 15px; margin: 0 0 4px; font-weight: 900; }
-
-/* Installed / Enabled / Browse */
-.shelf_bar {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
-  position: sticky; top: -18px; z-index: 1; padding: 6px 0 8px;
-  background: var(--sm-bg);
-}
-.shelves { display: flex; gap: 2px; }
-.shelf {
-  all: unset; cursor: pointer; display: flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 7px; font-size: 13px; font-weight: 700;
-  color: var(--sm-text-dim);
-}
-.shelf:hover { background: var(--sm-bg-hover); color: var(--sm-text); }
-.shelf[aria-selected="true"] { background: var(--sm-bg-raised); color: var(--sm-text); }
-.shelf .count {
-  font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
-  background: var(--sm-bg-hover); color: var(--sm-text-dim);
-}
-.shelf[aria-selected="true"] .count { color: var(--sm-text); }
-.search {
-  flex: 1; min-width: 0; font-size: 13px; padding: 7px 10px; border-radius: 7px;
-  color: var(--sm-text); background: var(--sm-bg-raised);
-  border: 1px solid var(--sm-border);
-}
-.search:focus { outline: 2px solid var(--sm-accent); outline-offset: -1px; }
-.shelf_list { display: block; }
-main .hint { font-size: 12.5px; color: var(--sm-text-dim); margin: 0 0 16px; line-height: 1.5; }
-main .hint a { color: inherit; }
-
-.card {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 13px 14px;
-  border: 1px solid var(--sm-border);
-  border-radius: 8px;
-  margin-bottom: 10px;
-  background: var(--sm-bg-raised);
-}
-.card .meta { flex: 1; min-width: 0; }
-.card .name { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.card .desc { font-size: 12.5px; color: var(--sm-text-dim); margin-top: 3px; line-height: 1.45; }
-.card .sub { font-size: 11px; color: var(--sm-text-dim); margin-top: 6px; opacity: 0.85; }
-.card .actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-
-.badge {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--sm-border);
-  color: var(--sm-text-dim);
-}
-.badge.builtin { border-color: var(--sm-green); color: var(--sm-green); }
-
-.switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; cursor: pointer; }
-.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
-.switch .track {
-  position: absolute; inset: 0; border-radius: 999px;
-  background: var(--dt_color-otl-pry, #7c7a7f); transition: background 120ms ease;
-}
-.switch .thumb {
-  position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
-  border-radius: 50%; background: #fff; transition: transform 120ms ease;
-}
-.switch input:checked + .track { background: var(--sm-green); }
-.switch input:checked + .track .thumb { transform: translateX(16px); }
-.switch input:focus-visible + .track { outline: 2px solid var(--sm-text); outline-offset: 2px; }
-
-button.btn {
-  all: unset;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1.46667;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  text-align: left;
   cursor: pointer;
-  font-size: 12.5px;
-  font-weight: 700;
+}
+.slackmod-nav__item:hover { background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08); }
+.slackmod-nav__item[aria-selected="true"] {
+  background: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  color: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+  font-weight: var(--custom-font-weight-bold, 700);
+}
+.slackmod-nav__item[aria-selected="true"] .slackmod-count {
+  background: rgba(255, 255, 255, 0.24);
+  color: inherit;
+}
+
+.slackmod-count {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+
+.slackmod-body { flex: 1; min-width: 0; padding-bottom: 20px; }
+
+.slackmod-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 12px;
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+}
+.slackmod-shelves { display: flex; gap: 2px; }
+.slackmod-shelf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border-radius: 6px;
-  border: 1px solid var(--sm-border);
-  color: var(--sm-text);
+  font-size: 14px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+  cursor: pointer;
 }
-button.btn:hover { background: var(--sm-bg-hover); }
-button.btn.primary { background: var(--sm-green); border-color: transparent; color: #fff; }
-button.btn.danger { color: var(--sm-danger); border-color: var(--sm-danger); }
-button.btn[disabled] { opacity: 0.45; cursor: default; }
-
-button.icon {
-  all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 6px;
-  display: grid; place-items: center; color: var(--sm-text-dim); font-size: 18px;
+.slackmod-shelf:hover { background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08); }
+.slackmod-shelf[aria-selected="true"] {
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  font-weight: var(--custom-font-weight-bold, 700);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
 }
-button.icon:hover { background: var(--sm-bg-hover); color: var(--sm-text); }
 
-textarea {
-  width: 100%;
-  min-height: 300px;
-  resize: vertical;
-  background: var(--dt_color-base-sec, #f8f8f8);
-  color: var(--sm-text);
-  border: 1px solid var(--sm-border);
-  border-radius: 8px;
-  padding: 12px;
-  font-family: Monaco, Menlo, Consolas, monospace;
-  font-size: 12.5px;
-  line-height: 1.55;
+.slackmod-search,
+.slackmod-css {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.46667;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  background: transparent;
+  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
 }
-textarea:focus { outline: 2px solid var(--sm-accent); outline-offset: -1px; }
+.slackmod-search:focus,
+.slackmod-css:focus {
+  outline: none;
+  border-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  box-shadow: 0 0 0 1px rgba(var(--sk_highlight, 18, 100, 163), 1);
+}
+.slackmod-css { width: 100%; resize: vertical; font-family: Monaco, Menlo, monospace; font-size: 13px; }
 
-.row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-.row .spacer { flex: 1; }
-.status { font-size: 12px; color: var(--sm-text-dim); }
-.status.error { color: var(--sm-danger); }
-
-.empty {
-  padding: 34px 16px;
-  text-align: center;
-  color: var(--sm-text-dim);
+.slackmod-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.13);
+}
+.slackmod-row:last-child { border-bottom: none; }
+.slackmod-row__meta { flex: 1; min-width: 0; }
+.slackmod-row__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+.slackmod-row__desc {
+  margin-top: 2px;
   font-size: 13px;
-  border: 1px dashed var(--sm-border);
-  border-radius: 8px;
-  line-height: 1.6;
+  line-height: 1.46;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.slackmod-row__sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.55);
+}
+.slackmod-row__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.slackmod-row__more { opacity: 0; transition: opacity 80ms ease; }
+.slackmod-row:hover .slackmod-row__more,
+.slackmod-row__more:focus-visible { opacity: 1; }
+
+.slackmod-tag {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
 }
 
-dl.info { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 12.5px; margin: 0; }
-dl.info dt { color: var(--sm-text-dim); }
-dl.info dd { margin: 0; font-family: Monaco, Menlo, monospace; font-size: 11.5px; word-break: break-all; }
+/* Slack has no reusable switch class, so this is built from its variables. */
+.slackmod-switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; cursor: pointer; }
+.slackmod-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.slackmod-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(var(--sk_foreground_max, 29, 28, 29), 0.4);
+  transition: background 120ms ease;
+}
+.slackmod-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 120ms ease;
+}
+.slackmod-switch input:checked + .slackmod-switch__track {
+  background: var(--dt_color-content-hgl-2, #007a5a);
+}
+.slackmod-switch input:checked + .slackmod-switch__track .slackmod-switch__thumb {
+  transform: translateX(16px);
+}
+.slackmod-switch input:focus-visible + .slackmod-switch__track {
+  box-shadow: 0 0 0 2px rgba(var(--sk_highlight, 18, 100, 163), 1);
+}
+
+.slackmod-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+.slackmod-hint {
+  margin: 4px 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.slackmod-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.slackmod-status { font-size: 13px; color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
+.slackmod-danger { color: var(--dt_color-content-imp, #c01343); }
+
+.slackmod-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 16px 0 0;
+  font-size: 13px;
+}
+.slackmod-info dt { color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
+.slackmod-info dd {
+  margin: 0;
+  font-family: Monaco, Menlo, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+
+/* Dialogs opened by mods through api.ui.modal: the same Slack shell, sized to
+   the content rather than to a fixed panel height. */
+.slackmod-widget_dialog { z-index: 1014; }
+.slackmod-widget_content { height: auto; max-height: min(640px, calc(100% - 64px)); }
+.slackmod-widget_content .slackmod-body { flex: 0 1 auto; padding-bottom: 8px; }
+.slackmod-widget_titles { flex: 1; min-width: 0; }
+.slackmod-widget_subtitle { margin: 4px 0 0; }
+.slackmod-widget_footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px 20px;
+}
+
+/* Slack pins the top offset on .c-popover__content, so this layer is ours. */
+.slackmod-menu_layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1013;
+  will-change: transform;
+}
+.slackmod-menu_layer .c-menu {
+  min-width: 180px;
+  border-radius: 6px;
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+  box-shadow: 0 0 0 1px rgba(var(--sk_foreground_low, 29, 28, 29), 0.13),
+    0 4px 12px 0 rgba(0, 0, 0, 0.12);
+}
 `;
 
 /**
@@ -239,7 +293,7 @@ export const WIDGET_CSS = `
 :host { all: initial; }
 * { box-sizing: border-box; }
 
-:host, .toast-stack, .modal__backdrop {
+:host, .toast-stack {
   --w-bg: var(--dt_color-base-pry, #ffffff);
   --w-raised: var(--dt_color-base-sec, #f8f8f8);
   --w-text: var(--dt_color-content-pry, #1d1c1d);
@@ -299,81 +353,8 @@ export const WIDGET_CSS = `
 }
 .toast__action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 3px; }
 
-/* ---- modals ---- */
-.modal__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 2147482500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-  font-family: var(--w-font);
-  color: var(--w-text);
-  animation: w-fade 120ms ease-out;
-}
-@keyframes w-fade { from { opacity: 0 } to { opacity: 1 } }
-
-.modal {
-  display: flex;
-  flex-direction: column;
-  max-height: 86vh;
-  background: var(--w-bg);
-  /* A glass theme makes --dt_color-base-pry translucent, which is fine behind a
-   * message list and unreadable behind a dialog. Frosting keeps the theme's
-   * look without losing the text. */
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
-  border: 1px solid var(--w-border);
-  border-radius: 12px;
-  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.42);
-  overflow: hidden;
-}
-.modal__header {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 18px 20px 12px;
-}
-.modal__titles { flex: 1; min-width: 0; }
-.modal__title { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: -0.2px; }
-.modal__subtitle { margin: 4px 0 0; font-size: 13px; color: var(--w-dim); line-height: 1.5; }
-.modal__close {
-  all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 6px;
-  display: grid; place-items: center; font-size: 20px; color: var(--w-dim); flex: 0 0 auto;
-}
-.modal__close:hover { background: var(--dt_color-base-pry-hover, rgba(0,0,0,0.06)); color: var(--w-text); }
-
-.modal__body { padding: 0 20px 4px; overflow-y: auto; font-size: 14px; line-height: 1.55; }
-.modal__text { margin: 0 0 12px; }
-
-.modal__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 14px 20px 18px;
-}
-
-.btn {
-  all: unset;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--w-border);
-  color: var(--w-text);
-  text-align: center;
-}
-.btn:hover { background: var(--dt_color-base-pry-hover, rgba(0,0,0,0.06)); }
-.btn--primary { background: var(--w-green); border-color: transparent; color: #fff; }
-.btn--primary:hover { filter: brightness(1.08); background: var(--w-green); }
-.btn--danger { background: var(--w-danger); border-color: transparent; color: #fff; }
-.btn--danger:hover { filter: brightness(1.08); background: var(--w-danger); }
-.btn:focus-visible { outline: 2px solid var(--w-info); outline-offset: 2px; }
-
 @media (prefers-reduced-motion: reduce) {
-  .toast, .modal__backdrop { transition: none; animation: none; }
+  .toast { transition: none; }
 }
 `;
 
