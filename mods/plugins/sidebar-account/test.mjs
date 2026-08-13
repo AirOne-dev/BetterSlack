@@ -149,3 +149,30 @@ test('lifts Slack’s unread pill clear of the strip and collapses the duplicate
     dom.cleanup();
   }
 });
+
+test('moves Slack’s account menu next to the gear that opened it', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi();
+  try {
+    await plugin.start(api);
+
+    // Slack opens its menu anchored to the rail button, far from the strip.
+    const panel = document.createElement('div');
+    panel.className = 'ReactModal__Content';
+    panel.style.top = '946px';
+    panel.style.left = '65px';
+    panel.innerHTML = '<div class="c-menu"></div>';
+    document.querySelector('[data-qa="user-button"]').addEventListener('click', () => {
+      document.body.append(panel);
+    });
+
+    document.querySelector('#slackmod-account-strip .slackmod-me__settings').click();
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    assert.notEqual(panel.style.top, '946px', 'it was moved off Slack’s anchor');
+    assert.notEqual(panel.style.left, '65px');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
