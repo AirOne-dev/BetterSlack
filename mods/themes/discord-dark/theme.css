@@ -181,29 +181,37 @@ html, body { background-color: var(--dc-chat); }
  * Say plainly what this is and is not. Discord's rail lists servers; Slack's
  * lists sections of one workspace (Home, DMs, Activity, ...). Nothing can turn
  * one into the other, so what this does is give Slack's rail Discord's
- * behaviour: 48px round icons with no labels, a squircle that rounds off on
- * hover, and the white pill on the left that grows from a dot to a bar.
+ * behaviour: round icons with no labels, a squircle that rounds off on hover,
+ * and the white pill on the left that grows from a dot to a bar.
  *
- * Slack's own width (70px) is kept rather than forced to Discord's 72px. Those
- * two pixels live in the workspace wrapper's grid template, which also carries
- * the resizable sidebar, and no one can see the difference.
+ * Sizes are 40px, not Discord's 48. Slack's rail is 70px wide and clips what
+ * overflows it, and 48px plus the pill does not fit: the tab container is laid
+ * out 80px wide, so the icons were being cut off on both sides. Widening the
+ * rail would mean overriding the workspace grid; 40px simply fits, with 15px of
+ * air each side.
  */
-.p-tab_rail__tab_container { padding-top: 12px !important; }
+.p-tab_rail__tab_container {
+  /* Slack lays this out wider than the rail that clips it. */
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-top: 12px !important;
+}
+.p-tab_rail__tab_menu { width: 100% !important; }
 
 .p-tab_rail__button {
   position: relative;
-  width: 48px !important;
+  width: 40px !important;
   min-height: 0 !important;
-  height: 48px !important;
+  height: 40px !important;
   margin: 0 auto 8px !important;
   padding: 0 !important;
-  border-radius: 16px !important;
+  border-radius: 14px !important;
 }
 .p-tab_rail__button__label { display: none !important; }
 
 .p-tab_rail__button__icon {
-  width: 48px !important;
-  height: 48px !important;
+  width: 40px !important;
+  height: 40px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,7 +225,7 @@ html, body { background-color: var(--dc-chat); }
 }
 .p-tab_rail__button:hover .p-tab_rail__button__icon,
 .p-tab_rail__button--active .p-tab_rail__button__icon {
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--dc-accent) !important;
   color: #ffffff !important;
 }
@@ -236,13 +244,13 @@ html, body { background-color: var(--dc-chat); }
   border-radius: 0 4px 4px 0;
   transition: height 140ms ease, margin-top 140ms ease;
 }
-.p-tab_rail__button:hover::before { height: 20px; margin-top: -10px; }
-.p-tab_rail__button--active::before { height: 40px; margin-top: -20px; }
+.p-tab_rail__button:hover::before { height: 16px; margin-top: -8px; }
+.p-tab_rail__button--active::before { height: 32px; margin-top: -16px; }
 
 /* The workspace icon sits above the sections, with Discord's separator under it. */
 .p-tab_rail [data-qa="team-icon"],
 .p-tab_rail [data-qa="account_switcher_team_icon"] {
-  border-radius: 16px !important;
+  border-radius: 14px !important;
   overflow: hidden;
 }
 .p-tab_rail__tab_container::before {
@@ -263,34 +271,35 @@ html, body { background-color: var(--dc-chat); }
  * It only appears when you have more than one, so on a single-workspace account
  * none of this is visible and the tab rail above is as close as it gets.
  *
- * Slack draws these at 32px with a keyboard-shortcut badge on each. Discord
- * draws 48px circles that round off on hover, with the pill on the left and no
- * badge, so that is what these rules do.
+ * Slack draws these at 32px with a keyboard-shortcut badge on each. These get
+ * Discord's treatment -- a circle that rounds off on hover, the pill on the
+ * left, no badge -- at 40px rather than Discord's 48, to match the tab rail
+ * beside them and to stay inside a 60px column.
  */
 .p-team_sidebar,
 .p-workspace_switcher_prototype {
   background: var(--dc-rail) !important;
 }
 .p-team_sidebar__teams {
-  width: 48px !important;
+  width: 40px !important;
   margin: 0 auto !important;
 }
 .p-team_sidebar__item {
   position: relative;
-  width: 48px !important;
-  height: 48px !important;
+  width: 40px !important;
+  height: 40px !important;
   margin: 0 0 8px !important;
-  border-radius: 16px !important;
+  border-radius: 14px !important;
 }
 .c-team_icon.p-team_sidebar__image {
-  width: 48px !important;
-  height: 48px !important;
+  width: 40px !important;
+  height: 40px !important;
   border-radius: 50% !important;
   transition: border-radius 140ms ease;
 }
 .p-team_sidebar__item:hover .c-team_icon.p-team_sidebar__image,
 .p-team_sidebar__item--active .c-team_icon.p-team_sidebar__image {
-  border-radius: 16px !important;
+  border-radius: 14px !important;
 }
 /* Slack's per-workspace shortcut badge; Discord has no equivalent. */
 .p-team_sidebar__shortcut_hint { display: none !important; }
@@ -307,8 +316,8 @@ html, body { background-color: var(--dc-chat); }
   border-radius: 0 4px 4px 0;
   transition: height 140ms ease, margin-top 140ms ease;
 }
-.p-team_sidebar__item:hover::before { height: 20px; margin-top: -10px; }
-.p-team_sidebar__item--active::before { height: 40px; margin-top: -20px; }
+.p-team_sidebar__item:hover::before { height: 16px; margin-top: -8px; }
+.p-team_sidebar__item--active::before { height: 32px; margin-top: -16px; }
 
 /*
  * THE SIDEBAR
@@ -368,9 +377,23 @@ html, body { background-color: var(--dc-chat); }
 .c-message_actions__group,
 .c-wysiwyg_container,
 .c-tooltip__tip,
-.c-menu,
-.p-control_strip__circle_button {
+.c-menu {
   border-radius: 8px !important;
+}
+
+/*
+ * The buttons at the foot of the rail. Slack gives them a filled 8px box, which
+ * against these near-black surfaces reads as four grey tiles stacked in a
+ * column. Discord has nothing of the sort, so they become bare circles that
+ * only take a background under the pointer.
+ */
+.p-control_strip__circle_button {
+  border-radius: 50% !important;
+  background: transparent !important;
+}
+.p-control_strip__circle_button:hover,
+.p-control_strip__circle_button:focus-visible {
+  background: var(--dc-surface) !important;
 }
 
 /* .c-base_icon__width_only_container keeps Slack's 4px corners and the same
