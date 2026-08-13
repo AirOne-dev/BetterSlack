@@ -207,13 +207,26 @@ class Loader {
   }
 
   private async paintAuxiliary(session: CdpSession): Promise<void> {
-    // A window a mod opened for itself says so, and is left alone: a theme
-    // builder repainted by the theme being edited becomes unreadable exactly
-    // when you need to read it.
-    const ours = await session
-      .evaluate<boolean>('!!document.documentElement.hasAttribute("data-slackmod-window")')
-      .catch(() => false);
-    if (ours) return;
+    /*
+     * Two windows must never be painted from here.
+     *
+     * A window a mod opened for itself says so, and is left alone: a theme
+     * builder repainted by the theme being edited becomes unreadable exactly
+     * when you need to read it.
+     *
+     * And the client itself. Slack's main window exists as about:blank for a
+     * moment before it navigates, so the attach loop can catch it on the way up
+     * and file it as auxiliary; without this it would then carry the theme
+     * twice, once raw from here and once from the runtime.
+     */
+    const skip = await session
+      .evaluate<boolean>(
+        '!!document.documentElement.hasAttribute("data-slackmod-window")' +
+          ' || !!document.querySelector(".p-client_container")' +
+          ' || !!window.__slackmod',
+      )
+      .catch(() => true); // unreadable: leave it alone rather than guess
+    if (skip) return;
 
     const css = await this.buildThemeCss();
     // Re-applied wholesale each time, keyed by one element, so a reload or a
