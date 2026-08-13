@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { assertPluginShape, createTestApi, installDom } from '../../../tests/harness.mjs';
 import plugin from './index.js';
 
@@ -47,19 +48,70 @@ test('reads the user id from the avatar URL, not the localised label', async () 
   }
 });
 
-test('clicking it presses Slack’s own account button', async () => {
+test('the gear opens Slack’s account menu; the strip itself is inert', async () => {
   const dom = installDom();
   const { api, recorded } = createTestApi();
   try {
     await plugin.start(api);
     let clicked = 0;
     document.querySelector('[data-qa="user-button"]').addEventListener('click', () => { clicked++; });
+
+    // The strip shows who you are; it promises no click, so it performs none.
     document.querySelector('#slackmod-account-strip .slackmod-me').click();
+    assert.equal(clicked, 0);
+
+    document.querySelector('#slackmod-account-strip .slackmod-me__settings').click();
     assert.equal(clicked, 1, 'Slack opens its own menu rather than one we reimplemented');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
   }
+});
+
+test('shows availability as a dot, coloured from Slack’s answer', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    web: {
+      presence: async () => ({ presence: 'active' }),
+      dndInfo: async () => ({ dnd_enabled: false }),
+    },
+  });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const dot = document.querySelector('#slackmod-account-strip .slackmod-me__dot');
+    assert.ok(dot, 'the dot sits on the avatar, the way every chat app does it');
+    assert.ok(dot.classList.contains('slackmod-me__dot--active'));
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('do not disturb outranks being active', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    web: {
+      presence: async () => ({ presence: 'active' }),
+      dndInfo: async () => ({ dnd_enabled: true }),
+    },
+  });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const dot = document.querySelector('#slackmod-account-strip .slackmod-me__dot');
+    assert.ok(dot.classList.contains('slackmod-me__dot--dnd'));
+    assert.ok(!dot.classList.contains('slackmod-me__dot--active'));
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('takes the member list’s surface, so the two read as one family', () => {
+  const source = readFileSync(new URL('./index.js', import.meta.url), 'utf8');
+  const rule = source.match(/#\$\{STRIP_ID\} \{[^}]*\}/);
+  assert.match(rule[0], /--dt_color-base-sec/, 'the same token the member column uses');
 });
 
 test('survives having no session token', async () => {
