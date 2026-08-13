@@ -55,6 +55,21 @@ export interface MountOptions {
   before?: string;
 }
 
+/**
+ * How hard to try before concluding that something else owns this spot.
+ *
+ * Slack's tree is React's, and it re-renders constantly. If it removes our node
+ * as fast as we add it -- which is what happens when a mod appends to the end of
+ * a container React manages -- then remounting on every mutation is an infinite
+ * loop, and it freezes the renderer solid: no error, no console, a grey window
+ * and a Slack that has to be killed. That cost an afternoon.
+ *
+ * So a mount that repeats this many times inside the window below gives up and
+ * says so, loudly. A missing button is a bug report; a frozen Slack is not.
+ */
+const REMOUNT_LIMIT = 25;
+const REMOUNT_WINDOW_MS = 2000;
+
 export function keepMounted(
   containerSelector: string,
   nodeId: string,
@@ -64,6 +79,7 @@ export function keepMounted(
   const { position = 'append', before } =
     typeof options === 'string' ? { position: options, before: undefined } : options;
   let disposed = false;
+  let remounts: number[] = [];
 
   const mount = () => {
     if (disposed) return;
@@ -79,6 +95,22 @@ export function keepMounted(
       if (anchor && anchor !== current && current.nextElementSibling !== anchor) {
         anchor.before(current);
       }
+      return;
+    }
+
+    // Everything below is a real remount, so count it before doing it.
+    const now = Date.now();
+    remounts = remounts.filter((t) => now - t < REMOUNT_WINDOW_MS);
+    remounts.push(now);
+    if (remounts.length > REMOUNT_LIMIT) {
+      disposed = true;
+      observer.disconnect();
+      console.error(
+        `[slackmod] giving up on "${nodeId}": it was removed and re-added ` +
+          `${remounts.length} times in ${REMOUNT_WINDOW_MS}ms, so something else owns ` +
+          `"${containerSelector}". Anchor it with \`before\` or pick another container.`,
+      );
+      document.getElementById(nodeId)?.remove();
       return;
     }
 

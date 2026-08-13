@@ -184,6 +184,7 @@ class Loader {
     await this.inject(attachment);
 
     console.log(`[slackmod] injected into ${target.title || target.url}`);
+
   }
 
   /** Give one of Slack's other windows the active theme, and nothing else. */

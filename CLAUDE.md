@@ -78,6 +78,18 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   palette, also triplets). The middle two need `!important`.
 - `.p-theme_background` is a full-viewport opaque layer above `<body>`; clear or
   repaint it or any gradient is invisible.
+- **Never insert next to `.c-coachmark-anchor`.** Anchoring a toolbar button
+  before the coachmark wrapper around the user button freezes the renderer
+  solid: grey window, no error, no console, `Runtime.evaluate` times out and
+  Slack has to be killed. Slack's coachmark code evidently loops with whatever
+  changes the DOM around it. Bisected against a running client — the same button
+  anchored on `#slackmod-control-button` is fine every time, which is now the
+  control strip's default. When an anchor is missing, `addToolbarButton`
+  prepends rather than appends: the end of a container is where the app's own
+  re-renders land.
+- `keepMounted` gives up after 25 remounts in two seconds and logs which node
+  and container, rather than looping forever. A missing button is a bug report;
+  a frozen Slack is not.
 - Reuse Slack's button classes rather than styling your own. Watch for
   `c-icon_button--default`: without it, icon buttons render 36px instead of 28px.
 - Slack's real DevTools open with **`desktop.app.toggleDevTools()`** — its own
