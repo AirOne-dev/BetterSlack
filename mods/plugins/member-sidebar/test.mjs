@@ -390,13 +390,14 @@ test('offers Message and an overflow, and nothing it cannot really do', async ()
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     const buttons = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')];
-    assert.equal(buttons.length, 3, 'Message, VIP and the overflow — Huddle cannot be done');
+    assert.equal(buttons.length, 4, 'Message, Huddle, VIP and the overflow');
     assert.equal(buttons[0].textContent, 'Message');
-    assert.match(buttons[1].textContent, /VIPs$/, 'VIP is a button of its own, as in Slack');
-    assert.equal(buttons[2].getAttribute('aria-label'), 'More actions');
-    assert.equal(buttons[2].textContent, '', 'a glyph, not a word');
-    // Slack pairs a glyph with the label on the first two.
-    for (const b of buttons.slice(0, 2)) assert.ok(b.querySelector('svg'), 'icon beside the text');
+    assert.equal(buttons[1].textContent, 'Huddle');
+    assert.match(buttons[2].textContent, /VIPs$/, 'VIP is a button of its own, as in Slack');
+    assert.equal(buttons[3].getAttribute('aria-label'), 'More actions');
+    assert.equal(buttons[3].textContent, '', 'a glyph, not a word');
+    // Slack pairs a glyph with the label on all but the overflow.
+    for (const b of buttons.slice(0, 3)) assert.ok(b.querySelector('svg'), 'icon beside the text');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -469,6 +470,27 @@ test('VIP is a direct preference write, offering add or remove as appropriate', 
     vip.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.deepEqual(calls, [['U1', false]], 'one preference write, no UI driven anywhere');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('Huddle asks Slack to open its own preview', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  const { api, recorded } = createTestApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.slackmod-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const huddle = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')]
+      .find((b) => b.textContent === 'Huddle');
+    huddle.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.deepEqual(recorded.huddles, ['U1']);
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

@@ -126,11 +126,21 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   before clicking says whether the point reaches what you think it does. The
   harness can now dispatch a trusted Escape, which is what dismisses that
   overlay -- a synthetic one does not.
-- **`member_profile_huddle_btn` is a split control**: its centre is the chevron,
-  which opens a menu holding `huddle_button_menu_item` ("Start huddle"). Even
-  trusted-clicking that entry starts nothing from a script, which fits a
-  microphone gated on transient user activation -- a huddle needs getUserMedia,
-  and an automated gesture does not grant it.
+- **A huddle does start, from the channel header.** `member_profile_huddle_btn`
+  in the profile pane is only a menu trigger (both halves open it, and its
+  entry does nothing); the control that works is
+  `[data-qa="huddle_channel_header_button__start_button"]`, and a plain
+  `element.click()` is enough -- no trusted gesture needed. It opens a separate
+  Electron window, "Slack - aperçu de l'appel d'équipe", which is why nothing
+  showed in the main renderer and why no API call was ever recorded. Wrapped as
+  `api.slack.startHuddle(userId)`. The earlier user-activation theory was wrong:
+  `navigator.userActivation.isActive` is true under a CDP click, and the
+  microphone is granted.
+- **Slack opens other windows, and they are separate renderers.** The loader
+  attaches to every page target, not only the client, and paints the enabled
+  themes into the others -- stylesheet only, no runtime, no panel, no plugins.
+  Without it the huddle preview sits in Slack's default colours in the middle
+  of a themed app. `Target.getTargets` is how you see them at all.
 - **Discovering the API surface beats intercepting it.** Slack answers
   `unknown_method` for what does not exist and an argument error for what does,
   so calling a candidate with no arguments maps the surface without performing
