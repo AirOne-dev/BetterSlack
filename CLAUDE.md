@@ -104,15 +104,26 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   handler, which routes it in place — same document, no reload, view follows.
   Both measured. `slack://huddle?…` does nothing. `api.slack.openConversation` /
   `openUserProfile` wrap them.
-- **Huddle and VIP cannot be triggered from a mod, and this was established, not
-  assumed.** No public API method; nothing over HTTP when their buttons are
-  pressed (`users.profile.get` is the pane reloading); `slack://huddle` is not a
-  scheme; and `member_profile_huddle_btn` ignores both `element.click()` and a
-  *trusted* `Input.dispatchMouseEvent`. Slack likely drives them over its
-  WebSocket, which is not interceptable either — patching `WebSocket.prototype.
-  send` catches nothing, so the socket's `send` is bound before any mod runs.
-  Do not add a button that quietly presses Slack's own; offer
-  `openUserProfile` instead.
+- **VIP is a preference, not an endpoint.** `users.prefs.set` with
+  `name=vip_users` and a comma-separated list of user ids; `users.prefs.get`
+  reads it back. Wrapped as `api.slack.vipUsers()` / `setVip()`. Verified by
+  adding, reading back and restoring.
+- **A huddle cannot be started from a mod, and this is now precise rather than a
+  shrug.** `rooms.join` exists and takes `channel_id`; it answers `ok` with
+  `call`, `canvas` and `huddle` — but the room it hands back has
+  `participants: []` and never rings anyone. It *provisions* the room; joining
+  is the WebRTC session Slack's own client establishes, which no mod can. (For
+  completeness: `rooms.leave` needs `channel_id` + `call_id` + `attendee_id`,
+  and answers `feature_not_enabled` here. `rooms.create`, `huddles.*` and
+  `slack://huddle` do not exist, `calls.*` refuses an `xoxc` token, and
+  `member_profile_huddle_btn` ignores `element.click()` *and* a trusted
+  `Input.dispatchMouseEvent`.) So do not offer a Huddle button; offer
+  `openUserProfile`, which puts Slack's own one click away.
+- **Discovering the API surface beats intercepting it.** Slack answers
+  `unknown_method` for what does not exist and an argument error for what does,
+  so calling a candidate with no arguments maps the surface without performing
+  anything. That is how `rooms.join` and `vip_users` were found, after
+  intercepting `fetch`, XHR and the WebSocket had all come back empty.
 - **A profile cannot be opened by URL.** Slack keeps it out of the address bar,
   and a synthesised `<a href="/team/U…">` is intercepted by nothing: clicking
   one navigates the window off the client entirely. The way in is Slack's own
