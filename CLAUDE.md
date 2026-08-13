@@ -83,7 +83,18 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   its template. To add a column, flip `.p-view_contents--primary` to
   `flex-direction: row` and append to it.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
-  channel header. Slack has no persistent member pane to restyle into Discord's.
+  channel header. Slack has no persistent member pane to restyle.
+- **A profile cannot be opened by URL.** Slack keeps it out of the address bar,
+  and a synthesised `<a href="/team/U…">` is intercepted by nothing: clicking
+  one navigates the window off the client entirely. The way in is Slack's own
+  member list — open the details modal and click the row whose avatar URL holds
+  the user id (match on the id, not the name beside it).
+- **`users.info` takes a comma-separated `users` list** and answers with a
+  `users` array. Undocumented, but it is what Slack's own client sends, and it
+  turns one request per member into one request. `users.getPresence` has no such
+  form: passing `users` is accepted and ignored, and it answers about the caller
+  instead — a silent wrong answer, so presence is one call each and has to be
+  capped.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
@@ -113,45 +124,24 @@ Shape of it:
 When two mods want the same block, it belongs in `helpers.ts`, and the mods get
 refactored onto it in the same change.
 
-## Themes that run code
+## Themes require plugins; they do not run code
 
-A theme may declare `script` + `permissions` in its manifest and get a **much
-smaller** API (`layout-api.ts`): `dom` (waitFor/keepMounted/onEach/h), `click`,
-`self`, an optional `workspace` (the web API), `css`, `onDispose`, `log`. It is
-not the plugin API renamed — no toolbar buttons, no toasts, no downloads.
+A theme is CSS and nothing else. When a look needs behaviour, the theme lists a
+plugin id in `requires` and the panel offers to switch it on.
 
-- Permissions are `layout` and `workspace`, described in `PERMISSIONS` in
-  `shared/protocol.ts`. That object is the **only** source of the wording the
-  consent dialog shows, and `scripts/validate-mods.mjs` keeps a hand-written
-  copy of the names that `tests/permissions.test.mjs` asserts against.
-- `manager.applyThemeScript` checks the grant **before** loading, and that
-  ordering is a test. The loader ships the script with the theme regardless;
-  shipping is not running, and one decision point is easier to audit than two.
-- Grants live in `settings.grants[id]`, filtered on read, and are dropped on
-  uninstall so reinstalling asks again. All-or-nothing: every declared
-  permission must be granted or the script does not run at all.
-- **There is deliberately no "move this Slack node" helper.** React unmounts by
-  calling `removeChild` on the parent it believes owns the node; move one and
-  that throws `NotFoundError` and takes the surrounding tree down. Repositioning
-  is CSS (`position`/`order`/`transform`); the script mounts its own nodes
-  beside Slack's, reads, and clicks.
-
-The helpers take their `css`, `toast` and `settings` from a context object
-rather than importing them, so they go through the same layer a mod would use
-and the test harness can observe them. `dist/helpers.mjs` is emitted for that.
-
-## Working on mods
-
-Every mod ships a `test.mjs`. `tests/harness.mjs` gives a Slack-shaped jsdom and
-a recording stand-in for `api`, so tests need no Slack, Electron or network.
-
-CI runs two workflows per **changed** mod, one job each: structure
-(`check-structure.mjs`) and tests. A change to `src/runtime/`, `src/shared/` or
-`tests/` puts every mod back in scope, because the contract moved.
-
-Use `api.dom.keepMounted` rather than a raw `MutationObserver`: Slack re-renders
-constantly and a naive observer inserts duplicates. Register teardown through
-`api.onDispose` so disabling a plugin really leaves the DOM as it was found.
+- Only themes may declare `requires`, and only plugin ids, so no cycle is
+  possible. Every id must exist in the catalogue; `validate-mods.mjs` and
+  `check-structure.mjs` both fail otherwise.
+- `Panel.enableWithRequirements` asks before switching a plugin on, and enables
+  the theme either way if the user declines. Both facts are tests in
+  `tests/requires.test.mjs` — a plugin is code that keeps running after the
+  theme is off, so it is never turned on silently.
+- The required plugin must stand alone: it reads Slack's tokens and follows any
+  theme, and the theme must not style its markup. Also a test.
+- **A `script` + `permissions` system for themes was built and then removed.**
+  It put a second, weaker plugin model beside the real one — its own API to keep
+  in step, its own consent dialog to explain — for something plugins already
+  did. If it comes up again, that is the reason it is not there.
 
 ## The Mods panel
 

@@ -229,81 +229,42 @@ real value.
 
 ## When CSS is not enough
 
-CSS reaches everything about how Slack *looks* and nothing about how it is
-*arranged*. It cannot put a node under a different parent, read who is signed
-in, or press a button. Reproducing another application's layout runs into all
-three, so a theme may ship a companion script:
+A theme is CSS and nothing else. CSS reaches everything about how Slack *looks*
+and nothing about how it is *arranged*: it cannot put a node under a different
+parent, read who is signed in, or press a button.
+
+When a look needs one of those, that part is a **plugin**, and the theme names
+it:
 
 ```json
 {
   "id": "discord-dark",
   "type": "theme",
   "entry": "theme.css",
-  "script": "layout.js",
-  "permissions": ["layout", "workspace"]
+  "requires": ["member-sidebar", "sidebar-account"]
 }
 ```
 
-The script is an ES module exporting `start(api)`, and it is **not loaded at
-all** until the user has agreed to the permissions in the dialog the Mods panel
-shows at install time. Removing the theme forgets the answer; a later version
-that asks for more has to be approved again.
+The panel shows what the theme needs, offers to switch those plugins on when
+you enable it, and says plainly when one is missing. Declining still applies the
+theme — it is a stylesheet either way.
 
-| permission | what it allows |
-| --- | --- |
-| `layout` | Add, hide and reposition parts of Slack, and press its buttons. Required for any script. |
-| `workspace` | Look up people and channels through Slack's API, as you. Read-only. |
+Only themes may declare `requires`, and only plugin ids, so there is no way to
+build a cycle. Every id has to exist in this repository; CI fails a theme that
+points at a plugin nobody ships.
 
-Reach for this last. A script is code running unsandboxed in an authenticated
-Slack tab, and a reviewer has to read every line of it; a theme that needs one
-is a theme asking for a lot more trust than a stylesheet does.
-
-### The API a script gets
-
-Deliberately small — it is not the plugin API under another name. There is no
-message action, no toolbar button, no toast, no download. If you want those,
-write a plugin.
-
-```js
-export async function start(api) {
-  api.css('#my-strip { background: #202024 }');   // your own sheet, on top of the theme
-
-  api.dom.keepMounted('.p-channel_sidebar', 'my-strip', () => {
-    const me = api.self();                        // { id, avatar, presence } from the page
-    const node = api.dom.h('div', { id: 'my-strip' });
-    node.addEventListener('click', () => api.click('[data-qa="user-button"]'));
-    return node;
-  });
-
-  if (api.workspace) {                            // undefined without the permission
-    const { members } = await api.workspace.call('conversations.members', { channel });
-  }
-
-  api.onDispose(() => {/* anything keepMounted did not register */});
-}
-```
-
-`api.dom` has `waitFor`, `keepMounted`, `onEach` and `h`; `api.log` has
-`info`/`warn`/`error`. That is the whole surface.
-
-### Do not move Slack's own nodes
-
-There is no "move this node over there" helper, and its absence is the point.
-Slack's tree belongs to React, which unmounts a node by calling `removeChild`
-on the parent it believes owns it. Move one and that call throws
-`NotFoundError`, React tears down the surrounding tree, and the user gets a
-blank panel with nothing to suggest a theme caused it.
-
-So: **repositioning is CSS's job** — `position`, `order` and `transform` move
-the picture and leave the tree alone — and the script is for mounting nodes of
-your own beside Slack's, reading what is on screen, and clicking.
+**Write the plugin so it stands on its own.** `member-sidebar` is a member
+column for anyone who wants one, not a piece of Discord Dark: it takes its
+colours from Slack's tokens, so it follows whatever theme is on. A plugin that
+only makes sense with one theme, or a theme that reaches into a plugin's markup,
+ties the two together and makes both worse.
 
 ## Read the ones that ship
 
 | Theme | Shows |
 | --- | --- |
 | [`midnight`](../mods/themes/midnight/theme.css) | the plain three-family override, well commented |
-| [`discord-dark`](../mods/themes/discord-dark/theme.css) | a palette sampled from the real app, plus a [companion script](../mods/themes/discord-dark/layout.js) for the layout CSS cannot reach |
+| [`discord-dark`](../mods/themes/discord-dark/theme.css) | a palette sampled from the real app, and two required plugins for the parts CSS cannot reach |
 | [`aurora`](../mods/themes/aurora/theme.css) | gradients, glass, translucent chrome |
 | [`cocoa`](../mods/themes/cocoa/theme.css) | a light theme, so every family had to be covered |
 | [`focus-rings`](../mods/themes/focus-rings/theme.css) | no tokens at all — pure `:focus-visible` semantics |

@@ -12,7 +12,9 @@ import { createHelpers } from '../dist/helpers.mjs';
 /** A Slack-shaped fragment: rail, sidebar, a message, a composer, a profile pane. */
 export const SLACK_FIXTURE = `
 <div class="p-client_container">
-  <div class="p-view_header__actions"></div>
+  <div class="p-view_header__actions">
+    <button data-qa="avatar_stack" aria-label="View all members"></button>
+  </div>
   <div class="p-control_strip">
     <div class="c-coachmark-anchor">
       <button data-qa="user-button">
@@ -325,86 +327,6 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
     store,
     setConfirmAnswer: (value) => { confirmAnswer = value; },
   };
-}
-
-/**
- * A stand-in for the API a theme's companion script receives.
- *
- * Much smaller than the plugin one, on purpose: it should be uncomfortable to
- * write a plugin's worth of behaviour against it. `keepMounted` really mounts,
- * because what a layout script is for is putting nodes on the page, and a test
- * that cannot see them tests nothing.
- */
-export function createLayoutTestApi({
-  permissions = ['layout'],
-  self = {},
-  web = {},
-} = {}) {
-  const recorded = { css: [], mounted: [], observed: [], clicked: [], disposers: [], logs: [] };
-
-  const workspace = permissions.includes('workspace')
-    ? {
-        available: true,
-        teamDomain: 'acme',
-        selfId: 'U000SELF',
-        call: async () => ({ ok: true }),
-        userInfo: async (id) => ({ id, profile: { display_name: 'Tester' } }),
-        presence: async () => ({ presence: 'active' }),
-        teamInfo: async () => ({ team: { id: 'T025V5WN2' } }),
-        dndInfo: async () => ({ dnd_enabled: false }),
-        ...web,
-      }
-    : undefined;
-
-  const api = {
-    id: 'test-theme',
-    manifest: { id: 'test-theme', name: 'Test theme', type: 'theme' },
-    permissions: [...permissions],
-
-    dom: {
-      h,
-      waitFor: async (selector) => document.querySelector(selector),
-      keepMounted: (container, id, factory, options = {}) => {
-        const target = document.querySelector(container);
-        const node = factory();
-        node.id = id;
-        const before = typeof options === 'object' && options.before
-          ? target?.querySelector(options.before)
-          : null;
-        if (before) before.before(node);
-        else if (options === 'prepend' || options?.position === 'prepend') target?.prepend(node);
-        else target?.append(node);
-        recorded.mounted.push({ container, id, node });
-        return () => node.remove();
-      },
-      onEach: (selector, handler) => {
-        recorded.observed.push(selector);
-        for (const el of document.querySelectorAll(selector)) handler(el);
-        return () => {};
-      },
-    },
-
-    click: (selector) => {
-      recorded.clicked.push(selector);
-      const target = document.querySelector(selector);
-      if (!target) return false;
-      target.click();
-      return true;
-    },
-
-    self: () => ({ id: 'U000SELF', avatar: null, presence: 'Active', ...self }),
-    workspace,
-
-    css: (text) => recorded.css.push(text),
-    onDispose: (fn) => recorded.disposers.push(fn),
-    log: {
-      info: (...args) => recorded.logs.push(['info', ...args]),
-      warn: (...args) => recorded.logs.push(['warn', ...args]),
-      error: (...args) => recorded.logs.push(['error', ...args]),
-    },
-  };
-
-  return { api, recorded };
 }
 
 /** Every mod must satisfy this, whatever else its own test checks. */
