@@ -255,6 +255,26 @@ Shape of it:
 When two mods want the same block, it belongs in `helpers.ts`, and the mods get
 refactored onto it in the same change.
 
+## The theme builder
+
+`mods/plugins/theme-builder` opens a window of its own and paints the client
+live through `api.css`, so **the preview is Slack**. It used to draw fragments
+of Slack inside its own window as well; they were a worse copy of what was
+already on screen and took half the width. The window is one narrow column of
+controls now, deliberately.
+
+Its own chrome is fixed, not themed: a workbench repainted by the work becomes
+unreadable exactly when you have just written something wrong. `window.css`
+mirrors Slack's design system by hand instead -- separate window, so none of
+Slack's stylesheet reaches it.
+
+`tokens.js` reads the client's own custom properties rather than shipping a
+list: there are ~525 colour tokens in Slack 4.51, they change between releases,
+and the only honest source is the page. Two families take bare `r, g, b`
+triplets (`--sk_*`, `--dt_color-plt-*`) -- writing a colour there parses, paints
+nothing, and reports nothing, which is why every value goes through
+`formatFor(kind, colour)`.
+
 ## Themes require plugins; they do not run code
 
 A theme is CSS and nothing else. When a look needs behaviour, the theme lists a

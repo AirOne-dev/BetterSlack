@@ -300,6 +300,17 @@ class Loader {
 
     await session.send('Runtime.enable').catch(() => undefined);
     await session.send('Page.enable').catch(() => undefined);
+    // A window a mod opened for itself is still a renderer that can throw, and
+    // it has no panel and no DevTools of its own to say so.
+    session.on('Runtime.exceptionThrown', (params: {
+      exceptionDetails?: { exception?: { description?: string }; text?: string };
+    }) => {
+      const details = params.exceptionDetails;
+      console.error(
+        `[slackmod] error in ${target.title || 'another window'}: ` +
+          `${details?.exception?.description ?? details?.text ?? '?'}`,
+      );
+    });
     const paint = () => void this.paintAuxiliary(session);
     session.on('Page.loadEventFired', paint);
     session.on('Page.frameStoppedLoading', paint);

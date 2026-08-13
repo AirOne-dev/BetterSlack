@@ -7,8 +7,8 @@ import {
   assertPluginShape, createTestApi, installDom, readModFiles,
 } from '../../../tests/harness.mjs';
 import plugin, {
-  buildThemeCss, contrast, derivePalette, formatTriplet, matchedRules, parseColour,
-  readability, variablesIn,
+  buildThemeCss, contrast, derivePalette, formatTriplet, kindOf, matchedRules,
+  parseColour, readability, tokenCss, variablesIn,
 } from './index.js';
 
 // The builder reads its own stylesheet with api.assets, so the test api is
@@ -154,10 +154,32 @@ test('names the variables a set of rules depends on', () => {
 });
 
 test('a base theme is applied under the roles, so overriding one works', () => {
-  // Order is the whole feature: base first, roles second, hand-written last.
-  const source = readFileSync(new URL('./index.js', import.meta.url), 'utf8');
-  const preview = source.match(/const preview = \(\) => \{[\s\S]*?\};/)[0];
-  assert.match(preview, /\$\{baseCss\}[\s\S]*buildThemeCss/);
+  // Order is the whole feature, and it is one line: base, then the derived
+  // roles, then tokens taken over by hand, then whatever was typed. Last wins.
+  const source = FILES['index.js'];
+  const build = source.match(/const themeCss = \(\) =>[\s\S]*?;\n/)[0];
+  assert.match(build, /\$\{baseCss\}[\s\S]*buildThemeCss/);
+  assert.match(build, /extraCss, tokenOverrides/, 'and the two override layers reach the CSS');
+});
+
+test('a token is written the way its own family reads it', () => {
+  // The silent failure this exists for: --sk_* and --dt_color-plt-* hold bare
+  // "r, g, b" triplets. Give one of them a real colour and the rule parses,
+  // paints nothing, and says nothing about it.
+  assert.equal(kindOf('26, 26, 30'), 'triplet');
+  assert.equal(kindOf('#1a1a1e'), 'colour');
+  assert.equal(kindOf('0.3s ease'), 'other', 'not everything in a token is a colour');
+
+  const css = tokenCss({ '--sk_primary_background': '26, 26, 30', '--dt_color-base-pry': '#1a1a1e' });
+  assert.match(css, /--sk_primary_background: 26, 26, 30 !important;/, 'legacy needs !important');
+  assert.match(css, /--dt_color-base-pry: #1a1a1e;/, 'content does not');
+});
+
+test('hand-picked tokens land after the roles they contradict', () => {
+  const css = buildThemeCss(ROLES_FIXTURE, 'T', '', { '--dt_color-base-pry': '#ff0000' });
+  const derived = css.indexOf('--dt_color-base-pry: #101014');
+  const taken = css.indexOf('--dt_color-base-pry: #ff0000');
+  assert.ok(derived !== -1 && taken > derived, 'the one you picked is the one that wins');
 });
 
 test('hand-written CSS lands after everything the roles generate', () => {
