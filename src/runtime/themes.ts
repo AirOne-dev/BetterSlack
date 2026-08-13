@@ -10,6 +10,92 @@ export type Layer = (typeof LAYER_ORDER)[number];
 
 const ATTR = 'data-slackmod-style';
 
+/**
+ * Follow a theme's own `@import './...'` statements and paste the files in.
+ *
+ * A theme is a folder now, and CSS in an injected <style> has no base URL for a
+ * relative @import to resolve against -- the browser would simply drop it. So
+ * they are resolved here, before the stylesheet ever reaches the page. Only
+ * relative paths are touched: an @import of a remote URL is left alone so that
+ * the review still sees it for what it is.
+ */
+/**
+ * Replace `pattern` everywhere except inside comments.
+ *
+ * Mods are full of text that looks like an import and is not: a JSDoc
+ * `@param {import('../../src/runtime/api.js').PluginApi}` is a type annotation
+ * no loader ever resolves, and a commented-out `@import` is a decision the
+ * author already made. Rewriting either one breaks a mod that is correct.
+ *
+ * The scanner is deliberately small -- it does not tokenise strings -- so a
+ * `//` inside a string literal would blind it to the rest of that line. The
+ * one common case, a URL, is excluded by requiring the slashes not to follow a
+ * colon; anything else is a mod that can move its import to its own line.
+ */
+export function replaceOutsideComments(
+  source: string,
+  pattern: RegExp,
+  replacer: (match: RegExpExecArray) => string,
+): string {
+  const comments: Array<[number, number]> = [];
+  const scanner = /\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g;
+  for (let hit = scanner.exec(source); hit; hit = scanner.exec(source)) {
+    // The line-comment form captures one character before the slashes; that
+    // character is code, not comment, so it stays outside the range.
+    const start = hit.index + (hit[1] ? hit[1].length : 0);
+    comments.push([start, hit.index + hit[0].length]);
+  }
+  const inComment = (at: number) => comments.some(([from, to]) => at >= from && at < to);
+
+  const all = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`);
+  let out = '';
+  let last = 0;
+  for (let hit = all.exec(source); hit; hit = all.exec(source)) {
+    if (!inComment(hit.index)) {
+      out += source.slice(last, hit.index) + replacer(hit);
+      last = hit.index + hit[0].length;
+    }
+    if (hit[0] === '') all.lastIndex++;
+  }
+  return out + source.slice(last);
+}
+
+export function inlineCssImports(
+  files: Record<string, string>,
+  entry: string,
+  seen: string[] = [],
+): string {
+  const source = files[entry];
+  if (source === undefined) return '';
+  if (seen.includes(entry)) {
+    console.warn(`[slackmod] circular @import: ${[...seen, entry].join(' -> ')}`);
+    return '';
+  }
+  return replaceOutsideComments(
+    source,
+    /@import\s+(?:url\()?['"](\.[^'"]+)['"]\)?\s*;/g,
+    ([whole, spec]) => {
+      const target = resolvePath(entry, spec!);
+      if (files[target] === undefined) {
+        console.warn(`[slackmod] @import "${spec}" from "${entry}" matches no file`);
+        return whole;
+      }
+      return `\n/* ${target} */\n${inlineCssImports(files, target, [...seen, entry])}\n`;
+    },
+  );
+}
+
+/** `./x.css` relative to `a/b.css` is `a/x.css`; `../` climbs one folder. */
+export function resolvePath(from: string, spec: string): string {
+  const base = from.split('/').slice(0, -1);
+  for (const part of spec.split('/')) {
+    if (part === '.' || part === '') continue;
+    if (part === '..') base.pop();
+    else base.push(part);
+  }
+  return base.join('/');
+}
+
 export class StyleManager {
   private nodes = new Map<string, HTMLStyleElement>();
 

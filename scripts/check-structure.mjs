@@ -10,13 +10,18 @@
 // and tests exist. A mod that passes this will at least load in the app.
 
 import { promises as fs } from 'node:fs';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { listMods } from './test-mods.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const API_VERSION = 1;
+
+/** Blanks out comments so prose and JSDoc types are not read as real imports. */
+function stripComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
 
 const wanted = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const mods = listMods().filter((m) => wanted.length === 0 || wanted.includes(m.id));
@@ -88,6 +93,49 @@ for (const mod of mods) {
         const close = (stripped.match(/}/g) ?? []).length;
         if (open !== close) problems.push(`unbalanced braces: ${open} "{" vs ${close} "}"`);
         if (css.trim() === '') problems.push('theme is empty');
+      }
+    }
+
+    // 2a-bis. A mod is a folder: every relative import must land on a file that
+    // is really there. The runtime resolves these into blob URLs and a missing
+    // one fails at load time, in the app, where nobody is looking.
+    const modFiles = new Set();
+    const collect = (dir, prefix) => {
+      for (const item of readdirSync(dir, { withFileTypes: true })) {
+        if (item.isDirectory()) {
+          if (item.name === 'node_modules' || item.name.startsWith('.')) continue;
+          collect(path.join(dir, item.name), prefix ? `${prefix}/${item.name}` : item.name);
+        } else if (/\.(js|mjs|css)$/.test(item.name)) {
+          modFiles.add(prefix ? `${prefix}/${item.name}` : item.name);
+        }
+      }
+    };
+    collect(mod.dir, '');
+
+    const resolveRel = (from, spec) => {
+      const base = from.split('/').slice(0, -1);
+      for (const part of spec.split('/')) {
+        if (part === '.' || part === '') continue;
+        if (part === '..') base.pop();
+        else base.push(part);
+      }
+      return base.join('/');
+    };
+
+    for (const file of modFiles) {
+      if (file === 'test.mjs' || file.endsWith('.test.mjs')) continue;
+      // Comments go first: a JSDoc `@param {import('../../src/runtime/api.js')…}`
+      // is a type annotation the runtime never resolves, and mods are full of
+      // them. So is a commented-out @import in CSS.
+      const source = stripComments(await fs.readFile(path.join(mod.dir, file), 'utf8'));
+      const specs = file.endsWith('.css')
+        ? [...source.matchAll(/@import\s+(?:url\()?['"](\.[^'"]+)['"]/g)]
+        : [...source.matchAll(/(?:from|import\s*\(?)\s*['"](\.[^'"]+)['"]/g)];
+      for (const [, spec] of specs) {
+        const target = resolveRel(file, spec);
+        if (!modFiles.has(target)) {
+          problems.push(`${file} imports "${spec}", which is not in the mod folder`);
+        }
       }
     }
 

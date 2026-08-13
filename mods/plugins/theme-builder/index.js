@@ -1,117 +1,76 @@
-// A theme builder, in a window of its own, with the running app as the canvas.
+// A theme workbench, in a window of its own.
 //
 // WHY A SEPARATE WINDOW
 //
-// A theme is judged against the whole app -- rail beside sidebar beside
-// conversation -- and a panel covering half of it hides the thing being judged.
-// `window.open` works from Slack's renderer and the child inherits the origin,
-// so parent and child hold direct references to each other: the controls live
-// in the new window and call straight into this module. No message passing, no
-// serialisation, and the preview is the real application.
+// A theme is judged against the whole app, and a panel covering half of it
+// hides the thing being judged. `window.open` works from Slack's renderer and
+// the child inherits the origin, so parent and child hold direct references to
+// each other: the controls live in the new window and call straight into this
+// module. No message passing, no serialisation, and the preview is the real
+// application. The window marks itself with `data-slackmod-window`, which the
+// loader checks before painting a theme into Slack's other windows -- a builder
+// repainted by the theme being edited becomes unreadable exactly when you need
+// to read it.
 //
-// The window marks itself with `data-slackmod-window`, which the loader looks
-// for before painting a theme into Slack's other windows. A builder repainted
-// by the theme being edited becomes unreadable exactly when you need to read it.
+// WHY IT ASKS FOR TWO COLOURS AND NOT TWELVE
 //
-// WHAT IT IS MADE OF
+// The first version put twelve pickers in a column and called it a tool. It was
+// a spreadsheet. This one asks for a background and an accent, derives the other
+// ten from how far each surface should sit from the background and how much
+// contrast text needs against it, and lets any of them be overridden
+// afterwards. Choosing is the hard part; the rest is arithmetic, and the
+// arithmetic reverses for a light background, which is why a light theme built
+// by hand usually looks wrong on the first try.
 //
-//   Roles     twelve colours, mapped across Slack's four token families
-//   Inspect   point at anything in Slack and see what is actually painting it
-//   Classes   pick a class and see every element wearing it, lit up
-//   CSS       free-hand rules on top, applied as you type
+// EVERYTHING IS SHOWN, NOTHING IS DESCRIBED
 //
-// The Inspect tab is the interesting one. Slack's stylesheets are readable from
-// the page, so for a picked element every matching rule can be found by walking
-// `document.styleSheets` and testing `element.matches(selectorText)`. Reading
-// the `var(--x)` references out of those rules is what turns "this is grey" into
-// "this is grey because --dt_color-base-sec is grey", which is the question a
-// theme author is actually asking.
+// Beside the palette are the pieces of Slack each role actually paints -- a
+// channel row, a message, a mention, a badge, the composer -- rendered from the
+// current values, plus the contrast ratios that decide whether the result is
+// readable. The real app updates too, but you should not have to look away to
+// see what a colour did.
+//
+// The colour maths lives in ./colour.js. That import is the reason mods became
+// folders: a blob URL has no directory, so the runtime rewrites relative
+// specifiers to the blob it built for each file before loading the entry.
+
+import {
+  contrast, derivePalette, formatCss, formatTriplet, fromHsv,
+  luminance, parseColour, readability, toHsv,
+} from './colour.js';
+
+import { STRINGS } from './strings.js';
+
+// Re-exported for this mod's own tests, which assert on the colour maths
+// through the entry the app loads.
+export { contrast, derivePalette, formatCss, formatTriplet, parseColour, readability } from './colour.js';
 
 const WINDOW_NAME = 'slackmod-theme-builder';
 const OVERLAY_ID = 'slackmod-inspect-overlay';
 
-/** The roles a theme is actually made of, in the order they matter. */
+// ---------------------------------------------------------------- roles
+
 const ROLES = [
-  { key: 'bg', label: 'Background', hint: 'The conversation itself', value: '#1a1a1e' },
-  { key: 'raised', label: 'Raised', hint: 'Composer, cards, menus', value: '#222327' },
-  { key: 'chrome', label: 'Chrome', hint: 'Rail and sidebar', value: '#121214' },
-  { key: 'surface', label: 'Surface', hint: 'Dividers, pills, buttons', value: '#29292d' },
-  { key: 'selected', label: 'Selected', hint: 'The open channel', value: '#2d2d30' },
-  { key: 'hover', label: 'Hover', hint: 'Rows under the pointer', value: '#1f1f23' },
-  { key: 'text', label: 'Text', hint: 'Message body', value: '#efeff1' },
-  { key: 'bright', label: 'Headings', hint: 'Names and titles', value: '#fbfbfb' },
-  { key: 'muted', label: 'Muted', hint: 'Timestamps, idle channels', value: '#81828a' },
-  { key: 'accent', label: 'Accent', hint: 'Links, focus, active tab', value: '#536aed' },
-  { key: 'accentText', label: 'Accent text', hint: 'Mentions', value: '#a7bdfc' },
-  { key: 'danger', label: 'Danger', hint: 'Badges, destructive actions', value: '#dd3d48' },
+  { key: 'bg', label: 'Background', hint: 'The conversation', seed: true },
+  { key: 'accent', label: 'Accent', hint: 'Links, focus, active tab', seed: true },
+  { key: 'chrome', label: 'Chrome', hint: 'Rail and sidebar' },
+  { key: 'raised', label: 'Raised', hint: 'Composer, menus' },
+  { key: 'surface', label: 'Surface', hint: 'Dividers, pills' },
+  { key: 'selected', label: 'Selected', hint: 'Open channel' },
+  { key: 'hover', label: 'Hover', hint: 'Row under the pointer' },
+  { key: 'text', label: 'Text', hint: 'Message body' },
+  { key: 'bright', label: 'Headings', hint: 'Names and titles' },
+  { key: 'muted', label: 'Muted', hint: 'Timestamps' },
+  { key: 'accentText', label: 'Accent text', hint: 'Mentions' },
+  { key: 'danger', label: 'Danger', hint: 'Badges' },
 ];
 
-const STRINGS = {
-  en: {
-    open: 'Theme builder',
-    openHint: 'Design a theme with the app as your preview',
-    title: 'Theme builder',
-    tabRoles: 'Roles', tabInspect: 'Inspect', tabClasses: 'Classes', tabCss: 'CSS',
-    base: 'Start from',
-    scratch: 'Slack’s own colours',
-    intro: 'Drag a colour and Slack follows immediately. Nothing is saved until you say so.',
-    pick: 'Point at something in Slack',
-    picking: 'Click an element in Slack… (Escape cancels)',
-    picked: 'Picked',
-    nothing: 'Nothing picked yet. Press the button, then click anything in Slack.',
-    paintedBy: 'Painted by',
-    matchedRules: 'Rules that match it',
-    noRules: 'No stylesheet rule matches this element directly.',
-    variables: 'Variables it depends on',
-    noVars: 'Nothing here reads a theme variable — this is a fixed colour in Slack’s CSS.',
-    computed: 'Computed',
-    classSearch: 'Search a class name',
-    classCount: '{count} elements',
-    highlight: 'Show them in Slack',
-    clear: 'Clear',
-    cssHint: 'Applied on top of everything, exactly as typed.',
-    name: 'Theme name',
-    save: 'Save as a theme', copy: 'Copy the CSS', reset: 'Start over',
-    saved: 'Saved. It is in your Themes list.',
-    copied: 'Theme CSS copied',
-    needsName: 'Give the theme a name first.',
-    blocked: 'Slack refused to open a window. Allow pop-ups for the app.',
-    already: 'The builder is already open.',
-    useVar: 'Use as',
-  },
-  fr: {
-    open: 'Constructeur de thème',
-    openHint: 'Concevoir un thème avec l’app comme aperçu',
-    title: 'Constructeur de thème',
-    tabRoles: 'Rôles', tabInspect: 'Inspecter', tabClasses: 'Classes', tabCss: 'CSS',
-    base: 'Partir de',
-    scratch: 'Les couleurs de Slack',
-    intro: 'Bougez une couleur, Slack suit aussitôt. Rien n’est enregistré tant que vous ne le demandez pas.',
-    pick: 'Pointer un élément de Slack',
-    picking: 'Cliquez un élément dans Slack… (Échap annule)',
-    picked: 'Sélectionné',
-    nothing: 'Rien de sélectionné. Appuyez sur le bouton, puis cliquez n’importe où dans Slack.',
-    paintedBy: 'Peint par',
-    matchedRules: 'Règles qui le visent',
-    noRules: 'Aucune règle ne vise directement cet élément.',
-    variables: 'Variables dont il dépend',
-    noVars: 'Rien ici ne lit de variable de thème — c’est une couleur figée dans le CSS de Slack.',
-    computed: 'Calculé',
-    classSearch: 'Chercher une classe',
-    classCount: '{count} éléments',
-    highlight: 'Les montrer dans Slack',
-    clear: 'Effacer',
-    cssHint: 'Appliqué par-dessus tout le reste, tel quel.',
-    name: 'Nom du thème',
-    save: 'Enregistrer comme thème', copy: 'Copier le CSS', reset: 'Tout reprendre',
-    saved: 'Enregistré. Il est dans votre liste de thèmes.',
-    copied: 'CSS du thème copié',
-    needsName: 'Donnez d’abord un nom au thème.',
-    blocked: 'Slack a refusé d’ouvrir une fenêtre. Autorisez les fenêtres surgissantes.',
-    already: 'Le constructeur est déjà ouvert.',
-    useVar: 'Utiliser comme',
-  },
-};
+const CONTRAST_CHECKS = [
+  ['text', 'bg', 'Message text'],
+  ['muted', 'bg', 'Timestamps'],
+  ['bright', 'chrome', 'Sidebar titles'],
+  ['accentText', 'bg', 'Mentions'],
+];
 
 const PALETTE_ICON =
   '<svg viewBox="0 0 20 20" aria-hidden="true" style="height:20px;width:20px">' +
@@ -119,38 +78,7 @@ const PALETTE_ICON =
   '<circle cx="6.75" cy="9.75" r="1.25" fill="currentColor"/><circle cx="9.25" cy="6.25" r="1.25" fill="currentColor"/>' +
   '<circle cx="13.25" cy="6.75" r="1.25" fill="currentColor"/></svg>';
 
-/** `#rrggbb` to the bare `r, g, b` triplet Slack's legacy family wants. */
-function triplet(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
-}
-
-function luminance(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
-    const v = c / 255;
-    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** `rgb(26, 26, 30)` to `#1a1a1e`, so a computed colour can seed a picker. */
-export function toHex(colour) {
-  const m = String(colour).match(/rgba?\(([^)]+)\)/);
-  if (!m) return /^#[0-9a-f]{6}$/i.test(colour) ? colour.toLowerCase() : null;
-  const [r, g, b] = m[1].split(',').map((n) => Math.max(0, Math.min(255, Math.round(parseFloat(n)))));
-  return `#${[r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
-}
-
-/**
- * Every stylesheet rule that matches an element, nearest-first.
- *
- * There is no API for this -- `getMatchedCSSRules` was removed years ago -- so
- * the sheets are walked by hand. Slack's are readable from the page, which is
- * the whole reason this tab can exist; anything that is not (a stylesheet from
- * another origin) throws on `cssRules` and is skipped rather than breaking the
- * walk.
- */
+/** Rules that match an element, by walking the sheets: there is no API for it. */
 export function matchedRules(element, sheets) {
   const out = [];
   for (const sheet of sheets) {
@@ -162,8 +90,6 @@ export function matchedRules(element, sheets) {
     }
     for (const rule of rules) {
       if (!rule.selectorText) continue;
-      // A selector list can match on one of its parts; test each so the one
-      // that actually applies is what gets reported.
       for (const part of rule.selectorText.split(',')) {
         const selector = part.trim();
         if (!selector) continue;
@@ -171,10 +97,10 @@ export function matchedRules(element, sheets) {
         try {
           hit = element.matches(selector);
         } catch {
-          continue; // a selector this browser will not parse
+          continue;
         }
         if (hit) {
-          out.push({ selector, text: rule.style.cssText, specificity: selector.split(/[\s>+~]+/).length });
+          out.push({ selector, text: rule.style.cssText });
           break;
         }
       }
@@ -183,7 +109,6 @@ export function matchedRules(element, sheets) {
   return out;
 }
 
-/** The custom properties a set of rules reads, with what each resolves to. */
 export function variablesIn(rules, resolve) {
   const names = new Set();
   for (const rule of rules) {
@@ -192,174 +117,117 @@ export function variablesIn(rules, resolve) {
   return [...names].sort().map((name) => ({ name, value: resolve(name) }));
 }
 
-export function buildThemeCss(values, name = 'Custom', extra = '') {
-  const v = values;
-  const dark = luminance(v.bg) < 0.4;
+export function buildThemeCss(palette, name = 'Custom', extra = '') {
+  const c = (key) => formatCss(palette[key]);
+  const t = (key) => formatTriplet(palette[key]);
+  const dark = luminance(palette.bg) < 0.4;
   return `/*
  * ${name} — built with SlackMod's theme builder.
  *
- * Twelve roles, mapped across the four families Slack paints from. The chrome
+ * Twelve roles across the four families Slack paints from. The chrome
  * (--dt_color-theme-*) and legacy (--sk_*) families need !important because
  * Slack sets them on more specific selectors; the legacy one takes bare
- * "r, g, b" triplets rather than colours.
+ * "r, g, b" triplets, which is why any alpha is dropped there and only there.
  */
 
 :root,
 .sk-client-theme--light,
 .sk-client-theme--dark {
-  --dt_color-base-pry: ${v.bg};
-  --dt_color-base-sec: ${v.raised};
-  --dt_color-base-ter: ${v.surface};
+  --dt_color-base-pry: ${c('bg')};
+  --dt_color-base-sec: ${c('raised')};
+  --dt_color-base-ter: ${c('surface')};
   --dt_color-base-modal: rgba(0, 0, 0, ${dark ? '0.8' : '0.4'});
 
-  --dt_color-base-pry-hover: ${v.hover};
-  --dt_color-base-pry-pressed: ${v.surface};
-  --dt_color-base-sec-hover: ${v.surface};
-  --dt_color-base-sec-pressed: ${v.selected};
-  --dt_color-base-ter-hover: ${v.selected};
-  --dt_color-base-ter-pressed: ${v.selected};
+  --dt_color-base-pry-hover: ${c('hover')};
+  --dt_color-base-pry-pressed: ${c('surface')};
+  --dt_color-base-sec-hover: ${c('surface')};
+  --dt_color-base-sec-pressed: ${c('selected')};
+  --dt_color-base-ter-hover: ${c('selected')};
+  --dt_color-base-ter-pressed: ${c('selected')};
 
-  --dt_color-content-pry: ${v.text};
-  --dt_color-content-sec: ${v.muted};
-  --dt_color-content-ter: ${v.muted};
+  --dt_color-content-pry: ${c('text')};
+  --dt_color-content-sec: ${c('muted')};
+  --dt_color-content-ter: ${c('muted')};
 
-  --dt_color-otl-pry: ${v.surface};
-  --dt_color-otl-sec: ${v.surface};
-  --dt_color-otl-ter: ${v.surface};
+  --dt_color-otl-pry: ${c('surface')};
+  --dt_color-otl-sec: ${c('surface')};
+  --dt_color-otl-ter: ${c('surface')};
 
-  --dt_color-content-hgl-1: ${v.accentText};
-  --dt_color-content-imp: ${v.danger};
-  --dt_color-base-hgl-1: ${v.selected};
+  --dt_color-content-hgl-1: ${c('accentText')};
+  --dt_color-content-imp: ${c('danger')};
+  --dt_color-base-hgl-1: ${c('selected')};
 
-  --dt_color-base-inv-pry: ${v.chrome};
-  --dt_color-content-inv-pry: ${v.bright};
-  --dt_color-content-inv-sec: ${v.muted};
+  --dt_color-base-inv-pry: ${c('chrome')};
+  --dt_color-content-inv-pry: ${c('bright')};
+  --dt_color-content-inv-sec: ${c('muted')};
 }
 
 /* Chrome and legacy families; both need !important. */
 :root,
 .sk-client-theme--light,
 .sk-client-theme--dark {
-  --dt_color-theme-base-inv-pry: ${v.chrome} !important;
-  --dt_color-theme-base-inv-sec: ${v.chrome} !important;
-  --dt_color-theme-content-inv-pry: ${v.bright} !important;
-  --dt_color-theme-content-inv-sec: ${v.muted} !important;
-  --dt_color-theme-content-inv-ter: ${v.muted} !important;
-  --dt_color-theme-otl-inv-pry: ${v.surface} !important;
+  --dt_color-theme-base-inv-pry: ${c('chrome')} !important;
+  --dt_color-theme-base-inv-sec: ${c('chrome')} !important;
+  --dt_color-theme-content-inv-pry: ${c('bright')} !important;
+  --dt_color-theme-content-inv-sec: ${c('muted')} !important;
+  --dt_color-theme-content-inv-ter: ${c('muted')} !important;
+  --dt_color-theme-otl-inv-pry: ${c('surface')} !important;
 
-  --dt_color-theme-surf-inv-pry: ${v.selected} !important;
-  --dt_color-theme-surf-inv-sec: ${v.chrome} !important;
-  --dt_color-theme-surf-inv-ter: ${v.hover} !important;
-  --dt_color-theme-surf-pry: ${v.selected} !important;
-  --dt_color-theme-surf-sec: ${v.hover} !important;
-  --dt_color-theme-surf-ter: ${v.bg} !important;
+  --dt_color-theme-surf-inv-pry: ${c('selected')} !important;
+  --dt_color-theme-surf-inv-sec: ${c('chrome')} !important;
+  --dt_color-theme-surf-inv-ter: ${c('hover')} !important;
+  --dt_color-theme-surf-pry: ${c('selected')} !important;
+  --dt_color-theme-surf-sec: ${c('hover')} !important;
+  --dt_color-theme-surf-ter: ${c('bg')} !important;
 
-  --dt_color-theme-base-pry: ${v.bg} !important;
-  --dt_color-theme-base-sec: ${v.raised} !important;
-  --dt_color-theme-base-hgl-1: ${v.selected} !important;
-  --dt_color-theme-content-pry: ${v.text} !important;
-  --dt_color-theme-content-sec: ${v.muted} !important;
-  --dt_color-theme-content-ter: ${v.muted} !important;
+  --dt_color-theme-base-pry: ${c('bg')} !important;
+  --dt_color-theme-base-sec: ${c('raised')} !important;
+  --dt_color-theme-base-hgl-1: ${c('selected')} !important;
+  --dt_color-theme-content-pry: ${c('text')} !important;
+  --dt_color-theme-content-sec: ${c('muted')} !important;
+  --dt_color-theme-content-ter: ${c('muted')} !important;
 
-  --sk_primary_background: ${triplet(v.bg)} !important;
-  --sk_primary_foreground: ${triplet(v.text)} !important;
-  --sk_inverted_background: ${triplet(v.text)} !important;
-  --sk_inverted_foreground: ${triplet(v.bg)} !important;
-  --sk_foreground_max: ${triplet(v.bright)} !important;
-  --sk_foreground_high: ${triplet(v.text)} !important;
-  --sk_foreground_mid: ${triplet(v.muted)} !important;
-  --sk_foreground_low: ${triplet(v.muted)} !important;
-  --sk_foreground_min: ${triplet(v.muted)} !important;
-  --sk_foreground_max_solid: ${triplet(v.bright)} !important;
-  --sk_foreground_high_solid: ${triplet(v.muted)} !important;
-  --sk_foreground_mid_solid: ${triplet(v.selected)} !important;
-  --sk_foreground_low_solid: ${triplet(v.surface)} !important;
-  --sk_foreground_min_solid: ${triplet(v.raised)} !important;
-  --sk_highlight: ${triplet(v.accent)} !important;
-  --sk_highlight_hover: ${triplet(v.accentText)} !important;
-  --sk_highlight_accent: ${triplet(v.accent)} !important;
+  --sk_primary_background: ${t('bg')} !important;
+  --sk_primary_foreground: ${t('text')} !important;
+  --sk_inverted_background: ${t('text')} !important;
+  --sk_inverted_foreground: ${t('bg')} !important;
+  --sk_foreground_max: ${t('bright')} !important;
+  --sk_foreground_high: ${t('text')} !important;
+  --sk_foreground_mid: ${t('muted')} !important;
+  --sk_foreground_low: ${t('muted')} !important;
+  --sk_foreground_min: ${t('muted')} !important;
+  --sk_foreground_max_solid: ${t('bright')} !important;
+  --sk_foreground_high_solid: ${t('muted')} !important;
+  --sk_foreground_mid_solid: ${t('selected')} !important;
+  --sk_foreground_low_solid: ${t('surface')} !important;
+  --sk_foreground_min_solid: ${t('raised')} !important;
+  --sk_highlight: ${t('accent')} !important;
+  --sk_highlight_hover: ${t('accentText')} !important;
+  --sk_highlight_accent: ${t('accent')} !important;
 }
 
-html, body { background-color: ${v.bg}; }
+html, body { background-color: ${c('bg')}; }
 /* A full-viewport opaque layer sits above <body>; without this nothing shows. */
-.p-theme_background { background: ${v.bg} !important; }
+.p-theme_background { background: ${c('bg')} !important; }
 
 .p-tab_rail,
 .p-channel_sidebar,
-.p-ia4_home_header { background: ${v.chrome} !important; border: none !important; }
+.p-ia4_home_header { background: ${c('chrome')} !important; border: none !important; }
 
 .p-client_container,
 .p-message_pane,
-.p-view_contents { background: ${v.bg} !important; }
+.p-view_contents { background: ${c('bg')} !important; }
 ${extra ? `\n/* Your own rules. */\n${extra}\n` : ''}`;
 }
-
-/** The builder window's own styling, deliberately independent of any theme. */
-const WINDOW_CSS = `
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; padding: 0;
-    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #17171a; color: #ececee;
-  }
-  header { padding: 16px 18px 0; }
-  h1 { margin: 0 0 4px; font-size: 17px; }
-  p.intro { margin: 0 0 12px; color: #9a9aa2; }
-  .tabs { display: flex; gap: 4px; border-bottom: 1px solid #26262b; padding: 0 18px; }
-  .tabs button {
-    padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: none;
-    color: #9a9aa2; font: inherit; cursor: pointer;
-  }
-  .tabs button[aria-selected="true"] { color: #ececee; border-bottom-color: #6b7cf0; }
-  main { padding: 14px 18px 0; }
-  .pane { display: none; }
-  .pane[data-open="true"] { display: block; }
-  .row { display: grid; grid-template-columns: 44px 1fr 96px; gap: 10px; align-items: center;
-         padding: 6px 0; border-bottom: 1px solid #26262b; }
-  .row label { display: block; font-weight: 600; }
-  .row small { color: #82828b; }
-  input[type=color] { width: 44px; height: 28px; padding: 0; border: 1px solid #34343a;
-                      border-radius: 6px; background: none; cursor: pointer; }
-  input[type=text], select, textarea {
-    width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #34343a;
-    background: #1e1e22; color: inherit; font-family: inherit;
-  }
-  input.hex, textarea { font-family: ui-monospace, Menlo, monospace; }
-  textarea { min-height: 220px; resize: vertical; }
-  .field { margin-bottom: 12px; }
-  .field label { display: block; margin-bottom: 5px; font-weight: 600; }
-  button.action { padding: 7px 12px; border-radius: 6px; border: 1px solid #34343a;
-                  background: #24242a; color: inherit; font: inherit; cursor: pointer; }
-  button.action:hover { background: #2d2d34; }
-  button.primary { background: #4a5bd0; border-color: #4a5bd0; }
-  button.primary:hover { background: #5a6ae0; }
-  footer { position: sticky; bottom: 0; margin-top: 14px; padding: 12px 18px;
-           background: #17171a; border-top: 1px solid #26262b; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .status { margin-top: 8px; min-height: 16px; color: #7fd18d; }
-  .card { border: 1px solid #26262b; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
-  .card h2 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
-             color: #82828b; }
-  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: #c9c9d1;
-         word-break: break-all; }
-  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px;
-            border: 1px solid #3a3a42; vertical-align: -2px; margin-right: 6px; }
-  .var { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #212126; }
-  .var code { flex: 1; }
-  .empty { color: #82828b; padding: 8px 0; }
-  ul.rules { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
-  ul.rules li { padding: 5px 0; border-bottom: 1px solid #212126; }
-`;
 
 export default {
   async start(api) {
     const t = api.i18n.strings(STRINGS);
     let child = null;
-    /** Cleanup for whatever the picker installed in Slack's window. */
     let stopPicking = null;
+    const marks = [];
 
-    // ---------------------------------------------------------------- Slack side
+    const clearMarks = () => { while (marks.length) marks.pop().remove(); };
 
     const overlay = () => {
       let node = document.getElementById(OVERLAY_ID);
@@ -368,39 +236,44 @@ export default {
         Object.assign(node.style, {
           position: 'fixed', pointerEvents: 'none', zIndex: '99999',
           border: '2px solid #6b7cf0', background: 'rgba(107,124,240,.18)',
-          borderRadius: '3px', transition: 'all 60ms ease', display: 'none',
+          borderRadius: '3px', display: 'none',
         });
         document.body.append(node);
       }
       return node;
     };
 
-    const highlightBox = (rect) => {
+    const startPicking = (onPicked) => {
+      stopPicking?.();
       const node = overlay();
-      Object.assign(node.style, {
-        display: 'block', left: `${rect.left}px`, top: `${rect.top}px`,
-        width: `${rect.width}px`, height: `${rect.height}px`,
-      });
+      const move = (event) => {
+        const rect = event.target?.getBoundingClientRect?.();
+        if (!rect) return;
+        Object.assign(node.style, {
+          display: 'block', left: `${rect.left}px`, top: `${rect.top}px`,
+          width: `${rect.width}px`, height: `${rect.height}px`,
+        });
+      };
+      const click = (event) => { event.preventDefault(); event.stopPropagation(); stop(); onPicked(event.target); };
+      const key = (event) => { if (event.key === 'Escape') stop(); };
+      const stop = () => {
+        document.removeEventListener('mousemove', move, true);
+        document.removeEventListener('click', click, true);
+        document.removeEventListener('keydown', key, true);
+        node.style.display = 'none';
+        stopPicking = null;
+      };
+      // Capture, so choosing a channel row does not also open that channel.
+      document.addEventListener('mousemove', move, true);
+      document.addEventListener('click', click, true);
+      document.addEventListener('keydown', key, true);
+      stopPicking = stop;
     };
 
-    const hideOverlay = () => {
-      const node = document.getElementById(OVERLAY_ID);
-      if (node) node.style.display = 'none';
-    };
-
-    /** Extra outlines for "show me every element with this class". */
-    const marks = [];
-    const clearMarks = () => {
-      while (marks.length) marks.pop().remove();
-    };
     const markAll = (selector) => {
       clearMarks();
       let elements = [];
-      try {
-        elements = [...document.querySelectorAll(selector)];
-      } catch {
-        return 0;
-      }
+      try { elements = [...document.querySelectorAll(selector)]; } catch { return 0; }
       for (const element of elements.slice(0, 300)) {
         const rect = element.getBoundingClientRect();
         if (rect.width < 2 || rect.height < 2) continue;
@@ -417,58 +290,11 @@ export default {
       return elements.length;
     };
 
-    /**
-     * Point-and-click element picking, in Slack's own window.
-     *
-     * Listeners are on capture so Slack never sees the click that chose an
-     * element -- picking a channel row should not also open that channel.
-     */
-    const startPicking = (onPicked) => {
-      stopPicking?.();
-      const move = (event) => {
-        const element = event.target;
-        if (element && element.getBoundingClientRect) highlightBox(element.getBoundingClientRect());
-      };
-      const click = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        stop();
-        onPicked(event.target);
-      };
-      const key = (event) => {
-        if (event.key === 'Escape') stop();
-      };
-      const stop = () => {
-        document.removeEventListener('mousemove', move, true);
-        document.removeEventListener('click', click, true);
-        document.removeEventListener('keydown', key, true);
-        hideOverlay();
-        stopPicking = null;
-      };
-      document.addEventListener('mousemove', move, true);
-      document.addEventListener('click', click, true);
-      document.addEventListener('keydown', key, true);
-      stopPicking = stop;
-      return stop;
-    };
-
-    // ---------------------------------------------------------------- the window
-
     const open = () => {
-      if (child && !child.closed) {
-        child.focus();
-        api.ui.toast(t('already'));
-        return;
-      }
-      child = window.open('', WINDOW_NAME, 'width=520,height=860');
-      if (!child) {
-        api.ui.toast(t('blocked'), { variant: 'error' });
-        return;
-      }
-
-      const values = Object.fromEntries(ROLES.map((r) => [r.key, r.value]));
-      let baseCss = '';
-      let extraCss = '';
+      if (child && !child.closed) { child.focus(); api.ui.toast(t('already')); return; }
+      // Two columns of content, so the window has to be wide enough for both.
+      child = window.open('', WINDOW_NAME, 'width=1040,height=780,resizable=yes');
+      if (!child) { api.ui.toast(t('blocked'), { variant: 'error' }); return; }
 
       const doc = child.document;
       doc.open();
@@ -476,56 +302,124 @@ export default {
       doc.close();
       doc.documentElement.setAttribute('data-slackmod-window', 'theme-builder');
       doc.title = t('title');
-
       const style = doc.createElement('style');
-      style.textContent = WINDOW_CSS;
+      style.textContent = api.assets.text('window.css');
       doc.head.append(style);
 
       const el = (tag, props = {}, children = []) => {
         const node = doc.createElement(tag);
         for (const [k, v] of Object.entries(props)) {
           if (k === 'class') node.className = v;
-          else if (k.startsWith('data-') || k === 'aria-selected') node.setAttribute(k, v);
+          else if (k.includes('-')) node.setAttribute(k, v);
           else node[k] = v;
         }
-        for (const c of children) node.append(c);
+        for (const c of children) node.append(typeof c === 'string' ? doc.createTextNode(c) : c);
         return node;
       };
 
+      // -- state
+      let seeds = { bg: parseColour('#1a1a1e'), accent: parseColour('#536aed') };
+      let overrides = {};
+      let baseCss = '';
+      let extraCss = '';
+      let editing = null;
+
+      const palette = () => ({ ...derivePalette(seeds.bg, seeds.accent), ...overrides });
+
       const preview = () => {
-        // The base first, then the roles, then hand-written rules: last wins,
+        // Base first, then the palette, then hand-written rules: last wins,
         // which is what "override an existing theme" has to mean.
-        api.css(`${baseCss}\n${buildThemeCss(values, nameInput.value || 'Custom', extraCss)}`);
+        api.css(`${baseCss}\n${buildThemeCss(palette(), nameInput.value || 'Custom', extraCss)}`);
+        paintUi();
       };
 
-      // -- header and tabs
-      doc.body.append(el('header', {}, [
-        el('h1', { textContent: t('title') }),
-        el('p', { class: 'intro', textContent: t('intro') }),
-      ]));
+      // -- colour picker, built here because <input type=color> has no alpha
+      const picker = el('div', { class: 'picker' });
+      const sv = el('div', { class: 'sv' });
+      const svKnob = el('div', { class: 'knob' });
+      sv.append(svKnob);
+      const hue = el('div', { class: 'slider' });
+      const hueKnob = el('div', { class: 'knob' });
+      hue.append(hueKnob);
+      hue.style.background =
+        'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)';
+      const alpha = el('div', { class: 'slider checker' });
+      const alphaKnob = el('div', { class: 'knob' });
+      alpha.append(alphaKnob);
+      const hexField = el('input', { type: 'text', spellcheck: false });
+      picker.append(sv, hue, alpha, hexField);
 
-      const panes = {};
-      const tabBar = el('div', { class: 'tabs' });
-      const showTab = (id) => {
-        for (const [key, pane] of Object.entries(panes)) pane.setAttribute('data-open', String(key === id));
-        for (const button of tabBar.children) {
-          button.setAttribute('aria-selected', String(button.dataset.tab === id));
-        }
+      const current = () => (editing ? palette()[editing] : seeds.bg);
+
+      const setColour = (colour) => {
+        if (!editing) return;
+        if (editing === 'bg' || editing === 'accent') seeds[editing] = colour;
+        else overrides[editing] = colour;
+        drawPicker();
+        preview();
       };
-      for (const [id, label] of [['roles', t('tabRoles')], ['inspect', t('tabInspect')],
-        ['classes', t('tabClasses')], ['css', t('tabCss')]]) {
-        const button = el('button', { textContent: label, 'data-tab': id });
-        button.dataset.tab = id;
-        button.addEventListener('click', () => showTab(id));
-        tabBar.append(button);
-      }
-      doc.body.append(tabBar);
-      const main = el('main');
-      doc.body.append(main);
 
-      // -- roles
-      const rolesPane = el('div', { class: 'pane' });
-      panes.roles = rolesPane;
+      const drawPicker = () => {
+        const colour = current();
+        const hsv = toHsv(colour);
+        sv.style.background =
+          `linear-gradient(to top, #000, rgba(0,0,0,0)), ` +
+          `linear-gradient(to right, #fff, hsl(${hsv.h}, 100%, 50%))`;
+        svKnob.style.left = `${hsv.s * 100}%`;
+        svKnob.style.top = `${(1 - hsv.v) * 100}%`;
+        hueKnob.style.left = `${(hsv.h / 360) * 100}%`;
+        hueKnob.style.top = '50%';
+        alpha.style.backgroundImage =
+          `linear-gradient(to right, rgba(${colour.r},${colour.g},${colour.b},0), ` +
+          `rgb(${colour.r},${colour.g},${colour.b})), ` + alphaChecker;
+        alphaKnob.style.left = `${colour.a * 100}%`;
+        alphaKnob.style.top = '50%';
+        hexField.value = formatCss(colour);
+      };
+      const alphaChecker =
+        'linear-gradient(45deg,#555 25%,transparent 25%),' +
+        'linear-gradient(-45deg,#555 25%,transparent 25%),' +
+        'linear-gradient(45deg,transparent 75%,#555 75%),' +
+        'linear-gradient(-45deg,transparent 75%,#555 75%)';
+
+      /** Pointer dragging on a strip or square, clamped to it. */
+      const drag = (surface, onMove) => {
+        const handle = (event) => {
+          const rect = surface.getBoundingClientRect();
+          const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+          const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+          onMove(x, y);
+        };
+        surface.addEventListener('pointerdown', (event) => {
+          surface.setPointerCapture(event.pointerId);
+          handle(event);
+          const move = (e) => handle(e);
+          const up = () => {
+            surface.removeEventListener('pointermove', move);
+            surface.removeEventListener('pointerup', up);
+          };
+          surface.addEventListener('pointermove', move);
+          surface.addEventListener('pointerup', up);
+        });
+      };
+
+      drag(sv, (x, y) => {
+        const hsv = toHsv(current());
+        setColour(fromHsv({ h: hsv.h, s: x, v: 1 - y, a: current().a }));
+      });
+      drag(hue, (x) => {
+        const hsv = toHsv(current());
+        setColour(fromHsv({ h: x * 360, s: hsv.s, v: hsv.v, a: current().a }));
+      });
+      drag(alpha, (x) => setColour({ ...current(), a: Math.round(x * 100) / 100 }));
+      hexField.addEventListener('input', () => {
+        const parsed = parseColour(hexField.value);
+        if (parsed) setColour(parsed);
+      });
+
+      // -- layout
+      const nameInput = el('input', { type: 'text', value: 'My theme', spellcheck: false });
+      const status = el('div', { class: 'status' });
 
       const baseSelect = el('select');
       baseSelect.append(el('option', { value: '', textContent: t('scratch') }));
@@ -534,129 +428,202 @@ export default {
       }
       baseSelect.addEventListener('change', () => {
         const id = baseSelect.value;
-        if (!id) {
-          baseCss = '';
-          preview();
-          return;
-        }
-        void api.themes.source(id).then((css) => {
-          baseCss = css;
-          // Seed the pickers from what that theme actually paints, so the
-          // twelve controls start where the eye already is.
-          for (const role of ROLES) {
-            const probe = { bg: '.p-client_container', chrome: '.p-channel_sidebar' }[role.key];
-            if (!probe) continue;
-            const node = document.querySelector(probe);
-            const hex = node && toHex(getComputedStyle(node).backgroundColor);
-            if (hex) setRole(role.key, hex);
-          }
-          preview();
-        });
+        if (!id) { baseCss = ''; preview(); return; }
+        void api.themes.source(id).then((css) => { baseCss = css; preview(); });
       });
-      rolesPane.append(el('div', { class: 'field' }, [
-        el('label', { textContent: t('base') }), baseSelect,
+
+      const toolsButton = el('button', { class: 'action', textContent: t('tools') });
+      doc.body.append(el('div', { class: 'top' }, [
+        el('h1', { textContent: t('title') }),
+        baseSelect,
+        toolsButton,
       ]));
 
-      const roleInputs = {};
-      const setRole = (key, hex) => {
-        values[key] = hex;
-        const pair = roleInputs[key];
-        if (!pair) return;
-        pair.swatch.value = hex;
-        pair.hex.value = hex;
-      };
-      for (const role of ROLES) {
-        const swatch = el('input', { type: 'color', value: role.value });
-        const hex = el('input', { type: 'text', class: 'hex', value: role.value, spellcheck: false });
-        roleInputs[role.key] = { swatch, hex };
-        const sync = (next, from) => {
-          if (!/^#[0-9a-f]{6}$/i.test(next)) return;
-          values[role.key] = next.toLowerCase();
-          if (from !== 'swatch') swatch.value = values[role.key];
-          if (from !== 'hex') hex.value = values[role.key];
-          preview();
-        };
-        swatch.addEventListener('input', () => sync(swatch.value, 'swatch'));
-        hex.addEventListener('input', () => sync(hex.value.trim(), 'hex'));
-        rolesPane.append(el('div', { class: 'row' }, [
-          swatch,
-          el('div', {}, [el('label', { textContent: role.label }), el('small', { textContent: role.hint })]),
-          hex,
-        ]));
-      }
-      main.append(rolesPane);
+      const left = el('div', { class: 'left' });
+      const right = el('div', { class: 'right' });
+      doc.body.append(el('div', { class: 'cols' }, [left, right]));
 
-      // -- inspect
-      const inspectPane = el('div', { class: 'pane' });
-      panes.inspect = inspectPane;
-      const inspectOut = el('div', {}, [el('p', { class: 'empty', textContent: t('nothing') })]);
+      // -- palette column
+      const seedRow = el('div', { class: 'seeds' });
+      const swatchGrid = el('div', { class: 'swatches' });
+      const reroll = el('button', { class: 'action', textContent: t('reroll'), title: t('rerollHint') });
+      reroll.addEventListener('click', () => { overrides = {}; editing = null; picker.setAttribute('data-open', 'false'); preview(); });
+
+      left.append(
+        el('h2', { textContent: t('palette') }), seedRow,
+        el('h2', { textContent: t('derived') }), swatchGrid,
+        el('div', { style: 'margin-top:10px' }, [reroll]),
+        picker,
+      );
+
+      const chooseRole = (key) => {
+        editing = key;
+        picker.setAttribute('data-open', 'true');
+        drawPicker();
+        paintUi();
+      };
+
+      // -- preview column
+      const demo = el('div', { class: 'demo' });
+      const checks = el('div', { class: 'checks' });
+      const previewWrap = el('div', {}, [
+        el('h2', { textContent: t('preview') }), demo,
+        el('h2', { textContent: t('readable') }), checks,
+      ]);
+      right.append(previewWrap);
+
+      const paintUi = () => {
+        const p = palette();
+        const css = (key) => formatCss(p[key]);
+
+        // seeds
+        seedRow.replaceChildren();
+        for (const role of ROLES.filter((r) => r.seed)) {
+          const chip = el('div', { class: 'chip checker' });
+          chip.style.backgroundImage = `linear-gradient(${css(role.key)}, ${css(role.key)}), ${alphaChecker}`;
+          const card = el('div', { class: 'seed' }, [
+            chip,
+            el('div', { class: 'meta' }, [
+              el('strong', { textContent: role.label }),
+              el('small', { textContent: formatCss(p[role.key]) }),
+            ]),
+          ]);
+          card.addEventListener('click', () => chooseRole(role.key));
+          seedRow.append(card);
+        }
+
+        // derived
+        swatchGrid.replaceChildren();
+        for (const role of ROLES.filter((r) => !r.seed)) {
+          const chip = el('div', { class: 'chip checker' });
+          chip.style.backgroundImage = `linear-gradient(${css(role.key)}, ${css(role.key)}), ${alphaChecker}`;
+          const button = el('button', { class: 'sw' }, [chip, el('span', { textContent: role.label })]);
+          button.setAttribute('data-own', String(Boolean(overrides[role.key])));
+          button.title = `${role.hint} — ${formatCss(p[role.key])}`;
+          button.addEventListener('click', () => chooseRole(role.key));
+          swatchGrid.append(button);
+        }
+
+        // the fragments of Slack each role paints
+        demo.replaceChildren();
+        const side = el('div', { class: 'side' });
+        side.style.background = css('chrome');
+        for (const [label, state] of [[t('sampleChannel'), 'selected'], ['random', 'hover'], ['design', '']]) {
+          const row = el('div', { class: 'row' }, [`# ${label}`]);
+          row.style.color = state === 'selected' ? css('bright') : css('muted');
+          if (state) row.style.background = css(state);
+          side.append(row);
+        }
+        const badgeRow = el('div', { class: 'row' }, ['# alerts ']);
+        badgeRow.style.color = css('muted');
+        const badge = el('span', { class: 'badge', textContent: '3' });
+        badge.style.background = css('danger');
+        badgeRow.append(badge);
+        side.append(badgeRow);
+
+        const main = el('div', { class: 'main' });
+        main.style.background = css('bg');
+        const avatar = el('div', { class: 'av' });
+        avatar.style.background = css('surface');
+        const mention = el('span', { class: 'chip2', textContent: '@erwan' });
+        mention.style.background = css('selected');
+        mention.style.color = css('accentText');
+        const body = el('div', {}, [
+          el('div', {}, [
+            (() => { const who = el('span', { class: 'who', textContent: t('sampleName') });
+              who.style.color = css('bright'); return who; })(),
+            (() => { const time = el('span', { class: 'time', textContent: t('sampleTime') });
+              time.style.color = css('muted'); return time; })(),
+          ]),
+          (() => { const line = el('div', {}, [t('sampleText'), ' ', mention]);
+            line.style.color = css('text'); return line; })(),
+        ]);
+        main.append(el('div', { class: 'msg' }, [avatar, body]));
+        const composer = el('div', { class: 'composer', textContent: t('sampleCompose') });
+        composer.style.background = css('raised');
+        composer.style.color = css('muted');
+        composer.style.border = `1px solid ${css('surface')}`;
+        main.append(composer);
+        demo.append(side, main);
+
+        // readability
+        checks.replaceChildren();
+        for (const [fg, bgKey, label] of CONTRAST_CHECKS) {
+          const ratio = contrast(p[fg], p[bgKey]);
+          const verdict = readability(ratio);
+          const dot = el('div', { class: 'dot' });
+          dot.style.background = css(fg);
+          const grade = el('span', { class: 'grade', textContent: verdict.grade });
+          grade.setAttribute('data-ok', String(verdict.ok));
+          checks.append(el('div', { class: 'check' }, [
+            dot,
+            el('span', { class: 'name', textContent: label }),
+            el('span', { class: 'ratio', textContent: `${ratio.toFixed(1)}:1` }),
+            grade,
+          ]));
+        }
+      };
+
+      // -- tools view
+      const tools = el('div', {});
       const pickButton = el('button', { class: 'action primary', textContent: t('pick') });
+      const inspectOut = el('div', {}, [el('p', { class: 'empty', textContent: t('nothing') })]);
+      const classInput = el('input', { type: 'text', spellcheck: false, placeholder: '.c-message_kit__background' });
+      const classCount = el('span', { class: 'empty' });
+      const showButton = el('button', { class: 'action', textContent: t('highlight') });
+      const clearButton = el('button', { class: 'action', textContent: t('clear') });
+      const cssArea = el('textarea', { spellcheck: false });
+      showButton.addEventListener('click', () => {
+        classCount.textContent = t('classCount', { count: markAll(classInput.value.trim()) });
+      });
+      clearButton.addEventListener('click', () => { clearMarks(); classCount.textContent = ''; });
+      cssArea.addEventListener('input', () => { extraCss = cssArea.value; preview(); });
 
       const describe = (element) => {
         inspectOut.replaceChildren();
         const computed = getComputedStyle(element);
         const rules = matchedRules(element, document.styleSheets);
         const resolve = (name) =>
-          getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-          || computed.getPropertyValue(name).trim();
-
+          getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         const label = element.tagName.toLowerCase()
-          + (element.id ? `#${element.id}` : '')
           + (element.getAttribute('data-qa') ? `[data-qa="${element.getAttribute('data-qa')}"]` : '')
           + [...element.classList].map((c) => `.${c}`).join('');
+        inspectOut.append(el('div', { class: 'card' }, [el('code', { textContent: label })]));
 
-        const identity = el('div', { class: 'card' }, [
-          el('h2', { textContent: t('picked') }),
-          el('code', { textContent: label }),
-        ]);
-        inspectOut.append(identity);
-
-        // What it looks like right now, with the colours offered as roles.
         const painted = el('div', { class: 'card' }, [el('h2', { textContent: t('paintedBy') })]);
-        for (const [prop, name] of [['background-color', 'background'], ['color', 'text'],
-          ['border-color', 'border']]) {
-          const raw = computed.getPropertyValue(prop);
-          const hex = toHex(raw);
-          if (!hex) continue;
-          const line = el('div', { class: 'var' });
-          const chip = el('span', { class: 'swatch' });
-          chip.style.background = hex;
-          line.append(chip, el('code', { textContent: `${name}: ${hex}` }));
-          for (const role of ROLES) {
-            const use = el('button', { class: 'action', textContent: `${t('useVar')} ${role.label}` });
-            use.style.fontSize = '11px';
-            use.addEventListener('click', () => { setRole(role.key, hex); preview(); showTab('roles'); });
-            if (['bg', 'chrome', 'text', 'accent'].includes(role.key)) line.append(use);
-          }
-          painted.append(line);
+        for (const [prop, name] of [['background-color', 'background'], ['color', 'text']]) {
+          const parsed = parseColour(computed.getPropertyValue(prop));
+          if (!parsed) continue;
+          const dot = el('div', { class: 'dot' });
+          dot.style.background = formatCss(parsed);
+          const use = el('button', { class: 'action', textContent: `${name} →` });
+          use.addEventListener('click', () => {
+            if (editing) setColour(parsed);
+          });
+          painted.append(el('div', { class: 'var' }, [
+            dot, el('code', { textContent: `${name}: ${formatCss(parsed)}` }), use,
+          ]));
         }
         inspectOut.append(painted);
 
-        // The variables those rules read: the answer to "what changes this".
         const vars = variablesIn(rules, resolve);
         const varCard = el('div', { class: 'card' }, [el('h2', { textContent: t('variables') })]);
-        if (vars.length === 0) {
-          varCard.append(el('p', { class: 'empty', textContent: t('noVars') }));
-        } else {
-          for (const entry of vars.slice(0, 40)) {
-            const line = el('div', { class: 'var' });
-            const chip = el('span', { class: 'swatch' });
-            chip.style.background = /^\d/.test(entry.value) ? `rgb(${entry.value})` : entry.value;
-            line.append(chip, el('code', { textContent: `${entry.name}: ${entry.value || '—'}` }));
-            varCard.append(line);
-          }
+        if (!vars.length) varCard.append(el('p', { class: 'empty', textContent: t('noVars') }));
+        for (const entry of vars.slice(0, 30)) {
+          const dot = el('div', { class: 'dot' });
+          dot.style.background = /^\d/.test(entry.value) ? `rgb(${entry.value})` : entry.value;
+          varCard.append(el('div', { class: 'var' }, [
+            dot, el('code', { textContent: `${entry.name}: ${entry.value || '—'}` }),
+          ]));
         }
         inspectOut.append(varCard);
 
         const ruleCard = el('div', { class: 'card' }, [el('h2', { textContent: t('matchedRules') })]);
-        if (rules.length === 0) {
-          ruleCard.append(el('p', { class: 'empty', textContent: t('noRules') }));
-        } else {
+        if (!rules.length) ruleCard.append(el('p', { class: 'empty', textContent: t('noRules') }));
+        else {
           const list = el('ul', { class: 'rules' });
-          for (const rule of rules.slice(0, 60)) {
-            list.append(el('li', {}, [
-              el('code', { textContent: `${rule.selector} { ${rule.text.slice(0, 160)} }` }),
-            ]));
+          for (const rule of rules.slice(0, 50)) {
+            list.append(el('li', {}, [el('code', { textContent: `${rule.selector} { ${rule.text.slice(0, 140)} }` })]));
           }
           ruleCard.append(list);
         }
@@ -667,61 +634,26 @@ export default {
         pickButton.textContent = t('picking');
         child.blur();
         window.focus();
-        startPicking((element) => {
-          pickButton.textContent = t('pick');
-          describe(element);
-          child.focus();
-        });
+        startPicking((element) => { pickButton.textContent = t('pick'); describe(element); child.focus(); });
       });
-      inspectPane.append(pickButton, inspectOut);
-      main.append(inspectPane);
 
-      // -- classes
-      const classPane = el('div', { class: 'pane' });
-      panes.classes = classPane;
-      const classInput = el('input', { type: 'text', class: 'hex', spellcheck: false,
-        placeholder: '.c-message_kit__background' });
-      const classCount = el('p', { class: 'empty' });
-      const showButton = el('button', { class: 'action primary', textContent: t('highlight') });
-      const clearButton = el('button', { class: 'action', textContent: t('clear') });
-      showButton.addEventListener('click', () => {
-        const selector = classInput.value.trim();
-        if (!selector) return;
-        const found = markAll(selector);
-        classCount.textContent = t('classCount', { count: found });
-      });
-      clearButton.addEventListener('click', () => { clearMarks(); classCount.textContent = ''; });
-      classInput.addEventListener('input', () => {
-        const selector = classInput.value.trim();
-        if (!selector) { classCount.textContent = ''; return; }
-        try {
-          classCount.textContent = t('classCount', { count: document.querySelectorAll(selector).length });
-        } catch {
-          classCount.textContent = '';
-        }
-      });
-      classPane.append(
-        el('div', { class: 'field' }, [el('label', { textContent: t('classSearch') }), classInput]),
-        el('div', { class: 'actions' }, [showButton, clearButton]),
-        classCount,
+      tools.append(
+        el('h2', { textContent: t('tools') }), pickButton, inspectOut,
+        el('h2', { textContent: t('classSearch') }), classInput,
+        el('div', { style: 'display:flex;gap:8px;align-items:center;margin:8px 0' },
+          [showButton, clearButton, classCount]),
+        el('h2', { textContent: 'CSS' }),
+        el('p', { class: 'empty', textContent: t('cssHint') }), cssArea,
       );
-      main.append(classPane);
 
-      // -- free CSS
-      const cssPane = el('div', { class: 'pane' });
-      panes.css = cssPane;
-      const cssArea = el('textarea', { spellcheck: false,
-        placeholder: '.c-message_kit__background:hover { background: #202027; }' });
-      cssArea.addEventListener('input', () => { extraCss = cssArea.value; preview(); });
-      cssPane.append(
-        el('p', { class: 'intro', textContent: t('cssHint') }),
-        cssArea,
-      );
-      main.append(cssPane);
+      let showingTools = false;
+      toolsButton.addEventListener('click', () => {
+        showingTools = !showingTools;
+        right.replaceChildren(showingTools ? tools : previewWrap);
+        toolsButton.textContent = showingTools ? t('back') : t('tools');
+      });
 
-      // -- footer
-      const nameInput = el('input', { type: 'text', value: 'My theme', spellcheck: false });
-      const status = el('div', { class: 'status' });
+      // -- bottom bar
       const save = el('button', { class: 'action primary', textContent: t('save') });
       save.addEventListener('click', () => {
         const label = nameInput.value.trim();
@@ -731,32 +663,20 @@ export default {
         void api.saveTheme({
           id, name: label,
           description: `A theme built with SlackMod's theme builder, from ${ROLES.length} colours.`,
-          css: buildThemeCss(values, label, extraCss),
-        }).then(() => {
-          status.textContent = t('saved');
-          api.ui.toast(t('saved'));
-        }).catch((err) => { status.textContent = err.message; });
+          css: buildThemeCss(palette(), label, extraCss),
+        }).then(() => { status.textContent = t('saved'); api.ui.toast(t('saved')); })
+          .catch((err) => { status.textContent = err.message; });
       });
-
       const copy = el('button', { class: 'action', textContent: t('copy') });
       copy.addEventListener('click', () => {
-        void api.helpers.copy(buildThemeCss(values, nameInput.value || 'Custom', extraCss), t('copied'));
+        void api.helpers.copy(buildThemeCss(palette(), nameInput.value || 'Custom', extraCss), t('copied'));
       });
-
       const reset = el('button', { class: 'action', textContent: t('reset') });
       reset.addEventListener('click', () => { child.close(); open(); });
 
-      doc.body.append(el('footer', {}, [
-        el('div', { class: 'field' }, [el('label', { textContent: t('name') }), nameInput]),
-        el('div', { class: 'actions' }, [save, copy, reset]),
-        status,
-      ]));
+      doc.body.append(el('div', { class: 'bar' }, [nameInput, save, copy, reset, status]));
 
-      showTab('roles');
       preview();
-
-      // The preview belongs to the builder: closing the window puts Slack back,
-      // and takes every overlay with it.
       child.addEventListener('unload', () => {
         api.css('');
         stopPicking?.();

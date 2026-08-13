@@ -15,7 +15,39 @@ Anything registered through `api` is undone when the plugin is switched off.
 
 **Jump to:** [helpers](#apihelpers) · [slack](#apislack) · [ui](#apiui) ·
 [dom](#apidom) · [settings](#apisettings) · [files](#apifiles) ·
-[css](#apicss) · [log](#apilog) · [recipes](#recipes)
+[assets](#apiassets) · [css](#apicss) · [log](#apilog) · [recipes](#recipes)
+
+---
+
+## Your mod is a folder
+
+`entry` in `mod.json` is where the app starts reading, not the whole mod. Split
+the rest however the code wants to be split:
+
+```
+mods/plugins/my-plugin/
+  mod.json        "entry": "index.js"
+  index.js        import { render } from './ui/panel.js';
+  ui/panel.js     import { format } from '../lib/format.js';
+  ui/panel.css    api.css(api.assets.text('ui/panel.css'));
+  lib/format.js
+  test.mjs
+```
+
+Relative specifiers only, inside your own folder, no cycles — all three are
+enforced by `npm run validate-mods`, so a mistake fails the pull request rather
+than the app.
+
+The reason: Slack's CSP has no `'unsafe-eval'`, so a plugin is loaded as a real
+ES module through a `blob:` URL — and a blob URL has no directory for `./x.js`
+to resolve against. SlackMod reads the whole folder, makes a blob per file
+leaves-first, and rewrites each relative specifier to the blob URL of the file
+it names. Nothing else in your source is touched: comments, formatting and line
+numbers survive, so stack traces still point where you think they do. A JSDoc
+`{import('…/api.js')}` is a comment, and is left alone.
+
+Themes work the same way with `@import './tokens.css'` — see
+[themes.md](themes.md#splitting-a-theme-across-files).
 
 ---
 
@@ -337,6 +369,21 @@ The loader does the fetching, because Slack's CDN serves without CORS headers
 and a `fetch` from the page always fails. https only, the file name is
 sanitised, 25 MB cap, fixed download directory.
 
+## `api.assets`
+
+Your mod's own files, as shipped in its folder — the modules it loaded, plus any
+`.css` next to them. This is what lets a plugin keep its stylesheet in a real
+`.css` file, with an editor that highlights it, instead of a template literal:
+
+```js
+api.css(api.assets.text('ui/panel.css'));
+api.assets.list();            // ['index.js', 'ui/panel.js', 'ui/panel.css']
+```
+
+Paths are folder-relative and forward-slashed — the same strings you would
+import. A leading `./` is accepted. Asking for a file that is not in the folder
+throws, naming it.
+
 ## `api.css`
 
 One stylesheet per plugin, replaced wholesale on each call, removed when the
@@ -344,6 +391,7 @@ plugin stops.
 
 ```js
 api.css(`.my-thing { color: var(--dt_color-content-pry, #1d1c1d); }`);
+api.css(api.assets.text('panel.css'));   // or keep it in its own file
 ```
 
 ## `api.log`

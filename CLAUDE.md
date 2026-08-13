@@ -40,6 +40,12 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   `'unsafe-eval'`. Plugins load as ES modules through `blob:` URLs, which *is*
   in `script-src`. Note that code run through CDP `Runtime.evaluate` is exempt,
   so a console test of `eval` misleadingly succeeds.
+- **A `blob:` URL has no directory**, so `import './x.js'` inside one resolves
+  to `blob:https://app.slack.com/x.js` and fails. `buildModuleGraph` in
+  `plugins.ts` is the answer: read the folder, blob each file leaves-first, and
+  rewrite relative specifiers to the blob URL of the file they name. It rewrites
+  *only* specifiers, and skips comments -- mods type `api` with a JSDoc
+  `{import('../../../src/runtime/api.js')}`, which is not an import.
 - **No debugging port.** The loader uses `--remote-debugging-pipe` (fds 3 and 4),
   so Slack listens on no TCP port. Do not add a flag that reopens one.
 - **`app.asar` cannot be patched.** `EnableEmbeddedAsarIntegrityValidation` and

@@ -4,6 +4,8 @@
 // test can hand it a recording stand-in and then assert on what it tried to do.
 // The DOM comes from jsdom; nothing here needs Slack, Electron or a network.
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { JSDOM } from 'jsdom';
 // The real helpers, so a mod's test covers the helper code it leans on rather
 // than a stand-in that could drift from it.
@@ -161,7 +163,7 @@ function h(tag, attrs = {}, children = []) {
  * handlers directly. Anything a mod is expected to render (modals, toasts) is
  * captured too.
  */
-export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}) {
+export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files = {} } = {}) {
   const recorded = {
     css: [],
     toasts: [],
@@ -346,6 +348,18 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
       },
     },
 
+    // The mod's own folder. Tests that need it pass `files` to createTestApi;
+    // the default is empty, so a plugin reading an asset it did not ship gets
+    // the same error here as it would in the app.
+    assets: {
+      list: () => Object.keys(files),
+      text: (path) => {
+        const name = path.replace(/^\.\//, '');
+        if (!(name in files)) throw new Error(`"${path}" is not in the mod folder`);
+        return files[name];
+      },
+    },
+
     // The real implementation, so a mod's dictionaries are exercised rather
     // than a stand-in that always answers in English.
     i18n: createI18n(locale),
@@ -399,6 +413,31 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
     store,
     setConfirmAnswer: (value) => { confirmAnswer = value; },
   };
+}
+
+/**
+ * Load a mod the way the runtime does: as a folder of files stitched into a
+ * module graph, so a test exercises the same import resolution the app uses.
+ *
+ * Node resolves relative imports from disk on its own, so a mod's own test can
+ * simply `import plugin from './index.js'`. This is here for tests that want to
+ * assert on the *graph* — that every import lands somewhere real.
+ */
+export function readModFiles(dir) {
+  const files = {};
+  const walk = (current, prefix) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+        walk(join(current, entry.name), rel);
+      } else if (/\.(js|mjs|css)$/.test(entry.name)) {
+        files[rel] = readFileSync(join(current, entry.name), 'utf8');
+      }
+    }
+  };
+  walk(dir, '');
+  return files;
 }
 
 /** Every mod must satisfy this, whatever else its own test checks. */

@@ -4,19 +4,20 @@ import {
   missingRequirements,
   type Event as PushEvent,
   type LoaderInfo,
+  type ModFiles,
   type ModRecord,
   type Settings,
 } from '../shared/protocol.js';
 import { createPluginApi } from './api.js';
 import { PluginHost } from './plugins.js';
 import type { Bridge } from './rpc.js';
-import { StyleManager } from './themes.js';
+import { inlineCssImports, StyleManager } from './themes.js';
 
 export interface BootPayload {
   version: string;
   settings: Settings;
   mods: ModRecord[];
-  sources: Record<string, string>;
+  sources: Record<string, ModFiles>;
   info: LoaderInfo;
 }
 
@@ -25,7 +26,7 @@ export class ModManager {
   private readonly plugins = new PluginHost();
   private settings: Settings;
   private mods: ModRecord[];
-  private sources: Record<string, string>;
+  private sources: Record<string, ModFiles>;
   private listeners = new Set<() => void>();
   private headObserver?: MutationObserver;
 
@@ -101,12 +102,12 @@ export class ModManager {
   async applyInitial(): Promise<void> {
     for (const id of this.settings.enabled) {
       const record = this.mods.find((m) => m.id === id);
-      const source = this.sources[id];
-      if (!record || source === undefined) {
+      const files = this.sources[id];
+      if (!record || files === undefined) {
         console.warn(`[slackmod] "${id}" is enabled but was not delivered by the loader`);
         continue;
       }
-      await this.apply(record, source).catch((err) => {
+      await this.apply(record, files).catch((err) => {
         console.error(`[slackmod] could not apply "${id}":`, err);
       });
     }
@@ -126,13 +127,16 @@ export class ModManager {
     this.styles.clear();
   }
 
-  private async apply(record: ModRecord, source: string): Promise<void> {
+  private async apply(record: ModRecord, files: ModFiles): Promise<void> {
     if (record.type === 'theme') {
-      this.styles.set('theme', record.id, source);
+      // Relative @import has no base URL inside an injected <style>, so the
+      // folder is stitched together before it reaches the page.
+      this.styles.set('theme', record.id, inlineCssImports(files, record.entry));
       return;
     }
     const api = createPluginApi(record, {
       version: this.boot.version,
+      files,
       styles: this.styles,
       getSettings: () => this.settings,
       saveModSettings: (id, values) =>
@@ -152,7 +156,13 @@ export class ModManager {
             description: m.description,
             enabled: this.isEnabled(m.id),
           })),
-      themeSource: async (id) => this.sources[id] ?? (await this.fetchSource(id)),
+      themeSource: async (id) => {
+        // One stylesheet, not a folder: a tool reading a theme wants what the
+        // page would get, with its @imports already pasted in.
+        const record = this.mods.find((m) => m.id === id);
+        const files = this.sources[id] ?? (await this.fetchSource(id));
+        return inlineCssImports(files, record?.entry ?? 'theme.css');
+      },
       saveTheme: async ({ id, name, description, css }) => {
         // Through the same route the Browse shelf uses, so the loader validates
         // the manifest it writes exactly as it would for anything installed.
@@ -170,12 +180,12 @@ export class ModManager {
           type: 'mod.install',
           id,
           manifest,
-          source: css,
+          files: { 'theme.css': css },
         });
         this.notify();
       },
     });
-    await this.plugins.load(record, source, api);
+    await this.plugins.load(record, files, api);
   }
 
   private async unapply(record: ModRecord): Promise<void> {
@@ -188,8 +198,8 @@ export class ModManager {
     if (!record) throw new Error(`unknown mod "${id}"`);
 
     if (enabled) {
-      const source = this.sources[id] ?? (await this.fetchSource(id));
-      await this.apply(record, source);
+      const files = this.sources[id] ?? (await this.fetchSource(id));
+      await this.apply(record, files);
     } else {
       await this.unapply(record);
     }
@@ -209,18 +219,18 @@ export class ModManager {
     for (const id of next.filter((x) => !previous.includes(x))) {
       const record = this.mods.find((m) => m.id === id);
       if (!record) continue;
-      const source = this.sources[id] ?? (await this.fetchSource(id).catch(() => null));
-      if (source === null) continue;
-      await this.apply(record, source).catch((err) => {
+      const files = this.sources[id] ?? (await this.fetchSource(id).catch(() => null));
+      if (files === null) continue;
+      await this.apply(record, files).catch((err) => {
         console.error(`[slackmod] could not apply "${id}":`, err);
       });
     }
   }
 
-  private async fetchSource(id: string): Promise<string> {
-    const source = await this.bridge.request<string>({ type: 'mod.source', id });
-    this.sources[id] = source;
-    return source;
+  private async fetchSource(id: string): Promise<ModFiles> {
+    const files = await this.bridge.request<ModFiles>({ type: 'mod.source', id });
+    this.sources[id] = files;
+    return files;
   }
 
   async patchSettings(patch: Partial<Settings>): Promise<void> {
@@ -242,14 +252,14 @@ export class ModManager {
     this.applyCustomCss();
   }
 
-  async install(record: ModRecord, source: string): Promise<void> {
+  async install(record: ModRecord, files: ModFiles): Promise<void> {
     const mods = await this.bridge.request<ModRecord[]>({
       type: 'mod.install',
       id: record.id,
       manifest: record,
-      source,
+      files,
     });
-    this.sources[record.id] = source;
+    this.sources[record.id] = files;
     this.mods = mods;
     this.notify();
   }
@@ -277,14 +287,14 @@ export class ModManager {
       return;
     }
     if (event.type === 'mod.changed') {
-      this.sources[event.id] = event.source;
+      this.sources[event.id] = event.files;
       if (!this.isEnabled(event.id)) return;
       const record = this.mods.find((m) => m.id === event.id);
       if (!record) return;
       // Hot reload: tear the old one down before the new one goes in, or two
       // copies of the plugin end up fighting over the same DOM.
       await this.unapply(record);
-      await this.apply(record, event.source).catch((err) => {
+      await this.apply(record, event.files).catch((err) => {
         console.error(`[slackmod] hot reload of "${event.id}" failed:`, err);
       });
       this.notify();

@@ -1,0 +1,51 @@
+// Everything the builder says, in every language it says it in.
+//
+// English is required and is what a missing language or key falls back to.
+// Apart from the code so a translator never has to read any of it.
+
+export const STRINGS = {
+  en: {
+    open: 'Theme builder', openHint: 'Design a theme with the app as your preview',
+    title: 'Theme builder',
+    palette: 'Palette', derived: 'Derived from those two — click any to take it over',
+    preview: 'Preview', readable: 'Readability', tools: 'Tools', back: 'Back to the palette',
+    base: 'Start from', scratch: 'Slack’s own colours',
+    reroll: 'Re-derive', rerollHint: 'Throw away overrides and derive the ten again',
+    overridden: 'yours',
+    name: 'Theme name', save: 'Save', copy: 'Copy CSS', reset: 'Start over',
+    saved: 'Saved — it is in your Themes list.', copied: 'Theme CSS copied',
+    needsName: 'Give the theme a name first.',
+    blocked: 'Slack refused to open a window. Allow pop-ups for the app.',
+    already: 'The builder is already open.',
+    pick: 'Point at something in Slack', picking: 'Click an element… (Escape cancels)',
+    nothing: 'Nothing picked yet.', paintedBy: 'Painted by', matchedRules: 'Rules that match it',
+    noRules: 'No rule matches this element directly.', variables: 'Variables it depends on',
+    noVars: 'Nothing here reads a theme variable.',
+    classSearch: 'Selector', classCount: '{count} elements', highlight: 'Show them', clear: 'Clear',
+    cssHint: 'Applied on top of everything, exactly as typed.',
+    sampleChannel: 'general', sampleName: 'Erwan', sampleText: 'Looks about right.',
+    sampleTime: '10:24', sampleCompose: 'Message #general',
+  },
+  fr: {
+    open: 'Constructeur de thème', openHint: 'Concevoir un thème avec l’app comme aperçu',
+    title: 'Constructeur de thème',
+    palette: 'Palette', derived: 'Déduites de ces deux-là — cliquez pour en reprendre une',
+    preview: 'Aperçu', readable: 'Lisibilité', tools: 'Outils', back: 'Retour à la palette',
+    base: 'Partir de', scratch: 'Les couleurs de Slack',
+    reroll: 'Redéduire', rerollHint: 'Oublier les reprises et redéduire les dix',
+    overridden: 'à vous',
+    name: 'Nom du thème', save: 'Enregistrer', copy: 'Copier le CSS', reset: 'Tout reprendre',
+    saved: 'Enregistré — il est dans vos thèmes.', copied: 'CSS du thème copié',
+    needsName: 'Donnez d’abord un nom au thème.',
+    blocked: 'Slack a refusé d’ouvrir une fenêtre. Autorisez les fenêtres surgissantes.',
+    already: 'Le constructeur est déjà ouvert.',
+    pick: 'Pointer un élément de Slack', picking: 'Cliquez un élément… (Échap annule)',
+    nothing: 'Rien de sélectionné.', paintedBy: 'Peint par', matchedRules: 'Règles qui le visent',
+    noRules: 'Aucune règle ne vise directement cet élément.', variables: 'Variables dont il dépend',
+    noVars: 'Rien ici ne lit de variable de thème.',
+    classSearch: 'Sélecteur', classCount: '{count} éléments', highlight: 'Les montrer', clear: 'Effacer',
+    cssHint: 'Appliqué par-dessus tout le reste, tel quel.',
+    sampleChannel: 'général', sampleName: 'Erwan', sampleText: 'Ça me paraît juste.',
+    sampleTime: '10 h 24', sampleCompose: 'Envoyer un message #général',
+  },
+};

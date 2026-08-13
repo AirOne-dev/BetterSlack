@@ -39,6 +39,16 @@ export interface ModManifest {
   tags?: string[];
 }
 
+/**
+ * A mod's files, keyed by path relative to its folder.
+ *
+ * Mods are folders, not files: `index.js` may import `./colour.js`, and a theme
+ * may `@import './rail.css'`. The loader reads the whole folder and the runtime
+ * stitches it back together, because the alternative -- one file per mod -- is
+ * what made the theme builder a two-thousand-line wall.
+ */
+export type ModFiles = Record<string, string>;
+
 export interface ModRecord extends ModManifest {
   /** Where the mod came from. `builtin` = shipped in this repo's mods/ folder. */
   origin: 'builtin' | 'installed';
@@ -89,8 +99,9 @@ export type Request =
   | { type: 'mod.enable'; id: string; enabled: boolean }
   /** Add or remove a catalogue mod from the installed set. */
   | { type: 'mod.setInstalled'; id: string; installed: boolean }
+  /** Every file of a mod, keyed by relative path. */
   | { type: 'mod.source'; id: string }
-  | { type: 'mod.install'; id: string; manifest: ModManifest; source: string }
+  | { type: 'mod.install'; id: string; manifest: ModManifest; files: ModFiles }
   | { type: 'mod.uninstall'; id: string }
   | { type: 'loader.info' }
   /**
@@ -103,7 +114,7 @@ export type Request =
 
 /** Push notifications the loader sends to the renderer unprompted. */
 export type Event =
-  | { type: 'mod.changed'; id: string; source: string }
+  | { type: 'mod.changed'; id: string; files: ModFiles }
   | { type: 'catalog.changed'; mods: ModRecord[] }
   | { type: 'settings.changed'; settings: Settings };
 

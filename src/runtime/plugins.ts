@@ -7,7 +7,8 @@
 // a blob URL and pulled in with a dynamic import(). That runs the plugin as a
 // real ES module, with no string evaluation anywhere.
 
-import type { ModRecord } from '../shared/protocol.js';
+import type { ModFiles, ModRecord } from '../shared/protocol.js';
+import { replaceOutsideComments, resolvePath } from './themes.js';
 import type { PluginApi } from './api.js';
 import type { Cleanup } from './dom.js';
 
@@ -20,7 +21,59 @@ interface LoadedPlugin {
   record: ModRecord;
   module: PluginModule;
   api: PluginApi;
-  blobUrl: string;
+  /** Every blob made for this mod, entry and imports alike. */
+  blobUrls: string[];
+}
+
+/**
+ * Turn a mod's folder into one loadable module graph.
+ *
+ * A blob URL has no directory, so `import './colour.js'` inside one resolves to
+ * `blob:https://app.slack.com/colour.js` and fails. The way through is to build
+ * the graph leaves-first: every imported file becomes its own blob, and the
+ * specifier in the importing source is rewritten to that blob's URL before it
+ * is turned into a blob itself.
+ *
+ * Only relative specifiers are touched. A bare one ("lodash") is left as it is
+ * and will fail loudly at import time, which is the correct outcome: a mod has
+ * no package manager and never will.
+ *
+ * Returns the entry's URL plus every URL created, so they can all be revoked.
+ */
+export function buildModuleGraph(files: ModFiles, entry: string): { url: string; urls: string[] } {
+  const built = new Map<string, string>();
+  const urls: string[] = [];
+
+  const build = (name: string, stack: string[]): string => {
+    const existing = built.get(name);
+    if (existing) return existing;
+    if (stack.includes(name)) {
+      throw new Error(`circular import: ${[...stack, name].join(' -> ')}`);
+    }
+    const source = files[name];
+    if (source === undefined) {
+      throw new Error(`"${name}" is imported but not in the mod folder`);
+    }
+    // `from './x.js'`, `import './x.js'` and `import('./x.js')`, static or not.
+    // Comments are skipped: mods type their `api` parameter with a JSDoc
+    // `{import('../../../src/runtime/api.js').PluginApi}`, which is not an
+    // import at all and would otherwise fail the whole mod to load.
+    const rewritten = replaceOutsideComments(
+      source,
+      /(\bfrom\s*|\bimport\s*\(?\s*)(['"])(\.[^'"]*)\2/g,
+      ([, prefix, quote, spec]) => {
+        const target = resolvePath(name, spec!);
+        return `${prefix}${quote}${build(target, [...stack, name])}${quote}`;
+      },
+    );
+    const url = URL.createObjectURL(new Blob([rewritten], { type: 'text/javascript' }));
+    built.set(name, url);
+    urls.push(url);
+    return url;
+  };
+
+  const url = build(entry, []);
+  return { url, urls };
 }
 
 export class PluginHost {
@@ -34,34 +87,41 @@ export class PluginHost {
     return [...this.loaded.keys()];
   }
 
-  async load(record: ModRecord, source: string, api: PluginApi): Promise<void> {
+  async load(record: ModRecord, files: ModFiles, api: PluginApi): Promise<void> {
     if (this.loaded.has(record.id)) await this.unload(record.id);
 
-    const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+    let graph: { url: string; urls: string[] };
+    try {
+      graph = buildModuleGraph(files, record.entry);
+    } catch (err) {
+      throw new Error(`could not load plugin "${record.id}": ${(err as Error).message}`);
+    }
+    const revoke = () => graph.urls.forEach((url) => URL.revokeObjectURL(url));
+
     let module: PluginModule;
     try {
-      // Each load gets a fresh blob URL, which is also what makes hot reload
+      // Every load gets fresh blob URLs, which is also what makes hot reload
       // work: the module cache is keyed by URL.
-      const namespace = (await import(/* @vite-ignore */ blobUrl)) as {
+      const namespace = (await import(/* @vite-ignore */ graph.url)) as {
         default?: PluginModule;
       } & PluginModule;
       module = namespace.default ?? namespace;
     } catch (err) {
-      URL.revokeObjectURL(blobUrl);
+      revoke();
       throw new Error(`could not load plugin "${record.id}": ${(err as Error).message}`);
     }
 
     if (typeof module.start !== 'function') {
-      URL.revokeObjectURL(blobUrl);
+      revoke();
       throw new Error(`plugin "${record.id}" has no start() export`);
     }
 
-    this.loaded.set(record.id, { record, module, api, blobUrl });
+    this.loaded.set(record.id, { record, module, api, blobUrls: graph.urls });
     try {
       await module.start(api);
     } catch (err) {
       this.loaded.delete(record.id);
-      URL.revokeObjectURL(blobUrl);
+      revoke();
       throw new Error(`plugin "${record.id}" threw during start(): ${(err as Error).message}`);
     }
   }
@@ -78,7 +138,7 @@ export class PluginHost {
     // Run whatever the plugin registered through the api, even if stop() failed
     // or never existed: a plugin that leaks observers degrades the whole app.
     plugin.api.__disposeAll();
-    URL.revokeObjectURL(plugin.blobUrl);
+    for (const url of plugin.blobUrls) URL.revokeObjectURL(url);
   }
 
   async unloadAll(): Promise<void> {
