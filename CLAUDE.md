@@ -119,6 +119,18 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   `member_profile_huddle_btn` ignores `element.click()` *and* a trusted
   `Input.dispatchMouseEvent`.) So do not offer a Huddle button; offer
   `openUserProfile`, which puts Slack's own one click away.
+- **When a trusted click seems to do nothing, check what is on top of it.** A
+  leftover `ReactModal__Overlay` (z-index 1053) from Slack's own dialog swallowed
+  every click aimed at the profile pane, and made "trusted clicks do not work"
+  look true for a while. `document.elementFromPoint(x, y).closest('[data-qa]')`
+  before clicking says whether the point reaches what you think it does. The
+  harness can now dispatch a trusted Escape, which is what dismisses that
+  overlay -- a synthetic one does not.
+- **`member_profile_huddle_btn` is a split control**: its centre is the chevron,
+  which opens a menu holding `huddle_button_menu_item` ("Start huddle"). Even
+  trusted-clicking that entry starts nothing from a script, which fits a
+  microphone gated on transient user activation -- a huddle needs getUserMedia,
+  and an automated gesture does not grant it.
 - **Discovering the API surface beats intercepting it.** Slack answers
   `unknown_method` for what does not exist and an argument error for what does,
   so calling a candidate with no arguments maps the surface without performing

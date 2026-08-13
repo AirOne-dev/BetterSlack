@@ -43,6 +43,24 @@
 const COLUMN_ID = 'slackmod-member-column';
 const MENU_ID = 'slackmod-profile-menu';
 
+/*
+ * Slack's own glyphs, lifted path-for-path from its profile pane so the buttons
+ * read as the ones they stand in for rather than as lookalikes. VIP is drawn to
+ * match: Slack does not render that button in every workspace, so there was no
+ * original to copy.
+ */
+const icon = (paths) =>
+  '<svg viewBox="0 0 20 20" aria-hidden="true" style="height:18px;width:18px;flex:0 0 auto">' +
+  paths.map((d) => `<path fill="currentColor" d="${d}"/>`).join('') + '</svg>';
+
+const MESSAGE_ICON = icon(['M10 3a7 7 0 1 0 3.394 13.124.75.75 0 0 1 .542-.074l2.794.68-.68-2.794a.75.75 0 0 1 .073-.542A7 7 0 0 0 10 3m-8.5 7a8.5 8.5 0 1 1 16.075 3.859l.904 3.714a.75.75 0 0 1-.906.906l-3.714-.904A8.5 8.5 0 0 1 1.5 10']);
+
+const VIP_ICON = icon([
+  'M8 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7M6 6.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0',
+  'M8 11.5c-2.9 0-5.25 1.79-5.25 4a.75.75 0 0 0 1.5 0c0-1.24 1.6-2.5 3.75-2.5.62 0 1.2.1 1.72.29a.75.75 0 1 0 .51-1.41A7 7 0 0 0 8 11.5',
+  'M15.25 10a.75.75 0 0 1 .75.75v1.5h1.5a.75.75 0 0 1 0 1.5H16v1.5a.75.75 0 0 1-1.5 0v-1.5H13a.75.75 0 0 1 0-1.5h1.5v-1.5a.75.75 0 0 1 .75-.75',
+]);
+
 /** Slack's own overflow glyph, so the button reads as the one it stands in for. */
 const MORE_ICON =
   '<svg data-qa="more-actions" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px;height:20px;width:20px">' +
@@ -292,6 +310,9 @@ const CSS = `
 .slackmod-profile__files { display: flex; flex-direction: column; gap: 8px; }
 .slackmod-profile__file { font-size: 14px; }
 
+/* Slack pairs a glyph with the label; the gap is its own. */
+.slackmod-profile__action { display: inline-flex; align-items: center; gap: 6px; }
+
 /* Slack's own overflow button is square and icon-only; match it. */
 .slackmod-profile__more {
   min-width: 0;
@@ -459,16 +480,6 @@ export default {
           () => api.helpers.copy(`@${user.name ?? name}`, t('copiedName'))),
         entry(t('copyId'), () => api.helpers.copy(userId, t('copiedId'))),
         entry(t('copyLink'), () => api.helpers.copy(link, t('copiedLink'))),
-        entry(vips.has(userId) ? t('removeVip') : t('addVip'), async () => {
-          const wanted = !vips.has(userId);
-          try {
-            await api.slack.setVip(userId, wanted);
-            if (wanted) vips.add(userId); else vips.delete(userId);
-            api.ui.toast(wanted ? t('vipAdded') : t('vipRemoved'));
-          } catch (err) {
-            api.ui.toast(t('actionFailed', { reason: err.message }), { variant: 'error' });
-          }
-        }),
         entry(t('viewFiles'), () => showFiles(userId, name)),
         // Slack's own profile, through its deep-link scheme. Huddle and VIP
         // live there and have no public method of their own, so this is the
@@ -611,10 +622,19 @@ export default {
       // id that changes on every render.
       const actions = api.dom.h('div', { class: 'slackmod-profile__actions' });
 
-      const message = api.dom.h('button', {
-        class: 'c-button c-button--outline c-button--medium',
-        type: 'button',
-      }, [t('message')]);
+      // Slack pairs a glyph with the label on these; icon-only reads as a
+      // different control entirely.
+      const labelled = (svg, text) => {
+        const button = api.dom.h('button', {
+          class: 'c-button c-button--outline c-button--medium slackmod-profile__action',
+          type: 'button',
+        });
+        button.innerHTML = svg;
+        button.append(api.dom.h('span', {}, [text]));
+        return button;
+      };
+
+      const message = labelled(MESSAGE_ICON, t('message'));
       message.addEventListener('click', () => {
         close();
         void api.slack.openDirectMessage(userId).catch((err) => {
@@ -637,7 +657,28 @@ export default {
         openMenu(more, userId, data);
       });
 
-      actions.append(message, more);
+      // VIP is a button of its own, the way Slack has it, not an entry buried
+      // in the overflow. It is a preference write, so the label follows the
+      // current state rather than toggling blind.
+      const vip = labelled(VIP_ICON, vips.has(userId) ? t('removeVip') : t('addVip'));
+      vip.addEventListener('click', async () => {
+        const wanted = !vips.has(userId);
+        vip.disabled = true;
+        try {
+          await api.slack.setVip(userId, wanted);
+          if (wanted) vips.add(userId); else vips.delete(userId);
+          vip.replaceChildren();
+          vip.innerHTML = VIP_ICON;
+          vip.append(api.dom.h('span', {}, [wanted ? t('removeVip') : t('addVip')]));
+          api.ui.toast(wanted ? t('vipAdded') : t('vipRemoved'));
+        } catch (err) {
+          api.ui.toast(t('actionFailed', { reason: err.message }), { variant: 'error' });
+        } finally {
+          vip.disabled = false;
+        }
+      });
+
+      actions.append(message, vip, more);
       root.append(actions);
 
       // Slack's own field markup, through the helper, so these rows look like
