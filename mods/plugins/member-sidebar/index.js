@@ -69,6 +69,10 @@ const STRINGS = {
     more: 'More actions',
     viewFiles: 'View files',
     openInSlack: 'Open profile in Slack',
+    addVip: 'Add to VIPs',
+    removeVip: 'Remove from VIPs',
+    vipAdded: 'Added to your VIPs',
+    vipRemoved: 'Removed from your VIPs',
     hide: 'Hide conversation',
     hidden: 'Conversation hidden',
     noFiles: 'Nothing shared yet.',
@@ -112,6 +116,10 @@ const STRINGS = {
     more: 'Plus d’actions',
     viewFiles: 'Voir les fichiers',
     openInSlack: 'Ouvrir le profil dans Slack',
+    addVip: 'Ajouter aux VIP',
+    removeVip: 'Retirer des VIP',
+    vipAdded: 'Ajouté à vos VIP',
+    vipRemoved: 'Retiré de vos VIP',
     hide: 'Masquer la conversation',
     hidden: 'Conversation masquée',
     noFiles: 'Rien de partagé pour l’instant.',
@@ -377,6 +385,15 @@ export default {
       }
     };
 
+    /**
+     * Who is already a VIP, read once and kept in step locally.
+     *
+     * VIP is a preference holding a comma-separated list, so the menu needs to
+     * know the current state to offer add or remove rather than a blind toggle.
+     */
+    const vips = new Set();
+    void api.slack.vipUsers().then((ids) => ids.forEach((id) => vips.add(id))).catch(() => {});
+
     /** Everything users.info holds, plus presence and do-not-disturb. */
     const profiles = new Map();
     const loadProfile = async (userId) => {
@@ -442,6 +459,16 @@ export default {
           () => api.helpers.copy(`@${user.name ?? name}`, t('copiedName'))),
         entry(t('copyId'), () => api.helpers.copy(userId, t('copiedId'))),
         entry(t('copyLink'), () => api.helpers.copy(link, t('copiedLink'))),
+        entry(vips.has(userId) ? t('removeVip') : t('addVip'), async () => {
+          const wanted = !vips.has(userId);
+          try {
+            await api.slack.setVip(userId, wanted);
+            if (wanted) vips.add(userId); else vips.delete(userId);
+            api.ui.toast(wanted ? t('vipAdded') : t('vipRemoved'));
+          } catch (err) {
+            api.ui.toast(t('actionFailed', { reason: err.message }), { variant: 'error' });
+          }
+        }),
         entry(t('viewFiles'), () => showFiles(userId, name)),
         // Slack's own profile, through its deep-link scheme. Huddle and VIP
         // live there and have no public method of their own, so this is the

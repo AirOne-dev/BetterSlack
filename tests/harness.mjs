@@ -175,6 +175,9 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
     saved: [],
     disposers: [],
     logs: [],
+    navigations: [],
+    hidden: [],
+    vips: new Set(),
   };
   const store = { ...settings };
   let confirmAnswer = true;
@@ -246,6 +249,24 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
         return () => {};
       },
       onProfilePane: () => () => {},
+
+      // The navigation and conversation helpers. Recorded rather than
+      // performed, so a test can assert a mod called one instead of driving
+      // Slack's UI to the same place.
+      openConversation: (channelId) => recorded.navigations.push({ kind: 'channel', id: channelId }),
+      openDirectMessage: async (userId) => {
+        recorded.navigations.push({ kind: 'dm', id: userId });
+        return `D-${userId}`;
+      },
+      openUserProfile: (userId) => recorded.navigations.push({ kind: 'profile', id: userId }),
+      hideConversation: async (channelId) => { recorded.hidden.push(channelId); },
+      filesFrom: async () => [],
+      vipUsers: async () => [...recorded.vips],
+      setVip: async (userId, isVip) => {
+        if (isVip) recorded.vips.add(userId);
+        else recorded.vips.delete(userId);
+        return isVip;
+      },
       describeMessage: (element) => ({
         element,
         channelId: element.getAttribute('data-msg-channel-id'),
