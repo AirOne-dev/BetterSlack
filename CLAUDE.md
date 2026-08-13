@@ -96,6 +96,22 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 - `keepMounted` gives up after 25 remounts in two seconds and logs which node
   and container, rather than looping forever. A missing button is a bug report;
   a frozen Slack is not.
+- **Two mods anchored on the same neighbour froze Slack**, and this is the
+  second freeze of exactly that shape. `keepMounted` used to ask its node to be
+  the anchor's *immediate previous sibling*; every control-strip button defaults
+  to `before: '#slackmod-control-button'`, so with two of them each shoved the
+  other aside, forever, inside a MutationObserver callback. Being anywhere
+  before the anchor satisfies both. Every DOM touch -- move as well as insert --
+  now counts toward the give-up limit, so no branch of that callback can spin.
+  Covered by `tests/mount.test.mjs`.
+- **When Slack freezes, `Debugger.pause` names the loop** -- but only if
+  `Debugger.enable` was sent *before* the thread got busy; enabling it
+  afterwards never takes, and the first attempt at this came back empty.
+  `SLACKMOD_DIAGNOSE=1` does both, and prints what the client looks like at 3s,
+  8s and 16s. `SLACKMOD_NO_BOOTSCRIPT=1` forces the runtime in against a
+  finished document, which is what made the freeze reproducible every time
+  instead of one boot in five. `sample <renderer pid>` confirms it is JS rather
+  than layout: V8 frames under `MicrotasksScope`.
 - **Plugins start only once `.p-client_container` exists** (`waitForClient` in
   `manager.ts`); themes go in immediately, since CSS cannot loop. The runtime is
   injected at document-start on a fresh navigation *or* straight into a page the

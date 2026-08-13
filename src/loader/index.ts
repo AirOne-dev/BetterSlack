@@ -214,14 +214,80 @@ class Loader {
     session.on('Page.loadEventFired', () => void this.ensureInjected(attachment));
     session.on('Page.frameStoppedLoading', () => void this.ensureInjected(attachment));
 
-    await this.refreshBootScript(attachment);
+    // SLACKMOD_NO_BOOTSCRIPT=1 reproduces the path taken when the document-start
+    // script did not run: the runtime goes in against a finished document.
+    if (process.env.SLACKMOD_NO_BOOTSCRIPT !== '1') await this.refreshBootScript(attachment);
     await this.inject(attachment);
 
     console.log(`[slackmod] injected into ${target.title || target.url}`);
 
+    if (process.env.SLACKMOD_DIAGNOSE === '1') {
+      // Enabled up front: enabling it once the thread is already busy never
+      // takes, which is why the first attempt at this came back empty.
+      await session.send('Debugger.enable').catch(() => undefined);
+      void this.diagnose(session);
+    }
+
   }
 
   /** Give one of Slack's other windows the active theme, and nothing else. */
+  /**
+   * Ask the client what it looks like, a few seconds apart.
+   *
+   * The failure this exists for is a renderer whose main thread is blocked: no
+   * error is thrown, nothing reaches the console, and Runtime.evaluate simply
+   * never returns -- which is itself the diagnosis, and cannot be observed from
+   * inside the page. SLACKMOD_DIAGNOSE=1.
+   */
+  private async diagnose(session: CdpSession): Promise<void> {
+    for (const delay of [3000, 8000, 16000]) {
+      await sleep(delay);
+      if (session.isClosed) return;
+      const report = await session
+        .evaluate<string>(
+          'JSON.stringify({' +
+            ' ready: document.readyState,' +
+            ' client: !!document.querySelector(".p-client_container"),' +
+            ' runtime: !!window.__slackmod,' +
+            ' panel: !!document.querySelector("#slackmod-control-button"),' +
+            ' styles: document.querySelectorAll("style[data-slackmod-style]").length,' +
+            ' nodes: document.getElementsByTagName("*").length' +
+            '})',
+        )
+        .catch((err) => `unreachable -- ${(err as Error).message}`);
+      console.log(`[slackmod] diagnose +${delay / 1000}s: ${report}`);
+
+      // A renderer that will not answer is one whose main thread is busy. The
+      // debugger can interrupt it where evaluate cannot, and the call frames it
+      // comes back with name whatever is looping.
+      if (report.startsWith('unreachable')) {
+        await this.whereIsItStuck(session);
+        return;
+      }
+    }
+  }
+
+  /** Interrupt a busy renderer and print what it is executing. */
+  private async whereIsItStuck(session: CdpSession): Promise<void> {
+    const frames = new Promise<string>((resolve) => {
+      const timer = setTimeout(() => resolve('the debugger could not interrupt it either'), 15000);
+      session.on('Debugger.paused', (params: {
+        callFrames?: Array<{ functionName?: string; url?: string; location?: { lineNumber: number } }>;
+      }) => {
+        clearTimeout(timer);
+        resolve(
+          (params.callFrames ?? [])
+            .slice(0, 12)
+            .map((f, i) => `    ${i}. ${f.functionName || '(anonymous)'} ` +
+              `${f.url || 'inline'}:${(f.location?.lineNumber ?? 0) + 1}`)
+            .join('\n'),
+        );
+      });
+    });
+    await session.send('Debugger.pause').catch(() => undefined);
+    console.log(`[slackmod] the renderer is stuck in:\n${await frames}`);
+  }
+
   private async attachAuxiliary(target: TargetInfo): Promise<void> {
     let session: CdpSession;
     try {

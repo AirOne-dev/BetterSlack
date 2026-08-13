@@ -68,12 +68,16 @@ const runtimeI18n = {
 
 /**
  * How a mod's folder becomes something loadable: the module graph for plugins
- * and the @import inlining for themes. Emitted so `tests/mod-files.test.mjs`
- * can put a real folder through the real resolver instead of asserting on the
- * source text of it.
+ * and the @import inlining for themes, plus the DOM helpers every mod mounts
+ * through. Emitted so `tests/mod-files.test.mjs` and `tests/mount.test.mjs` can
+ * exercise the real thing instead of asserting on the source text of it.
  */
 const runtimeModules = {
-  entryPoints: [`${root}/src/runtime/plugins.ts`, `${root}/src/runtime/themes.ts`],
+  entryPoints: [
+    `${root}/src/runtime/plugins.ts`,
+    `${root}/src/runtime/themes.ts`,
+    `${root}/src/runtime/dom.ts`,
+  ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },
   bundle: true,
