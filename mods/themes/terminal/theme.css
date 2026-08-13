@@ -136,8 +136,13 @@ html, body { background-color: var(--term-bg); }
 }
 
 /* A caret-style marker on the selected channel, the way a shell would. */
-.p-channel_sidebar__channel--selected,
-.p-channel_sidebar__static_list__item--selected {
+/*
+ * Only the inner element is painted. Its parent
+ * (.p-channel_sidebar__static_list__item--selected) is transparent and exists
+ * to give the row an 8px gutter, so styling both draws a full-width slab
+ * behind the inset pill.
+ */
+.p-channel_sidebar__channel--selected {
   background: rgba(53, 224, 127, 0.12) !important;
   box-shadow: inset 2px 0 0 var(--term-green);
 }

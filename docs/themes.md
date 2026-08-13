@@ -105,6 +105,22 @@ A dark theme can skip the chrome families and mostly get away with it, because
 Slack's default chrome is already dark. A light theme cannot — it comes out as
 light content inside a dark frame.
 
+### Nested elements: check which one Slack actually paints
+
+This is the trap that has bitten this repository most often. Slack nests a
+painted element inside a transparent wrapper, so styling "the obvious one" adds
+a second box behind the real one. Before styling anything, read the computed
+background of both:
+
+| Painted by Slack | Transparent wrapper, do not paint |
+| --- | --- |
+| `.p-channel_sidebar__channel--selected` | `.p-channel_sidebar__static_list__item--selected` (an 8px gutter) |
+| `.c-wysiwyg_container` | `[data-qa="message_input"]` |
+
+The same applies to corners: `.c-base_icon__width_only_container` sits behind an
+avatar with Slack's 4px radius and the same tint, so rounding only the image
+leaves four square nubs poking out.
+
 ### The composer is two elements
 
 `[data-qa="message_input"]` is the editable area, and it is transparent and

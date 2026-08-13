@@ -155,7 +155,6 @@ body {
 
 /* Rounded everything. Slack's components are square by default; these are the
  * ones a person actually looks at. */
-.p-channel_sidebar__static_list__item,
 .p-channel_sidebar__channel,
 .p-channel_sidebar__section_heading,
 .c-button,
@@ -167,7 +166,11 @@ body {
   border-radius: 14px !important;
 }
 
+/* .c-base_icon__width_only_container carries the same tinted background as the
+ * image and keeps Slack's 4px corners, so rounding only the image leaves four
+ * square nubs poking out from behind it. */
 .c-avatar,
+.c-base_icon__width_only_container,
 .c-avatar img,
 .c-base_icon,
 .p-channel_sidebar__user_avatar img {
@@ -185,8 +188,13 @@ body {
 }
 
 /* The selected channel gets the gradient rather than a flat fill. */
-.p-channel_sidebar__channel--selected,
-.p-channel_sidebar__static_list__item--selected {
+/*
+ * Only the inner element is painted. Its parent
+ * (.p-channel_sidebar__static_list__item--selected) is transparent and exists
+ * to give the row an 8px gutter, so styling both draws a full-width slab
+ * behind the inset pill.
+ */
+.p-channel_sidebar__channel--selected {
   background: linear-gradient(
     100deg,
     rgba(var(--aurora-glow), 0.85),
