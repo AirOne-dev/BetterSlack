@@ -55,7 +55,8 @@ It is unsigned, so the first launch needs right-click → Open.
 
 ## Write a theme
 
-A theme is **one CSS file**. Two files, one folder, and it shows up in the panel.
+A theme is a folder with a manifest and CSS. Two files and it shows up in the
+panel; split the CSS across as many files as you like once it grows.
 
 ### 1. Make the folder
 
@@ -99,6 +100,24 @@ every Slack release, tokens do not:
 
 The loader watches `mods/`. Save the file, open the panel, install and enable
 your theme — after that, every save re-applies it live. No rebuild, no restart.
+
+### More than one file
+
+A big theme reads better in pieces. `@import` a relative path and SlackMod
+inlines it, in order, before anything reaches the page:
+
+```
+mods/themes/my-theme/
+  mod.json
+  theme.css        @import './tokens.css'; @import './sidebar.css';
+  tokens.css
+  sidebar.css
+```
+
+Relative paths only, and only inside your own folder — the CSS is injected as
+one `<style>` element with no URL to resolve against, so a browser `@import` of
+a stylesheet on a server would be a network request Slack's CSP refuses anyway.
+Import each file once; a cycle is an error, not an infinite loop.
 
 ### The one thing that will catch you out
 
@@ -149,9 +168,12 @@ through `api` is undone when it is switched off, so `stop()` is usually empty.
 ```
 mods/plugins/my-plugin/
   mod.json      same as a theme, but "type": "plugin" and "entry": "index.js"
-  index.js
+  index.js      the entry: it exports default { start }
   test.mjs      required — see Test your mod
 ```
+
+`entry` is where the app starts reading; the rest of the folder is yours to
+organise (see [More than one file](#more-than-one-file-1)).
 
 ### 2. `index.js`
 
@@ -199,7 +221,47 @@ least English and French — see [api.md](api.md#apii18n).
 **→ [docs/api.md](api.md) is the full reference, with an example for every
 entry.**
 
-### 4. Read a real one
+### 4. More than one file
+
+Once a plugin is more than a screenful, split it. Import relative paths and
+SlackMod resolves them for you:
+
+```
+mods/plugins/my-plugin/
+  mod.json        "entry": "index.js"
+  index.js        import { render } from './ui/panel.js';
+  ui/panel.js     import { format } from '../lib/format.js';
+  lib/format.js
+  test.mjs
+```
+
+```js
+// index.js
+import { render } from './ui/panel.js';
+
+export default {
+  start(api) { render(api); },
+};
+```
+
+Three rules, all of them enforced by `npm run validate-mods`:
+
+- **Relative specifiers only** — `./x.js`, `../lib/x.js`. There is no npm and no
+  CDN in the page; a bare `import 'lodash'` has nothing to resolve to.
+- **Stay inside your folder.** `../../other-plugin/index.js` is rejected: mods
+  are installed one at a time, and yours may be the only one there.
+- **No cycles.** A file may not import, directly or transitively, something that
+  imports it back.
+
+Why the rules: the page has no `'unsafe-eval'`, so a plugin is loaded as a real
+ES module through a `blob:` URL — and a blob URL has no directory for a relative
+path to resolve against. SlackMod therefore reads your whole folder, builds a
+blob per file leaves-first, and rewrites each relative specifier to the blob URL
+of the file it names. The module you wrote is the module that runs; only the
+specifiers change. `.css` files in the folder are shipped too, for
+`api.css.inject(...)`.
+
+### 5. Read a real one
 
 [`channel-notes`](../mods/plugins/channel-notes/index.js) is the worked example
 — a button, a modal, settings, a confirm, a toast, and no CSS at all.

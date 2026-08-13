@@ -67,6 +67,23 @@ const runtimeI18n = {
 };
 
 /**
+ * How a mod's folder becomes something loadable: the module graph for plugins
+ * and the @import inlining for themes. Emitted so `tests/mod-files.test.mjs`
+ * can put a real folder through the real resolver instead of asserting on the
+ * source text of it.
+ */
+const runtimeModules = {
+  entryPoints: [`${root}/src/runtime/plugins.ts`, `${root}/src/runtime/themes.ts`],
+  outdir: `${root}/dist`,
+  outExtension: { '.js': '.mjs' },
+  bundle: true,
+  platform: 'browser',
+  format: 'esm',
+  target: 'es2022',
+  logLevel: 'warning',
+};
+
+/**
  * Pure loader helpers, emitted so `tests/download.test.mjs` can exercise the
  * download guards without pulling in the whole loader entry point.
  */
@@ -81,9 +98,9 @@ const loaderLib = {
 };
 
 if (watch) {
-  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers), esbuild.context(runtimeI18n)]);
+  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers), esbuild.context(runtimeI18n), esbuild.context(runtimeModules)]);
   await Promise.all(contexts.map((c) => c.watch()));
   console.log('[slackmod] watching for changes...');
 } else {
-  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers), esbuild.build(runtimeI18n)]);
+  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers), esbuild.build(runtimeI18n), esbuild.build(runtimeModules)]);
 }

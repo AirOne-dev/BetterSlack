@@ -4,7 +4,7 @@
 // the plugin is disabled, so toggling a plugin off really does leave the DOM as
 // it was found.
 
-import type { ModRecord, Settings } from '../shared/protocol.js';
+import type { ModFiles, ModRecord, Settings } from '../shared/protocol.js';
 import { h, keepMounted, onEach, onShortcut, waitFor, type Cleanup } from './dom.js';
 import { collectCleanups } from './plugins.js';
 import { createHelpers, type Helpers } from './helpers.js';
@@ -83,6 +83,26 @@ export interface PluginApi {
     save(url: string, filename: string): Promise<{ path: string; bytes: number }>;
   };
 
+  /**
+   * The plugin's own files, as shipped in its folder.
+   *
+   * A mod is a folder, and everything in it that the runtime can read is here:
+   * the modules it loaded plus any `.css` next to them. That is what lets a
+   * plugin keep its stylesheet in a real `.css` file -- with an editor that
+   * highlights it -- instead of a template literal:
+   *
+   *   api.css(api.assets.text('panel.css'));
+   *
+   * Paths are folder-relative and forward-slashed ("ui/panel.css"), the same
+   * strings you would import.
+   */
+  readonly assets: {
+    /** Every readable file in the folder. */
+    list(): string[];
+    /** One file's contents. Throws if the folder has no such file. */
+    text(path: string): string;
+  };
+
   /** Stylesheet owned by this plugin; replaced wholesale on each call. */
   css(text: string): void;
 
@@ -130,6 +150,8 @@ export interface PluginApi {
 
 export interface ApiContext {
   version: string;
+  /** The mod's folder, as read by the loader. */
+  files: ModFiles;
   styles: StyleManager;
   getSettings: () => Settings;
   saveModSettings: (id: string, values: Record<string, unknown>) => Promise<void>;
@@ -207,6 +229,20 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
 
     files: {
       save: (url, filename) => ctx.download(url, filename),
+    },
+
+    assets: {
+      list: () => Object.keys(ctx.files),
+      text: (path: string) => {
+        // Accept the specifier form as well, since that is what a plugin author
+        // has just typed one line above in an import.
+        const name = path.replace(/^\.\//, '');
+        const source = ctx.files[name];
+        if (source === undefined) {
+          throw new Error(`"${path}" is not in the ${record.id} folder`);
+        }
+        return source;
+      },
     },
 
     css(text: string) {

@@ -82,6 +82,13 @@ unexplained one is an automatic no.
    mods/plugins/<id>/mod.json + <entry>.js
    ```
 
+   A mod is a folder, not a file: `entry` is only where the app starts
+   reading. Split the rest however you like -- `import './lib/x.js'` in a
+   plugin, `@import './tokens.css'` in a theme -- as long as every path is
+   relative and stays inside your folder. There is no npm and no CDN in the
+   page, so a bare specifier (`import 'lodash'`) is rejected, as is a path
+   that climbs out of the folder or a cycle.
+
 2. `npm run validate-mods` passes.
 3. **A `test.mjs` next to your `mod.json`, and `npm run test:mod -- <id>`
    passes.** Every mod ships tests. There is no way to opt out: a mod with no
@@ -99,7 +106,7 @@ cannot block theirs:
 
 | Workflow | Per changed mod | Checks |
 | --- | --- | --- |
-| **Mod structure** | `node scripts/check-structure.mjs <id>` | manifest, entry file exists and imports, a real `start()` export, CSS parses, `test.mjs` present, registry entry current |
+| **Mod structure** | `node scripts/check-structure.mjs <id>` | manifest, entry file exists and imports, a real `start()` export, every relative import lands on a file that is there, CSS parses, `test.mjs` present, registry entry current |
 | **Mod tests** | `npm run test:mod -- <id>` | your own tests |
 
 Each mod gets its own job, so a failure names the mod at fault. Both workflows

@@ -12,6 +12,9 @@ import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo 
 import { Catalog, parseManifest } from './catalog.js';
 import { downloadFile } from './download.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack } from './slack.js';
+// Shared with the runtime so a theme's @import behaves the same in Slack's
+// other windows as it does in the client.
+import { inlineCssImports } from '../runtime/themes.js';
 import {
   ensureUserRoot,
   mergeSettings,
@@ -27,6 +30,7 @@ import {
   type Event as PushEvent,
   type LoaderInfo,
   type ModRecord,
+  type ModFiles,
   type Request,
   type Settings,
 } from '../shared/protocol.js';
@@ -112,10 +116,10 @@ class Loader {
       const settings = await readSettings();
       if (!settings.hotReload) return;
       for (const id of changedIds) {
-        const source = await this.catalog.readSource(id).catch(() => null);
-        if (source === null) continue;
+        const files = await this.catalog.readSource(id).catch(() => null);
+        if (files === null) continue;
         console.log(`[slackmod] reloading "${id}"`);
-        this.broadcast({ type: 'mod.changed', id, source });
+        this.broadcast({ type: 'mod.changed', id, files });
       }
       this.broadcast({ type: 'catalog.changed', mods: this.catalog.list() });
     });
@@ -252,8 +256,8 @@ class Loader {
     for (const id of settings.enabled) {
       const record = this.catalog.get(id);
       if (record?.type !== 'theme') continue;
-      const source = await this.catalog.readSource(id).catch(() => null);
-      if (source !== null) parts.push(source);
+      const files = await this.catalog.readSource(id).catch(() => null);
+      if (files) parts.push(inlineCssImports(files, record.entry));
     }
     if (settings.customCss.trim()) parts.push(settings.customCss);
     return parts.join('\n\n');
@@ -313,13 +317,13 @@ class Loader {
   private async buildBootstrap(): Promise<string> {
     const settings = await readSettings();
     const mods = this.catalog.list();
-    const sources: Record<string, string> = {};
+    const sources: Record<string, ModFiles> = {};
     for (const id of settings.enabled) {
-      const source = await this.catalog.readSource(id).catch((err) => {
+      const files = await this.catalog.readSource(id).catch((err) => {
         console.warn(`[slackmod] enabled mod "${id}" is unreadable: ${err.message}`);
         return null;
       });
-      if (source !== null) sources[id] = source;
+      if (files !== null) sources[id] = files;
     }
     const boot = { version: VERSION, settings, mods, sources, info: this.info };
     return `window.__SLACKMOD_BOOT__ = ${JSON.stringify(boot)};\n${this.runtimeSource}`;
@@ -384,7 +388,7 @@ class Loader {
         return this.catalog.readSource(request.id);
 
       case 'mod.install':
-        return this.install(request.id, request.manifest, request.source);
+        return this.install(request.id, request.manifest, request.files);
 
       case 'mod.uninstall':
         return this.uninstall(request.id);
@@ -409,7 +413,7 @@ class Loader {
     }
   }
 
-  private async install(id: string, manifest: unknown, source: string): Promise<ModRecord[]> {
+  private async install(id: string, manifest: unknown, files: ModFiles): Promise<ModRecord[]> {
     // Re-validate here: the renderer fetched this from the network, so the
     // manifest is untrusted input no matter how it looked on the other side.
     const type = (manifest as { type?: unknown }).type === 'plugin' ? 'plugin' : 'theme';
@@ -419,7 +423,16 @@ class Loader {
     const dir = path.join(USER_MODS_ROOT, `${parsed.type}s`, parsed.id);
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, 'mod.json'), JSON.stringify(parsed, null, 2), 'utf8');
-    await fs.writeFile(path.join(dir, parsed.entry), source, 'utf8');
+    for (const [rel, contents] of Object.entries(files)) {
+      // Re-checked here rather than trusted: this writes to disk from a message
+      // the renderer sent, so a "../" in a key must not escape the folder.
+      if (path.isAbsolute(rel) || rel.split(/[\\/]/).includes('..')) {
+        throw new Error(`refusing to write outside the mod folder: ${rel}`);
+      }
+      const target = path.join(dir, rel);
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, contents, 'utf8');
+    }
     console.log(`[slackmod] installed "${parsed.id}" into ${dir}`);
     return this.catalog.refresh();
   }

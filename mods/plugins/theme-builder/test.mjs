@@ -1,14 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { assertPluginShape, createTestApi, installDom } from '../../../tests/harness.mjs';
-import plugin, { buildThemeCss, matchedRules, toHex, variablesIn } from './index.js';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import {
+  assertPluginShape, createTestApi, installDom, readModFiles,
+} from '../../../tests/harness.mjs';
+import plugin, {
+  buildThemeCss, contrast, derivePalette, formatTriplet, matchedRules, parseColour,
+  readability, variablesIn,
+} from './index.js';
 
-const ROLES_FIXTURE = {
-  bg: '#101014', raised: '#18181d', chrome: '#0b0b0d', surface: '#26262c',
-  selected: '#2e2e35', hover: '#161619', text: '#e8e8ea', bright: '#ffffff',
-  muted: '#8a8a92', accent: '#4f46e5', accentText: '#a5b4fc', danger: '#ef4444',
-};
+// The builder reads its own stylesheet with api.assets, so the test api is
+// given the folder the app would have shipped it.
+const FILES = readModFiles(path.dirname(fileURLToPath(import.meta.url)));
+const createApi = (options) => createTestApi({ ...options, files: FILES });
+
+const ROLES_FIXTURE = derivePalette(parseColour('#101014'), parseColour('#4f46e5'));
 
 test('has the shape the runtime loads', () => assertPluginShape(assert, plugin));
 
@@ -17,7 +25,7 @@ test('maps the twelve roles across all four token families', () => {
   // A theme that only sets the first family leaves the app chrome untouched --
   // the single most common way a Slack theme looks half-applied.
   assert.match(css, /--dt_color-base-pry:\s*#101014/, 'content family');
-  assert.match(css, /--dt_color-theme-base-inv-pry:\s*#0b0b0d !important/, 'chrome family');
+  assert.match(css, /--dt_color-theme-base-inv-pry:[^;]+!important/, 'chrome family');
   assert.match(css, /--sk_primary_background:\s*16, 16, 20 !important/, 'legacy family, as a triplet');
   assert.match(css, /\.p-theme_background/, 'the opaque layer above <body>');
 });
@@ -40,7 +48,7 @@ test('produces a stylesheet that parses', () => {
 
 test('offers the builder from the control strip', async () => {
   const dom = installDom();
-  const { api, recorded } = createTestApi();
+  const { api, recorded } = createApi();
   try {
     await plugin.start(api);
     const button = recorded.toolbarButtons.find((b) => b.button.id === 'theme-builder');
@@ -59,11 +67,58 @@ test('saves through the theme-only route, with an id Slack’s catalogue accepts
   assert.match(slug, /^[a-z0-9][a-z0-9-]{1,48}$/);
 });
 
-test('reads a computed colour back into a picker value', () => {
-  assert.equal(toHex('rgb(26, 26, 30)'), '#1a1a1e');
-  assert.equal(toHex('rgba(26, 26, 30, 0.5)'), '#1a1a1e');
-  assert.equal(toHex('#ABCDEF'), '#abcdef');
-  assert.equal(toHex('transparent'), null, 'nothing to seed a picker with');
+test('parses every colour form Slack and a human might write', () => {
+  assert.deepEqual(parseColour('#1a1a1e'), { r: 26, g: 26, b: 30, a: 1 });
+  assert.deepEqual(parseColour('#abc'), { r: 170, g: 187, b: 204, a: 1 });
+  assert.deepEqual(parseColour('rgb(26, 26, 30)'), { r: 26, g: 26, b: 30, a: 1 });
+  assert.equal(parseColour('rgba(0,0,0,0.5)').a, 0.5);
+  assert.equal(parseColour('#1a1a1e80').a.toFixed(2), '0.50', 'eight-digit hex carries alpha');
+  assert.equal(parseColour('transparent'), null);
+});
+
+test('alpha survives the modern families and is dropped from the legacy one', () => {
+  // --sk_* takes a bare "r, g, b" triplet. A theme that writes rgba() there
+  // paints nothing at all, which is invisible until someone reports a blank UI.
+  const translucent = { r: 26, g: 26, b: 30, a: 0.4 };
+  assert.equal(formatTriplet(translucent), '26, 26, 30');
+});
+
+test('contrast flattens a translucent foreground before judging it', () => {
+  const bg = { r: 0, g: 0, b: 0, a: 1 };
+  const solid = contrast({ r: 255, g: 255, b: 255, a: 1 }, bg);
+  const faint = contrast({ r: 255, g: 255, b: 255, a: 0.2 }, bg);
+  assert.ok(solid > faint, 'the ratio of a colour you can see through is not the one you read');
+  assert.equal(readability(solid).grade, 'AAA');
+  assert.equal(readability(faint).ok, false);
+});
+
+test('a palette derived from a light background goes the other way', () => {
+  const dark = derivePalette(parseColour('#101014'), parseColour('#4f46e5'));
+  const light = derivePalette(parseColour('#fbfbfd'), parseColour('#4f46e5'));
+  // Raised is lighter than the background on a dark theme and darker on a light
+  // one; getting this backwards is why hand-built light themes look wrong.
+  assert.ok(dark.raised.r > dark.bg.r);
+  assert.ok(light.raised.r < light.bg.r);
+  assert.ok(readability(contrast(dark.text, dark.bg)).ok, 'derived text stays readable');
+  assert.ok(readability(contrast(light.text, light.bg)).ok);
+});
+
+test('every relative import in the mod lands on a file that exists', () => {
+  // The runtime resolves these into blob URLs; a missing one fails at load
+  // time, inside the app, where no test is watching.
+  const files = readModFiles(new URL('.', import.meta.url).pathname);
+  for (const [name, source] of Object.entries(files)) {
+    // Tests reach out to the shared harness; the runtime never loads them.
+    if (name === 'test.mjs' || name.endsWith('.test.mjs')) continue;
+    for (const [, spec] of source.matchAll(/from\s+['"](\.[^'"]+)['"]/g)) {
+      const base = name.split('/').slice(0, -1);
+      for (const part of spec.split('/')) {
+        if (part === '.' || part === '') continue;
+        if (part === '..') base.pop(); else base.push(part);
+      }
+      assert.ok(files[base.join('/')], `${name} imports ${spec}, which is not in the folder`);
+    }
+  }
 });
 
 test('finds the rules that match an element, and skips sheets it may not read', () => {

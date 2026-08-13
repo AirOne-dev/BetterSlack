@@ -9,7 +9,18 @@
 
 import { promises as fs, watch as fsWatch, type FSWatcher } from 'node:fs';
 import path from 'node:path';
-import { MOD_API_VERSION, type ModManifest, type ModRecord, type ModType } from '../shared/protocol.js';
+import {
+  MOD_API_VERSION,
+  type ModFiles,
+  type ModManifest,
+  type ModRecord,
+  type ModType,
+} from '../shared/protocol.js';
+
+/** Guard rails on reading a folder handed to us by a pull request. */
+const MAX_FILES = 60;
+const MAX_BYTES = 2_000_000;
+const READABLE = /\.(js|mjs|css)$/;
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,48}$/;
 
@@ -185,10 +196,45 @@ export class Catalog {
     return path.join(entry.root, entry.record.path, entry.record.entry);
   }
 
-  async readSource(id: string): Promise<string> {
-    const file = this.entryPath(id);
-    if (!file) throw new Error(`unknown mod "${id}"`);
-    return fs.readFile(file, 'utf8');
+  /**
+   * Every readable file in a mod's folder, keyed by relative path.
+   *
+   * Only .js, .mjs and .css: a mod folder may hold a README or a screenshot,
+   * and neither belongs in the renderer. The two limits are there because this
+   * reads a directory that arrived through a pull request, and an accidental
+   * node_modules would otherwise be shipped into the page.
+   */
+  async readSource(id: string): Promise<ModFiles> {
+    const entry = this.records.get(id);
+    if (!entry) throw new Error(`unknown mod "${id}"`);
+    const root = path.join(entry.root, entry.record.path);
+    const files: ModFiles = {};
+    let bytes = 0;
+
+    const walk = async (dir: string, prefix: string): Promise<void> => {
+      for (const item of await fs.readdir(dir, { withFileTypes: true })) {
+        const rel = prefix ? `${prefix}/${item.name}` : item.name;
+        if (item.isDirectory()) {
+          if (item.name === 'node_modules' || item.name.startsWith('.')) continue;
+          await walk(path.join(dir, item.name), rel);
+          continue;
+        }
+        if (!READABLE.test(item.name)) continue;
+        if (Object.keys(files).length >= MAX_FILES) {
+          throw new Error(`"${id}" has more than ${MAX_FILES} files`);
+        }
+        const source = await fs.readFile(path.join(dir, item.name), 'utf8');
+        bytes += source.length;
+        if (bytes > MAX_BYTES) throw new Error(`"${id}" is larger than ${MAX_BYTES} bytes`);
+        files[rel] = source;
+      }
+    };
+    await walk(root, '');
+
+    if (!files[entry.record.entry]) {
+      throw new Error(`"${id}" has no ${entry.record.entry}`);
+    }
+    return files;
   }
 
   /**

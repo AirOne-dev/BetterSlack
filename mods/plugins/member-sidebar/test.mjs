@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { assertPluginShape, createTestApi, installDom } from '../../../tests/harness.mjs';
+import { assertPluginShape, createTestApi, installDom, readModFiles } from '../../../tests/harness.mjs';
 import plugin from './index.js';
+
+// The plugin reads its stylesheet with api.assets.text('column.css'), so the
+// test api has to be given the folder the app would have shipped it.
+const FILES = readModFiles(path.dirname(fileURLToPath(import.meta.url)));
+const createApi = (options) => createTestApi({ ...options, files: FILES });
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,7 +43,7 @@ test('lists the channel members beside the message pane', async () => {
       U2: { id: 'U2', profile: { display_name: 'Adam' } },
     },
   });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -64,7 +69,7 @@ test('lists the channel members beside the message pane', async () => {
 test('asks about every member in one users.info call', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1', 'U2', 'U3'] });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -88,7 +93,7 @@ test('splits into online and offline once presence arrives', async () => {
       U2: { id: 'U2', profile: { display_name: 'Adam' } },
     },
   });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 40));
@@ -112,7 +117,7 @@ test('does not claim everyone is offline before presence has answered', async ()
   const stub = web({ members: ['U1'] });
   // A presence call that never settles, i.e. the first moments of every render.
   stub.web.presence = () => new Promise(() => {});
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -135,7 +140,7 @@ test('clicking a member opens a profile dialog, filled in from Slack', async () 
   });
   stub.web.presence = async () => ({ presence: 'active' });
   stub.web.dndInfo = async () => ({ dnd_enabled: false });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -166,7 +171,7 @@ test('the dialog is a profile pane as far as other plugins are concerned', async
   const dom = installDom();
   const stub = web({ members: ['U1'] });
   stub.web.userInfo = async (id) => ({ id, profile: { display_name: 'Zoe', image_512: 'a.png' } });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -201,7 +206,7 @@ test('User Inspector fills in the dialog without knowing it exists', async () =>
     },
   };
   stub.web.userInfo = async () => user;
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     const inspector = (await import('../user-inspector/index.js')).default;
     await plugin.start(api);
@@ -230,7 +235,7 @@ test('User Inspector fills in the dialog without knowing it exists', async () =>
 test('Message opens the direct message directly, with no staged clicks', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   let opened = null;
   api.slack.openDirectMessage = async (id) => { opened = id; return 'D1'; };
   try {
@@ -255,7 +260,7 @@ test('Message opens the direct message directly, with no staged clicks', async (
 test('the overflow opens our own menu and never Slack’s profile pane', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -285,7 +290,7 @@ test('the overflow opens our own menu and never Slack’s profile pane', async (
 test('a member row carries no tooltip, only its label', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -302,7 +307,7 @@ test('a member row carries no tooltip, only its label', async () => {
 
 test('says so rather than half-working without a session token', async () => {
   const dom = installDom();
-  const { api, recorded } = createTestApi({ web: { available: false } });
+  const { api, recorded } = createApi({ web: { available: false } });
   try {
     await plugin.start(api);
     assert.equal(document.getElementById('slackmod-member-column'), null);
@@ -314,15 +319,19 @@ test('says so rather than half-working without a session token', async () => {
 });
 
 test('the source keeps its own token discipline', () => {
-  const source = readFileSync(path.join(here, 'index.js'), 'utf8');
-  assert.doesNotMatch(source, /\blocalStorage\b/, 'the token is read only in web-api.ts');
-  assert.doesNotMatch(source, /\bfetch\s*\(/, 'network access goes through api.slack.web');
+  // Every file in the folder, not only the entry: a mod is a folder now, and a
+  // rule that only held for index.js would be a rule with a way around it.
+  for (const [name, source] of Object.entries(FILES)) {
+    if (name.endsWith('.css') || name === 'test.mjs') continue;
+    assert.doesNotMatch(source, /\blocalStorage\b/, `${name}: the token is read only in web-api.ts`);
+    assert.doesNotMatch(source, /\bfetch\s*\(/, `${name}: network goes through api.slack.web`);
+  }
 });
 
 test('undoes the layout that comes with Slack’s avatar class', () => {
   // The class is borrowed for compatibility, and Slack positions it absolutely
   // for its own pane — which parked it on top of the dialog title until this.
-  const css = readFileSync(path.join(here, 'index.js'), 'utf8');
+  const css = FILES['column.css'];
   const rule = css.match(/\.slackmod-profile \.slackmod-profile__avatar\s*\{[^}]*\}/);
   assert.ok(rule, 'the avatar needs its own reset');
   assert.match(rule[0], /position:\s*static\s*!important/);
@@ -335,7 +344,7 @@ test('never prints a raw emoji shortcode', async () => {
     id,
     profile: { display_name: 'Zoe', status_emoji: ':tada:', status_text: 'On holiday' },
   });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -356,7 +365,7 @@ test('the copy actions need nothing from Slack', async () => {
   const stub = web({ members: ['U1'] });
   stub.web.userInfo = async (id) => ({ id, name: 'zoe.b', profile: { display_name: 'Zoe' } });
   stub.web.teamDomain = 'acme';
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -384,7 +393,7 @@ test('the copy actions need nothing from Slack', async () => {
 test('offers Message and an overflow, and nothing it cannot really do', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -409,7 +418,7 @@ test('offers Message and an overflow, and nothing it cannot really do', async ()
 test('a second click replaces the dialog rather than stacking one on it', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1', 'U2'] });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -432,7 +441,7 @@ test('a second click replaces the dialog rather than stacking one on it', async 
 test('speaks the app’s language', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
-  const { api, recorded } = createTestApi({ web: stub.web, locale: 'fr-FR' });
+  const { api, recorded } = createApi({ web: stub.web, locale: 'fr-FR' });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -454,7 +463,7 @@ test('speaks the app’s language', async () => {
 test('VIP is a direct preference write, offering add or remove as appropriate', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   const calls = [];
   api.slack.vipUsers = async () => ['U1'];
   api.slack.setVip = async (id, want) => { calls.push([id, want]); return want; };
@@ -481,7 +490,7 @@ test('VIP is a direct preference write, offering add or remove as appropriate', 
 test('Huddle asks Slack to open its own preview', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -506,7 +515,7 @@ test('says who the profile belongs to, rather than leaving it to be guessed', as
   stub.web.userInfo = async (id) => ({
     id, profile: { display_name: 'Bot', image_512: 'https://a.slack-edge.com/bot_icons/x_48.png' },
   });
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -530,7 +539,7 @@ test('forgets a workspace’s people when the workspace changes', async () => {
     if (method === 'users.info') { lookups++; return { ok: true, users: [{ id: 'U1', profile: {} }] }; }
     return { ok: true };
   };
-  const { api, recorded } = createTestApi({ web: stub.web });
+  const { api, recorded } = createApi({ web: stub.web });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -552,8 +561,8 @@ test('nothing in the column may shrink, or it never overflows to scroll', () => 
   // Flex items give up height before their container overflows. The rows were
   // rendering at 34px instead of 42 and tightening as the window shrank, which
   // is also why the scrollbar never appeared.
-  const source = readFileSync(path.join(here, 'index.js'), 'utf8');
-  const rule = source.match(/__heading,[\s\S]{0,120}__note \{ flex: 0 0 auto; \}/);
+  const css = FILES['column.css'];
+  const rule = css.match(/__heading,[\s\S]{0,120}__note \{ flex: 0 0 auto; \}/);
   assert.ok(rule, 'headings, rows and notes must all be flex: 0 0 auto');
-  assert.match(source, /min-height: 0;/, 'and the column itself must be allowed to shrink');
+  assert.match(css, /min-height: 0;/, 'and the column itself must be allowed to shrink');
 });

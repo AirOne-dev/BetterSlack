@@ -227,6 +227,35 @@ real value.
 }
 ```
 
+## Splitting a theme across files
+
+One stylesheet stops being readable somewhere around the third family of
+tokens. Break it up with relative `@import`s from your entry file:
+
+```css
+/* theme.css -- the entry named in mod.json */
+@import './tokens.css';    /* the four colour families */
+@import './chrome.css';    /* rail, sidebar, headers */
+@import './messages.css';
+```
+
+SlackMod inlines each import, in order, before the CSS reaches the page: what
+Slack sees is one stylesheet, so cascade order is exactly the order you wrote.
+An imported file may import further files, relative to itself.
+
+Two limits, both from how themes are applied. Only relative paths inside your
+own folder work — a theme is injected as a `<style>` element with no URL to
+resolve against, and a real `@import url(https://…)` would be a network request
+Slack's CSP blocks anyway. And an import that leads back to a file already being
+inlined is cut, with a line in the console naming the loop: the rest of the
+theme still applies, since a stylesheet is worth having even when part of it is
+wrong.
+
+Import at the top of a file, as CSS requires. Here an `@import` lower down is
+still inlined where you put it, but a browser would ignore it — and a theme that
+only works inside SlackMod is a theme nobody can debug. An `@import` inside a
+comment is left alone, so commenting one out really does switch it off.
+
 ## When CSS is not enough
 
 A theme is CSS and nothing else. CSS reaches everything about how Slack *looks*

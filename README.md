@@ -66,8 +66,8 @@ mods/themes/<id>/mod.json    + theme.css
 mods/plugins/<id>/mod.json   + index.js  + test.mjs
 ```
 
-A theme is one CSS file. A plugin is an ES module exporting `start(api)` — and
-most of what a mod needs is one call:
+A theme is CSS. A plugin is an ES module exporting `start(api)` — and most of
+what a mod needs is one call:
 
 ```js
 export default {
@@ -79,6 +79,10 @@ export default {
   },
 };
 ```
+
+`entry` in `mod.json` is only where the app starts reading: a mod can be as many
+files as it wants, imported relatively (`./lib/x.js`, or `@import './tokens.css'`
+in a theme) from inside its own folder.
 
 ## Documentation
 
