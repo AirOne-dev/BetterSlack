@@ -176,6 +176,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
     disposers: [],
     logs: [],
     navigations: [],
+    savedThemes: [],
     hidden: [],
     huddles: [],
     vips: new Set(),
@@ -350,6 +351,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
     i18n: createI18n(locale),
 
     css: (text) => recorded.css.push(text),
+    saveTheme: async (options) => { recorded.savedThemes.push(options); },
     settings: {
       all: () => ({ ...store }),
       get: (key, fallback) => (key in store ? store[key] : fallback),
@@ -368,6 +370,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB' } = {}
   api.helpers = createHelpers({
     pluginId: api.id,
     css: (text) => recorded.css.push(text),
+    saveTheme: async (options) => { recorded.savedThemes.push(options); },
     toast: (message, options) => api.ui.toast(message, options),
     settings: api.settings,
     track: (cleanup) => {

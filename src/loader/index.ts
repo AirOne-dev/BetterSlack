@@ -207,6 +207,14 @@ class Loader {
   }
 
   private async paintAuxiliary(session: CdpSession): Promise<void> {
+    // A window a mod opened for itself says so, and is left alone: a theme
+    // builder repainted by the theme being edited becomes unreadable exactly
+    // when you need to read it.
+    const ours = await session
+      .evaluate<boolean>('!!document.documentElement.hasAttribute("data-slackmod-window")')
+      .catch(() => false);
+    if (ours) return;
+
     const css = await this.buildThemeCss();
     // Re-applied wholesale each time, keyed by one element, so a reload or a
     // second call cannot leave two stylesheets fighting.
