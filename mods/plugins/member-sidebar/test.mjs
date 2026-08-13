@@ -547,3 +547,13 @@ test('forgets a workspace’s people when the workspace changes', async () => {
     dom.cleanup();
   }
 });
+
+test('nothing in the column may shrink, or it never overflows to scroll', () => {
+  // Flex items give up height before their container overflows. The rows were
+  // rendering at 34px instead of 42 and tightening as the window shrank, which
+  // is also why the scrollbar never appeared.
+  const source = readFileSync(path.join(here, 'index.js'), 'utf8');
+  const rule = source.match(/__heading,[\s\S]{0,120}__note \{ flex: 0 0 auto; \}/);
+  assert.ok(rule, 'headings, rows and notes must all be flex: 0 0 auto');
+  assert.match(source, /min-height: 0;/, 'and the column itself must be allowed to shrink');
+});
