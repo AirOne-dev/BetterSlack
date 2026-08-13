@@ -22,8 +22,15 @@ export async function readSettings(): Promise<Settings> {
     const raw = await fs.readFile(SETTINGS_FILE, 'utf8');
     const parsed = JSON.parse(raw) as Partial<Settings>;
     // Merge rather than trust: a hand-edited or older file must not crash boot.
+    const installed = Array.isArray(parsed.installed)
+      ? parsed.installed.filter((x) => typeof x === 'string')
+      : [];
     return {
-      enabled: Array.isArray(parsed.enabled) ? parsed.enabled.filter((x) => typeof x === 'string') : [],
+      installed,
+      // A mod can only be on if it is installed; a hand-edited file must not be
+      // able to produce an enabled-but-not-installed state.
+      enabled: (Array.isArray(parsed.enabled) ? parsed.enabled.filter((x) => typeof x === 'string') : [])
+        .filter((id) => installed.includes(id)),
       modSettings:
         parsed.modSettings && typeof parsed.modSettings === 'object' ? parsed.modSettings : {},
       customCss: typeof parsed.customCss === 'string' ? parsed.customCss : '',
@@ -75,9 +82,27 @@ export function setModEnabled(id: string, enabled: boolean): Promise<Settings> {
     const current = await readSettings();
     const next: Settings = {
       ...current,
+      // Enabling implies installing: the UI never offers one without the other.
+      installed: enabled ? [...new Set([...current.installed, id])] : current.installed,
       enabled: enabled
         ? [...new Set([...current.enabled, id])]
         : current.enabled.filter((x) => x !== id),
+    };
+    await writeSettings(next);
+    return next;
+  });
+}
+
+/** Install or remove a catalogue mod. Removing also turns it off. */
+export function setModInstalled(id: string, installed: boolean): Promise<Settings> {
+  return serialize(async () => {
+    const current = await readSettings();
+    const next: Settings = {
+      ...current,
+      installed: installed
+        ? [...new Set([...current.installed, id])]
+        : current.installed.filter((x) => x !== id),
+      enabled: installed ? current.enabled : current.enabled.filter((x) => x !== id),
     };
     await writeSettings(next);
     return next;

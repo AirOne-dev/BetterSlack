@@ -4,8 +4,8 @@
  * Slack already has "Copy link", two clicks deep in the overflow menu. This
  * puts it in the hover row.
  *
- * Also the shortest example of the widget API: no CSS, no DOM, just
- * `api.ui.toast`.
+ * Also the shortest mod in the repository: one message action and one helper,
+ * no CSS and no DOM of its own.
  */
 
 const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true">
@@ -28,13 +28,8 @@ export default {
           api.ui.toast('No link for this message', { variant: 'error' });
           return;
         }
-        try {
-          await navigator.clipboard.writeText(message.permalink);
-          api.ui.toast('Link copied', { variant: 'success' });
-        } catch (err) {
-          api.log.error('clipboard write failed', err);
-          api.ui.toast('Could not copy', { variant: 'error' });
-        }
+        // copy() handles the clipboard, the confirmation and the failure toast.
+        await api.helpers.copy(message.permalink, 'Link copied');
       },
     });
   },
