@@ -24,6 +24,7 @@ type ShelfId = 'installed' | 'enabled' | 'browse';
 
 const HOST_ID = 'slackmod-panel';
 const MENU_ID = 'slackmod-panel-menu';
+const REQUIRES_ID = 'slackmod-requires';
 
 const CLOSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px">
   <path fill="currentColor" d="M5.72 5.72a.75.75 0 0 1 1.06 0L10 8.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L11.06 10l3.22 3.22a.75.75 0 1 1-1.06 1.06L10 11.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L8.94 10 5.72 6.78a.75.75 0 0 1 0-1.06Z"/>
@@ -65,6 +66,7 @@ export class Panel {
 
   close(): void {
     this.closeMenu();
+    this.dismissRequires?.();
     this.host?.remove();
     this.host = null;
     document.removeEventListener('keydown', this.onKeyDown, true);
@@ -73,7 +75,10 @@ export class Panel {
   private onKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape' || !this.isOpen) return;
     event.stopPropagation();
-    if (document.getElementById(MENU_ID)) this.closeMenu();
+    // Innermost first: Escape should dismiss the consent dialog without also
+    // closing the panel behind it.
+    if (document.getElementById(REQUIRES_ID)) this.dismissRequires?.();
+    else if (document.getElementById(MENU_ID)) this.closeMenu();
     else this.close();
   };
 
@@ -285,7 +290,8 @@ export class Panel {
       input.checked = enabled;
       input.disabled = busy;
       input.addEventListener('change', () => {
-        void this.withBusy(mod.id, () => this.manager.setEnabled(mod.id, input.checked));
+        void this.withBusy(mod.id, () =>
+          input.checked ? this.enableWithRequirements(mod) : this.manager.setEnabled(mod.id, false));
       });
 
       // A Remove button on every row shouted louder than anything else in the
@@ -326,14 +332,151 @@ export class Panel {
       title.append(h('span', { class: 'slackmod-tag' }, [tag]));
     }
 
-    return h('div', { class: 'slackmod-row' }, [
-      h('div', { class: 'slackmod-row__meta' }, [
-        title,
-        h('div', { class: 'slackmod-row__desc' }, [mod.description]),
-        h('div', { class: 'slackmod-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
-      ]),
-      actions,
+    const meta = h('div', { class: 'slackmod-row__meta' }, [
+      title,
+      h('div', { class: 'slackmod-row__desc' }, [mod.description]),
+      h('div', { class: 'slackmod-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
     ]);
+
+    const requires = mod.requires ?? [];
+    if (requires.length > 0) {
+      const { found, unknown } = this.missingRecords(mod);
+      const names = requires.map((id) => this.manager.list().find((m) => m.id === id)?.name ?? id);
+      const satisfied = found.length === 0 && unknown.length === 0;
+
+      const note = h('div', {
+        class: `slackmod-row__requires${satisfied ? '' : ' slackmod-row__requires--missing'}`,
+      }, [satisfied ? `Uses ${names.join(', ')}` : `Needs ${names.join(', ')}`]);
+
+      // Only offer the button once the theme is on: before that, switching it
+      // on is what asks the question anyway.
+      if (found.length > 0 && enabled) {
+        const fix = h('button', {
+          class: 'c-button-unstyled slackmod-row__review',
+          type: 'button',
+        }, [found.length === 1 ? 'Enable it' : 'Enable them']);
+        fix.addEventListener('click', () => {
+          void this.withBusy(mod.id, () => this.enableWithRequirements(mod));
+        });
+        note.append(' ', fix);
+      }
+      if (unknown.length > 0) {
+        // A theme naming a plugin nobody has. Say which, rather than leaving
+        // the user to wonder why it looks wrong.
+        note.append(h('div', { class: 'slackmod-row__sub' }, [
+          `Not in the catalogue: ${unknown.join(', ')}`,
+        ]));
+      }
+      meta.append(note);
+    }
+
+    return h('div', { class: 'slackmod-row' }, [meta, actions]);
+  }
+
+  /** Set while the requirements dialog is open, so Escape can cancel it. */
+  private dismissRequires: (() => void) | null = null;
+
+  /**
+   * Ask before switching on a theme's required plugins.
+   *
+   * A theme is CSS; when a look needs behaviour, that behaviour is a plugin and
+   * the theme names it. Turning those on is the user's call, not something to
+   * do quietly on their behalf -- a plugin is code, and it will still be
+   * running after the theme is switched off again.
+   */
+  private requestRequirements(mod: ModRecord, missing: ModRecord[]): Promise<boolean> {
+    if (missing.length === 0) return Promise.resolve(true);
+
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (accepted: boolean) => {
+        if (settled) return;
+        settled = true;
+        this.dismissRequires = null;
+        document.getElementById(REQUIRES_ID)?.remove();
+        resolve(accepted);
+      };
+      this.dismissRequires = () => finish(false);
+
+      const cancel = h('button', {
+        class: 'c-button c-button--outline c-button--medium',
+        type: 'button',
+      }, ['Cancel']);
+      cancel.addEventListener('click', () => finish(false));
+
+      const accept = h('button', {
+        class: 'c-button c-button--primary c-button--medium',
+        type: 'button',
+      }, [missing.length === 1 ? 'Enable it' : `Enable all ${missing.length}`]);
+      accept.addEventListener('click', () => finish(true));
+
+      const list = h('ul', { class: 'slackmod-requires' });
+      for (const plugin of missing) {
+        list.append(h('li', { class: 'slackmod-require' }, [
+          h('div', { class: 'slackmod-require__title' }, [plugin.name]),
+          h('div', { class: 'slackmod-require__detail' }, [plugin.description]),
+        ]));
+      }
+
+      const layer = h('div', { id: REQUIRES_ID, class: 'c-dialog slackmod-dialog' }, [
+        h('div', {
+          class: 'c-dialog__content slackmod-content slackmod-content--narrow',
+          role: 'dialog',
+          'aria-modal': 'true',
+          'aria-label': `Plugins required by ${mod.name}`,
+        }, [
+          h('div', { class: 'c-dialog__header slackmod-header' }, [
+            h('h1', { class: 'c-dialog__title' }, [mod.name]),
+          ]),
+          h('div', { class: 'c-dialog__body slackmod-body' }, [
+            h('p', { class: 'slackmod-hint' }, [
+              missing.length === 1
+                ? 'This theme needs a plugin to look the way it is meant to. Plugins run code in ' +
+                  'your Slack window, and this one stays on until you switch it off yourself.'
+                : 'This theme needs these plugins to look the way it is meant to. Plugins run code ' +
+                  'in your Slack window, and they stay on until you switch them off yourself.',
+            ]),
+            list,
+          ]),
+          h('div', { class: 'slackmod-actions slackmod-actions--dialog' }, [cancel, accept]),
+        ]),
+      ]);
+
+      document.body.append(layer);
+      layer.addEventListener('mousedown', (event) => {
+        if (event.target === layer) finish(false);
+      });
+      queueMicrotask(() => accept.focus());
+    });
+  }
+
+  /** Which of a mod's requirements are known to the catalogue but not enabled. */
+  private missingRecords(mod: ModRecord): { found: ModRecord[]; unknown: string[] } {
+    const found: ModRecord[] = [];
+    const unknown: string[] = [];
+    for (const id of this.manager.missingRequirements(mod.id)) {
+      const record = this.manager.list().find((m) => m.id === id);
+      if (record) found.push(record);
+      else unknown.push(id);
+    }
+    return { found, unknown };
+  }
+
+  /**
+   * Switch a theme on, offering to switch its requirements on first.
+   *
+   * Declining still enables the theme. It is a stylesheet either way, and half
+   * a look is a better answer than refusing to do what was asked.
+   */
+  private async enableWithRequirements(mod: ModRecord): Promise<void> {
+    const { found } = this.missingRecords(mod);
+    if (found.length > 0 && (await this.requestRequirements(mod, found))) {
+      for (const plugin of found) {
+        if (!this.manager.isInstalled(plugin.id)) await this.manager.setInstalled(plugin.id, true);
+        await this.manager.setEnabled(plugin.id, true);
+      }
+    }
+    await this.manager.setEnabled(mod.id, true);
   }
 
   /** Slack's own menu markup, in a layer we position ourselves. */
@@ -358,12 +501,15 @@ export class Panel {
     const items = h('div', { class: 'c-menu__items', role: 'menu', tabindex: '-1' }, [
       item(this.manager.isEnabled(mod.id) ? 'Disable' : 'Enable', () => {
         void this.withBusy(mod.id, () =>
-          this.manager.setEnabled(mod.id, !this.manager.isEnabled(mod.id)));
+          this.manager.isEnabled(mod.id)
+            ? this.manager.setEnabled(mod.id, false)
+            : this.enableWithRequirements(mod));
       }),
-      item('Remove', () => {
-        void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
-      }, true),
     ]);
+
+    items.append(item('Remove', () => {
+      void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
+    }, true));
 
     // `.c-popover__content` pins `top` in Slack's stylesheet, so the positioned
     // layer is ours and only the menu inside wears Slack's classes.

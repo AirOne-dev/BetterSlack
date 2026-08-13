@@ -90,6 +90,21 @@ for (const mod of mods) {
         if (css.trim() === '') problems.push('theme is empty');
       }
     }
+
+    // 2b. A theme's required plugins must exist, and be plugins.
+    if (manifest.requires !== undefined) {
+      if (!Array.isArray(manifest.requires)) {
+        problems.push('"requires" must be an array');
+      } else if (expectedType !== 'theme') {
+        problems.push('"requires" is for themes only');
+      } else {
+        for (const id of manifest.requires) {
+          const target = registry.mods?.find((m) => m.id === id);
+          if (!target) problems.push(`requires "${id}", which is not in the registry`);
+          else if (target.type !== 'plugin') problems.push(`requires "${id}", which is not a plugin`);
+        }
+      }
+    }
   }
 
   // 3. Tests. A mod with no tests cannot be gated, so this is not optional.

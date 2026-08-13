@@ -53,6 +53,20 @@ const runtimeHelpers = {
 };
 
 /**
+ * The real translator, so a mod's test runs its dictionaries through the same
+ * lookup the app uses instead of a stand-in that always answers in English.
+ */
+const runtimeI18n = {
+  entryPoints: [`${root}/src/runtime/i18n.ts`],
+  outfile: `${root}/dist/i18n.mjs`,
+  bundle: true,
+  platform: 'browser',
+  format: 'esm',
+  target: 'es2022',
+  logLevel: 'warning',
+};
+
+/**
  * Pure loader helpers, emitted so `tests/download.test.mjs` can exercise the
  * download guards without pulling in the whole loader entry point.
  */
@@ -67,9 +81,9 @@ const loaderLib = {
 };
 
 if (watch) {
-  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers)]);
+  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers), esbuild.context(runtimeI18n)]);
   await Promise.all(contexts.map((c) => c.watch()));
   console.log('[slackmod] watching for changes...');
 } else {
-  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers)]);
+  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers), esbuild.build(runtimeI18n)]);
 }

@@ -40,7 +40,9 @@ async function mount(web = {}) {
   return { dom, ...harness };
 }
 
-const host = () => document.getElementById('slackmod-user-details');
+// A class, not an id: the plugin now mounts one section per profile pane, so
+// keepMounted owns the id and the class is the stable hook.
+const host = () => document.querySelector('.slackmod-user-details');
 
 test('exports a plugin', () => {
   assertPluginShape(assert, plugin);
@@ -60,7 +62,10 @@ test('builds rows from the API response', () => {
   assert.equal(rows.Title, 'Capitaine');
   assert.equal(rows.Roles, 'Admin');
   assert.equal(rows.Presence, 'Active');
-  assert.equal(rows.Status, ':rocket: Engage');
+  // The shortcode is dropped, not rendered: a workspace's custom emoji have no
+  // unicode to fall back on, so printing ":party-parrot:" is worse than the
+  // text alone. Same rule as the member sidebar's profile dialog.
+  assert.equal(rows.Status, 'Engage');
   assert.equal(rows.Deck, 'Deck 1', 'workspace custom fields use their label');
   assert.match(rows['Time zone'], /Central European Time/);
   assert.match(rows['Profile updated'], /\d/);

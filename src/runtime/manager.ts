@@ -1,6 +1,12 @@
 // Runtime state: what is installed, what is on, and keeping the DOM in sync.
 
-import type { Event as PushEvent, LoaderInfo, ModRecord, Settings } from '../shared/protocol.js';
+import {
+  missingRequirements,
+  type Event as PushEvent,
+  type LoaderInfo,
+  type ModRecord,
+  type Settings,
+} from '../shared/protocol.js';
 import { createPluginApi } from './api.js';
 import { PluginHost } from './plugins.js';
 import type { Bridge } from './rpc.js';
@@ -50,6 +56,17 @@ export class ModManager {
   }
   isInstalled(id: string): boolean {
     return this.settings.installed.includes(id);
+  }
+
+  /** Plugin ids a theme needs to look right; empty for almost every mod. */
+  requirementsFor(id: string): string[] {
+    return this.mods.find((m) => m.id === id)?.requires ?? [];
+  }
+
+  /** Of those, the ones that are not switched on right now. */
+  missingRequirements(id: string): string[] {
+    const record = this.mods.find((m) => m.id === id);
+    return record ? missingRequirements(record, this.settings) : [];
   }
 
   /** Add a catalogue mod to the installed set, or remove it. */

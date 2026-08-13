@@ -21,11 +21,17 @@ const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true" style="--s:20px;width:
 /** How the quoted line looks once it is in the composer. */
 const QUOTE_TEXT = '.';
 
+const STRINGS = {
+  en: { action: 'Reply in channel (quote)' },
+  fr: { action: 'Répondre dans le canal (citation)' },
+};
+
 export default {
   /**
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    const t = api.i18n.strings(STRINGS);
     // Slack sizes its own action buttons through classes we reuse, so this only
     // needs to cover the icon itself.
     api.css(`
@@ -34,7 +40,7 @@ export default {
 
     api.slack.addMessageAction({
       id: 'reply',
-      label: 'Reply in channel (quote)',
+      label: t('action'),
       icon: ICON,
       onClick: (message) => {
         if (!message.permalink) {

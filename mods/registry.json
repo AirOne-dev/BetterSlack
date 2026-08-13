@@ -117,10 +117,14 @@
       "id": "discord-dark",
       "name": "Discord Dark",
       "type": "theme",
-      "version": "1.0.0",
+      "version": "4.0.0",
       "author": "AirOne-dev",
-      "description": "Slack wearing Discord's default dark theme: the same greys, blurple accent, gg sans type stack, 8px corners, circular avatars and thin scrollbars.",
+      "description": "Slack rebuilt as Discord: colours sampled from the real client, round server icons with the sliding pill, and Discord's sidebar. Brings in the member column and account strip as plugins.",
       "entry": "theme.css",
+      "requires": [
+        "member-sidebar",
+        "sidebar-account"
+      ],
       "slackmodApi": 1,
       "slackVersion": "4.51",
       "tags": [
@@ -177,6 +181,23 @@
       "path": "themes/focus-rings"
     },
     {
+      "id": "member-sidebar",
+      "name": "Member Sidebar",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "members",
+        "sidebar",
+        "presence"
+      ],
+      "path": "plugins/member-sidebar"
+    },
+    {
       "id": "midnight",
       "name": "Midnight",
       "type": "theme",
@@ -206,6 +227,22 @@
         "composer"
       ],
       "path": "plugins/quote-reply"
+    },
+    {
+      "id": "sidebar-account",
+      "name": "Sidebar Account Strip",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Your avatar, name and availability at the bottom of the channel sidebar, the way Discord and other chat apps put them; clicking it opens Slack's own account menu.",
+      "entry": "index.js",
+      "slackmodApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "sidebar",
+        "profile"
+      ],
+      "path": "plugins/sidebar-account"
     },
     {
       "id": "terminal",

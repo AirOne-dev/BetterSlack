@@ -47,12 +47,27 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 - **Slack's CDN has no CORS headers.** `fetch('https://ca.slack-edge.com/…')`
   from the renderer always fails; downloads go through `api.files.save`, which
   the loader performs.
+- **Switching workspace does not reload the client.** Same page, same mods,
+  same api objects, new team id in the URL. Anything a mod cached at boot then
+  belongs to the workspace the user has left. `web-api.ts` keys its config on
+  `currentTeamId()` for exactly this reason — caching the token once made every
+  call go out for the wrong team, which Slack reports as ordinary errors and
+  which reads as "this plugin is broken". If a mod holds per-workspace state
+  (members, VIPs, anything from `users.info`), it has to watch the team in the
+  URL and drop it. Two workspaces can also use the same channel id, so compare
+  the team, not only the channel.
 - **Slack's API refuses cookie-only auth.** It needs the `xoxc-` token from
   `localStorage`. Only `src/runtime/web-api.ts` may read it; mods use
   `api.slack.web`.
 
 ## Slack DOM and CSS
 
+- **Slack has two "jump to unread" pills** in the sidebar, one for unread above
+  and one for below, and they share every class except a hashed CSS-module name
+  (`sidebarBannerBottom__8F6br`) that changes with each build. Tell them apart
+  by which half of the sidebar they sit in, not by that class: a rule matching
+  both sets `top` and `bottom` on the same element, and the top one stretches
+  between them.
 - Class names churn. Anchor on `data-qa` attributes first, then design tokens.
   `.circleButton__cMiUK`-style names are CSS-module output and change per build;
   `.p-channel_sidebar__channel`-style BEM names are stable.
@@ -74,6 +89,89 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   **not**: it wraps the argument as the payload of REDUX_UPDATE_FROM_WEBAPP,
   whose reducer only reads `payload.teams`, so anything else is silently
   dropped. That cost an afternoon.
+- **The leftmost column is the workspace switcher** (`.p-team_sidebar__item`,
+  one per signed-in workspace) and it only exists with more than one. That, not
+  `.p-tab_rail`, is Slack's counterpart to Discord's server list; the tab rail
+  next to it holds sections (Home, DMs, Activity).
+- **`.p-client_workspace__tabpanel` is a named-area grid** (`"…--sidebar
+  …--primary"`) whose column widths carry the resizable sidebar. Do not override
+  its template. To add a column, flip `.p-view_contents--primary` to
+  `flex-direction: row` and append to it.
+- **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
+  channel header. Slack has no persistent member pane to restyle.
+- **`[data-qa="member_profile_pane"]` + `.p-r_member_profile__avatar__img` is a
+  contract, not just Slack's markup.** Anything presenting a profile carries
+  both; `user-inspector` finds it and appends its sections, and reads the user
+  id off the avatar URL. `member-sidebar`'s dialog is the first non-Slack thing
+  to do it. `user-inspector` mounts **per pane** (stamped with
+  `data-slackmod-pane`) — a single `helpers.mount` filled whichever profile it
+  reached first and starved the other.
+- **Borrowing a Slack class borrows its layout.** The avatar class above is
+  `position: absolute` in Slack's stylesheet, which parked the dialog's avatar
+  on top of its title. Reset explicitly.
+- **Slack does not render while its window is hidden.** `visibilityState ===
+  'hidden'` and the channel-details modal never opens, so anything that drives
+  Slack's own UI fails in the background — which is also why measuring by
+  clicking through Slack from a terminal is flaky.
+- **Slack's deep links are the only navigation that works from a mod**, and
+  they work well: assigning `slack://channel?team=…&id=…` or
+  `slack://user?team=…&id=…` hands the URL to the desktop app's protocol
+  handler, which routes it in place — same document, no reload, view follows.
+  Both measured. `slack://huddle?…` does nothing. `api.slack.openConversation` /
+  `openUserProfile` wrap them.
+- **VIP is a preference, not an endpoint.** `users.prefs.set` with
+  `name=vip_users` and a comma-separated list of user ids; `users.prefs.get`
+  reads it back. Wrapped as `api.slack.vipUsers()` / `setVip()`. Verified by
+  adding, reading back and restoring.
+- **A huddle cannot be started from a mod, and this is now precise rather than a
+  shrug.** `rooms.join` exists and takes `channel_id`; it answers `ok` with
+  `call`, `canvas` and `huddle` — but the room it hands back has
+  `participants: []` and never rings anyone. It *provisions* the room; joining
+  is the WebRTC session Slack's own client establishes, which no mod can. (For
+  completeness: `rooms.leave` needs `channel_id` + `call_id` + `attendee_id`,
+  and answers `feature_not_enabled` here. `rooms.create`, `huddles.*` and
+  `slack://huddle` do not exist, `calls.*` refuses an `xoxc` token, and
+  `member_profile_huddle_btn` ignores `element.click()` *and* a trusted
+  `Input.dispatchMouseEvent`.) So do not offer a Huddle button; offer
+  `openUserProfile`, which puts Slack's own one click away.
+- **When a trusted click seems to do nothing, check what is on top of it.** A
+  leftover `ReactModal__Overlay` (z-index 1053) from Slack's own dialog swallowed
+  every click aimed at the profile pane, and made "trusted clicks do not work"
+  look true for a while. `document.elementFromPoint(x, y).closest('[data-qa]')`
+  before clicking says whether the point reaches what you think it does. The
+  harness can now dispatch a trusted Escape, which is what dismisses that
+  overlay -- a synthetic one does not.
+- **A huddle does start, from the channel header.** `member_profile_huddle_btn`
+  in the profile pane is only a menu trigger (both halves open it, and its
+  entry does nothing); the control that works is
+  `[data-qa="huddle_channel_header_button__start_button"]`, and a plain
+  `element.click()` is enough -- no trusted gesture needed. It opens a separate
+  Electron window, "Slack - aperçu de l'appel d'équipe", which is why nothing
+  showed in the main renderer and why no API call was ever recorded. Wrapped as
+  `api.slack.startHuddle(userId)`. The earlier user-activation theory was wrong:
+  `navigator.userActivation.isActive` is true under a CDP click, and the
+  microphone is granted.
+- **Slack opens other windows, and they are separate renderers.** The loader
+  attaches to every page target, not only the client, and paints the enabled
+  themes into the others -- stylesheet only, no runtime, no panel, no plugins.
+  Without it the huddle preview sits in Slack's default colours in the middle
+  of a themed app. `Target.getTargets` is how you see them at all.
+- **Discovering the API surface beats intercepting it.** Slack answers
+  `unknown_method` for what does not exist and an argument error for what does,
+  so calling a candidate with no arguments maps the surface without performing
+  anything. That is how `rooms.join` and `vip_users` were found, after
+  intercepting `fetch`, XHR and the WebSocket had all come back empty.
+- **A profile cannot be opened by URL.** Slack keeps it out of the address bar,
+  and a synthesised `<a href="/team/U…">` is intercepted by nothing: clicking
+  one navigates the window off the client entirely. The way in is Slack's own
+  member list — open the details modal and click the row whose avatar URL holds
+  the user id (match on the id, not the name beside it).
+- **`users.info` takes a comma-separated `users` list** and answers with a
+  `users` array. Undocumented, but it is what Slack's own client sends, and it
+  turns one request per member into one request. `users.getPresence` has no such
+  form: passing `users` is accepted and ignored, and it answers about the caller
+  instead — a silent wrong answer, so presence is one call each and has to be
+  capped.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
@@ -98,27 +196,36 @@ Shape of it:
   `addProfileButton`, `onProfilePane`, `describeMessage`, `userIdFromMessage`,
   `currentChannelId`, `composer`, `web`, `selectors`.
 - `api.ui` — `toast`, `modal`, `confirm`, `tooltip`, in shadow roots.
+- `api.i18n` — `strings({ en, fr, ... })` returns `t(key, vars)`; `locale` and
+  `language` come from Slack's `<html lang>`, never from `localConfig_v2` (that
+  is the token file, and only `web-api.ts` reads it). English is required and is
+  the fallback for an unknown language *and* for a missing key; a key missing
+  everywhere renders as the key rather than as a blank. Every shipped plugin has
+  `en` and `fr`, and `tests/i18n.test.mjs` fails a mod whose tables do not cover
+  the same keys.
 - `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
 
 When two mods want the same block, it belongs in `helpers.ts`, and the mods get
 refactored onto it in the same change.
 
-The helpers take their `css`, `toast` and `settings` from a context object
-rather than importing them, so they go through the same layer a mod would use
-and the test harness can observe them. `dist/helpers.mjs` is emitted for that.
+## Themes require plugins; they do not run code
 
-## Working on mods
+A theme is CSS and nothing else. When a look needs behaviour, the theme lists a
+plugin id in `requires` and the panel offers to switch it on.
 
-Every mod ships a `test.mjs`. `tests/harness.mjs` gives a Slack-shaped jsdom and
-a recording stand-in for `api`, so tests need no Slack, Electron or network.
-
-CI runs two workflows per **changed** mod, one job each: structure
-(`check-structure.mjs`) and tests. A change to `src/runtime/`, `src/shared/` or
-`tests/` puts every mod back in scope, because the contract moved.
-
-Use `api.dom.keepMounted` rather than a raw `MutationObserver`: Slack re-renders
-constantly and a naive observer inserts duplicates. Register teardown through
-`api.onDispose` so disabling a plugin really leaves the DOM as it was found.
+- Only themes may declare `requires`, and only plugin ids, so no cycle is
+  possible. Every id must exist in the catalogue; `validate-mods.mjs` and
+  `check-structure.mjs` both fail otherwise.
+- `Panel.enableWithRequirements` asks before switching a plugin on, and enables
+  the theme either way if the user declines. Both facts are tests in
+  `tests/requires.test.mjs` — a plugin is code that keeps running after the
+  theme is off, so it is never turned on silently.
+- The required plugin must stand alone: it reads Slack's tokens and follows any
+  theme, and the theme must not style its markup. Also a test.
+- **A `script` + `permissions` system for themes was built and then removed.**
+  It put a second, weaker plugin model beside the real one — its own API to keep
+  in step, its own consent dialog to explain — for something plugins already
+  did. If it comes up again, that is the reason it is not there.
 
 ## The Mods panel
 
@@ -147,6 +254,12 @@ by an earlier render in the same frame.
 
 - Comments explain *why*, especially where the code looks odd because Slack
   forced it. Several of the strangest lines here are load-bearing.
+- **Never put a backtick inside `PANEL_CSS`**, comments included. It is a
+  template literal, so a backticked `.c-dialog` in a comment closes the string
+  and the rest parses as JavaScript — `.c - dialog` — which builds cleanly and
+  then throws `ReferenceError: dialog is not defined` at boot, taking the whole
+  runtime down with no styling on the failure. This has happened twice.
+  `tests/requires.test.mjs` now fails if a backtick appears in there.
 - Mods are distributed through pull requests and reviewed by a human; that
   review is the security model, since plugins run unsandboxed in an
   authenticated Slack tab. `CONTRIBUTING.md` lists what gets rejected.

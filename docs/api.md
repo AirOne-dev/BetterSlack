@@ -358,6 +358,78 @@ Prefixed with your plugin id and visible in DevTools.
 
 ---
 
+## `api.i18n`
+
+Slack ships in many languages, and an English-only mod stands out inside a
+French client. Hand over one object of dictionaries and get back a lookup:
+
+```js
+const t = api.i18n.strings({
+  en: { members: 'Members', online: '{count} online', copied: 'Link copied' },
+  fr: { members: 'Membres', online: '{count} en ligne', copied: 'Lien copié' },
+});
+
+t('members');                 // "Membres" on a French client
+t('online', { count: 3 });    // "3 en ligne"
+```
+
+| | |
+| --- | --- |
+| `api.i18n.locale` | the app's language tag, e.g. `"fr-FR"` — pass it to `toLocaleString` |
+| `api.i18n.language` | its primary subtag, `"fr"` — what dictionaries are keyed by |
+| `api.i18n.strings(tables)` | returns `t(key, vars?)` |
+
+- **English is required** and is what everything falls back to: an unknown
+  language, and any key a translation is missing.
+- Lookup order is exact tag (`fr-CA`), then language (`fr`), then `en`.
+- `{name}` placeholders are filled from `vars`; unknown ones are left as they
+  are rather than blanked.
+- A key missing everywhere renders as the key itself. A blank label reads as a
+  rendering bug and gets reported as one; the key names what is missing.
+
+The language comes from Slack's `<html lang>`, so it follows the user's
+interface setting rather than their operating system.
+
+**Every plugin in this repository ships English and French**, and a test fails a
+mod whose two tables do not cover the same keys — half a translation is how
+French users end up with English holes nobody notices.
+
+## Doing things to Slack, directly
+
+These are calls, not clicks staged on Slack's UI. Everything here was found by
+probing Slack's API surface — it answers `unknown_method` for what does not
+exist — and verified against a running client.
+
+```js
+api.slack.openConversation(channelId);      // move the client, no page load
+await api.slack.openDirectMessage(userId);  // opens the DM, creating it if needed
+api.slack.openUserProfile(userId);          // Slack's own profile pane
+await api.slack.hideConversation(channelId);
+await api.slack.filesFrom(userId, 20);
+await api.slack.vipUsers();                 // ["U123", …]
+await api.slack.setVip(userId, true);
+```
+
+Navigation goes through Slack's own deep-link scheme (`slack://channel`,
+`slack://user`), which the desktop app routes in place — same document, no
+reload. There is no other way in: Slack's router is a private closure, a
+synthetic `popstate` moves the URL and nothing else, and an `<a>` to
+`/archives/…` leaves the client entirely.
+
+**What is not here, and will not be:** starting a huddle. `rooms.join` returns a
+room but never rings anyone — the call itself is a WebRTC session only Slack's
+client can open. Send people to `openUserProfile` instead of offering a button
+that cannot do what it says.
+
+## Plugins a theme brings in
+
+Themes are CSS. When a look needs behaviour, the theme lists a plugin in
+`requires` and the panel offers to switch it on. Nothing about this API changes:
+such a plugin is an ordinary plugin, gets this same object, and should be worth
+installing on its own.
+
+**→ [themes.md](themes.md#when-css-is-not-enough)**
+
 ## Recipes
 
 **A button that toggles a mode, with a shortcut**
