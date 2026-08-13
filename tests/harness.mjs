@@ -206,9 +206,23 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
         recorded.mounted.push({ container, id, node });
         return () => node.remove();
       },
+      // Observes, like the real one. A one-shot scan would quietly pass mods
+      // that only work on what is already on screen -- and Slack renders almost
+      // nothing before a mod starts.
       onEach: (selector, handler) => {
-        for (const el of document.querySelectorAll(selector)) handler(el);
-        return () => {};
+        const seen = new WeakSet();
+        const scan = () => {
+          for (const el of document.querySelectorAll(selector)) {
+            if (seen.has(el)) continue;
+            seen.add(el);
+            handler(el);
+          }
+        };
+        scan();
+        const observer = new MutationObserver(scan);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        recorded.disposers.push(() => observer.disconnect());
+        return () => observer.disconnect();
       },
       onShortcut: (match, handler) => {
         recorded.shortcuts.push({ match, handler });
@@ -271,12 +285,22 @@ export function createTestApi({ settings = {}, web = {} } = {}) {
         return { dismiss: () => { entry.dismissed = true; } };
       },
       modal: (options) => {
-        const body = h('div');
+        // Mounted for real, like the live one: a mod that fills a dialog in
+        // after an await checks `body.isConnected` before touching it, and a
+        // detached stand-in would make that check silently skip the update.
+        const body = h('div', { class: 'slackmod-test-modal' });
         if (typeof options.content === 'string') body.append(h('p', {}, [options.content]));
         else if (options.content) body.append(options.content);
+        document.body.append(body);
         const entry = { options, body, closed: false };
         recorded.modals.push(entry);
-        return { body, close: () => { entry.closed = true; } };
+        return {
+          body,
+          close: () => {
+            entry.closed = true;
+            body.remove();
+          },
+        };
       },
       confirm: async (options) => {
         recorded.confirms.push(options);

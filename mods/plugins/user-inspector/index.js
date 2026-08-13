@@ -17,9 +17,17 @@
  * Anchor on the pane, not on `.p-r_member_profile__container` inside it: that
  * inner container is present in some profile variants and absent in others, so
  * targeting it means the sections silently fail to appear half the time.
+ *
+ * Note this is a *contract*, not just Slack's markup. Anything in this
+ * repository that presents a profile carries the same two hooks -- the pane
+ * attribute and the avatar class -- and gets these sections for free; the
+ * member column's profile dialog is the first thing other than Slack to do it.
  */
 const PANE = '[data-qa="member_profile_pane"]';
-const NODE_ID = 'slackmod-user-details';
+// keepMounted owns the element's id (it uses it to find its own node), so the
+// styling hook is a class. One pane, one id; the class is what CSS and tests
+// look for.
+const NODE_CLASS = 'slackmod-user-details';
 
 /** Boolean flags worth surfacing, in the order they matter. */
 const ROLE_LABELS = [
@@ -120,14 +128,14 @@ export default {
     // Slack's own classes do the heavy lifting; this only covers the few things
     // it has no class for.
     api.css(`
-      #${NODE_ID} .slackmod-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-      #${NODE_ID} .slackmod-chip {
+      .${NODE_CLASS} .slackmod-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+      .${NODE_CLASS} .slackmod-chip {
         font-size: 12px; padding: 2px 8px; border-radius: 999px;
         border: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
         color: var(--dt_color-content-sec, #454447);
       }
-      #${NODE_ID} .slackmod-muted { color: var(--dt_color-content-ter, #5e5d60); font-size: 13px; }
-      #${NODE_ID} .slackmod-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+      .${NODE_CLASS} .slackmod-muted { color: var(--dt_color-content-ter, #5e5d60); font-size: 13px; }
+      .${NODE_CLASS} .slackmod-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     `);
 
     const cache = new Map();
@@ -230,21 +238,17 @@ export default {
       return data;
     };
 
-    // keepMounted rather than a one-shot insert: Slack re-renders the pane when
-    // presence changes or the profile is reopened, and this puts the sections
-    // back without ever producing two copies.
-    api.helpers.mount(PANE, NODE_ID, () => {
-      const host = api.dom.h('div', {});
-      const avatar = document.querySelector('.p-r_member_profile__avatar__img');
-      const userId = (avatar?.src?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i) ?? [])[1]?.toUpperCase();
+    const fill = (host, avatar) => {
+      const userId = (avatar?.getAttribute('src')?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i) ?? [])[1]
+        ?.toUpperCase();
 
       if (!userId) {
         render(host, { error: 'Could not tell which user this profile belongs to.' });
-        return host;
+        return;
       }
       if (!api.slack.web.available) {
         render(host, { error: 'No Slack session token for this workspace.' });
-        return host;
+        return;
       }
 
       // Cached profiles render on the spot; the rest fill in a moment later.
@@ -255,7 +259,28 @@ export default {
           if (host.isConnected) render(host, data);
         });
       }
-      return host;
+    };
+
+    /*
+     * One mount per pane, not one mount full stop.
+     *
+     * `helpers.mount` tracks a single node id, so it fills whichever profile it
+     * finds first and ignores the rest. That was invisible while Slack's pane
+     * was the only profile in the app; now that a plugin can present one too,
+     * having Slack's pane open meant the other profile silently got no
+     * sections. Each pane is stamped and given its own keepMounted, which keeps
+     * the re-render protection that mattered in the first place: Slack rebuilds
+     * the pane's contents when presence changes.
+     */
+    let seq = 0;
+    api.dom.onEach(PANE, (pane) => {
+      const key = `${NODE_CLASS}-${seq++}`;
+      pane.setAttribute('data-slackmod-pane', key);
+      api.helpers.mount(`[data-slackmod-pane="${key}"]`, key, () => {
+        const host = api.dom.h('div', { class: NODE_CLASS });
+        fill(host, pane.querySelector('.p-r_member_profile__avatar__img'));
+        return host;
+      });
     });
   },
 

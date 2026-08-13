@@ -306,7 +306,13 @@ export const PANEL_CSS = `
 
 /* Dialogs opened by mods through api.ui.modal: the same Slack shell, sized to
    the content rather than to a fixed panel height. */
-.slackmod-widget_dialog { z-index: 1014; }
+/*
+ * Slack ships .c-dialog at opacity 0 and fades it in with its own transition,
+ * which never runs for a dialog we built. The panel has carried this override
+ * since it moved into the light DOM; api.ui.modal did not, so every dialog a
+ * mod opened was in the document, focusable, and completely invisible.
+ */
+.slackmod-widget_dialog { z-index: 1014; opacity: 1; }
 .slackmod-widget_content { height: auto; max-height: min(640px, calc(100% - 64px)); }
 .slackmod-widget_content .slackmod-body { flex: 0 1 auto; padding-bottom: 8px; }
 .slackmod-widget_titles { flex: 1; min-width: 0; }

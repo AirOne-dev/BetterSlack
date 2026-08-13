@@ -79,3 +79,39 @@ test('every requirement in the catalogue exists and is a plugin', async () => {
     }
   }
 });
+
+/**
+ * Slack ships `.c-dialog` at opacity 0 and fades it in itself. Anything of ours
+ * wearing that class has to say otherwise, or it renders in the document,
+ * takes focus, and shows nothing. It cost a screenshot to notice once.
+ */
+test('every dialog we build overrides Slack’s opacity: 0', () => {
+  const widgets = read('src/runtime/ui/widgets.ts');
+  const styles = read('src/runtime/ui/styles.ts');
+
+  const hosts = new Set(['slackmod-panel']);
+  for (const [, classes] of widgets.matchAll(/class:\s*'([^']*\bc-dialog\b[^']*)'/g)) {
+    for (const name of classes.split(/\s+/)) {
+      if (name.startsWith('slackmod-') && name !== 'slackmod-dialog') hosts.add(name);
+    }
+  }
+  assert.ok(hosts.size > 1, 'the modal host class must be discoverable');
+
+  for (const host of hosts) {
+    const rule = new RegExp(`[#.]${host}[^{]*\\{[^}]*opacity:\\s*1`);
+    assert.match(styles, rule, `${host} must set opacity: 1`);
+  }
+});
+
+/**
+ * PANEL_CSS is a template literal. A backticked `.c-dialog` inside one of its
+ * comments closes the string, and the rest parses as JavaScript that builds
+ * cleanly and throws `ReferenceError: dialog is not defined` at boot — no
+ * styling, no panel, no mods, and nothing pointing at a comment. Twice now.
+ */
+test('no backtick can sneak into the panel stylesheet', () => {
+  const styles = read('src/runtime/ui/styles.ts');
+  const body = styles.split('export const PANEL_CSS = `')[1]?.split('`;')[0];
+  assert.ok(body, 'PANEL_CSS must be a template literal');
+  assert.doesNotMatch(body, /`/, 'a backtick inside PANEL_CSS ends the string early');
+});

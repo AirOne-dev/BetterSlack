@@ -42,6 +42,13 @@ const CSS = `
   margin: 0 !important;
   overflow: hidden !important;
 }
+/*
+ * Collapsing the button leaves its wrapper in the strip's 16px flex gap, so the
+ * buttons above it stopped short of the bottom by exactly that much. The
+ * negative margin eats the gap, and everything sits where it would if the
+ * avatar had never been there.
+ */
+.p-control_strip > *:has([data-qa="user-button"]) { margin-top: -16px !important; }
 
 #${STRIP_ID} {
   flex: 0 0 auto;

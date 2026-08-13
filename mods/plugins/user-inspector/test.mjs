@@ -40,7 +40,9 @@ async function mount(web = {}) {
   return { dom, ...harness };
 }
 
-const host = () => document.getElementById('slackmod-user-details');
+// A class, not an id: the plugin now mounts one section per profile pane, so
+// keepMounted owns the id and the class is the stable hook.
+const host = () => document.querySelector('.slackmod-user-details');
 
 test('exports a plugin', () => {
   assertPluginShape(assert, plugin);
