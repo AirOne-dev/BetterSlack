@@ -332,9 +332,18 @@ export default {
       return data;
     };
 
-    const fill = (host, avatar) => {
-      const userId = (avatar?.getAttribute('src')?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i) ?? [])[1]
-        ?.toUpperCase();
+    /**
+     * Who a profile belongs to.
+     *
+     * `data-user-id` on the pane when it is there, and the avatar URL only as a
+     * fallback: Slack's own pane does not carry the attribute, but a custom or
+     * bot avatar is not served from its CDN and has no id in the URL, which is
+     * how this ended up reporting that it could not tell.
+     */
+    const fill = (host, pane) => {
+      const avatar = pane.querySelector('.p-r_member_profile__avatar__img');
+      const userId = pane.getAttribute('data-user-id')?.toUpperCase()
+        || (avatar?.getAttribute('src')?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i) ?? [])[1]?.toUpperCase();
 
       if (!userId) {
         render(host, { error: t('unknownUser') });
@@ -372,7 +381,7 @@ export default {
       pane.setAttribute('data-slackmod-pane', key);
       api.helpers.mount(`[data-slackmod-pane="${key}"]`, key, () => {
         const host = api.dom.h('div', { class: NODE_CLASS });
-        fill(host, pane.querySelector('.p-r_member_profile__avatar__img'));
+        fill(host, pane);
         return host;
       });
     });
