@@ -74,6 +74,16 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   **not**: it wraps the argument as the payload of REDUX_UPDATE_FROM_WEBAPP,
   whose reducer only reads `payload.teams`, so anything else is silently
   dropped. That cost an afternoon.
+- **The leftmost column is the workspace switcher** (`.p-team_sidebar__item`,
+  one per signed-in workspace) and it only exists with more than one. That, not
+  `.p-tab_rail`, is Slack's counterpart to Discord's server list; the tab rail
+  next to it holds sections (Home, DMs, Activity).
+- **`.p-client_workspace__tabpanel` is a named-area grid** (`"…--sidebar
+  …--primary"`) whose column widths carry the resizable sidebar. Do not override
+  its template. To add a column, flip `.p-view_contents--primary` to
+  `flex-direction: row` and append to it.
+- **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
+  channel header. Slack has no persistent member pane to restyle into Discord's.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
@@ -102,6 +112,29 @@ Shape of it:
 
 When two mods want the same block, it belongs in `helpers.ts`, and the mods get
 refactored onto it in the same change.
+
+## Themes that run code
+
+A theme may declare `script` + `permissions` in its manifest and get a **much
+smaller** API (`layout-api.ts`): `dom` (waitFor/keepMounted/onEach/h), `click`,
+`self`, an optional `workspace` (the web API), `css`, `onDispose`, `log`. It is
+not the plugin API renamed — no toolbar buttons, no toasts, no downloads.
+
+- Permissions are `layout` and `workspace`, described in `PERMISSIONS` in
+  `shared/protocol.ts`. That object is the **only** source of the wording the
+  consent dialog shows, and `scripts/validate-mods.mjs` keeps a hand-written
+  copy of the names that `tests/permissions.test.mjs` asserts against.
+- `manager.applyThemeScript` checks the grant **before** loading, and that
+  ordering is a test. The loader ships the script with the theme regardless;
+  shipping is not running, and one decision point is easier to audit than two.
+- Grants live in `settings.grants[id]`, filtered on read, and are dropped on
+  uninstall so reinstalling asks again. All-or-nothing: every declared
+  permission must be granted or the script does not run at all.
+- **There is deliberately no "move this Slack node" helper.** React unmounts by
+  calling `removeChild` on the parent it believes owns the node; move one and
+  that throws `NotFoundError` and takes the surrounding tree down. Repositioning
+  is CSS (`position`/`order`/`transform`); the script mounts its own nodes
+  beside Slack's, reads, and clicks.
 
 The helpers take their `css`, `toast` and `settings` from a context object
 rather than importing them, so they go through the same layer a mod would use

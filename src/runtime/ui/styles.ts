@@ -189,6 +189,59 @@ export const PANEL_CSS = `
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
 }
 
+/* What a mod is allowed to do, on its row and in the consent dialog. */
+.slackmod-row__perm {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+.slackmod-row__perm--pending {
+  color: var(--dt_color-content-warn, #b8730a);
+  font-weight: var(--custom-font-weight-bold, 700);
+}
+.slackmod-row__review {
+  color: var(--dt_color-content-link, #1264a3);
+  font-size: 12px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#slackmod-consent.c-dialog { opacity: 1; z-index: 1101; }
+.slackmod-content--narrow {
+  width: min(520px, calc(100% - 32px));
+  max-width: min(520px, calc(100% - 32px));
+  height: auto;
+  max-height: min(560px, calc(100% - 64px));
+}
+.slackmod-perms { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.slackmod-perm {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  /* A tinted card rather than a warning triangle: it should read as something
+     to weigh, not as an error the user is being blamed for. */
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08);
+}
+.slackmod-perm__title {
+  font-size: 15px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+.slackmod-perm__detail {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.slackmod-actions--dialog {
+  justify-content: flex-end;
+  padding: 4px 24px 20px;
+  margin-top: 0;
+}
+
 /* Slack has no reusable switch class, so this is built from its variables. */
 .slackmod-switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; cursor: pointer; }
 .slackmod-switch input { position: absolute; opacity: 0; width: 0; height: 0; }

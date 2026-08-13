@@ -358,6 +358,17 @@ Prefixed with your plugin id and visible in DevTools.
 
 ---
 
+## The layout API (themes only)
+
+A theme's companion script gets a different, much smaller object — not this one.
+It has `dom` (`waitFor`, `keepMounted`, `onEach`, `h`), `click(selector)`,
+`self()`, an optional `workspace` (Slack's web API, with the `workspace`
+permission), `css`, `onDispose` and `log`. No message actions, no toolbar
+buttons, no toasts, no downloads: a mod that wants those is a plugin.
+
+**→ [themes.md](themes.md#when-css-is-not-enough)** covers it, including the
+permissions and why moving Slack's own nodes is not offered.
+
 ## Recipes
 
 **A button that toggles a mode, with a shortcut**

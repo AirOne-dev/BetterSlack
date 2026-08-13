@@ -122,6 +122,24 @@ and well commented), [`discord-dark`](../mods/themes/discord-dark/theme.css)
 glass), [`focus-rings`](../mods/themes/focus-rings/theme.css) (no tokens at all,
 just semantics).
 
+### If your look needs more than CSS
+
+CSS cannot move a node to a different parent, read who is signed in, or press a
+button. A theme that genuinely needs one of those may ship a companion script,
+declared in `mod.json` along with the permissions it needs:
+
+```json
+"entry": "theme.css",
+"script": "layout.js",
+"permissions": ["layout"]
+```
+
+The user sees those permissions in a dialog before anything installs, and the
+script does not load until they agree. Reach for it last, and read
+**[docs/themes.md](themes.md#when-css-is-not-enough)** first — it explains the
+small API a script gets and why there is no helper for moving Slack's own
+nodes.
+
 ---
 
 ## Write a plugin

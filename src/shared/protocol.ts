@@ -10,6 +10,50 @@ export const MOD_API_VERSION = 1;
 
 export type ModType = 'theme' | 'plugin';
 
+/**
+ * What a mod is allowed to do beyond its own kind.
+ *
+ * A theme is CSS, and CSS cannot move a node to a different parent, read who is
+ * signed in, or press one of Slack's own buttons. Some looks genuinely need
+ * that -- reproducing another app's layout is the honest example -- so a theme
+ * may ship a companion script. Since that script is real code running in an
+ * authenticated Slack tab, it has to say so, and the user has to agree before
+ * it is ever loaded.
+ *
+ * Keep this list short. Every entry is a sentence someone has to read and
+ * understand in a dialog, and a permission nobody can explain is a permission
+ * nobody can refuse meaningfully.
+ */
+export type Permission = 'layout' | 'workspace';
+
+export interface PermissionInfo {
+  /** Shown as the heading of the consent row. Plain language, no jargon. */
+  title: string;
+  /** One or two sentences on what it actually allows, and what it does not. */
+  detail: string;
+}
+
+export const PERMISSIONS: Record<Permission, PermissionInfo> = {
+  layout: {
+    title: 'Rearrange your Slack interface',
+    detail:
+      'Add, hide and reposition parts of Slack, and press its buttons on your behalf. ' +
+      'It changes where things are, not only how they look.',
+  },
+  workspace: {
+    title: 'Read your workspace from Slack',
+    detail:
+      'Look up people and channels through Slack, as you. It can read what you can already ' +
+      'see in Slack; it cannot post, change anything, or send data off this machine.',
+  },
+};
+
+export const ALL_PERMISSIONS = Object.keys(PERMISSIONS) as Permission[];
+
+export function isPermission(value: unknown): value is Permission {
+  return typeof value === 'string' && value in PERMISSIONS;
+}
+
 export interface ModManifest {
   id: string;
   name: string;
@@ -19,6 +63,17 @@ export interface ModManifest {
   description: string;
   /** File to load, relative to the mod directory: a .css for themes, .js for plugins. */
   entry: string;
+  /**
+   * Themes only: a companion ES module, relative to the mod directory, for the
+   * parts of a look that CSS cannot express. Requires `permissions`, and is not
+   * loaded at all until the user has granted them.
+   */
+  script?: string;
+  /**
+   * What this mod asks to be allowed to do. Absent or empty means "nothing
+   * beyond its own kind", which is where almost every mod should stay.
+   */
+  permissions?: Permission[];
   /** Manifest schema version. Mods declaring a newer version are refused. */
   slackmodApi: number;
   /** Optional: minimum tested Slack version, informational only. */
@@ -48,6 +103,14 @@ export interface Settings {
   customCss: string;
   /** Reapply mods automatically when their file changes on disk. */
   hotReload: boolean;
+  /**
+   * Permissions the user has agreed to, per mod id.
+   *
+   * Stored as what was granted rather than a yes/no, so a new version that asks
+   * for more than last time stops matching and has to be approved again instead
+   * of quietly inheriting the old answer.
+   */
+  grants: Record<string, Permission[]>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -56,7 +119,16 @@ export const DEFAULT_SETTINGS: Settings = {
   modSettings: {},
   customCss: '',
   hotReload: true,
+  grants: {},
 };
+
+/** Every permission the mod asks for has been granted. */
+export function isGranted(manifest: ModManifest, settings: Settings): boolean {
+  const asked = manifest.permissions ?? [];
+  if (asked.length === 0) return true;
+  const granted = settings.grants[manifest.id] ?? [];
+  return asked.every((p) => granted.includes(p));
+}
 
 /** Requests the renderer sends to the loader. */
 export type Request =
@@ -71,7 +143,14 @@ export type Request =
   | { type: 'mod.enable'; id: string; enabled: boolean }
   /** Add or remove a catalogue mod from the installed set. */
   | { type: 'mod.setInstalled'; id: string; installed: boolean }
+  /**
+   * Record the user's answer to a consent dialog. Granting is always explicit;
+   * passing an empty list revokes.
+   */
+  | { type: 'mod.grant'; id: string; permissions: Permission[] }
   | { type: 'mod.source'; id: string }
+  /** A theme's companion script, kept separate from its stylesheet. */
+  | { type: 'mod.script'; id: string }
   | { type: 'mod.install'; id: string; manifest: ModManifest; source: string }
   | { type: 'mod.uninstall'; id: string }
   | { type: 'loader.info' }
@@ -85,7 +164,7 @@ export type Request =
 
 /** Push notifications the loader sends to the renderer unprompted. */
 export type Event =
-  | { type: 'mod.changed'; id: string; source: string }
+  | { type: 'mod.changed'; id: string; source: string; script?: string }
   | { type: 'catalog.changed'; mods: ModRecord[] }
   | { type: 'settings.changed'; settings: Settings };
 

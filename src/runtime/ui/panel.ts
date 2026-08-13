@@ -14,7 +14,7 @@
 // can make it ugly. Everything under `mods/themes/` is reviewed, so that is a
 // fair deal.
 
-import type { ModRecord } from '../../shared/protocol.js';
+import { PERMISSIONS, type ModRecord } from '../../shared/protocol.js';
 import { h } from '../dom.js';
 import type { ModManager } from '../manager.js';
 import { contributeUrl, repoUrl } from '../registry.js';
@@ -24,6 +24,7 @@ type ShelfId = 'installed' | 'enabled' | 'browse';
 
 const HOST_ID = 'slackmod-panel';
 const MENU_ID = 'slackmod-panel-menu';
+const CONSENT_ID = 'slackmod-consent';
 
 const CLOSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px">
   <path fill="currentColor" d="M5.72 5.72a.75.75 0 0 1 1.06 0L10 8.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L11.06 10l3.22 3.22a.75.75 0 1 1-1.06 1.06L10 11.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L8.94 10 5.72 6.78a.75.75 0 0 1 0-1.06Z"/>
@@ -65,6 +66,7 @@ export class Panel {
 
   close(): void {
     this.closeMenu();
+    this.dismissConsent?.();
     this.host?.remove();
     this.host = null;
     document.removeEventListener('keydown', this.onKeyDown, true);
@@ -73,7 +75,10 @@ export class Panel {
   private onKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== 'Escape' || !this.isOpen) return;
     event.stopPropagation();
-    if (document.getElementById(MENU_ID)) this.closeMenu();
+    // Innermost first: Escape should dismiss the consent dialog without also
+    // closing the panel behind it.
+    if (document.getElementById(CONSENT_ID)) this.dismissConsent?.();
+    else if (document.getElementById(MENU_ID)) this.closeMenu();
     else this.close();
   };
 
@@ -316,7 +321,7 @@ export class Panel {
       }, ['Install']) as HTMLButtonElement;
       install.disabled = busy;
       install.addEventListener('click', () => {
-        void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, true));
+        void this.withBusy(mod.id, () => this.installWithConsent(mod));
       });
       actions.append(install);
     }
@@ -326,14 +331,123 @@ export class Panel {
       title.append(h('span', { class: 'slackmod-tag' }, [tag]));
     }
 
-    return h('div', { class: 'slackmod-row' }, [
-      h('div', { class: 'slackmod-row__meta' }, [
-        title,
-        h('div', { class: 'slackmod-row__desc' }, [mod.description]),
-        h('div', { class: 'slackmod-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
-      ]),
-      actions,
+    const meta = h('div', { class: 'slackmod-row__meta' }, [
+      title,
+      h('div', { class: 'slackmod-row__desc' }, [mod.description]),
+      h('div', { class: 'slackmod-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
     ]);
+
+    const permissions = mod.permissions ?? [];
+    if (permissions.length > 0) {
+      const granted = this.manager.isGranted(mod.id);
+      const summary = permissions.map((p) => PERMISSIONS[p].title).join(' · ');
+      const note = h('div', {
+        class: `slackmod-row__perm${granted ? '' : ' slackmod-row__perm--pending'}`,
+      }, [granted ? summary : `Needs your approval: ${summary}`]);
+
+      // An installed mod whose manifest now asks for more than was granted --
+      // an update, usually. It stays installed and inert until this is answered,
+      // rather than inheriting the older, narrower consent.
+      if (installed && !granted) {
+        const review = h('button', {
+          class: 'c-button-unstyled slackmod-row__review',
+          type: 'button',
+        }, ['Review']);
+        review.addEventListener('click', () => {
+          void this.withBusy(mod.id, async () => {
+            if (await this.requestConsent(mod)) await this.manager.grant(mod.id, permissions);
+          });
+        });
+        note.append(' ', review);
+      }
+      meta.append(note);
+    }
+
+    return h('div', { class: 'slackmod-row' }, [meta, actions]);
+  }
+
+  /** Set while a consent dialog is open, so Escape can cancel it. */
+  private dismissConsent: (() => void) | null = null;
+
+  /**
+   * Ask before a mod is allowed to do more than its kind implies.
+   *
+   * Deliberately not a yes/no on "install this": it names each permission and
+   * says what it allows, because "Discord Dark wants to run code" is not
+   * something anyone can weigh, while "it can rearrange your interface" is.
+   */
+  private requestConsent(mod: ModRecord): Promise<boolean> {
+    const permissions = mod.permissions ?? [];
+    if (permissions.length === 0) return Promise.resolve(true);
+
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (granted: boolean) => {
+        if (settled) return;
+        settled = true;
+        this.dismissConsent = null;
+        document.getElementById(CONSENT_ID)?.remove();
+        resolve(granted);
+      };
+      this.dismissConsent = () => finish(false);
+
+      const cancel = h('button', {
+        class: 'c-button c-button--outline c-button--medium',
+        type: 'button',
+      }, ['Cancel']);
+      cancel.addEventListener('click', () => finish(false));
+
+      const accept = h('button', {
+        class: 'c-button c-button--primary c-button--medium',
+        type: 'button',
+      }, [this.manager.isInstalled(mod.id) ? 'Allow' : 'Install and allow']);
+      accept.addEventListener('click', () => finish(true));
+
+      const list = h('ul', { class: 'slackmod-perms' });
+      for (const permission of permissions) {
+        const info = PERMISSIONS[permission];
+        list.append(h('li', { class: 'slackmod-perm' }, [
+          h('div', { class: 'slackmod-perm__title' }, [info.title]),
+          h('div', { class: 'slackmod-perm__detail' }, [info.detail]),
+        ]));
+      }
+
+      const layer = h('div', { id: CONSENT_ID, class: 'c-dialog slackmod-dialog' }, [
+        h('div', {
+          class: 'c-dialog__content slackmod-content slackmod-content--narrow',
+          role: 'dialog',
+          'aria-modal': 'true',
+          'aria-label': `Permissions for ${mod.name}`,
+        }, [
+          h('div', { class: 'c-dialog__header slackmod-header' }, [
+            h('h1', { class: 'c-dialog__title' }, [mod.name]),
+          ]),
+          h('div', { class: 'c-dialog__body slackmod-body' }, [
+            h('p', { class: 'slackmod-hint' }, [
+              `This ${mod.type} asks to do more than ${mod.type === 'theme' ? 'restyle' : 'extend'} ` +
+                'Slack. It runs with the same access to this window as Slack itself, and only ' +
+                'the review on its pull request stands behind it.',
+            ]),
+            list,
+          ]),
+          h('div', { class: 'slackmod-actions slackmod-actions--dialog' }, [cancel, accept]),
+        ]),
+      ]);
+
+      document.body.append(layer);
+      layer.addEventListener('mousedown', (event) => {
+        if (event.target === layer) finish(false);
+      });
+      queueMicrotask(() => accept.focus());
+    });
+  }
+
+  /** Install, asking for consent first when the mod wants more than its kind. */
+  private async installWithConsent(mod: ModRecord): Promise<void> {
+    const permissions = mod.permissions ?? [];
+    if (permissions.length > 0 && !(await this.requestConsent(mod))) return;
+    await this.manager.setInstalled(mod.id, true);
+    if (permissions.length > 0) await this.manager.grant(mod.id, permissions);
   }
 
   /** Slack's own menu markup, in a layer we position ourselves. */
@@ -360,10 +474,19 @@ export class Panel {
         void this.withBusy(mod.id, () =>
           this.manager.setEnabled(mod.id, !this.manager.isEnabled(mod.id)));
       }),
-      item('Remove', () => {
-        void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
-      }, true),
     ]);
+
+    if ((mod.permissions ?? []).length > 0 && this.manager.isGranted(mod.id)) {
+      items.append(item('Revoke permissions', () => {
+        // Not a removal: the theme stays installed and keeps its colours, it
+        // just stops running the part that needed permission.
+        void this.withBusy(mod.id, () => this.manager.grant(mod.id, []));
+      }, true));
+    }
+
+    items.append(item('Remove', () => {
+      void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
+    }, true));
 
     // `.c-popover__content` pins `top` in Slack's stylesheet, so the positioned
     // layer is ours and only the menu inside wears Slack's classes.
