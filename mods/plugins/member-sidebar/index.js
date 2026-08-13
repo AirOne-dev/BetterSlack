@@ -23,13 +23,16 @@
 //     only renders while the window is visible, so it is the secondary action
 //     here rather than what a click does.
 //
-// What Slack's pane offers beyond information -- Message, Huddle, VIP and its
-// overflow menu -- has no public API and no in-client URL, so the dialog does
-// not reimplement any of it: those buttons open Slack's own pane and press
-// Slack's own button, found by the stable data-qa hooks it puts on them
-// (member_profile_message_btn and friends). The overflow is proxied as a whole
-// rather than item by item, because its entries carry no distinguishing
-// attribute -- only a localised label and an id that changes every render.
+// The actions are real calls, not clicks staged on Slack's own pane. What each
+// of Slack's buttons actually does was recorded by instrumenting fetch, XHR and
+// history and then pressing them: "Message" turns out to be nothing but a
+// navigation, and Slack's deep-link scheme performs it in place. The rest --
+// hiding a conversation, listing someone's files -- are public API methods. All
+// of it lives in api.slack, so any plugin can use it.
+//
+// Huddle and VIP are deliberately absent. Neither has a public method, and a
+// button that quietly clicked Slack's own would be a puppet with the same
+// label; better to not offer it than to offer something pretending.
 //
 // Clicking a member opens a profile dialog of our own instead. It carries
 // `data-qa="member_profile_pane"` and Slack's avatar class, which is not
@@ -38,6 +41,7 @@
 // with no knowledge of it and no change to its code.
 
 const COLUMN_ID = 'slackmod-member-column';
+const MENU_ID = 'slackmod-profile-menu';
 
 /** Slack's own overflow glyph, so the button reads as the one it stands in for. */
 const MORE_ICON =
@@ -62,9 +66,13 @@ const STRINGS = {
     localTime: '{time} local time',
     dnd: 'Do not disturb',
     message: 'Message',
-    huddle: 'Huddle',
-    vip: 'VIP',
     more: 'More actions',
+    viewFiles: 'View files',
+    hide: 'Hide conversation',
+    hidden: 'Conversation hidden',
+    noFiles: 'Nothing shared yet.',
+    filesTitle: 'Files from {name}',
+    actionFailed: 'Slack refused that: {reason}',
     displayName: 'Display name',
     fullName: 'Full name',
     title: 'Title',
@@ -100,9 +108,13 @@ const STRINGS = {
     localTime: '{time} heure locale',
     dnd: 'Ne pas déranger',
     message: 'Message',
-    huddle: 'Appel d’équipe',
-    vip: 'VIP',
     more: 'Plus d’actions',
+    viewFiles: 'Voir les fichiers',
+    hide: 'Masquer la conversation',
+    hidden: 'Conversation masquée',
+    noFiles: 'Rien de partagé pour l’instant.',
+    filesTitle: 'Fichiers de {name}',
+    actionFailed: 'Slack a refusé : {reason}',
     displayName: 'Nom d’affichage',
     fullName: 'Nom complet',
     title: 'Fonction',
@@ -265,6 +277,11 @@ const CSS = `
   gap: 8px;
   margin-top: 18px;
 }
+.slackmod-profile__menu { position: fixed; top: 0; left: 0; z-index: 1100; }
+.slackmod-profile__danger { color: var(--dt_color-content-imp, #c01343); }
+.slackmod-profile__files { display: flex; flex-direction: column; gap: 8px; }
+.slackmod-profile__file { font-size: 14px; }
+
 /* Slack's own overflow button is square and icon-only; match it. */
 .slackmod-profile__more {
   min-width: 0;
@@ -358,84 +375,6 @@ export default {
       }
     };
 
-    /**
-     * The open pane belonging to this person, if there is one.
-     *
-     * All of them are checked rather than the first: this plugin's own dialog
-     * is a profile pane too, and Slack's may be open behind it, so "the first
-     * one in the document" is reliably the wrong answer.
-     */
-    const openPaneFor = (userId) => {
-      for (const pane of document.querySelectorAll('[data-qa="member_profile_pane"]')) {
-        const src = pane.querySelector('.p-r_member_profile__avatar__img')?.getAttribute('src') ?? '';
-        if (src.includes(`-${userId}-`)) return pane;
-      }
-      return null;
-    };
-
-    /**
-     * Bring up Slack's own profile pane for a member and resolve with it.
-     *
-     * The only route in is Slack's member list: open the channel details modal
-     * (which lands on its Members tab) and click the row for this person. Rows
-     * are matched on the user id inside the avatar URL rather than on the name
-     * beside it, so this does not depend on the display language and does not
-     * confuse two people called the same thing.
-     *
-     * Slack renders none of this while its window is in the background, which
-     * is the other half of why the dialog exists rather than this being what a
-     * click does.
-     */
-    const openSlackProfile = async (userId) => {
-      const already = openPaneFor(userId);
-      if (already) return already;
-
-      const stack = document.querySelector('[data-qa="avatar_stack"]');
-      if (!stack) {
-        api.ui.toast(t('noMemberList'), { variant: 'warn' });
-        return null;
-      }
-      stack.click();
-
-      const deadline = Date.now() + 6000;
-      let clicked = false;
-      while (Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 120));
-        if (!clicked) {
-          const modal = document.querySelector('[data-qa="channel_details_modal"]');
-          const match = modal && [...modal.querySelectorAll('[data-qa="unstyled-button"]')].find((c) =>
-            (c.querySelector('img')?.getAttribute('src') ?? '').includes(`-${userId}-`));
-          if (match) {
-            match.click();
-            clicked = true;
-          }
-          continue;
-        }
-        const pane = openPaneFor(userId);
-        if (pane) return pane;
-      }
-      // Slack pages long member lists, so the row may never have been rendered.
-      api.ui.toast(t('profileRefused'), { variant: 'warn' });
-      return null;
-    };
-
-    /**
-     * Press one of Slack's own profile buttons on the user's behalf.
-     *
-     * Slack marks these with stable data-qa hooks, so this is a proxy rather
-     * than a reimplementation: whatever Message, Huddle or VIP do, they keep
-     * doing, including whatever they grow into later.
-     */
-    const pressInSlack = async (userId, hook) => {
-      const pane = await openSlackProfile(userId);
-      const button = pane?.querySelector(`[data-qa="${hook}"]`);
-      if (!button) {
-        if (pane) api.ui.toast(t('notOffered'), { variant: 'warn' });
-        return;
-      }
-      button.click();
-    };
-
     /** Everything users.info holds, plus presence and do-not-disturb. */
     const profiles = new Map();
     const loadProfile = async (userId) => {
@@ -463,6 +402,107 @@ export default {
       const now = new Date();
       const there = new Date(now.getTime() + (offsetSeconds + now.getTimezoneOffset() * 60) * 1000);
       return there.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    /**
+     * Our own overflow menu, in Slack's menu markup so it follows the theme.
+     *
+     * Every entry is a direct call. Copying needs nothing from Slack at all;
+     * hiding is conversations.close; the file list is files.list rendered here
+     * rather than by sending the user somewhere else.
+     */
+    const openMenu = (anchor, userId, data) => {
+      document.getElementById(MENU_ID)?.remove();
+      const user = data?.user ?? {};
+      const name = user.profile?.display_name || user.real_name || user.name || userId;
+
+      const entry = (label, run, danger = false) => {
+        const button = api.dom.h('button', {
+          class: 'c-button-unstyled c-menu_item__button',
+          role: 'menuitem',
+          type: 'button',
+        }, [api.dom.h('div', {
+          class: `c-menu_item__label${danger ? ' slackmod-profile__danger' : ''}`,
+        }, [label])]);
+        button.addEventListener('click', () => {
+          closeMenu();
+          void run();
+        });
+        return api.dom.h('div', { class: 'c-menu_item__li' }, [button]);
+      };
+
+      const link = api.slack.web.teamDomain
+        ? `https://${api.slack.web.teamDomain}.slack.com/team/${userId}`
+        : `${location.origin}/team/${userId}`;
+
+      const items = api.dom.h('div', { class: 'c-menu__items', role: 'menu', tabindex: '-1' }, [
+        entry(`${t('copyName')} : @${user.name ?? name}`,
+          () => api.helpers.copy(`@${user.name ?? name}`, t('copiedName'))),
+        entry(t('copyId'), () => api.helpers.copy(userId, t('copiedId'))),
+        entry(t('copyLink'), () => api.helpers.copy(link, t('copiedLink'))),
+        entry(t('viewFiles'), () => showFiles(userId, name)),
+        entry(t('hide'), async () => {
+          try {
+            const id = await api.slack.web.call('conversations.open', { users: userId, return_im: true });
+            await api.slack.hideConversation(id.channel.id);
+            api.ui.toast(t('hidden'));
+          } catch (err) {
+            api.ui.toast(t('actionFailed', { reason: err.message }), { variant: 'error' });
+          }
+        }, true),
+      ]);
+
+      const layer = api.dom.h('div', { id: MENU_ID, class: 'slackmod-profile__menu' }, [
+        api.dom.h('div', { class: 'c-menu' }, [
+          api.dom.h('div', { class: 'c-menu__items_scroller' }, [items]),
+        ]),
+      ]);
+      document.body.append(layer);
+
+      const rect = anchor.getBoundingClientRect();
+      const box = layer.getBoundingClientRect();
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - box.width - 8));
+      const top = rect.bottom + box.height > window.innerHeight
+        ? rect.top - box.height - 4
+        : rect.bottom + 4;
+      layer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+      setTimeout(() => document.addEventListener('mousedown', onDocumentDown, true), 0);
+    };
+
+    const closeMenu = () => {
+      document.getElementById(MENU_ID)?.remove();
+      document.removeEventListener('mousedown', onDocumentDown, true);
+    };
+    const onDocumentDown = (event) => {
+      const menu = document.getElementById(MENU_ID);
+      if (menu && !menu.contains(event.target)) closeMenu();
+    };
+    api.onDispose(closeMenu);
+
+    /** Someone's files, in the dialog rather than by navigating away. */
+    const showFiles = async (userId, name) => {
+      const body = api.dom.h('div', { class: 'slackmod-profile__note' }, [t('loading')]);
+      const handle = api.ui.modal({ title: t('filesTitle', { name }), width: 520, content: body });
+      try {
+        const files = await api.slack.filesFrom(userId, 20);
+        if (!handle.body.isConnected) return;
+        if (files.length === 0) {
+          body.textContent = t('noFiles');
+          return;
+        }
+        const list = api.dom.h('div', { class: 'slackmod-profile__files' });
+        for (const file of files) {
+          list.append(api.dom.h('a', {
+            class: 'c-link slackmod-profile__file',
+            href: String(file.permalink ?? '#'),
+            target: '_blank',
+            rel: 'noreferrer',
+          }, [String(file.title || file.name || file.id)]));
+        }
+        handle.body.replaceChildren(list);
+      } catch (err) {
+        body.textContent = t('actionFailed', { reason: err.message });
+      }
     };
 
     /**
@@ -534,26 +574,34 @@ export default {
       // its entries have no attribute to aim at, only a localised label and an
       // id that changes on every render.
       const actions = api.dom.h('div', { class: 'slackmod-profile__actions' });
-      for (const [label, hook, icon] of [
-        [t('message'), 'member_profile_message_btn'],
-        [t('huddle'), 'member_profile_huddle_btn'],
-        [t('vip'), 'member_profile_vip_btn'],
-        [t('more'), 'member_profile_more_btn', MORE_ICON],
-      ]) {
-        const button = api.dom.h('button', {
-          class: `c-button c-button--outline c-button--medium${icon ? ' slackmod-profile__more' : ''}`,
-          type: 'button',
-          'aria-label': label,
-        }, icon ? [] : [label]);
-        // Slack shows an ellipsis glyph, not the word; a faithful copy has to
-        // be the icon, with the label left to assistive technology.
-        if (icon) button.innerHTML = icon;
-        button.addEventListener('click', () => {
-          close();
-          void pressInSlack(userId, hook);
+
+      const message = api.dom.h('button', {
+        class: 'c-button c-button--outline c-button--medium',
+        type: 'button',
+      }, [t('message')]);
+      message.addEventListener('click', () => {
+        close();
+        void api.slack.openDirectMessage(userId).catch((err) => {
+          api.ui.toast(t('actionFailed', { reason: err.message }), { variant: 'error' });
         });
-        actions.append(button);
-      }
+      });
+
+      // Slack shows an ellipsis glyph, not a word, and its menu is its own.
+      // This one is ours: it never reopens Slack's pane, and every entry is a
+      // call rather than a click staged somewhere else.
+      const more = api.dom.h('button', {
+        class: 'c-button c-button--outline c-button--medium slackmod-profile__more',
+        type: 'button',
+        'aria-label': t('more'),
+        'aria-haspopup': 'menu',
+      });
+      more.innerHTML = MORE_ICON;
+      more.addEventListener('click', (event) => {
+        event.stopPropagation();
+        openMenu(more, userId, data);
+      });
+
+      actions.append(message, more);
       root.append(actions);
 
       // Slack's own field markup, through the helper, so these rows look like
