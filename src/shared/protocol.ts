@@ -34,6 +34,12 @@ export interface ModRecord extends ModManifest {
 }
 
 export interface Settings {
+  /**
+   * Mod ids the user has installed. The repository is a catalogue, not a set of
+   * pre-installed mods: a fresh install starts empty and you install what you
+   * want. `enabled` is always a subset of this.
+   */
+  installed: string[];
   /** Mod ids that are currently on. */
   enabled: string[];
   /** Per-mod key/value bags, owned by the mod itself. */
@@ -45,6 +51,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  installed: [],
   enabled: [],
   modSettings: {},
   customCss: '',
@@ -62,6 +69,8 @@ export type Request =
    * anything the other had turned on since it last read.
    */
   | { type: 'mod.enable'; id: string; enabled: boolean }
+  /** Add or remove a catalogue mod from the installed set. */
+  | { type: 'mod.setInstalled'; id: string; installed: boolean }
   | { type: 'mod.source'; id: string }
   | { type: 'mod.install'; id: string; manifest: ModManifest; source: string }
   | { type: 'mod.uninstall'; id: string }
