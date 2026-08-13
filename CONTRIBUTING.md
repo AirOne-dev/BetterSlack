@@ -113,61 +113,24 @@ resources, and no hashed Slack class names.
 
 ## Writing mods that survive Slack updates
 
-Slack's CSS class names (`c-menu_item__li`, `p-ia__sidebar_header__info`) are
-build output and change without warning. Two things are far steadier:
+The two documents worth reading before you write anything:
 
-- **`data-qa` attributes** — Slack's own end-to-end tests depend on them.
-- **`--dt_color-*` custom properties** — Slack's design tokens.
+- **[docs/getting-started.md](docs/getting-started.md)** — the walkthrough.
+- **[docs/api.md](docs/api.md)** — the API, with an example per entry.
+- **[docs/themes.md](docs/themes.md)** — Slack's four colour token families and
+  the CSS traps. A theme that skips this comes out half-styled.
 
-Prefer them, in that order, over anything else. A mod pinned to a hashed class
-name will break, and the breakage lands on the maintainers.
+The short version:
 
-### Theming: four families, not one
-
-This costs everyone a wasted afternoon the first time, so it is worth stating
-plainly. Slack's colours come from four separate sets of custom properties:
-
-| Family | Drives | Format |
-| --- | --- | --- |
-| `--dt_color-<role>` | message content, controls, text | CSS colour |
-| `--dt_color-theme-*` | the workspace chrome: rail, sidebar, headers | CSS colour |
-| `--sk_*` | older components, still widespread | bare `r, g, b` |
-| `--dt_color-plt-*` | the raw palette the others are built from | bare `r, g, b` |
-
-Two traps come with them:
-
-- **`--dt_color-theme-*` and `--sk_*` need `!important`.** Something more
-  specific than `:root` defines them, so a plain declaration silently loses.
-  Override only the ones you actually need, and say why in a comment.
-- **`.p-theme_background` is a full-viewport opaque layer above `<body>`.** A
-  gradient, an image or any translucency on `<body>` is invisible until you
-  repaint or clear that element.
-
-A dark theme can get away with skipping the chrome families, because Slack's
-default chrome is already dark. A light theme cannot — it will come out as
-light content inside a dark frame.
-
-Other things worth knowing before you write code:
-
-- `eval()` and `new Function()` throw. Slack's CSP has no `'unsafe-eval'`, so
-  `validate-mods` rejects them up front rather than letting you find out at
-  runtime.
-- Use `api.dom.keepMounted` rather than your own `MutationObserver` when you
-  insert a node. Slack re-renders constantly, and a naive observer inserts
-  duplicates.
-- Start from `api.helpers` — see [API.md](API.md). Most mods are one or two
-  calls, and a pull request that hand-rolls something the API provides will be
-  asked why.
-- Reach for `api.slack.addToolbarButton` and `api.ui.*` before writing your own
-  markup. A hand-styled button drifts out of step with Slack the moment its
-  palette changes; one built from Slack's classes cannot. Reviewers will ask why
-  if a pull request rebuilds something the API already provides.
-- If Slack has no shared class for what you need — its channel-header buttons
-  size themselves from a per-page class, for instance — state the value directly
-  in CSS rather than borrowing an unrelated Slack class whose name would then
-  lie about what your element is.
-- Register teardown through `api.onDispose`, or the cleanup helpers that return
-  one. A plugin that leaks observers slows down the whole app.
+- Anchor on **`data-qa`** attributes, then design tokens. A mod pinned to a
+  hashed class name like `circleButton__cMiUK` breaks on Slack's next build.
+- `eval()` and `new Function()` throw — Slack's CSP has no `'unsafe-eval'`, and
+  `validate-mods` rejects them up front.
+- Use `api.helpers.mount`, never a raw `MutationObserver`: Slack re-renders
+  constantly and a naive observer inserts duplicates.
+- Start from `api.helpers`. A pull request that hand-rolls something the API
+  already provides will be asked why.
+- Register teardown through `api.onDispose`, or the helpers that return one.
 
 ## Local development
 
