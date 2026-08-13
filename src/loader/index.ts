@@ -35,6 +35,9 @@ import {
   type Settings,
 } from '../shared/protocol.js';
 
+/** SLACKMOD_VERBOSE=1 forwards everything the page logs, not only its errors. */
+const verbose = process.env.SLACKMOD_VERBOSE === '1';
+
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..');
 const BUILTIN_MODS_ROOT = path.join(REPO_ROOT, 'mods');
@@ -175,6 +178,33 @@ class Loader {
     session.on('Runtime.bindingCalled', (params: { name: string; payload: string }) => {
       if (params.name !== BINDING_NAME) return;
       void this.handleMessage(session, params.payload);
+    });
+
+    /*
+     * The page's own errors, in the terminal.
+     *
+     * Without this the only way to see why a mod failed is to open DevTools
+     * inside Slack, which is precisely what is hard when the failure is at
+     * boot. Uncaught exceptions always print; console noise does not, because
+     * Slack's own client is chatty -- SLACKMOD_VERBOSE=1 lifts that.
+     */
+    session.on('Runtime.exceptionThrown', (params: {
+      exceptionDetails?: { exception?: { description?: string }; text?: string };
+    }) => {
+      const details = params.exceptionDetails;
+      console.error(`[slackmod] page error: ${details?.exception?.description ?? details?.text ?? '?'}`);
+    });
+
+    session.on('Runtime.consoleAPICalled', (params: {
+      type: string;
+      args?: Array<{ value?: unknown; description?: string }>;
+    }) => {
+      if (params.type !== 'error' && params.type !== 'warning' && !verbose) return;
+      const text = (params.args ?? [])
+        .map((arg) => String(arg.value ?? arg.description ?? ''))
+        .join(' ');
+      if (!verbose && !text.includes('slackmod')) return;
+      console.log(`[slackmod] page ${params.type}: ${text}`);
     });
 
     // A document-start script is what keeps themes from flashing, but it is not

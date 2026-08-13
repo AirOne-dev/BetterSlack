@@ -96,6 +96,19 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 - `keepMounted` gives up after 25 remounts in two seconds and logs which node
   and container, rather than looping forever. A missing button is a bug report;
   a frozen Slack is not.
+- **Plugins start only once `.p-client_container` exists** (`waitForClient` in
+  `manager.ts`); themes go in immediately, since CSS cannot loop. The runtime is
+  injected at document-start on a fresh navigation *or* straight into a page the
+  loader caught mid-boot, and in that second case mods used to start against a
+  half-built DOM -- mount observers firing on every node Slack adds while it
+  renders, with the microtask queue never draining. The renderer blocks outright:
+  grey window, no error, `Runtime.evaluate` never returning. It is intermittent,
+  it depends on when the attach loop finds the target, and it looks exactly like
+  the coachmark freeze, so check both.
+- **The loader forwards the page's own errors to the terminal**: uncaught
+  exceptions always, console warnings and errors mentioning slackmod, and
+  everything with `SLACKMOD_VERBOSE=1`. Without it the only way to see why a mod
+  failed at boot is DevTools inside a Slack that may not be responding.
 - Reuse Slack's button classes rather than styling your own. Watch for
   `c-icon_button--default`: without it, icon buttons render 36px instead of 28px.
 - Slack's real DevTools open with **`desktop.app.toggleDevTools()`** — its own
