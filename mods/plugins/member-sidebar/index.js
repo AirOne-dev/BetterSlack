@@ -68,6 +68,7 @@ const STRINGS = {
     message: 'Message',
     more: 'More actions',
     viewFiles: 'View files',
+    openInSlack: 'Open profile in Slack',
     hide: 'Hide conversation',
     hidden: 'Conversation hidden',
     noFiles: 'Nothing shared yet.',
@@ -110,6 +111,7 @@ const STRINGS = {
     message: 'Message',
     more: 'Plus d’actions',
     viewFiles: 'Voir les fichiers',
+    openInSlack: 'Ouvrir le profil dans Slack',
     hide: 'Masquer la conversation',
     hidden: 'Conversation masquée',
     noFiles: 'Rien de partagé pour l’instant.',
@@ -441,6 +443,13 @@ export default {
         entry(t('copyId'), () => api.helpers.copy(userId, t('copiedId'))),
         entry(t('copyLink'), () => api.helpers.copy(link, t('copiedLink'))),
         entry(t('viewFiles'), () => showFiles(userId, name)),
+        // Slack's own profile, through its deep-link scheme. Huddle and VIP
+        // live there and have no public method of their own, so this is the
+        // honest way to reach them: one click, Slack's real pane, no puppetry.
+        entry(t('openInSlack'), () => {
+          close();
+          api.slack.openUserProfile(userId);
+        }),
         entry(t('hide'), async () => {
           try {
             const id = await api.slack.web.call('conversations.open', { users: userId, return_im: true });

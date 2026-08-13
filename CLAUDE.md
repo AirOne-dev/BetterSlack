@@ -98,6 +98,21 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   'hidden'` and the channel-details modal never opens, so anything that drives
   Slack's own UI fails in the background — which is also why measuring by
   clicking through Slack from a terminal is flaky.
+- **Slack's deep links are the only navigation that works from a mod**, and
+  they work well: assigning `slack://channel?team=…&id=…` or
+  `slack://user?team=…&id=…` hands the URL to the desktop app's protocol
+  handler, which routes it in place — same document, no reload, view follows.
+  Both measured. `slack://huddle?…` does nothing. `api.slack.openConversation` /
+  `openUserProfile` wrap them.
+- **Huddle and VIP cannot be triggered from a mod, and this was established, not
+  assumed.** No public API method; nothing over HTTP when their buttons are
+  pressed (`users.profile.get` is the pane reloading); `slack://huddle` is not a
+  scheme; and `member_profile_huddle_btn` ignores both `element.click()` and a
+  *trusted* `Input.dispatchMouseEvent`. Slack likely drives them over its
+  WebSocket, which is not interceptable either — patching `WebSocket.prototype.
+  send` catches nothing, so the socket's `send` is bound before any mod runs.
+  Do not add a button that quietly presses Slack's own; offer
+  `openUserProfile` instead.
 - **A profile cannot be opened by URL.** Slack keeps it out of the address bar,
   and a synthesised `<a href="/team/U…">` is intercepted by nothing: clicking
   one navigates the window off the client entirely. The way in is Slack's own
