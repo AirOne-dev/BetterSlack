@@ -143,6 +143,27 @@ export class ModManager {
           url,
           filename,
         }),
+      saveTheme: async ({ id, name, description, css }) => {
+        // Through the same route the Browse shelf uses, so the loader validates
+        // the manifest it writes exactly as it would for anything installed.
+        const manifest = {
+          id,
+          name,
+          type: 'theme' as const,
+          version: '1.0.0',
+          author: 'you',
+          description,
+          entry: 'theme.css',
+          slackmodApi: 1,
+        };
+        this.mods = await this.bridge.request<ModRecord[]>({
+          type: 'mod.install',
+          id,
+          manifest,
+          source: css,
+        });
+        this.notify();
+      },
     });
     await this.plugins.load(record, source, api);
   }

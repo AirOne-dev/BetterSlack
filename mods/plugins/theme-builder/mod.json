@@ -1,0 +1,12 @@
+{
+  "id": "theme-builder",
+  "name": "Theme Builder",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Design a Slack theme from twelve colours in a window of its own, with the running app as the preview, then save it as a theme you can switch on like any other.",
+  "entry": "index.js",
+  "slackmodApi": 1,
+  "slackVersion": "4.51",
+  "tags": ["themes", "tools", "colours"]
+}

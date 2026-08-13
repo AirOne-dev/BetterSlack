@@ -86,6 +86,17 @@ export interface PluginApi {
   /** Stylesheet owned by this plugin; replaced wholesale on each call. */
   css(text: string): void;
 
+  /**
+   * Write a theme into the user's own mods folder, where it appears in the
+   * panel like any other and survives a restart.
+   *
+   * Deliberately themes only. A theme is CSS and the loader re-validates the
+   * manifest it is handed, so the worst a mod can do here is add an ugly
+   * stylesheet the user can switch off -- which is not true of plugins, and is
+   * why there is no equivalent for them.
+   */
+  saveTheme(options: { id: string; name: string; description: string; css: string }): Promise<void>;
+
   /** Per-plugin persisted settings, stored by the loader in ~/.slackmod. */
   readonly settings: {
     get<T = unknown>(key: string, fallback?: T): T | undefined;
@@ -112,6 +123,7 @@ export interface ApiContext {
   getSettings: () => Settings;
   saveModSettings: (id: string, values: Record<string, unknown>) => Promise<void>;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
+  saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
 }
 
 export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
@@ -188,6 +200,8 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
       ctx.styles.set('plugin', record.id, text);
       cleanups.add(() => ctx.styles.remove('plugin', record.id));
     },
+
+    saveTheme: (options) => ctx.saveTheme(options),
 
     settings: {
       all: () => ctx.getSettings().modSettings[record.id] ?? {},
