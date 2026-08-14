@@ -592,6 +592,7 @@ export class Panel {
     });
 
     return [
+      ...this.renderUpdate(),
       h('p', { class: 'slackmod-hint' }, [
         'SlackMod injects into the Slack renderer over the Chrome DevTools Protocol, carried on a ' +
           'private pipe rather than a debugging port — nothing listens on the network. It does not ' +
@@ -630,6 +631,71 @@ export class Panel {
         h('a', { class: 'c-link', href: contributeUrl, target: '_blank', rel: 'noreferrer' }, [
           'Submit a mod',
         ]),
+      ]),
+    ];
+  }
+
+  /**
+   * Whether this copy is current, and the offer to make it so.
+   *
+   * Nothing is shown while the answer is unknown -- the check goes out on the
+   * network and is allowed to fail -- and nothing is shown when it is up to
+   * date either. A row that says "you are fine" every time you open the panel
+   * is a row nobody reads.
+   */
+  private renderUpdate(): Node[] {
+    const status = this.manager.update;
+    if (!status || !status.behind) return [];
+
+    const detail = status.kind === 'git'
+      ? `${status.commits} commit${status.commits === 1 ? '' : 's'} behind${
+        status.headline ? ` — latest: ${status.headline}` : ''}`
+      : `Version ${status.latest} is out; this is ${this.manager.info.version}.`;
+
+    const status_line = h('span', { class: 'slackmod-status' });
+    const actions: Node[] = [];
+
+    if (status.updatable) {
+      const update = h('button', {
+        class: 'c-button c-button--primary c-button--medium',
+        type: 'button',
+      }, ['Update and restart']);
+      update.addEventListener('click', () => {
+        update.setAttribute('disabled', 'disabled');
+        status_line.textContent = 'Pulling and rebuilding…';
+        void this.manager
+          .updateApp()
+          .then((result) => {
+            status_line.textContent = result.ok
+              ? 'Updated. Slack is restarting…'
+              : `Could not update: ${result.detail}`;
+            if (!result.ok) update.removeAttribute('disabled');
+          })
+          .catch((err: Error) => {
+            status_line.textContent = err.message;
+            update.removeAttribute('disabled');
+          });
+      });
+      actions.push(update);
+    } else {
+      actions.push(h('a', {
+        class: 'c-button c-button--outline c-button--medium',
+        href: repoUrl,
+        target: '_blank',
+        rel: 'noreferrer',
+      }, ['Open GitHub']));
+    }
+    actions.push(status_line);
+
+    return [
+      h('div', { class: 'slackmod-row slackmod-row--notice' }, [
+        h('div', { class: 'slackmod-row__meta' }, [
+          h('div', { class: 'slackmod-row__name' }, ['An update is available']),
+          h('div', { class: 'slackmod-row__desc' }, [
+            status.note ? `${detail} — ${status.note}` : detail,
+          ]),
+        ]),
+        h('div', { class: 'slackmod-row__actions' }, actions),
       ]),
     ];
   }

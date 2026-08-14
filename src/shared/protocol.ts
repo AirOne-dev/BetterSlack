@@ -110,18 +110,40 @@ export type Request =
    * though an <img> loads fine. The loader has no such restriction.
    */
   | { type: 'file.download'; url: string; filename: string }
+  /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
+  | { type: 'app.update' }
   | { type: 'log'; level: 'log' | 'warn' | 'error'; message: string };
 
 /** Push notifications the loader sends to the renderer unprompted. */
 export type Event =
   | { type: 'mod.changed'; id: string; files: ModFiles }
   | { type: 'catalog.changed'; mods: ModRecord[] }
-  | { type: 'settings.changed'; settings: Settings };
+  | { type: 'settings.changed'; settings: Settings }
+  /** Sent once the version check finishes, which is after boot: it goes out on
+   *  the network and nothing should wait for it. */
+  | { type: 'update.status'; status: UpdateStatus };
 
 export interface Envelope {
   /** Correlation id; absent on pushed events. */
   rid?: number;
   payload: unknown;
+}
+
+/**
+ * What the loader knows about this copy being current.
+ *
+ * `behind` is only ever true when the check is certain. Offline, on a fork, on
+ * a branch that tracks nothing: all of those answer "do not know", and the
+ * panel shows nothing rather than a badge nobody can act on.
+ */
+export interface UpdateStatus {
+  kind: 'git' | 'package' | 'unknown';
+  behind: boolean;
+  commits?: number;
+  latest?: string;
+  headline?: string;
+  note?: string;
+  updatable: boolean;
 }
 
 export interface LoaderInfo {
@@ -137,4 +159,6 @@ export interface LoaderInfo {
   slackPath: string;
   /** How the loader talks to Slack, shown in the About tab. */
   transport: string;
+  /** Where this copy lives, so the panel can say what it would update. */
+  root: string;
 }

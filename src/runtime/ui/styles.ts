@@ -160,6 +160,13 @@ export const PANEL_CSS = CODE_CSS + `
 .sm-code__input { caret-color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1); }
 .sm-code__input::placeholder { color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.5); }
 
+/* The update notice: the same row as everything else, marked by an accent edge
+ * rather than a colour of its own, so it reads as important without shouting. */
+.slackmod-row--notice {
+  border-left: 3px solid rgba(var(--sk_highlight, 18, 100, 163), 1);
+  padding-left: 12px;
+}
+
 .slackmod-row {
   display: flex;
   align-items: flex-start;
@@ -460,5 +467,24 @@ export const LAUNCHER_CSS = `
 .p-view_header__actions .slackmod-toolbar-button {
   width: 28px;
   height: 28px;
+}
+
+/* Slack's unread badge, on our own button: the same pill, the same red, the
+ * same place. Anything else in that strip would read as a Slack control that
+ * had gone wrong. */
+.slackmod-launcher { position: relative; }
+.slackmod-launcher__badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: rgba(var(--sk_highlight_accent, 224, 30, 90), 1);
+  color: #fff;
+  font: 700 11px/16px Lato, Slack-Lato, sans-serif;
+  text-align: center;
+  pointer-events: none;
 }
 `;

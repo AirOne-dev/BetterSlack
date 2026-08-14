@@ -84,7 +84,15 @@ async function boot(): Promise<void> {
 
   let unmountUi: (() => void) | undefined;
   const mountUi = () => {
-    unmountUi = installLauncher({ onActivate: () => panel.toggle(), styles: manager.styles });
+    unmountUi = installLauncher({
+      onActivate: () => panel.toggle(),
+      styles: manager.styles,
+      // One thing to be told about: a version behind the one on GitHub. The
+      // answer arrives after boot, so the button is repainted rather than
+      // rebuilt when it does.
+      badge: () => (manager.update?.behind ? 1 : 0),
+      onBadgeChange: (repaint) => manager.onChange(repaint),
+    });
   };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mountUi, { once: true });
