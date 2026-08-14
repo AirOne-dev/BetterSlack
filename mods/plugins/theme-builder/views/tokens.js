@@ -77,6 +77,10 @@ export function createTokensView(ctx) {
       el('span', { class: 'token__value', textContent: value }),
     ]);
     open.addEventListener('click', () => ctx.editToken(token, open, refresh));
+    ui.hoverable(open, {
+      enter: () => ctx.highlightToken(token.name),
+      leave: () => ctx.unhighlight(),
+    });
     item.append(open);
     item.append(own
       ? ui.iconButton('&times;', {

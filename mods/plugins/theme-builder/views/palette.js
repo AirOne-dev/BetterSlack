@@ -37,6 +37,9 @@ export function createPaletteView(ctx) {
 
   /** Open the picker on a role, anchored to the card that was clicked. */
   const edit = (role, anchor) => {
+    // Kept up while the editor is open: the point of the highlight is to see
+    // what is changing, and what is changing is being changed right now.
+    ctx.highlightRole(role.key);
     const colours = ctx.palette();
     ctx.openPicker(anchor, {
       value: formatCss(colours[role.key]),
@@ -52,7 +55,9 @@ export function createPaletteView(ctx) {
         if (role.seed) ctx.state.seeds[role.key] = colour;
         else ctx.state.roleOverrides[role.key] = colour;
         ctx.apply();
+        ctx.highlightRole(role.key);
       },
+      onClose: () => ctx.unhighlight(),
     });
   };
 
@@ -71,6 +76,11 @@ export function createPaletteView(ctx) {
         ]),
       ]);
       card.addEventListener('click', () => edit(role, card));
+      // Hovering a colour lights up everything it paints, in the real client.
+      ui.hoverable(card, {
+        enter: () => ctx.highlightRole(role.key),
+        leave: () => ctx.unhighlight(),
+      });
       seedRow.append(card);
     }
 
@@ -87,6 +97,10 @@ export function createPaletteView(ctx) {
       ]);
       card.setAttribute('data-own', String(own));
       card.addEventListener('click', () => edit(role, card));
+      ui.hoverable(card, {
+        enter: () => ctx.highlightRole(role.key),
+        leave: () => ctx.unhighlight(),
+      });
       roleGrid.append(card);
     }
 

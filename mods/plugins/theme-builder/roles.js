@@ -154,3 +154,58 @@ html, body { background-color: ${hex('bg')}; }
 ${tokenCss(tokens)}${extra ? `\n/* Your own rules. */\n${extra}\n` : ''}`;
 }
 
+
+let roleTargets = null;
+
+function buildRoleTargets() {
+  const sentinels = new Map();
+  const palette = {};
+  ROLES.forEach((role, index) => {
+    // One channel each, so a triplet and a hex both stay unambiguous.
+    palette[role.key] = { r: index + 1, g: 0, b: 0, a: 1 };
+    sentinels.set(formatCss(palette[role.key]), role.key);
+    sentinels.set(formatTriplet(palette[role.key]), role.key);
+  });
+
+  const targets = new Map(ROLES.map((role) => [role.key, { tokens: [], selectors: [] }]));
+  const css = buildThemeCss(palette).replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Blocks, so a declaration can be attributed to the selector above it: a
+  // role reaches Slack both through tokens and through the handful of rules
+  // this file writes directly (the rail, the sidebar, the opaque layer over
+  // <body>), and hovering "Chrome" has to light up the rail either way.
+  for (const [, selectorText, declarations] of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    for (const [, property, value] of declarations.matchAll(/([\w-]+)\s*:\s*([^;!]+)/g)) {
+      const owner = sentinels.get(value.trim());
+      if (!owner) continue;
+      const target = targets.get(owner);
+      if (property.startsWith('--')) target.tokens.push(property);
+      else {
+        for (const part of selectorText.split(',')) {
+          const selector = part.trim();
+          if (selector && !selector.startsWith('@')) target.selectors.push(selector);
+        }
+      }
+    }
+  }
+  return targets;
+}
+
+/**
+ * Everything a role reaches: the tokens it writes, and the selectors this file
+ * paints directly.
+ *
+ * Worked out by generating the stylesheet with a sentinel colour per role and
+ * reading back which declaration got which sentinel, rather than by keeping a
+ * second table beside buildThemeCss. A hand-written map would be correct on the
+ * day it was written and quietly wrong after the next edit above.
+ */
+export function targetsForRole(key) {
+  if (!roleTargets) roleTargets = buildRoleTargets();
+  return roleTargets.get(key) ?? { tokens: [], selectors: [] };
+}
+
+/** Just the token names, for callers that only need those. */
+export function tokensForRole(key) {
+  return targetsForRole(key).tokens;
+}

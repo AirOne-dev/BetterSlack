@@ -274,6 +274,17 @@ section). A first attempt stacked every tool in one scrolling column and it read
 as a list of controls in the order they were written, which is the thing to
 avoid if this is ever rebuilt again.
 
+**Hovering a colour outlines what it paints**, which is `highlight.js`: the
+stylesheet inverted once into token -> selectors, then queried. Two things that
+look like details and are not. State pseudo-classes are *stripped* from a
+selector rather than skipped -- the hover colour only ever appears in a `:hover`
+rule, so skipping them left the role called "the row under the pointer"
+highlighting nothing. And a role reaches Slack through its tokens *and* through
+the handful of rules `roles.js` writes directly (rail, sidebar,
+`.p-theme_background`), so `targetsForRole` returns both; tokens alone left
+Chrome lighting up nothing. Both derived from `buildThemeCss` with a sentinel
+colour per role, never from a second table.
+
 **To see a mod's own window, screenshot it through CDP** -- `SLACKMOD_SHOT=<dir>`
 writes a PNG per attached window. `screencapture` photographs the desktop, and a
 window Slack opened is routinely on another Space or display, so it comes back

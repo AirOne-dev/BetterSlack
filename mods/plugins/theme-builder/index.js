@@ -30,8 +30,9 @@
 
 import { contrast, derivePalette, formatCss, parseColour, readability } from './colour.js';
 import { createPicker } from './picker.js';
-import { buildThemeCss, ROLES } from './roles.js';
+import { buildThemeCss, ROLES, targetsForRole } from './roles.js';
 import { collectTokens, familyOf, formatFor, kindOf, swatch as swatchOf } from './tokens.js';
+import { buildTokenIndex, createHighlighter, elementsUsing } from './highlight.js';
 import { STRINGS } from './strings.js';
 import { createUi } from './ui.js';
 import { createPaletteView } from './views/palette.js';
@@ -44,6 +45,8 @@ import { createCodeView } from './views/code.js';
 export { buildThemeCss, CONTRAST_CHECKS, ROLES } from './roles.js';
 export { matchedRules, variablesIn } from './inspect.js';
 export { collectTokens, kindOf, tokenCss } from './tokens.js';
+export { buildTokenIndex, elementsUsing } from './highlight.js';
+export { targetsForRole, tokensForRole } from './roles.js';
 export {
   contrast, derivePalette, formatCss, formatTriplet, parseColour, readability,
 } from './colour.js';
@@ -102,6 +105,10 @@ export default {
 
       // ------------------------------------------------------------- state
 
+      const highlighter = createHighlighter(document);
+      /** Built on first hover: inverting Slack's sheets is not free. */
+      let tokenIndex = null;
+
       const state = {
         name: t('defaultName'),
         seeds: { bg: parseColour('#1a1a1e'), accent: parseColour('#536aed') },
@@ -137,13 +144,37 @@ export default {
         tokens: [],
         familyLabel,
         swatchOf,
+        targetsForRole,
+
+        /**
+         * Outline everything in the real Slack that these tokens paint.
+         *
+         * This is the answer to "what does Surface actually mean", and it is
+         * only useful while the pointer is on the swatch -- so it is bound to
+         * hover, and cleared the moment the pointer leaves.
+         */
+        highlight(target) {
+          if (!tokenIndex) tokenIndex = buildTokenIndex(document.styleSheets);
+          highlighter.show(elementsUsing(target, tokenIndex, document));
+        },
+        highlightToken: (name) => ctx.highlight({ tokens: [name] }),
+        highlightRole: (key) => ctx.highlight(targetsForRole(key)),
+        unhighlight: () => highlighter.clear(),
+
+        /** Copy, and say so where the click happened rather than in Slack. */
+        async copy(text, node) {
+          const done = await ui.copyText(text);
+          if (!node) return;
+          node.setAttribute('data-copied', String(done));
+          setTimeout(() => node.removeAttribute('data-copied'), 1200);
+        },
         kindOfToken: (name, value) => (kindOf(value) === 'triplet' ? 'triplet' : 'colour'),
         focusSlack: () => { child.blur(); window.focus(); },
         focusBuilder: () => child.focus(),
         copyCss: () => { void api.helpers.copy(themeCss(), t('copied')); },
 
         /** Open the colour editor next to whatever was clicked. */
-        openPicker(anchor, { value, title, onChange, reset }) {
+        openPicker(anchor, { value, title, onChange, reset, onClose }) {
           let handle;
           const picker = createPicker(doc, {
             value,
@@ -151,13 +182,15 @@ export default {
             onChange,
             onReset: reset ? { label: reset.label, run: () => { reset.run(); handle.close(); } } : null,
           });
-          handle = ui.popover(picker.node, anchor);
+          handle = ui.popover(picker.node, anchor, { onClose });
         },
 
         /** The same editor, pointed at one of Slack's own tokens. */
         editToken(token, anchor, after) {
           const kind = ctx.kindOfToken(token.name, token.value);
+          ctx.highlightToken(token.name);
           ctx.openPicker(anchor, {
+            onClose: () => ctx.unhighlight(),
             value: swatchOf(state.tokenOverrides[token.name] ?? token.value),
             title: token.name,
             reset: token.name in state.tokenOverrides
@@ -169,6 +202,7 @@ export default {
               state.tokenOverrides[token.name] = formatFor(kind, colour);
               apply();
               after?.();
+              ctx.highlightToken(token.name);
             },
           });
         },
@@ -282,8 +316,32 @@ export default {
         },
       });
 
+      const reset = ui.button(t('reset'), {
+        variant: 'ghost',
+        title: t('resetHint'),
+        onClick: async () => {
+          const ok = await ui.confirm({
+            title: t('resetTitle'),
+            body: t('resetBody'),
+            action: t('resetConfirm'),
+            cancel: t('cancel'),
+            danger: true,
+          });
+          if (!ok) return;
+          state.seeds = { bg: parseColour('#1a1a1e'), accent: parseColour('#536aed') };
+          state.roleOverrides = {};
+          state.tokenOverrides = {};
+          state.extraCss = '';
+          state.baseCss = '';
+          baseSelect.value = '';
+          status.textContent = t('wasReset');
+          apply();
+        },
+      });
+
       const footer = el('footer', { class: 'actions' }, [
         suspend,
+        reset,
         status,
         ui.button(t('copy'), { variant: 'ghost', onClick: () => ctx.copyCss() }),
         save,
@@ -303,6 +361,7 @@ export default {
 
       child.addEventListener('unload', () => {
         api.css('');
+        highlighter.dispose();
         document.getElementById(OVERLAY_ID)?.remove();
       });
     };
