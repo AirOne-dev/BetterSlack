@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import {
@@ -8,9 +8,10 @@ import {
 } from '../../../tests/harness.mjs';
 import { STRINGS } from './strings.js';
 import plugin, {
-  buildThemeCss, buildTokenIndex, contrast, CONTRAST_CHECKS, derivePalette,
-  elementsUsing, formatTriplet, kindOf, matchedRules, parseColour, readability,
-  ROLES, targetsForRole, tokenCss, variablesIn,
+  buildThemeCss, buildTokenIndex, contrast, CONTRAST_CHECKS, declaredColours,
+  derivePalette, elementsUsing, formatCss, formatTriplet, kindOf, matchedRules,
+  parseColour, readability, ROLES, rolesFrom, stripFrom, targetsForRole,
+  tokenCss, variablesIn,
 } from './index.js';
 
 // The builder reads its own stylesheet with api.assets, so the test api is
@@ -72,42 +73,51 @@ test('the door is a gallery: one card per theme, plus a new one, plus the draft'
   }
 });
 
-test('a theme’s palette is read from its stylesheet, triplets included', async () => {
-  const { paletteOf } = await import('./views/start.js');
+test('a theme is read back into colours, references and triplets included', () => {
   const css = `
-    :root {
-      --dt_color-theme-base-inv-pry: #111114;
-      --dt_color-base-pry: #1a1a1e;
-      --dt_color-base-sec: #222;
-      --dt_color-content-pry: #ededed;
-      --dt_color-content-hgl-1: #a0adf5;
-      --sk_primary_background: 26, 26, 30;
-    }`;
-  assert.deepEqual(paletteOf(css), ['#111114', '#1a1a1e', '#222', '#ededed', '#a0adf5']);
-  assert.deepEqual(paletteOf(css, ['--sk_primary_background']), ['rgb(26, 26, 30)'],
-    'a bare triplet becomes something that can actually be painted');
-
-  // What themes in this repository actually do: name their own colours once and
-  // point Slack's tokens at them. Painting the reference itself would give a
-  // card of invisible bands, since that variable does not exist in the builder.
-  const indirect = `
     :root {
       --dc-rail: #111114;
       --dc-chat: #1a1a1e;
       --dt_color-theme-base-inv-pry: var(--dc-rail);
       --dt_color-base-pry: var(--dc-chat);
       --dt_color-base-sec: var(--dc-missing, #232428);
-      --dt_color-content-pry: var(--dc-loop);
-      --dc-loop: var(--dt_color-content-pry);
+      --dt_color-content-pry: #ededed;
+      --sk_highlight: 83, 106, 237;
+      --dc-loop: var(--dt_color-danger);
+      --dt_color-danger: var(--dc-loop);
     }`;
-  const resolved = paletteOf(indirect);
-  assert.ok(resolved.includes('#111114') && resolved.includes('#1a1a1e'), 'references are followed');
-  assert.ok(resolved.includes('#232428'), 'and a var() fallback is used when the name is missing');
-  assert.ok(!resolved.some((colour) => colour.includes('var(')), 'nothing unpaintable survives');
 
-  // A theme that sets none of them still has colours in it; an empty card
-  // would be worse than an approximate one.
-  assert.deepEqual(paletteOf('.a:focus-visible { outline: 2px solid #6cb6ff; }'), ['#6cb6ff']);
+  const colours = declaredColours(css);
+  assert.equal(colours.get('--dt_color-base-pry'), '#1a1a1e', 'a reference is followed');
+  assert.equal(colours.get('--dt_color-base-sec'), '#232428', 'a var() fallback is used');
+  assert.equal(colours.get('--sk_highlight'), 'rgb(83, 106, 237)', 'a bare triplet becomes paintable');
+  assert.equal(colours.has('--dt_color-danger'), false, 'and a cycle resolves to nothing at all');
+
+  const roles = rolesFrom(css);
+  assert.equal(formatCss(roles.bg), '#1a1a1e');
+  assert.equal(formatCss(roles.chrome), '#111114');
+  assert.equal(formatCss(roles.accent), '#536aed');
+  assert.equal('selected' in roles, false, 'a role the theme is silent about is left out');
+});
+
+test('every theme in this repository reads back into a palette', () => {
+  // The gallery cards and "start from" both depend on this, and a theme that
+  // reads back as nothing is a card of empty bands and a base that changes no
+  // colours -- which is exactly the bug this was written after.
+  const themes = readdirSync(new URL('../../themes', import.meta.url));
+  for (const id of themes) {
+    const css = readFileSync(new URL(`../../themes/${id}/theme.css`, import.meta.url), 'utf8');
+    const roles = rolesFrom(css);
+    const strip = stripFrom(css);
+    if (id === 'focus-rings') {
+      // The one theme that sets no colour tokens at all: it is about focus
+      // outlines. It still has to produce something to show.
+      assert.ok(strip.length > 0, `${id} must still colour its card`);
+      continue;
+    }
+    assert.ok(Object.keys(roles).length >= 8, `${id} should read back into most of the twelve roles`);
+    assert.ok(strip.length >= 3, `${id} should fill a card`);
+  }
 });
 
 test('every view the rail offers is a file that exists and exports its builder', async () => {

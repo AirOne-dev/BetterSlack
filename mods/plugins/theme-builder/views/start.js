@@ -17,63 +17,8 @@
 // door is shown every time, draft or no draft: "carry on" has to be a choice,
 // or the window can never be used to start anything.
 
-/** The tokens worth showing on a card, in the order they read best. */
-const STRIP = [
-  '--dt_color-theme-base-inv-pry',   // the rail
-  '--dt_color-base-pry',             // the conversation
-  '--dt_color-base-sec',             // raised surfaces
-  '--dt_color-content-pry',          // text
-  '--dt_color-content-hgl-1',        // links, mentions
-];
-
-/** Something that can actually be painted, rather than something CSS-shaped. */
-const PAINTABLE = /^(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|[a-z]{3,20}$)/;
-
-/**
- * The colours a theme paints with, straight out of its stylesheet.
- *
- * Two things make this less obvious than it looks. Themes rarely write a colour
- * into Slack's tokens -- they write `var(--dc-rail)`, their own name for it --
- * so the references have to be followed inside the file before anything can be
- * painted. And `--sk_*` holds a bare "r, g, b" triplet, which is not a colour
- * until it is wrapped.
- *
- * Anything still unresolved after that is dropped: a band painted
- * `var(--dc-rail)` in a window where that variable does not exist is an
- * invisible band, which reads as a theme with no colours in it.
- */
-export function paletteOf(css, wanted = STRIP) {
-  const declared = new Map();
-  for (const [, name, value] of css.matchAll(/(--[\w-]+)\s*:\s*([^;!}]+)/g)) {
-    const text = value.trim();
-    if (text) declared.set(name, text);
-  }
-
-  const resolve = (value, depth = 0) => {
-    if (depth > 4) return null; // a cycle, or a reference to something absent
-    const text = value.trim();
-    if (/^\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}$/.test(text)) return `rgb(${text})`;
-    const reference = /^var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)$/.exec(text);
-    if (reference) {
-      const target = declared.get(reference[1]);
-      if (target) return resolve(target, depth + 1);
-      return reference[2] ? resolve(reference[2], depth + 1) : null;
-    }
-    return PAINTABLE.test(text) ? text : null;
-  };
-
-  const strip = wanted
-    .map((name) => (declared.has(name) ? resolve(declared.get(name)) : null))
-    .filter(Boolean);
-  if (strip.length) return strip;
-
-  // A theme that names none of them still has colours in it -- focus-rings sets
-  // outlines and nothing else, and some write everything through their own
-  // variables. What is literally in the file is a truer answer than a blank
-  // card.
-  const literals = [...css.matchAll(/#[0-9a-fA-F]{6}\b/g)].map((match) => match[0]);
-  return [...new Set([...strip, ...literals])].slice(0, 5);
-}
+import { stripFrom } from '../read-theme.js';
+import { formatCss } from '../colour.js';
 
 export function createStartView(ctx) {
   const { ui, t } = ctx;
@@ -164,7 +109,7 @@ export function createStartView(ctx) {
       const placeholder = themeCard(theme, []);
       gallery.append(placeholder);
       void ctx.api.themes.source(theme.id)
-        .then((css) => placeholder.replaceWith(themeCard(theme, paletteOf(css))))
+        .then((css) => placeholder.replaceWith(themeCard(theme, stripFrom(css).map(formatCss))))
         .catch(() => undefined); // a theme that will not read keeps its card, without colours
     }
   };
