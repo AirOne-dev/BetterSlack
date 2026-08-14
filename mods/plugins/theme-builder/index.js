@@ -229,7 +229,7 @@ export default {
             extraCss: draft.extraCss ?? '',
           });
           nameInput.value = state.name;
-          void setBase(draft.base ?? '').then(() => enterBuilder());
+          void setBase(draft.base ?? '', { takeColours: false }).then(() => enterBuilder());
         },
 
         /** Open the colour editor next to whatever was clicked. */
@@ -294,19 +294,24 @@ export default {
        * Roles the theme says nothing about stay derived, so a theme that only
        * sets a background still gets a coherent palette around it.
        */
-      const setBase = async (id) => {
+      const setBase = async (id, { takeColours = true } = {}) => {
         state.base = id;
         baseSelect.value = id;
         state.baseCss = id ? await api.themes.source(id) : '';
 
-        // With no base, "Slack's own colours" is meant literally: the app is
-        // showing them right now, since the builder holds the user's themes
-        // back while it is open.
-        const roles = id ? rolesFrom(state.baseCss) : rolesFromClient(document);
-        const { bg, accent, ...rest } = roles;
-        if (bg) state.seeds.bg = bg;
-        if (accent) state.seeds.accent = accent;
-        state.roleOverrides = rest;
+        // Not when a draft is being restored: the palette in it *is* the work,
+        // and reading the base over the top would throw away everything the
+        // draft was saved for while looking like it had loaded correctly.
+        if (takeColours) {
+          // With no base, "Slack's own colours" is meant literally: the app is
+          // showing them right now, since the builder holds the user's themes
+          // back while it is open.
+          const roles = id ? rolesFrom(state.baseCss) : rolesFromClient(document);
+          const { bg, accent, ...rest } = roles;
+          if (bg) state.seeds.bg = bg;
+          if (accent) state.seeds.accent = accent;
+          state.roleOverrides = rest;
+        }
         apply();
       };
 

@@ -120,6 +120,36 @@ test('every theme in this repository reads back into a palette', () => {
   }
 });
 
+test('restoring a draft never reads the base theme over the work', () => {
+  // The trap this guards: choosing a base takes that theme's colours into the
+  // palette, which is right when you pick one and catastrophic when a draft is
+  // being restored -- the palette in the draft *is* the work, and reading the
+  // base over it looks exactly like a successful load.
+  // Sliced between the two members rather than matched: a lazy brace match
+  // stops inside the first nested object and reads the wrong half.
+  const shell = FILES['index.js'];
+  const between = (from, to) => shell.slice(shell.indexOf(from), shell.indexOf(to));
+  assert.match(between('resume: (draft)', 'openPicker('), /takeColours: false/,
+    'a resumed draft keeps its own palette');
+  assert.doesNotMatch(between('begin: ({ base, name })', 'resume: (draft)'), /takeColours: false/,
+    'but starting fresh does take the base theme’s colours');
+});
+
+test('the draft holds everything the builder would lose', () => {
+  // Anything missing here comes back as a default and reads as work that
+  // vanished. Checked against what the state actually carries.
+  const shell = FILES['index.js'];
+  const save = shell.slice(shell.indexOf("api.settings.set('draft'"), shell.indexOf('}, 400);'));
+  for (const field of ['name', 'seeds', 'roleOverrides', 'tokenOverrides', 'base', 'extraCss', 'savedAt']) {
+    assert.match(save, new RegExp(`\\b${field}:`), `the draft must carry ${field}`);
+  }
+  const restore = shell.slice(shell.indexOf('resume: (draft)'), shell.indexOf('openPicker('));
+  for (const field of ['name', 'seeds', 'roleOverrides', 'tokenOverrides', 'extraCss']) {
+    assert.match(restore, new RegExp(`draft\\.${field}`), `and put ${field} back`);
+  }
+  assert.match(restore, /draft\.base/);
+});
+
 test('every view the rail offers is a file that exists and exports its builder', async () => {
   // The rail builds each view lazily, so a typo in one of these paths is a
   // section that does nothing when clicked and nothing at all before that.
