@@ -44,12 +44,41 @@ const ICON = `
 export interface LauncherOptions {
   onActivate: () => void;
   styles: StyleManager;
+  /** Something to be told about, drawn as a dot on the button. */
+  badge?: () => number;
+  /** Called with a repaint function, so the badge can follow a later answer. */
+  onBadgeChange?: (repaint: () => void) => void;
 }
 
-export function installLauncher({ onActivate, styles }: LauncherOptions): Cleanup {
+export function installLauncher({ onActivate, styles, badge, onBadgeChange }: LauncherOptions): Cleanup {
   styles.set('plugin', '__launcher', LAUNCHER_CSS);
 
   const shortcut = navigator.platform.startsWith('Mac') ? '⌘⇧M' : 'Ctrl+Shift+M';
+
+  const buttons = new Set<HTMLElement>();
+
+  /**
+   * The count, on the button, in Slack's own badge shape.
+   *
+   * Repainted rather than rebuilt: the version check answers seconds after
+   * boot, and remounting the button then would take it out from under a
+   * pointer that is already on it.
+   */
+  const paintBadge = (button: HTMLElement) => {
+    const count = badge?.() ?? 0;
+    let dot = button.querySelector<HTMLElement>('.slackmod-launcher__badge');
+    if (!count) {
+      dot?.remove();
+      button.removeAttribute('data-badged');
+      return;
+    }
+    if (!dot) {
+      dot = h('span', { class: 'slackmod-launcher__badge', 'aria-hidden': 'true' });
+      button.append(dot);
+    }
+    dot.textContent = String(count);
+    button.setAttribute('data-badged', 'true');
+  };
 
   const makeButton = (className: string, placement: 'right' | 'top') => {
     const button = h('button', {
@@ -59,6 +88,8 @@ export function installLauncher({ onActivate, styles }: LauncherOptions): Cleanu
       'data-qa': 'slackmod_button',
     });
     button.innerHTML = ICON;
+    buttons.add(button);
+    paintBadge(button);
     button.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -96,6 +127,13 @@ export function installLauncher({ onActivate, styles }: LauncherOptions): Cleanu
       return h('div', { class: 'p-peek_trigger', role: 'none' }, [makeButton(RAIL_BUTTON_CLASS, 'right')]);
     },
   );
+
+  onBadgeChange?.(() => {
+    for (const button of buttons) {
+      if (button.isConnected) paintBadge(button);
+      else buttons.delete(button);
+    }
+  });
 
   // Cmd+Shift+M on macOS, Ctrl+Shift+M elsewhere.
   const unbindShortcut = onShortcut(

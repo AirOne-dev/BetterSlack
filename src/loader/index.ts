@@ -5,6 +5,7 @@
 // (touch the filesystem, run code the page CSP would refuse) is served from
 // here over a Runtime binding.
 
+import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -12,6 +13,7 @@ import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo 
 import { Catalog, parseManifest } from './catalog.js';
 import { downloadFile } from './download.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack } from './slack.js';
+import { applyUpdate, checkForUpdate } from './update.js';
 // Shared with the runtime so a theme's @import behaves the same in Slack's
 // other windows as it does in the client.
 import { inlineCssImports } from '../runtime/themes.js';
@@ -33,6 +35,7 @@ import {
   type ModFiles,
   type Request,
   type Settings,
+  type UpdateStatus,
 } from '../shared/protocol.js';
 
 /** SLACKMOD_VERBOSE=1 forwards everything the page logs, not only its errors. */
@@ -43,6 +46,10 @@ const REPO_ROOT = path.resolve(HERE, '..');
 const BUILTIN_MODS_ROOT = path.join(REPO_ROOT, 'mods');
 const RUNTIME_BUNDLE = path.join(HERE, 'runtime.js');
 const VERSION = '2.0.0';
+
+/** Where a copy of this checks whether it is current. */
+const REPO = 'AirOne-dev/SlackMod';
+const DEFAULT_BRANCH = 'master';
 
 interface Args {
   verbose: boolean;
@@ -85,6 +92,8 @@ class Loader {
   private auxiliary = new Map<string, CdpSession>();
   private runtimeSource = '';
   private info!: LoaderInfo;
+  /** Filled in once the version check answers; undefined until then. */
+  private update: UpdateStatus | undefined;
 
   constructor(
     private readonly connection: CdpConnection,
@@ -107,6 +116,7 @@ class Loader {
       userModsRoot: USER_MODS_ROOT,
       slackPath: this.slackPath,
       transport: 'CDP pipe (no network port)',
+      root: REPO_ROOT,
     };
 
     const mods = this.catalog.list();
@@ -114,6 +124,24 @@ class Loader {
       `[slackmod] ${mods.filter((m) => m.type === 'theme').length} theme(s), ` +
         `${mods.filter((m) => m.type === 'plugin').length} plugin(s) available`,
     );
+
+    /*
+     * The version check goes out on the network, so nothing waits for it: it
+     * runs beside the attach loop and pushes its answer when it has one. A
+     * renderer that attaches later gets it in the boot payload instead.
+     */
+    void checkForUpdate({ root: REPO_ROOT, version: VERSION, repo: REPO, branch: DEFAULT_BRANCH })
+      .then((status) => {
+        this.update = status;
+        if (status.behind) {
+          console.log(
+            `[slackmod] an update is available${status.commits ? ` (${status.commits} commit(s))` : ''}` +
+              `${status.headline ? `: ${status.headline}` : ''}`,
+          );
+        }
+        this.broadcast({ type: 'update.status', status });
+      })
+      .catch(() => undefined);
 
     this.catalog.watch(async (changedIds) => {
       const settings = await readSettings();
@@ -452,7 +480,7 @@ class Loader {
       });
       if (files !== null) sources[id] = files;
     }
-    const boot = { version: VERSION, settings, mods, sources, info: this.info };
+    const boot = { version: VERSION, settings, mods, sources, info: this.info, update: this.update };
     return `window.__SLACKMOD_BOOT__ = ${JSON.stringify(boot)};\n${this.runtimeSource}`;
   }
 
@@ -527,6 +555,34 @@ class Loader {
       case 'file.download': {
         const result = await downloadFile(request.url, request.filename);
         console.log(`[slackmod] saved ${result.path} (${Math.round(result.bytes / 1024)} kB)`);
+        return result;
+      }
+
+      case 'app.update': {
+        /*
+         * Pull, rebuild, and come back as the new version.
+         *
+         * The loader is itself one of the bundles being replaced, so it cannot
+         * pick up the update in place: it stops Slack, spawns a detached copy
+         * of the new entry point and exits. The replacement launches Slack
+         * again, which is why the answer goes back before any of that starts --
+         * the renderer is about to go away with it.
+         */
+        const result = await applyUpdate(REPO_ROOT);
+        if (!result.ok) return result;
+
+        setTimeout(() => {
+          console.log('[slackmod] updated; restarting');
+          void stopSlack().finally(() => {
+            const entry = path.join(REPO_ROOT, 'bin/slackmod.mjs');
+            spawn(process.execPath, [entry], {
+              cwd: REPO_ROOT,
+              detached: true,
+              stdio: 'ignore',
+            }).unref();
+            process.exit(0);
+          });
+        }, 400);
         return result;
       }
 

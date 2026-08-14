@@ -7,6 +7,7 @@ import {
   type ModFiles,
   type ModRecord,
   type Settings,
+  type UpdateStatus,
 } from '../shared/protocol.js';
 import { createPluginApi } from './api.js';
 import { PluginHost } from './plugins.js';
@@ -50,6 +51,8 @@ export interface BootPayload {
   mods: ModRecord[];
   sources: Record<string, ModFiles>;
   info: LoaderInfo;
+  /** Absent when the loader's version check has not answered yet. */
+  update?: UpdateStatus;
 }
 
 export class ModManager {
@@ -59,6 +62,8 @@ export class ModManager {
   private mods: ModRecord[];
   private sources: Record<string, ModFiles>;
   private listeners = new Set<() => void>();
+  /** What the loader last said about this copy being current. */
+  update: UpdateStatus | undefined;
   private headObserver?: MutationObserver;
 
   constructor(
@@ -68,6 +73,7 @@ export class ModManager {
     this.settings = boot.settings;
     this.mods = boot.mods;
     this.sources = { ...boot.sources };
+    this.update = boot.update;
     bridge.onEvent((event) => void this.onLoaderEvent(event));
   }
 
@@ -88,6 +94,11 @@ export class ModManager {
   }
   isInstalled(id: string): boolean {
     return this.settings.installed.includes(id);
+  }
+
+  /** Pull, rebuild and restart. The window goes away with the loader. */
+  updateApp(): Promise<{ ok: boolean; detail: string }> {
+    return this.bridge.request<{ ok: boolean; detail: string }>({ type: 'app.update' });
   }
 
   /** Plugin ids a theme needs to look right; empty for almost every mod. */
@@ -334,6 +345,13 @@ export class ModManager {
   }
 
   private async onLoaderEvent(event: PushEvent): Promise<void> {
+    if (event.type === 'update.status') {
+      // It arrives after boot, because it went out on the network. Notifying
+      // is what puts the badge on the button without anything polling for it.
+      this.update = event.status;
+      this.notify();
+      return;
+    }
     if (event.type === 'catalog.changed') {
       this.mods = event.mods;
       this.notify();
