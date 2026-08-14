@@ -177,6 +177,11 @@ export class Panel {
 
   private renderBody(body: HTMLElement): void {
     const mods = this.manager.list();
+    // Above whatever tab is open, not tucked behind About: a notice you have to
+    // go looking for is a notice nobody finds. It renders as nothing at all
+    // unless this copy is genuinely behind.
+    body.append(...this.renderUpdate());
+
     switch (this.tab) {
       case 'themes':
         body.append(...this.renderShelves(mods.filter((m) => m.type === 'theme'), 'theme'));
@@ -592,7 +597,6 @@ export class Panel {
     });
 
     return [
-      ...this.renderUpdate(),
       h('p', { class: 'slackmod-hint' }, [
         'SlackMod injects into the Slack renderer over the Chrome DevTools Protocol, carried on a ' +
           'private pipe rather than a debugging port — nothing listens on the network. It does not ' +
