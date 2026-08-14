@@ -19,7 +19,7 @@
     "test:mod": "node scripts/test-mods.mjs",
     "check-structure": "node scripts/check-structure.mjs",
     "changed-mods": "node scripts/changed-mods.mjs",
-    "test:core": "node --test tests/download.test.mjs tests/requires.test.mjs tests/i18n.test.mjs tests/mod-files.test.mjs"
+    "test:core": "node --test tests/download.test.mjs tests/requires.test.mjs tests/i18n.test.mjs tests/mod-files.test.mjs tests/mount.test.mjs"
   },
   "engines": {
     "node": ">=18"

@@ -79,7 +79,31 @@ export function keepMounted(
   const { position = 'append', before } =
     typeof options === 'string' ? { position: options, before: undefined } : options;
   let disposed = false;
-  let remounts: number[] = [];
+  let attempts: number[] = [];
+
+  /**
+   * True while this mount is still allowed to touch the DOM.
+   *
+   * Every insertion and every move is counted, because both are mutations and
+   * either can be answered by whatever else owns the container. Past the limit
+   * the mount gives up and says which node and which container, rather than
+   * spinning: a missing button is a bug report, a frozen Slack is not.
+   */
+  const countAttempt = (): boolean => {
+    const now = Date.now();
+    attempts = attempts.filter((t) => now - t < REMOUNT_WINDOW_MS);
+    attempts.push(now);
+    if (attempts.length <= REMOUNT_LIMIT) return true;
+    disposed = true;
+    observer.disconnect();
+    console.error(
+      `[slackmod] giving up on "${nodeId}": it moved or was re-added ` +
+        `${attempts.length} times in ${REMOUNT_WINDOW_MS}ms, so something else owns ` +
+        `"${containerSelector}". Anchor it with \`before\` or pick another container.`,
+    );
+    document.getElementById(nodeId)?.remove();
+    return false;
+  };
 
   const mount = () => {
     if (disposed) return;
@@ -89,30 +113,27 @@ export function keepMounted(
 
     const current = document.getElementById(nodeId);
     if (current && container.contains(current)) {
-      // Already mounted, but possibly in the wrong place: when two mods both
-      // anchor on the same neighbour, whichever mounted first was placed before
-      // the other one existed. Correct the position rather than leaving it.
-      if (anchor && anchor !== current && current.nextElementSibling !== anchor) {
-        anchor.before(current);
-      }
+      /*
+       * Already mounted, but possibly on the wrong side of its anchor.
+       *
+       * "Wrong" means *after* the anchor, and nothing else. Asking to be its
+       * immediate previous sibling looks equivalent and is not: two mods
+       * anchored on the same neighbour then each keep shoving the other aside,
+       * every shove is a mutation, every mutation runs this again, and the
+       * renderer never gets the thread back -- a grey window with no error,
+       * which is exactly how this was found. Both being somewhere before the
+       * anchor satisfies both, so they settle.
+       */
+      const misplaced =
+        anchor !== null &&
+        anchor !== current &&
+        (current.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING) === 0;
+      if (misplaced && countAttempt()) anchor!.before(current);
       return;
     }
 
     // Everything below is a real remount, so count it before doing it.
-    const now = Date.now();
-    remounts = remounts.filter((t) => now - t < REMOUNT_WINDOW_MS);
-    remounts.push(now);
-    if (remounts.length > REMOUNT_LIMIT) {
-      disposed = true;
-      observer.disconnect();
-      console.error(
-        `[slackmod] giving up on "${nodeId}": it was removed and re-added ` +
-          `${remounts.length} times in ${REMOUNT_WINDOW_MS}ms, so something else owns ` +
-          `"${containerSelector}". Anchor it with \`before\` or pick another container.`,
-      );
-      document.getElementById(nodeId)?.remove();
-      return;
-    }
+    if (!countAttempt()) return;
 
     current?.remove();
     const node = factory();
