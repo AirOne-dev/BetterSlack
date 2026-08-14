@@ -6,9 +6,10 @@ import path from 'node:path';
 import {
   assertPluginShape, createTestApi, installDom, readModFiles,
 } from '../../../tests/harness.mjs';
+import { STRINGS } from './strings.js';
 import plugin, {
-  buildThemeCss, contrast, derivePalette, formatTriplet, kindOf, matchedRules,
-  parseColour, readability, tokenCss, variablesIn,
+  buildThemeCss, contrast, CONTRAST_CHECKS, derivePalette, formatTriplet, kindOf,
+  matchedRules, parseColour, readability, ROLES, tokenCss, variablesIn,
 } from './index.js';
 
 // The builder reads its own stylesheet with api.assets, so the test api is
@@ -19,6 +20,49 @@ const createApi = (options) => createTestApi({ ...options, files: FILES });
 const ROLES_FIXTURE = derivePalette(parseColour('#101014'), parseColour('#4f46e5'));
 
 test('has the shape the runtime loads', () => assertPluginShape(assert, plugin));
+
+test('every view the rail offers is a file that exists and exports its builder', async () => {
+  // The rail builds each view lazily, so a typo in one of these paths is a
+  // section that does nothing when clicked and nothing at all before that.
+  for (const [name, builder] of [
+    ['palette', 'createPaletteView'], ['inspect', 'createInspectView'],
+    ['tokens', 'createTokensView'], ['code', 'createCodeView'],
+  ]) {
+    const module = await import(`./views/${name}.js`);
+    assert.equal(typeof module[builder], 'function', `views/${name}.js must export ${builder}`);
+  }
+  const shell = FILES['index.js'];
+  assert.match(shell, /createPaletteView|createInspectView/, 'and the shell imports them');
+});
+
+test('every string the interface asks for is one the dictionaries have', () => {
+  // A missing key renders as the key -- by design, since a blank is worse --
+  // which means it ships looking like "tokensHint" unless something checks.
+  const used = new Set();
+  for (const [name, source] of Object.entries(FILES)) {
+    if (!name.endsWith('.js') || name === 'strings.js') continue;
+    for (const [, key] of source.matchAll(/\bt\('([a-zA-Z0-9_]+)'/g)) used.add(key);
+  }
+  // Keys built from a role or family id, which the loop above cannot see.
+  for (const role of ROLES) {
+    used.add(`role_${role.key}`);
+    used.add(`role_${role.key}_hint`);
+  }
+  for (const [, , label] of CONTRAST_CHECKS) used.add(label);
+
+  const missing = [...used].filter((key) => !(key in STRINGS.en));
+  assert.deepEqual(missing, [], 'these are asked for and never defined');
+});
+
+test('the window wears Slack’s design system rather than the theme being edited', () => {
+  // A workbench repainted by the work becomes unreadable exactly when you have
+  // just written something wrong, so the chrome is fixed.
+  const css = FILES['window.css'];
+  assert.match(css, /--primary: #007a5a/, 'Slack’s confirm green');
+  assert.match(css, /Lato, Slack-Lato/, 'and its type stack');
+  assert.doesNotMatch(css, /var\(--dt_color/, 'never Slack’s live tokens');
+  assert.doesNotMatch(css, /var\(--sk_/, 'nor the legacy family');
+});
 
 test('maps the twelve roles across all four token families', () => {
   const css = buildThemeCss(ROLES_FIXTURE, 'Test');
@@ -156,10 +200,9 @@ test('names the variables a set of rules depends on', () => {
 test('a base theme is applied under the roles, so overriding one works', () => {
   // Order is the whole feature, and it is one line: base, then the derived
   // roles, then tokens taken over by hand, then whatever was typed. Last wins.
-  const source = FILES['index.js'];
-  const build = source.match(/const themeCss = \(\) =>[\s\S]*?;\n/)[0];
-  assert.match(build, /\$\{baseCss\}[\s\S]*buildThemeCss/);
-  assert.match(build, /extraCss, tokenOverrides/, 'and the two override layers reach the CSS');
+  const build = FILES['index.js'].match(/const themeCss = \(\) =>[\s\S]*?;\n/)[0];
+  assert.match(build, /state\.baseCss[\s\S]*buildThemeCss/);
+  assert.match(build, /state\.extraCss, state\.tokenOverrides/, 'both override layers reach the CSS');
 });
 
 test('a token is written the way its own family reads it', () => {

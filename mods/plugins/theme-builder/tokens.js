@@ -101,7 +101,12 @@ export function collectTokens(doc = document) {
     tokens.push({ name, value, kind, family: familyOf(name).key });
   }
 
-  return tokens.sort((a, b) => a.name.localeCompare(b.name));
+  // Family first, name second. Alphabetical alone put whatever the enabled
+  // theme happens to call its own variables at the top of the list, which is
+  // the least likely thing anyone opened this looking for.
+  const rank = new Map(FAMILIES.map((family, index) => [family.key, index]));
+  return tokens.sort((a, b) =>
+    (rank.get(a.family) - rank.get(b.family)) || a.name.localeCompare(b.name));
 }
 
 /** Free-text filter over names, matching every word, in any order. */

@@ -5,21 +5,18 @@
 // is full of translucent colours -- every hover state is one -- so a picker
 // without alpha cannot express what the app already does.
 //
-// Built against a document rather than the global one: this runs in the
-// builder's window, which is a separate document with its own event loop.
+// It is a plain node with no chrome of its own: ui.popover puts it next to
+// whatever was clicked, so the colour being edited stays in view while it
+// changes. Built against a document rather than the global one, since this runs
+// in the builder's window.
 
 import { formatCss, fromHsv, parseColour, toHsv } from './colour.js';
 
-export const CHECKER =
-  'linear-gradient(45deg,rgba(0,0,0,.25) 25%,transparent 25%),' +
-  'linear-gradient(-45deg,rgba(0,0,0,.25) 25%,transparent 25%),' +
-  'linear-gradient(45deg,transparent 75%,rgba(0,0,0,.25) 75%),' +
-  'linear-gradient(-45deg,transparent 75%,rgba(0,0,0,.25) 75%)';
-
-/** Paint `colour` over the checkerboard, so its transparency is visible. */
-export function paintSwatch(node, css) {
-  node.style.backgroundImage = `linear-gradient(${css}, ${css}), ${CHECKER}`;
-}
+const CHECKER =
+  'linear-gradient(45deg,rgba(0,0,0,.28) 25%,transparent 25%),' +
+  'linear-gradient(-45deg,rgba(0,0,0,.28) 25%,transparent 25%),' +
+  'linear-gradient(45deg,transparent 75%,rgba(0,0,0,.28) 75%),' +
+  'linear-gradient(-45deg,transparent 75%,rgba(0,0,0,.28) 75%)';
 
 /** Pointer dragging over a strip or a square, clamped to it, in 0..1. */
 function drag(surface, onMove) {
@@ -45,16 +42,17 @@ function drag(surface, onMove) {
 }
 
 /**
- * Build the picker.
+ * Build a picker, already pointed at `value`.
  *
  * `onChange` fires on every drag frame, not on release: the point of the tool
  * is that Slack repaints while the colour is moving, so the value has to be
- * live. Returns { node, show, colour }.
+ * live.
  */
-export function createPicker(doc, onChange) {
+export function createPicker(doc, { value, title, onChange, onReset }) {
   const el = (tag, props = {}) => Object.assign(doc.createElement(tag), props);
 
   const node = el('div', { className: 'picker' });
+  const head = el('div', { className: 'picker__head' });
   const sv = el('div', { className: 'sv' });
   const svKnob = el('div', { className: 'knob' });
   sv.append(svKnob);
@@ -64,10 +62,16 @@ export function createPicker(doc, onChange) {
   const alpha = el('div', { className: 'slider' });
   const alphaKnob = el('div', { className: 'knob' });
   alpha.append(alphaKnob);
-  const field = el('input', { type: 'text', spellcheck: false, className: 'hex' });
-  const label = el('div', { className: 'picker-label' });
+  const field = el('input', { type: 'text', spellcheck: false, className: 'input picker__hex' });
+  const label = el('div', { className: 'picker__title', textContent: title });
+  head.append(label);
+  if (onReset) {
+    const reset = el('button', { type: 'button', className: 'picker__reset', textContent: onReset.label });
+    reset.addEventListener('click', () => onReset.run());
+    head.append(reset);
+  }
 
-  node.append(label, sv, hue, alpha, field);
+  node.append(head, sv, hue, alpha, field);
 
   let colour = { r: 0, g: 0, b: 0, a: 1 };
   // Hue and saturation have no meaning at the extremes -- every black is hue 0,
@@ -115,22 +119,12 @@ export function createPicker(doc, onChange) {
     emit(parsed);
   });
 
-  return {
-    node,
-    /** Point the picker at a value, with a caption saying what is being edited. */
-    show(value, caption) {
-      const parsed = parseColour(value) ?? { r: 0, g: 0, b: 0, a: 1 };
-      colour = parsed;
-      const next = toHsv(parsed);
-      // Only take hue and saturation when they mean something.
-      hsv = { h: next.v === 0 || next.s === 0 ? hsv.h : next.h, s: next.v === 0 ? hsv.s : next.s, v: next.v };
-      label.textContent = caption;
-      node.setAttribute('data-open', 'true');
-      draw();
-    },
-    hide() {
-      node.setAttribute('data-open', 'false');
-    },
-    colour: () => colour,
-  };
+  const start = parseColour(value) ?? { r: 0, g: 0, b: 0, a: 1 };
+  colour = start;
+  hsv = toHsv(start);
+  draw();
+  // Focused on open, so the hex can be pasted straight in without a click.
+  queueMicrotask(() => field.focus({ preventScroll: true }));
+
+  return { node, colour: () => colour };
 }

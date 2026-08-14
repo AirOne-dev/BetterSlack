@@ -268,6 +268,18 @@ unreadable exactly when you have just written something wrong. `window.css`
 mirrors Slack's design system by hand instead -- separate window, so none of
 Slack's stylesheet reaches it.
 
+Laid out like Slack's preferences: a rail of sections, one view at a time, a bar
+of actions along the bottom (`ui.js` holds the primitives, `views/` a file per
+section). A first attempt stacked every tool in one scrolling column and it read
+as a list of controls in the order they were written, which is the thing to
+avoid if this is ever rebuilt again.
+
+**To see a mod's own window, screenshot it through CDP** -- `SLACKMOD_SHOT=<dir>`
+writes a PNG per attached window. `screencapture` photographs the desktop, and a
+window Slack opened is routinely on another Space or display, so it comes back
+without the window in it. This is how the builder's interface was looked at
+while it was being built.
+
 `tokens.js` reads the client's own custom properties rather than shipping a
 list: there are ~525 colour tokens in Slack 4.51, they change between releases,
 and the only honest source is the page. Two families take bare `r, g, b`
