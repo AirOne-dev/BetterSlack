@@ -268,6 +268,17 @@ unreadable exactly when you have just written something wrong. `window.css`
 mirrors Slack's design system by hand instead -- separate window, so none of
 Slack's stylesheet reaches it.
 
+It opens on a **door** (`views/start.js`): new theme, open one you have, or
+carry on. Work is kept through `api.settings` -- the loader's file on disk --
+not `localStorage`, which is Slack's storage and is wiped by an app update.
+
+**While the builder is open it holds the user's themes back**
+(`api.themes.suspend`, which detaches the whole `theme` layer without touching
+the settings). Without that, choosing a base changes nothing you can see: the
+theme that is switched on is still painting underneath, and the builder's job is
+to show what *it* is painting. `StyleManager.reattachOrphans` skips a suppressed
+layer, or Slack's next touch of `<head>` puts it straight back.
+
 Laid out like Slack's preferences: a rail of sections, one view at a time, a bar
 of actions along the bottom (`ui.js` holds the primitives, `views/` a file per
 section). A first attempt stacked every tool in one scrolling column and it read

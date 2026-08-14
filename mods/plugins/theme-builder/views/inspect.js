@@ -102,7 +102,12 @@ export function createInspectView(ctx) {
     body.append(el('h3', { class: 'section-title', textContent: t('picked') }));
 
     const selector = describe(picked);
-    const identity = el('div', { class: 'identity' }, [copyable(selector, { title: t('copySelector') })]);
+    const selectorChip = copyable(selector, { title: t('copySelector') });
+    ui.hoverable(selectorChip, {
+      enter: () => ctx.highlightElement(picked),
+      leave: () => ctx.unhighlight(),
+    });
+    const identity = el('div', { class: 'identity' }, [selectorChip]);
     const qa = picked.getAttribute('data-qa');
     if (qa) {
       identity.append(el('span', { class: 'identity__note', textContent: t('qaStable') }));
@@ -119,6 +124,12 @@ export function createInspectView(ctx) {
         const hashed = /__[A-Za-z0-9]{5}$/.test(name);
         const chip = copyable(`.${name}`, { title: hashed ? t('classVolatile') : t('classStable') });
         chip.setAttribute('data-volatile', String(hashed));
+        // Hovering a class shows how much of the app carries it, which is the
+        // difference between "this row" and "every row in the sidebar".
+        ui.hoverable(chip, {
+          enter: () => ctx.highlightSelector(`.${CSS.escape(name)}`),
+          leave: () => ctx.unhighlight(),
+        });
         chips.append(chip);
       }
       body.append(el('h3', { class: 'section-title', textContent: t('classes') }), chips);
@@ -130,6 +141,10 @@ export function createInspectView(ctx) {
       const item = el('button', { class: 'chain__step', type: 'button', textContent: describe(step) });
       item.setAttribute('data-current', String(step === picked));
       item.addEventListener('click', () => { picked = step; refresh(); });
+      ui.hoverable(item, {
+        enter: () => ctx.highlightElement(step),
+        leave: () => ctx.unhighlight(),
+      });
       chain.append(item);
     }
     body.append(chain);

@@ -39,6 +39,7 @@ import { createPaletteView } from './views/palette.js';
 import { createInspectView } from './views/inspect.js';
 import { createTokensView } from './views/tokens.js';
 import { createCodeView } from './views/code.js';
+import { createStartView } from './views/start.js';
 
 // Re-exported so this mod's tests exercise what the app loads, through the
 // entry the app loads it by.
@@ -109,15 +110,18 @@ export default {
       /** Built on first hover: inverting Slack's sheets is not free. */
       let tokenIndex = null;
 
-      const state = {
+      const DEFAULTS = () => ({
         name: t('defaultName'),
         seeds: { bg: parseColour('#1a1a1e'), accent: parseColour('#536aed') },
         roleOverrides: {},
         tokenOverrides: {},
+        base: '',
         baseCss: '',
         extraCss: '',
         suspended: false,
-      };
+      });
+
+      const state = DEFAULTS();
 
       const palette = () => ({ ...derivePalette(state.seeds.bg, state.seeds.accent), ...state.roleOverrides });
       const themeCss = () =>
@@ -132,7 +136,35 @@ export default {
        */
       const apply = () => {
         api.css(state.suspended ? '' : themeCss());
+        // While the builder owns the screen, the user's own themes are held
+        // back: otherwise picking a base changes nothing visible, because
+        // whatever is switched on is still painting underneath. Suspending puts
+        // them straight back, which is what makes it a before-and-after.
+        api.themes.suspend(!state.suspended);
         views[current]?.refresh();
+        saveDraft();
+      };
+
+      /**
+       * Keep the work, in the loader's settings file rather than localStorage:
+       * the renderer's storage is Slack's and gets wiped by an app update,
+       * while this survives one -- and survives the window being closed by
+       * accident, which is the case that actually happens.
+       */
+      let draftTimer = null;
+      const saveDraft = () => {
+        clearTimeout(draftTimer);
+        draftTimer = setTimeout(() => {
+          void api.settings.set('draft', {
+            name: state.name,
+            seeds: state.seeds,
+            roleOverrides: state.roleOverrides,
+            tokenOverrides: state.tokenOverrides,
+            base: state.base,
+            extraCss: state.extraCss,
+            savedAt: Date.now(),
+          });
+        }, 400);
       };
 
       // ------------------------------------------------------- shared context
@@ -158,6 +190,8 @@ export default {
           highlighter.show(elementsUsing(target, tokenIndex, document));
         },
         highlightToken: (name) => ctx.highlight({ tokens: [name] }),
+        highlightSelector: (selector) => ctx.highlight({ selectors: [selector] }),
+        highlightElement: (element) => highlighter.show([element]),
         highlightRole: (key) => ctx.highlight(targetsForRole(key)),
         unhighlight: () => highlighter.clear(),
 
@@ -172,6 +206,27 @@ export default {
         focusSlack: () => { child.blur(); window.focus(); },
         focusBuilder: () => child.focus(),
         copyCss: () => { void api.helpers.copy(themeCss(), t('copied')); },
+        savedDraft: () => api.settings.get('draft', null),
+
+        /** Leave the start screen for a fresh theme on top of `base`. */
+        begin: ({ base, name }) => {
+          Object.assign(state, DEFAULTS(), { name });
+          nameInput.value = name;
+          void setBase(base).then(() => enterBuilder());
+        },
+
+        /** Leave it carrying on with what was saved. */
+        resume: (draft) => {
+          Object.assign(state, DEFAULTS(), {
+            name: draft.name ?? t('defaultName'),
+            seeds: draft.seeds ?? DEFAULTS().seeds,
+            roleOverrides: draft.roleOverrides ?? {},
+            tokenOverrides: draft.tokenOverrides ?? {},
+            extraCss: draft.extraCss ?? '',
+          });
+          nameInput.value = state.name;
+          void setBase(draft.base ?? '').then(() => enterBuilder());
+        },
 
         /** Open the colour editor next to whatever was clicked. */
         openPicker(anchor, { value, title, onChange, reset, onClose }) {
@@ -215,16 +270,19 @@ export default {
 
       const baseSelect = ui.select(
         [{ value: '', label: t('scratch') }, ...api.themes.list().map((theme) => ({
-          value: theme.id, label: theme.name,
+          value: theme.id,
+          label: theme.enabled ? t('startThemeActive', { name: theme.name }) : theme.name,
         }))],
-        {
-          title: t('baseHint'),
-          onChange: (id) => {
-            if (!id) { state.baseCss = ''; apply(); return; }
-            void api.themes.source(id).then((css) => { state.baseCss = css; apply(); });
-          },
-        },
+        { title: t('baseHint'), onChange: (id) => void setBase(id) },
       );
+
+      /** Load a theme's stylesheet under the palette, or none at all. */
+      const setBase = async (id) => {
+        state.base = id;
+        baseSelect.value = id;
+        state.baseCss = id ? await api.themes.source(id) : '';
+        apply();
+      };
 
       const titlebar = el('header', { class: 'titlebar' }, [
         el('div', { class: 'titlebar__name' }, [
@@ -285,6 +343,12 @@ export default {
 
       const status = el('div', { class: 'status', role: 'status' });
 
+      /**
+       * Before-and-after in one click: our stylesheet comes off and the user's
+       * own themes come back, which is what Slack looks like when the builder
+       * is not open. Nothing in here is touched, so it is a comparison rather
+       * than an undo.
+       */
       const suspend = ui.button(t('suspend'), {
         variant: 'ghost',
         title: t('suspendHint'),
@@ -328,11 +392,7 @@ export default {
             danger: true,
           });
           if (!ok) return;
-          state.seeds = { bg: parseColour('#1a1a1e'), accent: parseColour('#536aed') };
-          state.roleOverrides = {};
-          state.tokenOverrides = {};
-          state.extraCss = '';
-          state.baseCss = '';
+          Object.assign(state, DEFAULTS(), { suspended: state.suspended });
           baseSelect.value = '';
           status.textContent = t('wasReset');
           apply();
@@ -347,20 +407,38 @@ export default {
         save,
       ]);
 
-      doc.body.append(el('div', { class: 'app' }, [
+      const app = el('div', { class: 'app' }, [
         titlebar,
         el('div', { class: 'app__body' }, [rail, content]),
         footer,
-      ]));
+      ]);
+      const start = createStartView(ctx);
+      doc.body.append(start.node, app);
+
+      /**
+       * Swap the door for the workbench.
+       *
+       * The tokens are collected here rather than at boot: it is the one
+       * expensive thing this window does, and the start screen does not need
+       * them -- so the door opens instantly however big the client's stylesheet
+       * has become.
+       */
+      const enterBuilder = () => {
+        if (!ctx.tokens.length) ctx.tokens = collectTokens(document);
+        start.node.remove();
+        app.setAttribute('data-open', 'true');
+        show('palette');
+        apply();
+      };
 
       // ----------------------------------------------------------------- boot
 
-      ctx.tokens = collectTokens(document);
-      show('palette');
-      apply();
+      start.refresh();
 
       child.addEventListener('unload', () => {
         api.css('');
+        // The user's own themes come back the moment the builder goes away.
+        api.themes.suspend(false);
         highlighter.dispose();
         document.getElementById(OVERLAY_ID)?.remove();
       });

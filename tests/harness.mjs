@@ -176,6 +176,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
     mounted: [],
     saved: [],
     disposers: [],
+    themeSuspensions: [],
     logs: [],
     navigations: [],
     savedThemes: [],
@@ -372,6 +373,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
         { id: 'aurora', name: 'Aurora', description: 'Gradients', enabled: true },
       ],
       source: async (id) => `/* ${id} */ :root { --dt_color-base-pry: #101014; }`,
+      suspend: (on) => recorded.themeSuspensions.push(on),
     },
     settings: {
       all: () => ({ ...store }),
