@@ -646,3 +646,4 @@ await api.files.save(user.profile.image_original, `${user.name}.png`);
 | `dom.recorded.clipboard`, `dom.recorded.downloads` | browser side effects |
 
 See [getting-started.md](getting-started.md#test-your-mod) for a full example.
+
