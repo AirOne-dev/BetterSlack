@@ -22,12 +22,56 @@ const ROLES_FIXTURE = derivePalette(parseColour('#101014'), parseColour('#4f46e5
 
 test('has the shape the runtime loads', () => assertPluginShape(assert, plugin));
 
+test('the window opens on the door, and only the door', async () => {
+  const dom = installDom();
+  try {
+    const { api, recorded } = createApi();
+    await plugin.start(api);
+    // The button is registered; opening the window itself needs a real
+    // window.open, which jsdom does not have. What is asserted here is the
+    // contract the start screen depends on: nothing is applied, and the user's
+    // themes are not touched, before a choice is made.
+    assert.equal(recorded.css.length, 0, 'no stylesheet before a choice');
+    assert.deepEqual(recorded.themeSuspensions, [], 'and the user’s themes are left alone');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('the door offers exactly three ways in, and remembers the work', async () => {
+  const { createStartView } = await import('./views/start.js');
+  const dom = installDom();
+  try {
+    const { api } = createApi({ settings: { draft: { name: 'Half done', savedAt: 0, tokenOverrides: { a: 1 } } } });
+    const ui = (await import('./ui.js')).createUi(document);
+    const t = api.i18n.strings(STRINGS);
+    const view = createStartView({
+      api, ui, t,
+      savedDraft: () => api.settings.get('draft', null),
+      begin: () => {}, resume: () => {},
+    });
+    view.refresh();
+
+    const text = view.node.textContent;
+    assert.match(text, /Créer un nouveau|Start a new/, 'start something');
+    assert.match(text, /Reprendre un thème|Work on a theme/, 'open one you have');
+    assert.match(text, /Reprendre où|Carry on/, 'or carry on');
+    assert.match(text, /Half done/, 'the draft says what it is');
+
+    // A theme that is switched on is offered as the base of a new theme, since
+    // that is what the user is looking at while they decide.
+    assert.match(text, /Aurora/, 'the enabled theme is named');
+  } finally {
+    dom.cleanup();
+  }
+});
+
 test('every view the rail offers is a file that exists and exports its builder', async () => {
   // The rail builds each view lazily, so a typo in one of these paths is a
   // section that does nothing when clicked and nothing at all before that.
   for (const [name, builder] of [
     ['palette', 'createPaletteView'], ['inspect', 'createInspectView'],
-    ['tokens', 'createTokensView'], ['code', 'createCodeView'],
+    ['tokens', 'createTokensView'], ['code', 'createCodeView'], ['start', 'createStartView'],
   ]) {
     const module = await import(`./views/${name}.js`);
     assert.equal(typeof module[builder], 'function', `views/${name}.js must export ${builder}`);

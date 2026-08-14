@@ -126,6 +126,16 @@ export interface PluginApi {
   readonly themes: {
     list(): Array<{ id: string; name: string; description: string; enabled: boolean }>;
     source(id: string): Promise<string>;
+    /**
+     * Hold every enabled theme back, or let them through again.
+     *
+     * For a tool that has to show the app without them for a while -- a theme
+     * editor working on top of a chosen base cannot show its own work while
+     * whatever is switched on is still painting. Nothing is enabled or disabled
+     * by this: the settings are untouched and the stylesheets come straight
+     * back. Undone automatically when the plugin stops.
+     */
+    suspend(on: boolean): void;
   };
 
   /** Per-plugin persisted settings, stored by the loader in ~/.slackmod. */
@@ -253,6 +263,12 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
     saveTheme: (options) => ctx.saveTheme(options),
 
     themes: {
+      suspend: (on: boolean) => {
+        ctx.styles.suppress('theme', on);
+        // A plugin switched off while it had the app's themes held back would
+        // leave the user staring at an unthemed Slack with nothing to click.
+        if (on) cleanups.add(() => ctx.styles.suppress('theme', false));
+      },
       list: () => ctx.listThemes(),
       source: (id) => ctx.themeSource(id),
     },

@@ -98,6 +98,8 @@ export function resolvePath(from: string, spec: string): string {
 
 export class StyleManager {
   private nodes = new Map<string, HTMLStyleElement>();
+  /** Layers held back: their stylesheets exist but are not in the document. */
+  private suppressed = new Set<Layer>();
 
   private key(layer: Layer, id: string): string {
     return `${layer}:${id}`;
@@ -131,9 +133,41 @@ export class StyleManager {
       this.nodes.set(key, node);
     }
     node.textContent = css;
+    if (this.suppressed.has(layer)) {
+      node.remove();
+      return;
+    }
     // Insert just before the *next* layer's anchor so ordering holds.
     const anchor = this.anchorFor(layer);
     anchor.before(node);
+  }
+
+  /**
+   * Take a whole layer out of the document, or put it back.
+   *
+   * For a tool that needs the app *without* the user's themes for a while --
+   * the theme builder, editing one theme on top of another, has to be able to
+   * show what its own stylesheet does rather than what it does plus whatever is
+   * switched on. The nodes are kept, so nothing is recomputed on the way back
+   * and the settings are never touched: this is about what is on screen now.
+   */
+  suppress(layer: Layer, on: boolean): void {
+    if (on === this.suppressed.has(layer)) return;
+    if (on) {
+      this.suppressed.add(layer);
+      for (const [key, node] of this.nodes) {
+        if (key.startsWith(`${layer}:`)) node.remove();
+      }
+      return;
+    }
+    this.suppressed.delete(layer);
+    for (const [key, node] of this.nodes) {
+      if (key.startsWith(`${layer}:`)) this.anchorFor(layer).before(node);
+    }
+  }
+
+  isSuppressed(layer: Layer): boolean {
+    return this.suppressed.has(layer);
   }
 
   remove(layer: Layer, id: string): void {
@@ -154,6 +188,9 @@ export class StyleManager {
     for (const [key, node] of this.nodes) {
       if (node.isConnected) continue;
       const layer = key.split(':')[0] as Layer;
+      // A suppressed layer is detached on purpose; putting it back here would
+      // undo the suppression on the next thing Slack does to <head>.
+      if (this.suppressed.has(layer)) continue;
       this.anchorFor(layer).before(node);
     }
   }

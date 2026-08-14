@@ -369,6 +369,25 @@ The loader does the fetching, because Slack's CDN serves without CORS headers
 and a `fetch` from the page always fails. https only, the file name is
 sanitised, 25 MB cap, fixed download directory.
 
+## `api.themes`
+
+The themes the user has, for tools that build on top of them. Read-only, and
+themes only.
+
+```js
+api.themes.list();          // [{ id, name, description, enabled }]
+await api.themes.source('midnight');   // the stylesheet, @imports already inlined
+
+// Show the app without the user's themes for a while. Nothing is enabled or
+// disabled: the settings are untouched, the stylesheets come straight back, and
+// they come back on their own when the plugin stops.
+api.themes.suspend(true);
+```
+
+`suspend` is for a tool that has to show what *it* is painting rather than what
+it paints plus whatever is switched on — the theme builder, editing on top of a
+chosen base, is the reason it exists.
+
 ## `api.assets`
 
 Your mod's own files, as shipped in its folder — the modules it loaded, plus any
