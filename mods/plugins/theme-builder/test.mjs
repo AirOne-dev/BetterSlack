@@ -8,8 +8,9 @@ import {
 } from '../../../tests/harness.mjs';
 import { STRINGS } from './strings.js';
 import plugin, {
-  buildThemeCss, contrast, CONTRAST_CHECKS, derivePalette, formatTriplet, kindOf,
-  matchedRules, parseColour, readability, ROLES, tokenCss, variablesIn,
+  buildThemeCss, buildTokenIndex, contrast, CONTRAST_CHECKS, derivePalette,
+  elementsUsing, formatTriplet, kindOf, matchedRules, parseColour, readability,
+  ROLES, targetsForRole, tokenCss, variablesIn,
 } from './index.js';
 
 // The builder reads its own stylesheet with api.assets, so the test api is
@@ -228,4 +229,71 @@ test('hand-picked tokens land after the roles they contradict', () => {
 test('hand-written CSS lands after everything the roles generate', () => {
   const css = buildThemeCss(ROLES_FIXTURE, 'T', '.x { color: red }');
   assert.ok(css.indexOf('.x { color: red }') > css.indexOf('--sk_highlight'));
+});
+
+
+test('a role knows everything it reaches, tokens and selectors alike', () => {
+  // Derived from buildThemeCss with a sentinel per role rather than kept in a
+  // second table: a hand-written map would be right the day it was written.
+  const chrome = targetsForRole('chrome');
+  assert.ok(chrome.tokens.includes('--dt_color-theme-base-inv-pry'), 'the chrome family');
+  assert.ok(chrome.selectors.some((s) => s.includes('p-channel_sidebar')),
+    'and the rules this file writes directly, or hovering Chrome lights up nothing');
+
+  const hover = targetsForRole('hover');
+  assert.ok(hover.tokens.includes('--dt_color-base-pry-hover'));
+  assert.deepEqual(targetsForRole('nonsense'), { tokens: [], selectors: [] });
+});
+
+test('the token index inverts the stylesheet, keeping hover rules usable', () => {
+  const dom = installDom('<div class="row"><span class="name">x</span></div>');
+  try {
+    const style = document.createElement('style');
+    style.textContent = `
+      .row { background: var(--bg); }
+      .row:hover { background: var(--bg-hover); }
+      .row::before { color: var(--never); }
+      .name, .other { color: var(--text); }
+    `;
+    document.head.append(style);
+
+    const index = buildTokenIndex(document.styleSheets);
+    assert.deepEqual([...index.get('--bg')], ['.row']);
+    // Stripped, not skipped: the hover colour is only ever written in a :hover
+    // rule, so refusing those would leave "the row under the pointer"
+    // highlighting nothing at all.
+    assert.deepEqual([...index.get('--bg-hover')], ['.row'], 'the state pseudo-class is dropped');
+    // A ::before has no box of its own; its host's box is where the colour
+    // shows up, so that is what gets outlined.
+    assert.deepEqual([...index.get('--never')], ['.row']);
+    assert.deepEqual([...index.get('--text')], ['.name', '.other'], 'a rule list becomes one entry each');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('highlighting resolves to elements, and ignores what is not on screen', () => {
+  const dom = installDom('<div class="row">a</div><div class="row hidden">b</div>');
+  try {
+    const style = document.createElement('style');
+    style.textContent = '.row { background: var(--bg); }';
+    document.head.append(style);
+    // jsdom has no layout at all: every box is zero and so is the viewport, so
+    // both sides of the visibility test have to be stated outright.
+    Object.defineProperty(document.documentElement, 'clientWidth', { value: 1200, configurable: true });
+    Object.defineProperty(document.documentElement, 'clientHeight', { value: 800, configurable: true });
+    const rows = [...document.querySelectorAll('.row')];
+    rows[0].getBoundingClientRect = () => ({ width: 200, height: 30, top: 10, bottom: 40, left: 0, right: 200 });
+    rows[1].getBoundingClientRect = () => ({ width: 0, height: 0, top: 0, bottom: 0, left: 0, right: 0 });
+
+    const index = buildTokenIndex(document.styleSheets);
+    const found = elementsUsing({ tokens: ['--bg'] }, index, document);
+    assert.deepEqual(found, [rows[0]], 'the one with a size, and only it');
+
+    assert.deepEqual(elementsUsing({ selectors: ['.row'] }, index, document), [rows[0]],
+      'a plain selector works too, which is how a role reaches the rail');
+    assert.deepEqual(elementsUsing({ tokens: ['--nothing'] }, index, document), []);
+  } finally {
+    dom.cleanup();
+  }
 });

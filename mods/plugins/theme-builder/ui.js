@@ -34,13 +34,14 @@ export function createUi(doc) {
    * `primary` is Slack's confirm green rather than its brand aubergine: in the
    * app, aubergine is chrome and green is what you press.
    */
-  const button = (label, { variant = 'default', icon, onClick, title, wide } = {}) => {
+  const button = (label, { variant = 'default', icon, onClick, title, wide, onHover } = {}) => {
     const node = el('button', { class: `btn btn--${variant}`, title, type: 'button' }, [
       icon ? el('span', { class: 'btn__icon', html: icon }) : null,
       el('span', { textContent: label }),
     ]);
     if (wide) node.classList.add('btn--wide');
     if (onClick) node.addEventListener('click', onClick);
+    if (onHover) hoverable(node, onHover);
     return node;
   };
 
@@ -54,6 +55,20 @@ export function createUi(doc) {
       html: glyph,
     });
     if (onClick) node.addEventListener('click', onClick);
+    return node;
+  };
+
+  /**
+   * Run something while the pointer is over a node, and undo it when it leaves.
+   *
+   * Bound on focus as well: the highlight is information, and information that
+   * only exists for a mouse is information a keyboard cannot have.
+   */
+  const hoverable = (node, { enter, leave }) => {
+    node.addEventListener('mouseenter', enter);
+    node.addEventListener('focus', enter);
+    node.addEventListener('mouseleave', leave);
+    node.addEventListener('blur', leave);
     return node;
   };
 
@@ -190,5 +205,62 @@ export function createUi(doc) {
     return { node, close, place };
   };
 
-  return { el, button, iconButton, field, input, select, segmented, card, emptyState, swatch, popover, CHECKER };
+  /**
+   * Slack's confirm dialog: a scrim, a card, cancel on the left of the action.
+   *
+   * Resolves false when dismissed, so a caller can await it and do nothing --
+   * dismissing has to mean no, not "ask again".
+   */
+  const confirm = ({ title, body, action, cancel: cancelLabel, danger }) => new Promise((resolve) => {
+    const scrim = el('div', { class: 'scrim' });
+    const cancel = button(cancelLabel, { variant: 'ghost' });
+    const go = button(action, { variant: danger ? 'danger' : 'primary' });
+    const dialog = el('div', { class: 'dialog', role: 'dialog', 'aria-modal': 'true' }, [
+      el('h2', { textContent: title }),
+      el('p', { textContent: body }),
+      el('div', { class: 'dialog__actions' }, [cancel, go]),
+    ]);
+    scrim.append(dialog);
+    doc.body.append(scrim);
+
+    const close = (answer) => {
+      doc.removeEventListener('keydown', key, true);
+      scrim.remove();
+      resolve(answer);
+    };
+    const key = (event) => { if (event.key === 'Escape') close(false); };
+    cancel.addEventListener('click', () => close(false));
+    go.addEventListener('click', () => close(true));
+    scrim.addEventListener('mousedown', (event) => { if (event.target === scrim) close(false); });
+    doc.addEventListener('keydown', key, true);
+    go.focus();
+  });
+
+  /**
+   * Copy, with the fallback that makes it work everywhere.
+   *
+   * The clipboard API needs the document to be focused, and this window loses
+   * focus the moment anything is clicked in Slack. execCommand is deprecated
+   * and still the only thing that always works here.
+   */
+  const copyText = async (text) => {
+    try {
+      await doc.defaultView.navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const scratch = el('textarea', { value: text });
+      scratch.style.position = 'fixed';
+      scratch.style.opacity = '0';
+      doc.body.append(scratch);
+      scratch.select();
+      const done = doc.execCommand('copy');
+      scratch.remove();
+      return done;
+    }
+  };
+
+  return {
+    el, button, iconButton, field, input, select, segmented, card, emptyState,
+    swatch, popover, confirm, copyText, hoverable, CHECKER,
+  };
 }
