@@ -1,76 +1,61 @@
 // A theme workbench, in a window of its own.
 //
-// WHY A SEPARATE WINDOW
+// WHY A SEPARATE WINDOW, AND WHY THERE IS NO PREVIEW IN IT
 //
-// A theme is judged against the whole app, and a panel covering half of it
-// hides the thing being judged. `window.open` works from Slack's renderer and
-// the child inherits the origin, so parent and child hold direct references to
-// each other: the controls live in the new window and call straight into this
-// module. No message passing, no serialisation, and the preview is the real
-// application. The window marks itself with `data-slackmod-window`, which the
-// loader checks before painting a theme into Slack's other windows -- a builder
-// repainted by the theme being edited becomes unreadable exactly when you need
-// to read it.
+// `window.open` works from Slack's renderer and the child inherits the origin,
+// so parent and child hold direct references to each other: the controls live
+// in the new window and call straight into this module. No message passing, no
+// serialisation.
 //
-// WHY IT ASKS FOR TWO COLOURS AND NOT TWELVE
+// Which means the preview is Slack. Every change repaints the real client
+// beside this window, immediately -- the whole application, in the state you
+// left it, with your own messages in it. An earlier version drew little
+// fragments of Slack in here as well; they were a worse copy of something
+// already on screen, and they took half the window. What is left is controls.
 //
-// The first version put twelve pickers in a column and called it a tool. It was
-// a spreadsheet. This one asks for a background and an accent, derives the other
-// ten from how far each surface should sit from the background and how much
-// contrast text needs against it, and lets any of them be overridden
-// afterwards. Choosing is the hard part; the rest is arithmetic, and the
-// arithmetic reverses for a light background, which is why a light theme built
-// by hand usually looks wrong on the first try.
+// The window marks itself with `data-slackmod-window`, which the loader checks
+// before painting a theme into Slack's other windows: a builder repainted by
+// the theme being edited becomes unreadable exactly when you need to read it.
 //
-// EVERYTHING IS SHOWN, NOTHING IS DESCRIBED
+// WHAT IT CAN ACTUALLY DO
 //
-// Beside the palette are the pieces of Slack each role actually paints -- a
-// channel row, a message, a mention, a badge, the composer -- rendered from the
-// current values, plus the contrast ratios that decide whether the result is
-// readable. The real app updates too, but you should not have to look away to
-// see what a colour did.
+// Two colours in, twelve roles out (roles.js), which covers a theme in a
+// minute. Then, for everything that is not one of those twelve, the two tools
+// that make it a workbench rather than a wizard:
 //
-// The colour maths lives in ./colour.js. That import is the reason mods became
-// folders: a blob URL has no directory, so the runtime rewrites relative
-// specifiers to the blob it built for each file before loading the entry.
+//   * Point at anything in Slack and it says which tokens paint it, each one
+//     editable on the spot (inspect.js).
+//   * Every colour token the client defines, searchable, each one editable
+//     (tokens.js).
+//
+// So the twelve roles are a starting point, not a ceiling: anything Slack
+// paints with a custom property can be taken over by name.
 
-import {
-  contrast, derivePalette, formatCss, formatTriplet, fromHsv,
-  luminance, parseColour, readability, toHsv,
-} from './colour.js';
-
+import { contrast, derivePalette, formatCss, parseColour, readability } from './colour.js';
+import { createPicker, paintSwatch } from './picker.js';
+import { ancestry, describe, matchedRules, pickElement, variablesIn } from './inspect.js';
+import { buildThemeCss, CONTRAST_CHECKS, ROLES } from './roles.js';
+import { collectTokens, familyOf, formatFor, search, swatch } from './tokens.js';
 import { STRINGS } from './strings.js';
 
-// Re-exported for this mod's own tests, which assert on the colour maths
-// through the entry the app loads.
-export { contrast, derivePalette, formatCss, formatTriplet, parseColour, readability } from './colour.js';
+// Re-exported so this mod's tests exercise what the app loads, through the
+// entry the app loads it by.
+export { buildThemeCss, CONTRAST_CHECKS, ROLES } from './roles.js';
+export { matchedRules, variablesIn } from './inspect.js';
+export { collectTokens, kindOf, tokenCss } from './tokens.js';
+export {
+  contrast, derivePalette, formatCss, formatTriplet, parseColour, readability,
+} from './colour.js';
 
 const WINDOW_NAME = 'slackmod-theme-builder';
 const OVERLAY_ID = 'slackmod-inspect-overlay';
 
-// ---------------------------------------------------------------- roles
+// One column of controls. Slack is the preview, so the window only has to be
+// wide enough to read a token name.
+const WINDOW_FEATURES = 'width=460,height=940,resizable=yes';
 
-const ROLES = [
-  { key: 'bg', label: 'Background', hint: 'The conversation', seed: true },
-  { key: 'accent', label: 'Accent', hint: 'Links, focus, active tab', seed: true },
-  { key: 'chrome', label: 'Chrome', hint: 'Rail and sidebar' },
-  { key: 'raised', label: 'Raised', hint: 'Composer, menus' },
-  { key: 'surface', label: 'Surface', hint: 'Dividers, pills' },
-  { key: 'selected', label: 'Selected', hint: 'Open channel' },
-  { key: 'hover', label: 'Hover', hint: 'Row under the pointer' },
-  { key: 'text', label: 'Text', hint: 'Message body' },
-  { key: 'bright', label: 'Headings', hint: 'Names and titles' },
-  { key: 'muted', label: 'Muted', hint: 'Timestamps' },
-  { key: 'accentText', label: 'Accent text', hint: 'Mentions' },
-  { key: 'danger', label: 'Danger', hint: 'Badges' },
-];
-
-const CONTRAST_CHECKS = [
-  ['text', 'bg', 'Message text'],
-  ['muted', 'bg', 'Timestamps'],
-  ['bright', 'chrome', 'Sidebar titles'],
-  ['accentText', 'bg', 'Mentions'],
-];
+/** How many tokens to render at once. The client defines several hundred. */
+const TOKEN_LIMIT = 120;
 
 const PALETTE_ICON =
   '<svg viewBox="0 0 20 20" aria-hidden="true" style="height:20px;width:20px">' +
@@ -78,222 +63,28 @@ const PALETTE_ICON =
   '<circle cx="6.75" cy="9.75" r="1.25" fill="currentColor"/><circle cx="9.25" cy="6.25" r="1.25" fill="currentColor"/>' +
   '<circle cx="13.25" cy="6.75" r="1.25" fill="currentColor"/></svg>';
 
-/** Rules that match an element, by walking the sheets: there is no API for it. */
-export function matchedRules(element, sheets) {
-  const out = [];
-  for (const sheet of sheets) {
-    let rules;
-    try {
-      rules = sheet.cssRules;
-    } catch {
-      continue; // another origin, and not ours to read
-    }
-    for (const rule of rules) {
-      if (!rule.selectorText) continue;
-      for (const part of rule.selectorText.split(',')) {
-        const selector = part.trim();
-        if (!selector) continue;
-        let hit = false;
-        try {
-          hit = element.matches(selector);
-        } catch {
-          continue;
-        }
-        if (hit) {
-          out.push({ selector, text: rule.style.cssText });
-          break;
-        }
-      }
-    }
-  }
-  return out;
-}
-
-export function variablesIn(rules, resolve) {
-  const names = new Set();
-  for (const rule of rules) {
-    for (const match of String(rule.text).matchAll(/var\((--[\w-]+)/g)) names.add(match[1]);
-  }
-  return [...names].sort().map((name) => ({ name, value: resolve(name) }));
-}
-
-export function buildThemeCss(palette, name = 'Custom', extra = '') {
-  const c = (key) => formatCss(palette[key]);
-  const t = (key) => formatTriplet(palette[key]);
-  const dark = luminance(palette.bg) < 0.4;
-  return `/*
- * ${name} — built with SlackMod's theme builder.
- *
- * Twelve roles across the four families Slack paints from. The chrome
- * (--dt_color-theme-*) and legacy (--sk_*) families need !important because
- * Slack sets them on more specific selectors; the legacy one takes bare
- * "r, g, b" triplets, which is why any alpha is dropped there and only there.
- */
-
-:root,
-.sk-client-theme--light,
-.sk-client-theme--dark {
-  --dt_color-base-pry: ${c('bg')};
-  --dt_color-base-sec: ${c('raised')};
-  --dt_color-base-ter: ${c('surface')};
-  --dt_color-base-modal: rgba(0, 0, 0, ${dark ? '0.8' : '0.4'});
-
-  --dt_color-base-pry-hover: ${c('hover')};
-  --dt_color-base-pry-pressed: ${c('surface')};
-  --dt_color-base-sec-hover: ${c('surface')};
-  --dt_color-base-sec-pressed: ${c('selected')};
-  --dt_color-base-ter-hover: ${c('selected')};
-  --dt_color-base-ter-pressed: ${c('selected')};
-
-  --dt_color-content-pry: ${c('text')};
-  --dt_color-content-sec: ${c('muted')};
-  --dt_color-content-ter: ${c('muted')};
-
-  --dt_color-otl-pry: ${c('surface')};
-  --dt_color-otl-sec: ${c('surface')};
-  --dt_color-otl-ter: ${c('surface')};
-
-  --dt_color-content-hgl-1: ${c('accentText')};
-  --dt_color-content-imp: ${c('danger')};
-  --dt_color-base-hgl-1: ${c('selected')};
-
-  --dt_color-base-inv-pry: ${c('chrome')};
-  --dt_color-content-inv-pry: ${c('bright')};
-  --dt_color-content-inv-sec: ${c('muted')};
-}
-
-/* Chrome and legacy families; both need !important. */
-:root,
-.sk-client-theme--light,
-.sk-client-theme--dark {
-  --dt_color-theme-base-inv-pry: ${c('chrome')} !important;
-  --dt_color-theme-base-inv-sec: ${c('chrome')} !important;
-  --dt_color-theme-content-inv-pry: ${c('bright')} !important;
-  --dt_color-theme-content-inv-sec: ${c('muted')} !important;
-  --dt_color-theme-content-inv-ter: ${c('muted')} !important;
-  --dt_color-theme-otl-inv-pry: ${c('surface')} !important;
-
-  --dt_color-theme-surf-inv-pry: ${c('selected')} !important;
-  --dt_color-theme-surf-inv-sec: ${c('chrome')} !important;
-  --dt_color-theme-surf-inv-ter: ${c('hover')} !important;
-  --dt_color-theme-surf-pry: ${c('selected')} !important;
-  --dt_color-theme-surf-sec: ${c('hover')} !important;
-  --dt_color-theme-surf-ter: ${c('bg')} !important;
-
-  --dt_color-theme-base-pry: ${c('bg')} !important;
-  --dt_color-theme-base-sec: ${c('raised')} !important;
-  --dt_color-theme-base-hgl-1: ${c('selected')} !important;
-  --dt_color-theme-content-pry: ${c('text')} !important;
-  --dt_color-theme-content-sec: ${c('muted')} !important;
-  --dt_color-theme-content-ter: ${c('muted')} !important;
-
-  --sk_primary_background: ${t('bg')} !important;
-  --sk_primary_foreground: ${t('text')} !important;
-  --sk_inverted_background: ${t('text')} !important;
-  --sk_inverted_foreground: ${t('bg')} !important;
-  --sk_foreground_max: ${t('bright')} !important;
-  --sk_foreground_high: ${t('text')} !important;
-  --sk_foreground_mid: ${t('muted')} !important;
-  --sk_foreground_low: ${t('muted')} !important;
-  --sk_foreground_min: ${t('muted')} !important;
-  --sk_foreground_max_solid: ${t('bright')} !important;
-  --sk_foreground_high_solid: ${t('muted')} !important;
-  --sk_foreground_mid_solid: ${t('selected')} !important;
-  --sk_foreground_low_solid: ${t('surface')} !important;
-  --sk_foreground_min_solid: ${t('raised')} !important;
-  --sk_highlight: ${t('accent')} !important;
-  --sk_highlight_hover: ${t('accentText')} !important;
-  --sk_highlight_accent: ${t('accent')} !important;
-}
-
-html, body { background-color: ${c('bg')}; }
-/* A full-viewport opaque layer sits above <body>; without this nothing shows. */
-.p-theme_background { background: ${c('bg')} !important; }
-
-.p-tab_rail,
-.p-channel_sidebar,
-.p-ia4_home_header { background: ${c('chrome')} !important; border: none !important; }
-
-.p-client_container,
-.p-message_pane,
-.p-view_contents { background: ${c('bg')} !important; }
-${extra ? `\n/* Your own rules. */\n${extra}\n` : ''}`;
-}
-
 export default {
   async start(api) {
     const t = api.i18n.strings(STRINGS);
     let child = null;
-    let stopPicking = null;
-    const marks = [];
 
-    const clearMarks = () => { while (marks.length) marks.pop().remove(); };
-
+    /** The frame drawn over whatever the pointer is on, while picking. */
     const overlay = () => {
       let node = document.getElementById(OVERLAY_ID);
       if (!node) {
         node = api.dom.h('div', { id: OVERLAY_ID });
         Object.assign(node.style, {
-          position: 'fixed', pointerEvents: 'none', zIndex: '99999',
-          border: '2px solid #6b7cf0', background: 'rgba(107,124,240,.18)',
-          borderRadius: '3px', display: 'none',
+          position: 'fixed', pointerEvents: 'none', zIndex: '99999', display: 'none',
+          border: '2px solid #1264a3', background: 'rgba(18,100,163,.18)', borderRadius: '4px',
         });
         document.body.append(node);
       }
       return node;
     };
 
-    const startPicking = (onPicked) => {
-      stopPicking?.();
-      const node = overlay();
-      const move = (event) => {
-        const rect = event.target?.getBoundingClientRect?.();
-        if (!rect) return;
-        Object.assign(node.style, {
-          display: 'block', left: `${rect.left}px`, top: `${rect.top}px`,
-          width: `${rect.width}px`, height: `${rect.height}px`,
-        });
-      };
-      const click = (event) => { event.preventDefault(); event.stopPropagation(); stop(); onPicked(event.target); };
-      const key = (event) => { if (event.key === 'Escape') stop(); };
-      const stop = () => {
-        document.removeEventListener('mousemove', move, true);
-        document.removeEventListener('click', click, true);
-        document.removeEventListener('keydown', key, true);
-        node.style.display = 'none';
-        stopPicking = null;
-      };
-      // Capture, so choosing a channel row does not also open that channel.
-      document.addEventListener('mousemove', move, true);
-      document.addEventListener('click', click, true);
-      document.addEventListener('keydown', key, true);
-      stopPicking = stop;
-    };
-
-    const markAll = (selector) => {
-      clearMarks();
-      let elements = [];
-      try { elements = [...document.querySelectorAll(selector)]; } catch { return 0; }
-      for (const element of elements.slice(0, 300)) {
-        const rect = element.getBoundingClientRect();
-        if (rect.width < 2 || rect.height < 2) continue;
-        const mark = api.dom.h('div', {});
-        Object.assign(mark.style, {
-          position: 'fixed', pointerEvents: 'none', zIndex: '99998',
-          left: `${rect.left}px`, top: `${rect.top}px`,
-          width: `${rect.width}px`, height: `${rect.height}px`,
-          outline: '2px solid #f0a94a', background: 'rgba(240,169,74,.12)',
-        });
-        document.body.append(mark);
-        marks.push(mark);
-      }
-      return elements.length;
-    };
-
     const open = () => {
       if (child && !child.closed) { child.focus(); api.ui.toast(t('already')); return; }
-      // Two columns of content, so the window has to be wide enough for both.
-      child = window.open('', WINDOW_NAME, 'width=1040,height=780,resizable=yes');
+      child = window.open('', WINDOW_NAME, WINDOW_FEATURES);
       if (!child) { api.ui.toast(t('blocked'), { variant: 'error' }); return; }
 
       const doc = child.document;
@@ -301,6 +92,7 @@ export default {
       doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
       doc.close();
       doc.documentElement.setAttribute('data-slackmod-window', 'theme-builder');
+      doc.documentElement.lang = api.i18n.language;
       doc.title = t('title');
       const style = doc.createElement('style');
       style.textContent = api.assets.text('window.css');
@@ -308,379 +100,396 @@ export default {
 
       const el = (tag, props = {}, children = []) => {
         const node = doc.createElement(tag);
-        for (const [k, v] of Object.entries(props)) {
-          if (k === 'class') node.className = v;
-          else if (k.includes('-')) node.setAttribute(k, v);
-          else node[k] = v;
+        for (const [key, value] of Object.entries(props)) {
+          if (key === 'class') node.className = value;
+          else if (key.includes('-')) node.setAttribute(key, value);
+          else node[key] = value;
         }
-        for (const c of children) node.append(typeof c === 'string' ? doc.createTextNode(c) : c);
+        for (const item of children) {
+          node.append(typeof item === 'string' ? doc.createTextNode(item) : item);
+        }
         return node;
       };
 
-      // -- state
+      // ---------------------------------------------------------------- state
+
       let seeds = { bg: parseColour('#1a1a1e'), accent: parseColour('#536aed') };
-      let overrides = {};
+      let roleOverrides = {};
+      let tokenOverrides = {};
       let baseCss = '';
       let extraCss = '';
+      let suspended = false;
+      /** What the picker is pointed at: a role key, or a token name. */
       let editing = null;
 
-      const palette = () => ({ ...derivePalette(seeds.bg, seeds.accent), ...overrides });
+      const palette = () => ({ ...derivePalette(seeds.bg, seeds.accent), ...roleOverrides });
+      const themeCss = () =>
+        `${baseCss}\n${buildThemeCss(palette(), nameInput.value || 'Custom', extraCss, tokenOverrides)}`;
 
-      const preview = () => {
-        // Base first, then the palette, then hand-written rules: last wins,
-        // which is what "override an existing theme" has to mean.
-        api.css(`${baseCss}\n${buildThemeCss(palette(), nameInput.value || 'Custom', extraCss)}`);
-        paintUi();
+      /**
+       * Push the theme into Slack. Base first, then the roles, then tokens, then
+       * hand-written rules: later wins, which is what "override" has to mean.
+       *
+       * Suspending swaps in an empty stylesheet rather than tearing anything
+       * down, so a before-and-after is one click and loses no work.
+       */
+      const apply = () => {
+        api.css(suspended ? '' : themeCss());
+        paintPalette();
+        paintTokens();
       };
 
-      // -- colour picker, built here because <input type=color> has no alpha
-      const picker = el('div', { class: 'picker' });
-      const sv = el('div', { class: 'sv' });
-      const svKnob = el('div', { class: 'knob' });
-      sv.append(svKnob);
-      const hue = el('div', { class: 'slider' });
-      const hueKnob = el('div', { class: 'knob' });
-      hue.append(hueKnob);
-      hue.style.background =
-        'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)';
-      const alpha = el('div', { class: 'slider checker' });
-      const alphaKnob = el('div', { class: 'knob' });
-      alpha.append(alphaKnob);
-      const hexField = el('input', { type: 'text', spellcheck: false });
-      picker.append(sv, hue, alpha, hexField);
+      // --------------------------------------------------------------- picker
 
-      const current = () => (editing ? palette()[editing] : seeds.bg);
-
-      const setColour = (colour) => {
+      const picker = createPicker(doc, (colour) => {
         if (!editing) return;
-        if (editing === 'bg' || editing === 'accent') seeds[editing] = colour;
-        else overrides[editing] = colour;
-        drawPicker();
-        preview();
-      };
-
-      const drawPicker = () => {
-        const colour = current();
-        const hsv = toHsv(colour);
-        sv.style.background =
-          `linear-gradient(to top, #000, rgba(0,0,0,0)), ` +
-          `linear-gradient(to right, #fff, hsl(${hsv.h}, 100%, 50%))`;
-        svKnob.style.left = `${hsv.s * 100}%`;
-        svKnob.style.top = `${(1 - hsv.v) * 100}%`;
-        hueKnob.style.left = `${(hsv.h / 360) * 100}%`;
-        hueKnob.style.top = '50%';
-        alpha.style.backgroundImage =
-          `linear-gradient(to right, rgba(${colour.r},${colour.g},${colour.b},0), ` +
-          `rgb(${colour.r},${colour.g},${colour.b})), ` + alphaChecker;
-        alphaKnob.style.left = `${colour.a * 100}%`;
-        alphaKnob.style.top = '50%';
-        hexField.value = formatCss(colour);
-      };
-      const alphaChecker =
-        'linear-gradient(45deg,#555 25%,transparent 25%),' +
-        'linear-gradient(-45deg,#555 25%,transparent 25%),' +
-        'linear-gradient(45deg,transparent 75%,#555 75%),' +
-        'linear-gradient(-45deg,transparent 75%,#555 75%)';
-
-      /** Pointer dragging on a strip or square, clamped to it. */
-      const drag = (surface, onMove) => {
-        const handle = (event) => {
-          const rect = surface.getBoundingClientRect();
-          const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-          const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
-          onMove(x, y);
-        };
-        surface.addEventListener('pointerdown', (event) => {
-          surface.setPointerCapture(event.pointerId);
-          handle(event);
-          const move = (e) => handle(e);
-          const up = () => {
-            surface.removeEventListener('pointermove', move);
-            surface.removeEventListener('pointerup', up);
-          };
-          surface.addEventListener('pointermove', move);
-          surface.addEventListener('pointerup', up);
-        });
-      };
-
-      drag(sv, (x, y) => {
-        const hsv = toHsv(current());
-        setColour(fromHsv({ h: hsv.h, s: x, v: 1 - y, a: current().a }));
-      });
-      drag(hue, (x) => {
-        const hsv = toHsv(current());
-        setColour(fromHsv({ h: x * 360, s: hsv.s, v: hsv.v, a: current().a }));
-      });
-      drag(alpha, (x) => setColour({ ...current(), a: Math.round(x * 100) / 100 }));
-      hexField.addEventListener('input', () => {
-        const parsed = parseColour(hexField.value);
-        if (parsed) setColour(parsed);
+        if (editing.kind === 'role') {
+          if (editing.key === 'bg' || editing.key === 'accent') seeds[editing.key] = colour;
+          else roleOverrides[editing.key] = colour;
+        } else {
+          tokenOverrides[editing.name] = formatFor(editing.tokenKind, colour);
+        }
+        apply();
       });
 
-      // -- layout
-      const nameInput = el('input', { type: 'text', value: 'My theme', spellcheck: false });
+      const editRole = (role) => {
+        editing = { kind: 'role', key: role.key };
+        picker.show(formatCss(palette()[role.key]), `${role.label} — ${role.hint}`);
+        paintPalette();
+      };
+
+      const editToken = (token) => {
+        editing = { kind: 'token', name: token.name, tokenKind: token.kind };
+        picker.show(swatch(tokenOverrides[token.name] ?? token.value), token.name);
+        paintTokens();
+      };
+
+      // ---------------------------------------------------------------- header
+
+      const nameInput = el('input', { type: 'text', value: t('defaultName'), spellcheck: false });
       const status = el('div', { class: 'status' });
 
-      const baseSelect = el('select');
+      const baseSelect = el('select', { title: t('baseHint') });
       baseSelect.append(el('option', { value: '', textContent: t('scratch') }));
       for (const theme of api.themes.list()) {
         baseSelect.append(el('option', { value: theme.id, textContent: theme.name }));
       }
       baseSelect.addEventListener('change', () => {
         const id = baseSelect.value;
-        if (!id) { baseCss = ''; preview(); return; }
-        void api.themes.source(id).then((css) => { baseCss = css; preview(); });
+        if (!id) { baseCss = ''; apply(); return; }
+        void api.themes.source(id).then((css) => { baseCss = css; apply(); });
       });
 
-      const toolsButton = el('button', { class: 'action', textContent: t('tools') });
-      doc.body.append(el('div', { class: 'top' }, [
-        el('h1', { textContent: t('title') }),
-        baseSelect,
-        toolsButton,
+      const saveButton = el('button', { class: 'btn primary', textContent: t('save') });
+      saveButton.addEventListener('click', () => {
+        const label = nameInput.value.trim();
+        if (!label) { status.textContent = t('needsName'); return; }
+        const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
+          || 'custom-theme';
+        void api.saveTheme({
+          id,
+          name: label,
+          description: t('savedDescription'),
+          css: buildThemeCss(palette(), label, extraCss, tokenOverrides),
+        })
+          .then(() => { status.textContent = t('saved'); api.ui.toast(t('saved')); })
+          .catch((err) => { status.textContent = err.message; });
+      });
+
+      doc.body.append(el('header', {}, [
+        el('div', { class: 'row' }, [nameInput, saveButton]),
+        el('div', { class: 'row' }, [el('label', { textContent: t('base') }), baseSelect]),
       ]));
 
-      const left = el('div', { class: 'left' });
-      const right = el('div', { class: 'right' });
-      doc.body.append(el('div', { class: 'cols' }, [left, right]));
+      const main = el('main', {});
+      doc.body.append(main);
 
-      // -- palette column
-      const seedRow = el('div', { class: 'seeds' });
-      const swatchGrid = el('div', { class: 'swatches' });
-      const reroll = el('button', { class: 'action', textContent: t('reroll'), title: t('rerollHint') });
-      reroll.addEventListener('click', () => { overrides = {}; editing = null; picker.setAttribute('data-open', 'false'); preview(); });
-
-      left.append(
-        el('h2', { textContent: t('palette') }), seedRow,
-        el('h2', { textContent: t('derived') }), swatchGrid,
-        el('div', { style: 'margin-top:10px' }, [reroll]),
-        picker,
-      );
-
-      const chooseRole = (key) => {
-        editing = key;
-        picker.setAttribute('data-open', 'true');
-        drawPicker();
-        paintUi();
+      /** A collapsible block. Open by default only where work starts. */
+      const section = (title, hint, body, open = false) => {
+        const details = el('details', {}, [
+          el('summary', {}, [el('span', { textContent: title }), el('small', { textContent: hint })]),
+          body,
+        ]);
+        details.open = open;
+        main.append(details);
+        return details;
       };
 
-      // -- preview column
-      const demo = el('div', { class: 'demo' });
+      // --------------------------------------------------------------- palette
+
+      const seedRow = el('div', { class: 'seeds' });
+      const swatchGrid = el('div', { class: 'swatches' });
       const checks = el('div', { class: 'checks' });
-      const previewWrap = el('div', {}, [
-        el('h2', { textContent: t('preview') }), demo,
-        el('h2', { textContent: t('readable') }), checks,
-      ]);
-      right.append(previewWrap);
+      const reroll = el('button', { class: 'btn', textContent: t('reroll'), title: t('rerollHint') });
+      reroll.addEventListener('click', () => {
+        roleOverrides = {};
+        editing = null;
+        picker.hide();
+        apply();
+      });
 
-      const paintUi = () => {
-        const p = palette();
-        const css = (key) => formatCss(p[key]);
+      section(t('palette'), t('paletteHint'), el('div', {}, [
+        seedRow,
+        el('p', { class: 'hint', textContent: t('derived') }),
+        swatchGrid,
+        checks,
+        el('div', { class: 'row end' }, [reroll]),
+      ]), true);
 
-        // seeds
+      const paintPalette = () => {
+        const colours = palette();
+        const css = (key) => formatCss(colours[key]);
+
         seedRow.replaceChildren();
         for (const role of ROLES.filter((r) => r.seed)) {
-          const chip = el('div', { class: 'chip checker' });
-          chip.style.backgroundImage = `linear-gradient(${css(role.key)}, ${css(role.key)}), ${alphaChecker}`;
-          const card = el('div', { class: 'seed' }, [
+          const chip = el('div', { class: 'chip' });
+          paintSwatch(chip, css(role.key));
+          const card = el('button', { class: 'seed' }, [
             chip,
             el('div', { class: 'meta' }, [
               el('strong', { textContent: role.label }),
-              el('small', { textContent: formatCss(p[role.key]) }),
+              el('small', { textContent: css(role.key) }),
             ]),
           ]);
-          card.addEventListener('click', () => chooseRole(role.key));
+          card.setAttribute('data-editing', String(editing?.kind === 'role' && editing.key === role.key));
+          card.addEventListener('click', () => editRole(role));
           seedRow.append(card);
         }
 
-        // derived
         swatchGrid.replaceChildren();
         for (const role of ROLES.filter((r) => !r.seed)) {
-          const chip = el('div', { class: 'chip checker' });
-          chip.style.backgroundImage = `linear-gradient(${css(role.key)}, ${css(role.key)}), ${alphaChecker}`;
-          const button = el('button', { class: 'sw' }, [chip, el('span', { textContent: role.label })]);
-          button.setAttribute('data-own', String(Boolean(overrides[role.key])));
-          button.title = `${role.hint} — ${formatCss(p[role.key])}`;
-          button.addEventListener('click', () => chooseRole(role.key));
+          const chip = el('div', { class: 'chip' });
+          paintSwatch(chip, css(role.key));
+          const button = el('button', { class: 'sw' }, [
+            chip,
+            el('span', { textContent: role.label }),
+          ]);
+          button.title = `${role.hint} — ${css(role.key)}`;
+          button.setAttribute('data-own', String(Boolean(roleOverrides[role.key])));
+          button.setAttribute('data-editing', String(editing?.kind === 'role' && editing.key === role.key));
+          button.addEventListener('click', () => editRole(role));
           swatchGrid.append(button);
         }
 
-        // the fragments of Slack each role paints
-        demo.replaceChildren();
-        const side = el('div', { class: 'side' });
-        side.style.background = css('chrome');
-        for (const [label, state] of [[t('sampleChannel'), 'selected'], ['random', 'hover'], ['design', '']]) {
-          const row = el('div', { class: 'row' }, [`# ${label}`]);
-          row.style.color = state === 'selected' ? css('bright') : css('muted');
-          if (state) row.style.background = css(state);
-          side.append(row);
-        }
-        const badgeRow = el('div', { class: 'row' }, ['# alerts ']);
-        badgeRow.style.color = css('muted');
-        const badge = el('span', { class: 'badge', textContent: '3' });
-        badge.style.background = css('danger');
-        badgeRow.append(badge);
-        side.append(badgeRow);
-
-        const main = el('div', { class: 'main' });
-        main.style.background = css('bg');
-        const avatar = el('div', { class: 'av' });
-        avatar.style.background = css('surface');
-        const mention = el('span', { class: 'chip2', textContent: '@erwan' });
-        mention.style.background = css('selected');
-        mention.style.color = css('accentText');
-        const body = el('div', {}, [
-          el('div', {}, [
-            (() => { const who = el('span', { class: 'who', textContent: t('sampleName') });
-              who.style.color = css('bright'); return who; })(),
-            (() => { const time = el('span', { class: 'time', textContent: t('sampleTime') });
-              time.style.color = css('muted'); return time; })(),
-          ]),
-          (() => { const line = el('div', {}, [t('sampleText'), ' ', mention]);
-            line.style.color = css('text'); return line; })(),
-        ]);
-        main.append(el('div', { class: 'msg' }, [avatar, body]));
-        const composer = el('div', { class: 'composer', textContent: t('sampleCompose') });
-        composer.style.background = css('raised');
-        composer.style.color = css('muted');
-        composer.style.border = `1px solid ${css('surface')}`;
-        main.append(composer);
-        demo.append(side, main);
-
-        // readability
+        // Contrast, against the colours Slack really puts behind that text.
         checks.replaceChildren();
-        for (const [fg, bgKey, label] of CONTRAST_CHECKS) {
-          const ratio = contrast(p[fg], p[bgKey]);
+        for (const [fg, bg, label] of CONTRAST_CHECKS) {
+          const ratio = contrast(colours[fg], colours[bg]);
           const verdict = readability(ratio);
-          const dot = el('div', { class: 'dot' });
-          dot.style.background = css(fg);
           const grade = el('span', { class: 'grade', textContent: verdict.grade });
           grade.setAttribute('data-ok', String(verdict.ok));
+          const sample = el('span', { class: 'sample', textContent: label });
+          sample.style.color = css(fg);
+          sample.style.background = css(bg);
           checks.append(el('div', { class: 'check' }, [
-            dot,
-            el('span', { class: 'name', textContent: label }),
+            sample,
             el('span', { class: 'ratio', textContent: `${ratio.toFixed(1)}:1` }),
             grade,
           ]));
         }
       };
 
-      // -- tools view
-      const tools = el('div', {});
-      const pickButton = el('button', { class: 'action primary', textContent: t('pick') });
-      const inspectOut = el('div', {}, [el('p', { class: 'empty', textContent: t('nothing') })]);
-      const classInput = el('input', { type: 'text', spellcheck: false, placeholder: '.c-message_kit__background' });
-      const classCount = el('span', { class: 'empty' });
-      const showButton = el('button', { class: 'action', textContent: t('highlight') });
-      const clearButton = el('button', { class: 'action', textContent: t('clear') });
-      const cssArea = el('textarea', { spellcheck: false });
-      showButton.addEventListener('click', () => {
-        classCount.textContent = t('classCount', { count: markAll(classInput.value.trim()) });
-      });
-      clearButton.addEventListener('click', () => { clearMarks(); classCount.textContent = ''; });
-      cssArea.addEventListener('input', () => { extraCss = cssArea.value; preview(); });
+      // --------------------------------------------------------------- inspect
 
-      const describe = (element) => {
+      const pickButton = el('button', { class: 'btn primary wide', textContent: t('pick') });
+      const inspectOut = el('div', { class: 'inspect' }, [
+        el('p', { class: 'hint', textContent: t('nothing') }),
+      ]);
+      section(t('inspect'), t('inspectHint'), el('div', {}, [pickButton, inspectOut]));
+
+      /** One editable line for a token, wherever it is being shown. */
+      const tokenRow = (token) => {
+        const overridden = token.name in tokenOverrides;
+        const value = tokenOverrides[token.name] ?? token.value;
+        const chip = el('div', { class: 'chip small' });
+        paintSwatch(chip, swatch(value));
+
+        const row = el('div', { class: 'token' });
+        row.setAttribute('data-own', String(overridden));
+        row.setAttribute('data-editing', String(editing?.kind === 'token' && editing.name === token.name));
+
+        const open = el('button', { class: 'token-open' }, [
+          chip,
+          el('code', { textContent: token.name }),
+          el('small', { textContent: value }),
+        ]);
+        open.addEventListener('click', () => editToken(token));
+        row.append(open);
+
+        if (overridden) {
+          const drop = el('button', { class: 'icon', title: t('drop'), textContent: '×' });
+          drop.addEventListener('click', () => {
+            delete tokenOverrides[token.name];
+            if (editing?.kind === 'token' && editing.name === token.name) {
+              editing = null;
+              picker.hide();
+            }
+            apply();
+            if (lastPicked) showElement(lastPicked);
+          });
+          row.append(drop);
+        }
+        return row;
+      };
+
+      let lastPicked = null;
+
+      const showElement = (element) => {
+        lastPicked = element;
         inspectOut.replaceChildren();
-        const computed = getComputedStyle(element);
+
+        // The chain up from the element: the colour you are looking at is
+        // rarely on the node under the pointer -- Slack nests a dozen deep.
+        const chain = el('div', { class: 'chain' });
+        for (const node of ancestry(element)) {
+          const step = el('button', { class: 'pill', textContent: describe(node) });
+          step.setAttribute('data-current', String(node === element));
+          step.addEventListener('click', () => showElement(node));
+          chain.append(step);
+        }
+        inspectOut.append(chain);
+
         const rules = matchedRules(element, document.styleSheets);
         const resolve = (name) =>
           getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-        const label = element.tagName.toLowerCase()
-          + (element.getAttribute('data-qa') ? `[data-qa="${element.getAttribute('data-qa')}"]` : '')
-          + [...element.classList].map((c) => `.${c}`).join('');
-        inspectOut.append(el('div', { class: 'card' }, [el('code', { textContent: label })]));
+        const used = variablesIn(rules, resolve).filter((entry) => entry.value);
 
-        const painted = el('div', { class: 'card' }, [el('h2', { textContent: t('paintedBy') })]);
-        for (const [prop, name] of [['background-color', 'background'], ['color', 'text']]) {
-          const parsed = parseColour(computed.getPropertyValue(prop));
+        inspectOut.append(el('h3', { textContent: t('paintedBy') }));
+        if (!used.length) {
+          inspectOut.append(el('p', { class: 'hint', textContent: t('noVars') }));
+        }
+        for (const entry of used.slice(0, 40)) {
+          inspectOut.append(tokenRow({
+            name: entry.name,
+            value: entry.value,
+            kind: familyOf(entry.name).key === 'legacy' || familyOf(entry.name).key === 'palette'
+              ? 'triplet' : 'colour',
+          }));
+        }
+
+        // What the element ended up with, whatever it came from. Useful when a
+        // colour is written literally and no token is involved at all.
+        const computed = getComputedStyle(element);
+        const literal = el('div', { class: 'literals' });
+        for (const [property, label] of [['background-color', t('background')], ['color', t('text')]]) {
+          const parsed = parseColour(computed.getPropertyValue(property));
           if (!parsed) continue;
-          const dot = el('div', { class: 'dot' });
-          dot.style.background = formatCss(parsed);
-          const use = el('button', { class: 'action', textContent: `${name} →` });
-          use.addEventListener('click', () => {
-            if (editing) setColour(parsed);
-          });
-          painted.append(el('div', { class: 'var' }, [
-            dot, el('code', { textContent: `${name}: ${formatCss(parsed)}` }), use,
+          const chip = el('div', { class: 'chip small' });
+          paintSwatch(chip, formatCss(parsed));
+          literal.append(el('div', { class: 'literal' }, [
+            chip, el('span', { textContent: label }), el('code', { textContent: formatCss(parsed) }),
           ]));
         }
-        inspectOut.append(painted);
+        if (literal.children.length) {
+          inspectOut.append(el('h3', { textContent: t('computed') }), literal);
+        }
 
-        const vars = variablesIn(rules, resolve);
-        const varCard = el('div', { class: 'card' }, [el('h2', { textContent: t('variables') })]);
-        if (!vars.length) varCard.append(el('p', { class: 'empty', textContent: t('noVars') }));
-        for (const entry of vars.slice(0, 30)) {
-          const dot = el('div', { class: 'dot' });
-          dot.style.background = /^\d/.test(entry.value) ? `rgb(${entry.value})` : entry.value;
-          varCard.append(el('div', { class: 'var' }, [
-            dot, el('code', { textContent: `${entry.name}: ${entry.value || '—'}` }),
+        const ruleList = el('ul', { class: 'rules' });
+        for (const rule of rules.slice(0, 40)) {
+          ruleList.append(el('li', {}, [
+            el('code', { textContent: `${rule.selector} { ${rule.text.slice(0, 160)} }` }),
           ]));
         }
-        inspectOut.append(varCard);
-
-        const ruleCard = el('div', { class: 'card' }, [el('h2', { textContent: t('matchedRules') })]);
-        if (!rules.length) ruleCard.append(el('p', { class: 'empty', textContent: t('noRules') }));
-        else {
-          const list = el('ul', { class: 'rules' });
-          for (const rule of rules.slice(0, 50)) {
-            list.append(el('li', {}, [el('code', { textContent: `${rule.selector} { ${rule.text.slice(0, 140)} }` })]));
-          }
-          ruleCard.append(list);
-        }
-        inspectOut.append(ruleCard);
+        const ruleBlock = el('details', {}, [
+          el('summary', {}, [el('span', { textContent: t('matchedRules', { count: rules.length }) })]),
+          ruleList,
+        ]);
+        inspectOut.append(ruleBlock);
       };
 
       pickButton.addEventListener('click', () => {
         pickButton.textContent = t('picking');
+        pickButton.disabled = true;
+        // The pointer has to be over Slack, so hand it the focus.
         child.blur();
         window.focus();
-        startPicking((element) => { pickButton.textContent = t('pick'); describe(element); child.focus(); });
+        void pickElement(document, overlay()).then((element) => {
+          pickButton.textContent = t('pick');
+          pickButton.disabled = false;
+          child.focus();
+          if (element) showElement(element);
+        });
       });
 
-      tools.append(
-        el('h2', { textContent: t('tools') }), pickButton, inspectOut,
-        el('h2', { textContent: t('classSearch') }), classInput,
-        el('div', { style: 'display:flex;gap:8px;align-items:center;margin:8px 0' },
-          [showButton, clearButton, classCount]),
-        el('h2', { textContent: 'CSS' }),
-        el('p', { class: 'empty', textContent: t('cssHint') }), cssArea,
-      );
+      // ---------------------------------------------------------------- tokens
 
-      let showingTools = false;
-      toolsButton.addEventListener('click', () => {
-        showingTools = !showingTools;
-        right.replaceChildren(showingTools ? tools : previewWrap);
-        toolsButton.textContent = showingTools ? t('back') : t('tools');
+      let tokens = [];
+      const tokenSearch = el('input', { type: 'search', placeholder: t('searchTokens'), spellcheck: false });
+      const familySelect = el('select');
+      familySelect.append(el('option', { value: '', textContent: t('allFamilies') }));
+      const tokenList = el('div', { class: 'tokens' });
+      const tokenCount = el('p', { class: 'hint' });
+
+      const paintTokens = () => {
+        const query = tokenSearch.value.trim();
+        const family = familySelect.value;
+        let shown = search(tokens, query);
+        if (family) shown = shown.filter((token) => token.family === family);
+        // Anything taken over stays at the top: it is what you came back for.
+        shown = [...shown].sort((a, b) =>
+          Number(b.name in tokenOverrides) - Number(a.name in tokenOverrides));
+
+        tokenList.replaceChildren();
+        for (const token of shown.slice(0, TOKEN_LIMIT)) tokenList.append(tokenRow(token));
+        tokenCount.textContent = t('tokenCount', {
+          shown: Math.min(shown.length, TOKEN_LIMIT),
+          total: shown.length,
+          own: Object.keys(tokenOverrides).length,
+        });
+      };
+
+      tokenSearch.addEventListener('input', paintTokens);
+      familySelect.addEventListener('change', paintTokens);
+
+      section(t('tokens'), t('tokensHint'), el('div', {}, [
+        el('div', { class: 'row' }, [tokenSearch, familySelect]),
+        tokenCount,
+        tokenList,
+      ]));
+
+      // ------------------------------------------------------------------ css
+
+      const cssArea = el('textarea', { spellcheck: false, placeholder: '.c-message_kit__background { … }' });
+      cssArea.addEventListener('input', () => { extraCss = cssArea.value; apply(); });
+      section('CSS', t('cssHint'), cssArea);
+
+      // --------------------------------------------------------------- footer
+
+      const suspend = el('button', { class: 'btn', textContent: t('suspend'), title: t('suspendHint') });
+      suspend.addEventListener('click', () => {
+        suspended = !suspended;
+        suspend.textContent = suspended ? t('resume') : t('suspend');
+        suspend.setAttribute('data-on', String(suspended));
+        apply();
       });
+      const copy = el('button', { class: 'btn', textContent: t('copy') });
+      copy.addEventListener('click', () => { void api.helpers.copy(themeCss(), t('copied')); });
 
-      // -- bottom bar
-      const save = el('button', { class: 'action primary', textContent: t('save') });
-      save.addEventListener('click', () => {
-        const label = nameInput.value.trim();
-        if (!label) { status.textContent = t('needsName'); return; }
-        const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
-          || 'custom-theme';
-        void api.saveTheme({
-          id, name: label,
-          description: `A theme built with SlackMod's theme builder, from ${ROLES.length} colours.`,
-          css: buildThemeCss(palette(), label, extraCss),
-        }).then(() => { status.textContent = t('saved'); api.ui.toast(t('saved')); })
-          .catch((err) => { status.textContent = err.message; });
-      });
-      const copy = el('button', { class: 'action', textContent: t('copy') });
-      copy.addEventListener('click', () => {
-        void api.helpers.copy(buildThemeCss(palette(), nameInput.value || 'Custom', extraCss), t('copied'));
-      });
-      const reset = el('button', { class: 'action', textContent: t('reset') });
-      reset.addEventListener('click', () => { child.close(); open(); });
+      doc.body.append(picker.node);
+      doc.body.append(el('footer', {}, [suspend, copy, status]));
 
-      doc.body.append(el('div', { class: 'bar' }, [nameInput, save, copy, reset, status]));
+      // ----------------------------------------------------------------- boot
 
-      preview();
+      tokens = collectTokens(document);
+      // Only the families this client actually defines, so the filter never
+      // offers something that would return nothing.
+      const familyLabels = {
+        chrome: t('familyChrome'), content: t('familyContent'), legacy: t('familyLegacy'),
+        palette: t('familyPalette'), other: t('familyOther'),
+      };
+      for (const family of new Set(tokens.map((token) => token.family))) {
+        const count = tokens.filter((token) => token.family === family).length;
+        familySelect.append(el('option', {
+          value: family,
+          textContent: `${familyLabels[family] ?? family} (${count})`,
+        }));
+      }
+
+      picker.hide();
+      apply();
+
       child.addEventListener('unload', () => {
         api.css('');
-        stopPicking?.();
-        clearMarks();
         document.getElementById(OVERLAY_ID)?.remove();
       });
     };
@@ -694,8 +503,6 @@ export default {
     });
 
     api.onDispose(() => {
-      stopPicking?.();
-      clearMarks();
       document.getElementById(OVERLAY_ID)?.remove();
       if (child && !child.closed) child.close();
     });
