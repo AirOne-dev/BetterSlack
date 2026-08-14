@@ -13,19 +13,24 @@
 import { formatCss, formatTriplet, luminance } from './colour.js';
 import { tokenCss } from './tokens.js';
 
+/**
+ * The twelve, in the order they are shown. Label and hint are i18n keys
+ * (`role_bg`, `role_bg_hint`): a role named in English inside an otherwise
+ * French window is the kind of seam that makes a tool feel bolted together.
+ */
 export const ROLES = [
-  { key: 'bg', label: 'Background', hint: 'The conversation', seed: true },
-  { key: 'accent', label: 'Accent', hint: 'Links, focus, active tab', seed: true },
-  { key: 'chrome', label: 'Chrome', hint: 'Rail and sidebar' },
-  { key: 'raised', label: 'Raised', hint: 'Composer, menus' },
-  { key: 'surface', label: 'Surface', hint: 'Dividers, pills' },
-  { key: 'selected', label: 'Selected', hint: 'Open channel' },
-  { key: 'hover', label: 'Hover', hint: 'Row under the pointer' },
-  { key: 'text', label: 'Text', hint: 'Message body' },
-  { key: 'bright', label: 'Headings', hint: 'Names and titles' },
-  { key: 'muted', label: 'Muted', hint: 'Timestamps' },
-  { key: 'accentText', label: 'Accent text', hint: 'Mentions' },
-  { key: 'danger', label: 'Danger', hint: 'Badges' },
+  { key: 'bg', seed: true },
+  { key: 'accent', seed: true },
+  { key: 'chrome' },
+  { key: 'raised' },
+  { key: 'surface' },
+  { key: 'selected' },
+  { key: 'hover' },
+  { key: 'text' },
+  { key: 'bright' },
+  { key: 'muted' },
+  { key: 'accentText' },
+  { key: 'danger' },
 ];
 
 /**
@@ -34,10 +39,10 @@ export const ROLES = [
  * looks like diligence and means nothing.
  */
 export const CONTRAST_CHECKS = [
-  ['text', 'bg', 'Message text'],
-  ['muted', 'bg', 'Timestamps'],
-  ['bright', 'chrome', 'Sidebar titles'],
-  ['accentText', 'bg', 'Mentions'],
+  ['text', 'bg', 'checkMessage'],
+  ['muted', 'bg', 'checkTimestamps'],
+  ['bright', 'chrome', 'checkSidebar'],
+  ['accentText', 'bg', 'checkMentions'],
 ];
 
 /**
@@ -45,8 +50,10 @@ export const CONTRAST_CHECKS = [
  * was typed by hand. Later wins, which is what "override" has to mean.
  */
 export function buildThemeCss(palette, name = 'Custom', extra = '', tokens = {}) {
-  const c = (key) => formatCss(palette[key]);
-  const t = (key) => formatTriplet(palette[key]);
+  // Named for what they emit, not for brevity: `t` in every other file of this
+  // mod is the translator, and a second meaning for it here reads as a bug.
+  const hex = (key) => formatCss(palette[key]);
+  const rgb = (key) => formatTriplet(palette[key]);
   const dark = luminance(palette.bg) < 0.4;
   return `/*
  * ${name} — built with SlackMod's theme builder.
@@ -60,90 +67,90 @@ export function buildThemeCss(palette, name = 'Custom', extra = '', tokens = {})
 :root,
 .sk-client-theme--light,
 .sk-client-theme--dark {
-  --dt_color-base-pry: ${c('bg')};
-  --dt_color-base-sec: ${c('raised')};
-  --dt_color-base-ter: ${c('surface')};
+  --dt_color-base-pry: ${hex('bg')};
+  --dt_color-base-sec: ${hex('raised')};
+  --dt_color-base-ter: ${hex('surface')};
   --dt_color-base-modal: rgba(0, 0, 0, ${dark ? '0.8' : '0.4'});
 
-  --dt_color-base-pry-hover: ${c('hover')};
-  --dt_color-base-pry-pressed: ${c('surface')};
-  --dt_color-base-sec-hover: ${c('surface')};
-  --dt_color-base-sec-pressed: ${c('selected')};
-  --dt_color-base-ter-hover: ${c('selected')};
-  --dt_color-base-ter-pressed: ${c('selected')};
+  --dt_color-base-pry-hover: ${hex('hover')};
+  --dt_color-base-pry-pressed: ${hex('surface')};
+  --dt_color-base-sec-hover: ${hex('surface')};
+  --dt_color-base-sec-pressed: ${hex('selected')};
+  --dt_color-base-ter-hover: ${hex('selected')};
+  --dt_color-base-ter-pressed: ${hex('selected')};
 
-  --dt_color-content-pry: ${c('text')};
-  --dt_color-content-sec: ${c('muted')};
-  --dt_color-content-ter: ${c('muted')};
+  --dt_color-content-pry: ${hex('text')};
+  --dt_color-content-sec: ${hex('muted')};
+  --dt_color-content-ter: ${hex('muted')};
 
-  --dt_color-otl-pry: ${c('surface')};
-  --dt_color-otl-sec: ${c('surface')};
-  --dt_color-otl-ter: ${c('surface')};
+  --dt_color-otl-pry: ${hex('surface')};
+  --dt_color-otl-sec: ${hex('surface')};
+  --dt_color-otl-ter: ${hex('surface')};
 
-  --dt_color-content-hgl-1: ${c('accentText')};
-  --dt_color-content-imp: ${c('danger')};
-  --dt_color-base-hgl-1: ${c('selected')};
+  --dt_color-content-hgl-1: ${hex('accentText')};
+  --dt_color-content-imp: ${hex('danger')};
+  --dt_color-base-hgl-1: ${hex('selected')};
 
-  --dt_color-base-inv-pry: ${c('chrome')};
-  --dt_color-content-inv-pry: ${c('bright')};
-  --dt_color-content-inv-sec: ${c('muted')};
+  --dt_color-base-inv-pry: ${hex('chrome')};
+  --dt_color-content-inv-pry: ${hex('bright')};
+  --dt_color-content-inv-sec: ${hex('muted')};
 }
 
 /* Chrome and legacy families; both need !important. */
 :root,
 .sk-client-theme--light,
 .sk-client-theme--dark {
-  --dt_color-theme-base-inv-pry: ${c('chrome')} !important;
-  --dt_color-theme-base-inv-sec: ${c('chrome')} !important;
-  --dt_color-theme-content-inv-pry: ${c('bright')} !important;
-  --dt_color-theme-content-inv-sec: ${c('muted')} !important;
-  --dt_color-theme-content-inv-ter: ${c('muted')} !important;
-  --dt_color-theme-otl-inv-pry: ${c('surface')} !important;
+  --dt_color-theme-base-inv-pry: ${hex('chrome')} !important;
+  --dt_color-theme-base-inv-sec: ${hex('chrome')} !important;
+  --dt_color-theme-content-inv-pry: ${hex('bright')} !important;
+  --dt_color-theme-content-inv-sec: ${hex('muted')} !important;
+  --dt_color-theme-content-inv-ter: ${hex('muted')} !important;
+  --dt_color-theme-otl-inv-pry: ${hex('surface')} !important;
 
-  --dt_color-theme-surf-inv-pry: ${c('selected')} !important;
-  --dt_color-theme-surf-inv-sec: ${c('chrome')} !important;
-  --dt_color-theme-surf-inv-ter: ${c('hover')} !important;
-  --dt_color-theme-surf-pry: ${c('selected')} !important;
-  --dt_color-theme-surf-sec: ${c('hover')} !important;
-  --dt_color-theme-surf-ter: ${c('bg')} !important;
+  --dt_color-theme-surf-inv-pry: ${hex('selected')} !important;
+  --dt_color-theme-surf-inv-sec: ${hex('chrome')} !important;
+  --dt_color-theme-surf-inv-ter: ${hex('hover')} !important;
+  --dt_color-theme-surf-pry: ${hex('selected')} !important;
+  --dt_color-theme-surf-sec: ${hex('hover')} !important;
+  --dt_color-theme-surf-ter: ${hex('bg')} !important;
 
-  --dt_color-theme-base-pry: ${c('bg')} !important;
-  --dt_color-theme-base-sec: ${c('raised')} !important;
-  --dt_color-theme-base-hgl-1: ${c('selected')} !important;
-  --dt_color-theme-content-pry: ${c('text')} !important;
-  --dt_color-theme-content-sec: ${c('muted')} !important;
-  --dt_color-theme-content-ter: ${c('muted')} !important;
+  --dt_color-theme-base-pry: ${hex('bg')} !important;
+  --dt_color-theme-base-sec: ${hex('raised')} !important;
+  --dt_color-theme-base-hgl-1: ${hex('selected')} !important;
+  --dt_color-theme-content-pry: ${hex('text')} !important;
+  --dt_color-theme-content-sec: ${hex('muted')} !important;
+  --dt_color-theme-content-ter: ${hex('muted')} !important;
 
-  --sk_primary_background: ${t('bg')} !important;
-  --sk_primary_foreground: ${t('text')} !important;
-  --sk_inverted_background: ${t('text')} !important;
-  --sk_inverted_foreground: ${t('bg')} !important;
-  --sk_foreground_max: ${t('bright')} !important;
-  --sk_foreground_high: ${t('text')} !important;
-  --sk_foreground_mid: ${t('muted')} !important;
-  --sk_foreground_low: ${t('muted')} !important;
-  --sk_foreground_min: ${t('muted')} !important;
-  --sk_foreground_max_solid: ${t('bright')} !important;
-  --sk_foreground_high_solid: ${t('muted')} !important;
-  --sk_foreground_mid_solid: ${t('selected')} !important;
-  --sk_foreground_low_solid: ${t('surface')} !important;
-  --sk_foreground_min_solid: ${t('raised')} !important;
-  --sk_highlight: ${t('accent')} !important;
-  --sk_highlight_hover: ${t('accentText')} !important;
-  --sk_highlight_accent: ${t('accent')} !important;
+  --sk_primary_background: ${rgb('bg')} !important;
+  --sk_primary_foreground: ${rgb('text')} !important;
+  --sk_inverted_background: ${rgb('text')} !important;
+  --sk_inverted_foreground: ${rgb('bg')} !important;
+  --sk_foreground_max: ${rgb('bright')} !important;
+  --sk_foreground_high: ${rgb('text')} !important;
+  --sk_foreground_mid: ${rgb('muted')} !important;
+  --sk_foreground_low: ${rgb('muted')} !important;
+  --sk_foreground_min: ${rgb('muted')} !important;
+  --sk_foreground_max_solid: ${rgb('bright')} !important;
+  --sk_foreground_high_solid: ${rgb('muted')} !important;
+  --sk_foreground_mid_solid: ${rgb('selected')} !important;
+  --sk_foreground_low_solid: ${rgb('surface')} !important;
+  --sk_foreground_min_solid: ${rgb('raised')} !important;
+  --sk_highlight: ${rgb('accent')} !important;
+  --sk_highlight_hover: ${rgb('accentText')} !important;
+  --sk_highlight_accent: ${rgb('accent')} !important;
 }
 
-html, body { background-color: ${c('bg')}; }
+html, body { background-color: ${hex('bg')}; }
 /* A full-viewport opaque layer sits above <body>; without this nothing shows. */
-.p-theme_background { background: ${c('bg')} !important; }
+.p-theme_background { background: ${hex('bg')} !important; }
 
 .p-tab_rail,
 .p-channel_sidebar,
-.p-ia4_home_header { background: ${c('chrome')} !important; border: none !important; }
+.p-ia4_home_header { background: ${hex('chrome')} !important; border: none !important; }
 
 .p-client_container,
 .p-message_pane,
-.p-view_contents { background: ${c('bg')} !important; }
+.p-view_contents { background: ${hex('bg')} !important; }
 ${tokenCss(tokens)}${extra ? `\n/* Your own rules. */\n${extra}\n` : ''}`;
 }
 

@@ -311,6 +311,26 @@ class Loader {
           `${details?.exception?.description ?? details?.text ?? '?'}`,
       );
     });
+    /*
+     * A window a mod opened is a renderer of its own, and it is routinely on
+     * another Space or another display -- screencapture takes a picture of the
+     * desktop, not of the window, so it is no help at all. CDP renders the page
+     * itself. SLACKMOD_SHOT=<dir> is how the theme builder's own interface was
+     * looked at while it was being built.
+     */
+    if (process.env.SLACKMOD_SHOT) {
+      void (async () => {
+        await sleep(5000);
+        const shot = await session
+          .send<{ data: string }>('Page.captureScreenshot', { format: 'png' })
+          .catch(() => null);
+        if (!shot) return;
+        const name = (target.title || 'window').replace(/[^\w-]+/g, '-').slice(0, 60);
+        const file = path.join(process.env.SLACKMOD_SHOT!, `${name}.png`);
+        await fs.writeFile(file, Buffer.from(shot.data, 'base64'));
+        console.log(`[slackmod] wrote ${file}`);
+      })();
+    }
     const paint = () => void this.paintAuxiliary(session);
     session.on('Page.loadEventFired', paint);
     session.on('Page.frameStoppedLoading', paint);
