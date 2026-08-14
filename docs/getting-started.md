@@ -372,3 +372,4 @@ rejected.** Read it before you write, not after.
 | `eval is not allowed` | Slack's CSP. There is no way around it; restructure. |
 | `Failed to fetch` on a Slack CDN URL | No CORS headers. Use `api.files.save`. |
 | Nothing in the console | Install the **DevTools** plugin, or press ⌘⌥I. |
+
