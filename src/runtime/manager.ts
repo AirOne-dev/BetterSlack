@@ -13,6 +13,37 @@ import { PluginHost } from './plugins.js';
 import type { Bridge } from './rpc.js';
 import { inlineCssImports, StyleManager } from './themes.js';
 
+/** Slack's client shell. Present once the app has rendered, absent while it boots. */
+const CLIENT_SELECTOR = '.p-client_container';
+const CLIENT_TIMEOUT_MS = 20_000;
+
+/**
+ * Resolve once Slack has built its client, or after CLIENT_TIMEOUT_MS -- never
+ * later. Written with one observer and one timer rather than polling, so it
+ * costs nothing while it waits.
+ */
+function waitForClient(): Promise<void> {
+  if (document.querySelector(CLIENT_SELECTOR)) return Promise.resolve();
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      observer.disconnect();
+      clearTimeout(timer);
+      resolve();
+    };
+    const observer = new MutationObserver(() => {
+      if (document.querySelector(CLIENT_SELECTOR)) finish();
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    const timer = setTimeout(() => {
+      console.warn('[slackmod] Slack’s client never appeared; starting plugins anyway');
+      finish();
+    }, CLIENT_TIMEOUT_MS);
+  });
+}
+
 export interface BootPayload {
   version: string;
   settings: Settings;
@@ -100,13 +131,44 @@ export class ModManager {
 
   /** Apply everything that was already on when Slack started. */
   async applyInitial(): Promise<void> {
-    for (const id of this.settings.enabled) {
-      const record = this.mods.find((m) => m.id === id);
-      const files = this.sources[id];
+    const enabled = this.settings.enabled
+      .map((id) => ({ record: this.mods.find((m) => m.id === id), files: this.sources[id], id }));
+
+    // Themes first, and without waiting for anything: they are CSS, and the
+    // whole point of injecting at document-start is that Slack never flashes
+    // its own colours before ours land.
+    for (const { record, files, id } of enabled) {
       if (!record || files === undefined) {
         console.warn(`[slackmod] "${id}" is enabled but was not delivered by the loader`);
         continue;
       }
+      if (record.type !== 'theme') continue;
+      await this.apply(record, files).catch((err) => {
+        console.error(`[slackmod] could not apply "${id}":`, err);
+      });
+    }
+
+    /*
+     * Plugins wait for Slack to have built its client.
+     *
+     * The runtime can be injected at any moment -- at document-start on a fresh
+     * navigation, or straight into a page the loader found mid-boot. In that
+     * second case the mods used to start against a half-built DOM: their mount
+     * observers fire on every node Slack adds while it renders the client, and
+     * a mount that reacts to Slack's own re-render can keep the microtask queue
+     * from ever draining. The renderer then blocks outright -- a grey window,
+     * no error, and Runtime.evaluate never returning, which is how this was
+     * finally caught.
+     *
+     * Themes do not wait, because CSS cannot loop. If the container never
+     * appears -- Slack renamed it, or this is not the client at all -- the
+     * plugins still start, since refusing to load them would be a worse failure
+     * than the one being avoided.
+     */
+    await waitForClient();
+
+    for (const { record, files, id } of enabled) {
+      if (!record || files === undefined || record.type === 'theme') continue;
       await this.apply(record, files).catch((err) => {
         console.error(`[slackmod] could not apply "${id}":`, err);
       });
