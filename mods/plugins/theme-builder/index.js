@@ -32,6 +32,7 @@ import { contrast, derivePalette, formatCss, parseColour, readability } from './
 import { createPicker } from './picker.js';
 import { buildThemeCss, ROLES, targetsForRole } from './roles.js';
 import { collectTokens, familyOf, formatFor, kindOf, swatch as swatchOf } from './tokens.js';
+import { rolesFrom, rolesFromClient } from './read-theme.js';
 import { buildTokenIndex, createHighlighter, elementsUsing } from './highlight.js';
 import { STRINGS } from './strings.js';
 import { createPaletteView } from './views/palette.js';
@@ -45,6 +46,7 @@ import { createStartView } from './views/start.js';
 export { buildThemeCss, CONTRAST_CHECKS, ROLES } from './roles.js';
 export { matchedRules, variablesIn } from './inspect.js';
 export { collectTokens, kindOf, tokenCss } from './tokens.js';
+export { declaredColours, rolesFrom, stripFrom } from './read-theme.js';
 export { buildTokenIndex, elementsUsing } from './highlight.js';
 export { targetsForRole, tokensForRole } from './roles.js';
 export {
@@ -278,11 +280,33 @@ export default {
         { title: t('baseHint'), onChange: (id) => void setBase(id) },
       );
 
-      /** Load a theme's stylesheet under the palette, or none at all. */
+      /**
+       * Put a theme under the palette -- and start the palette *at* it.
+       *
+       * Loading the stylesheet alone was not enough, and the way it failed was
+       * confusing: the base went in first and the twelve derived roles went in
+       * after, so a chosen theme's fonts and layout appeared while its colours
+       * were immediately painted over by a palette nobody had chosen. Every
+       * theme looked the same and only the parts a palette cannot express
+       * changed. Reading the theme's own colours into the roles is what
+       * "start from" has to mean.
+       *
+       * Roles the theme says nothing about stay derived, so a theme that only
+       * sets a background still gets a coherent palette around it.
+       */
       const setBase = async (id) => {
         state.base = id;
         baseSelect.value = id;
         state.baseCss = id ? await api.themes.source(id) : '';
+
+        // With no base, "Slack's own colours" is meant literally: the app is
+        // showing them right now, since the builder holds the user's themes
+        // back while it is open.
+        const roles = id ? rolesFrom(state.baseCss) : rolesFromClient(document);
+        const { bg, accent, ...rest } = roles;
+        if (bg) state.seeds.bg = bg;
+        if (accent) state.seeds.accent = accent;
+        state.roleOverrides = rest;
         apply();
       };
 

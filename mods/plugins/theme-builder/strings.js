@@ -11,7 +11,7 @@ export const STRINGS = {
     defaultName: 'My theme',
     themeName: 'Theme',
     base: 'Start from',
-    baseHint: 'A theme to build on top of. Yours is applied over it.',
+    baseHint: 'Its colours become your starting palette, and its stylesheet sits under yours.',
     scratch: 'Slack’s own colours',
 
     // The screen the window opens on
@@ -22,7 +22,7 @@ export const STRINGS = {
     startNewScratch: 'Two colours, ten derived, on top of Slack’s own palette.',
     startPick: 'Start from',
     startOn: 'On now',
-    startEdit: 'Edit on top of it',
+    startEdit: 'Open its palette',
     startThemeActive: '{name} (on now)',
     startCopyName: '{name}, edited',
     startResume: 'Carry on where you left off',
@@ -160,7 +160,7 @@ export const STRINGS = {
     defaultName: 'Mon thème',
     themeName: 'Thème',
     base: 'Partir de',
-    baseHint: 'Un thème comme base. Le vôtre s’applique par-dessus.',
+    baseHint: 'Ses couleurs deviennent votre palette de départ, et sa feuille de style passe sous la vôtre.',
     scratch: 'Les couleurs de Slack',
 
     // L’écran d’ouverture de la fenêtre
@@ -171,7 +171,7 @@ export const STRINGS = {
     startNewScratch: 'Deux couleurs, dix déduites, par-dessus la palette de Slack.',
     startPick: 'Partir de',
     startOn: 'Actif',
-    startEdit: 'Le modifier par-dessus',
+    startEdit: 'Ouvrir sa palette',
     startThemeActive: '{name} (actif)',
     startCopyName: '{name}, modifié',
     startResume: 'Reprendre où vous en étiez',

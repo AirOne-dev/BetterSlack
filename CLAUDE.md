@@ -272,6 +272,15 @@ It opens on a **door** (`views/start.js`): new theme, open one you have, or
 carry on. Work is kept through `api.settings` -- the loader's file on disk --
 not `localStorage`, which is Slack's storage and is wiped by an app update.
 
+**Choosing a base reads that theme's colours into the palette** -- loading its
+stylesheet under the generated one is not enough, and the way that failed was
+confusing: the base went in first, the twelve derived roles went in after and
+painted over every colour it had set, so a chosen theme's fonts and layout
+appeared while its colours did not. `read-theme.js` maps Slack's tokens back to
+the twelve roles, following `var()` references (themes name their own colours
+and point Slack's tokens at them) and unwrapping triplets. Roles a theme is
+silent about stay derived.
+
 **While the builder is open it holds the user's themes back**
 (`api.themes.suspend`, which detaches the whole `theme` layer without touching
 the settings). Without that, choosing a base changes nothing you can see: the
