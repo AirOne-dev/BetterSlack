@@ -45,7 +45,6 @@ import { STRINGS } from './strings.js';
 
 // Also spelled out in column.css, which cannot interpolate.
 const COLUMN_ID = 'slackmod-member-column';
-const MENU_ID = 'slackmod-profile-menu';
 
 /** Members to render at most. Slack pages `conversations.members` beyond this. */
 const MEMBER_LIMIT = 100;
@@ -85,33 +84,12 @@ export default {
       return;
     }
 
-    /** users.info results for this session, so switching channels is cheap. */
-    const users = new Map();
-    /** Latest presence per user id: "active" or "away". */
+    /** Latest availability per user id, as api.slack.web reports it. */
     const presence = new Map();
     /** Bumped on every render so a slow response cannot paint over a newer one. */
     let generation = 0;
-    let presenceTimer;
-
-    const fetchUsers = async (ids) => {
-      const missing = ids.filter((id) => !users.has(id));
-      if (missing.length === 0) return;
-      try {
-        const res = await api.slack.web.call('users.info', { users: missing.join(',') });
-        if (Array.isArray(res.users)) {
-          for (const user of res.users) users.set(user.id, user);
-          return;
-        }
-      } catch (err) {
-        api.log.warn('batched users.info failed, falling back to one call each:', err.message);
-      }
-      // The documented shape. Slower, but it keeps working if Slack ever drops
-      // the batch form that its own client relies on.
-      for (const id of missing) {
-        const user = await api.slack.web.userInfo(id).catch(() => null);
-        if (user) users.set(id, user);
-      }
-    };
+    /** Stops the presence poll of the channel being left. */
+    let stopPolling;
 
     const paintPresence = () => {
       const host = document.getElementById(COLUMN_ID);
@@ -128,15 +106,16 @@ export default {
     const refreshPresence = async (ids, mine) => {
       for (const id of ids.slice(0, PRESENCE_LIMIT)) {
         if (mine !== generation) return;
-        try {
-          const res = await api.slack.web.presence(id);
-          presence.set(id, res.presence === 'active' ? 'active' : 'away');
-        } catch (err) {
-          // Almost always a rate limit. Stop this round rather than spending the
-          // rest of the budget discovering the same thing 40 more times.
-          api.log.warn('presence lookup stopped:', err.message);
+        // One call each: users.getPresence has no batch form -- passing `users`
+        // is accepted, ignored, and answered about the caller instead.
+        const { state } = await api.slack.web.availability(id);
+        if (state === 'unknown') {
+          // Almost always a rate limit. Stop this round rather than spending
+          // the rest of the budget discovering the same thing 40 more times.
+          api.log.warn('presence lookup stopped');
           return;
         }
+        presence.set(id, state);
         paintPresence();
       }
     };
@@ -190,80 +169,48 @@ export default {
      * hiding is conversations.close; the file list is files.list rendered here
      * rather than by sending the user somewhere else.
      */
+    /** Set while a menu is open, so anything else opening can take it down. */
+    let closeMenu = () => {};
+
     const openMenu = (anchor, userId, data) => {
-      document.getElementById(MENU_ID)?.remove();
       const user = data?.user ?? {};
       const name = user.profile?.display_name || user.real_name || user.name || userId;
-
-      const entry = (label, run, danger = false) => {
-        const button = api.dom.h('button', {
-          class: 'c-button-unstyled c-menu_item__button',
-          role: 'menuitem',
-          type: 'button',
-        }, [api.dom.h('div', {
-          class: `c-menu_item__label${danger ? ' slackmod-profile__danger' : ''}`,
-        }, [label])]);
-        button.addEventListener('click', () => {
-          closeMenu();
-          void run();
-        });
-        return api.dom.h('div', { class: 'c-menu_item__li' }, [button]);
-      };
 
       const link = api.slack.web.teamDomain
         ? `https://${api.slack.web.teamDomain}.slack.com/team/${userId}`
         : `${location.origin}/team/${userId}`;
 
-      const items = api.dom.h('div', { class: 'c-menu__items', role: 'menu', tabindex: '-1' }, [
-        entry(`${t('copyName')} : @${user.name ?? name}`,
-          () => api.helpers.copy(`@${user.name ?? name}`, t('copiedName'))),
-        entry(t('copyId'), () => api.helpers.copy(userId, t('copiedId'))),
-        entry(t('copyLink'), () => api.helpers.copy(link, t('copiedLink'))),
-        entry(t('viewFiles'), () => showFiles(userId, name)),
+      // api.ui.menu is Slack's own `c-menu`, positioned for us and closed on
+      // Escape or a click outside. Borrowed rather than drawn, so it follows
+      // every theme -- including one being edited in the builder next door.
+      closeMenu = api.ui.menu(anchor, [
+        {
+          label: `${t('copyName')} : @${user.name ?? name}`,
+          onSelect: () => void api.helpers.copy(`@${user.name ?? name}`, t('copiedName')),
+        },
+        { label: t('copyId'), onSelect: () => void api.helpers.copy(userId, t('copiedId')) },
+        { label: t('copyLink'), onSelect: () => void api.helpers.copy(link, t('copiedLink')) },
+        { label: t('viewFiles'), onSelect: () => void showFiles(userId, name) },
         // Slack's own profile, through its deep-link scheme. Huddle and VIP
         // live there and have no public method of their own, so this is the
         // honest way to reach them: one click, Slack's real pane, no puppetry.
-        entry(t('openInSlack'), () => {
-          close();
-          api.slack.openUserProfile(userId);
-        }),
-        entry(t('hide'), async () => {
-          try {
-            const id = await api.slack.web.call('conversations.open', { users: userId, return_im: true });
-            await api.slack.hideConversation(id.channel.id);
-            api.ui.toast(t('hidden'));
-          } catch (err) {
-            api.ui.toast(t('actionFailed', { reason: err.message }), { variant: 'error' });
-          }
-        }, true),
-      ]);
-
-      const layer = api.dom.h('div', { id: MENU_ID, class: 'slackmod-profile__menu' }, [
-        api.dom.h('div', { class: 'c-menu' }, [
-          api.dom.h('div', { class: 'c-menu__items_scroller' }, [items]),
-        ]),
-      ]);
-      document.body.append(layer);
-
-      const rect = anchor.getBoundingClientRect();
-      const box = layer.getBoundingClientRect();
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - box.width - 8));
-      const top = rect.bottom + box.height > window.innerHeight
-        ? rect.top - box.height - 4
-        : rect.bottom + 4;
-      layer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
-      setTimeout(() => document.addEventListener('mousedown', onDocumentDown, true), 0);
+        { label: t('openInSlack'), onSelect: () => api.slack.openUserProfile(userId) },
+        {
+          label: t('hide'),
+          danger: true,
+          onSelect: async () => {
+            try {
+              const id = await api.slack.web.call('conversations.open', { users: userId, return_im: true });
+              await api.slack.hideConversation(id.channel.id);
+              api.ui.toast(t('hidden'));
+            } catch (err) {
+              api.ui.toast(t('actionFailed', { reason: err.message }), { variant: 'error' });
+            }
+          },
+        },
+      ], { align: 'left' });
     };
 
-    const closeMenu = () => {
-      document.getElementById(MENU_ID)?.remove();
-      document.removeEventListener('mousedown', onDocumentDown, true);
-    };
-    const onDocumentDown = (event) => {
-      const menu = document.getElementById(MENU_ID);
-      if (menu && !menu.contains(event.target)) closeMenu();
-    };
-    api.onDispose(closeMenu);
 
     /** Someone's files, in the dialog rather than by navigating away. */
     const showFiles = async (userId, name) => {
@@ -556,7 +503,7 @@ export default {
      * over exactly. Until presence has come back there is nothing to split on,
      * so it stays one "Members" group rather than claiming everyone is offline.
      */
-    const paint = (host, ids, truncated) => {
+    const paint = (host, ids, truncated, users) => {
       const people = ids
         .map((id) => users.get(id))
         .filter((user) => user && !user.deleted)
@@ -606,19 +553,20 @@ export default {
         return;
       }
 
-      await fetchUsers(ids);
+      // One request for the lot, cached across channels by the API -- and
+      // dropped by it when the workspace changes, which is the part that used
+      // to be this plugin's problem.
+      const users = await api.slack.web.users(ids);
       if (mine !== generation) return;
-      paint(host, ids, truncated);
+      paint(host, ids, truncated, users);
 
-      clearTimeout(presenceTimer);
-      const tick = () => {
-        void refreshPresence(ids, mine).then(() => {
-          if (mine !== generation || !document.getElementById(COLUMN_ID)) return;
-          paint(host, ids, truncated);
-          presenceTimer = setTimeout(tick, PRESENCE_INTERVAL_MS);
-        });
-      };
-      tick();
+      stopPolling?.();
+      stopPolling = api.helpers.poll(async () => {
+        if (mine !== generation || !document.getElementById(COLUMN_ID)) return;
+        await refreshPresence(ids, mine);
+        if (mine !== generation || !document.getElementById(COLUMN_ID)) return;
+        paint(host, ids, truncated, users);
+      }, PRESENCE_INTERVAL_MS);
     };
 
     api.dom.keepMounted('.p-view_contents--primary', COLUMN_ID, () => {
@@ -633,13 +581,13 @@ export default {
     // MutationObserver on the header it would otherwise take.
     let seenTeam = currentTeamId();
     let seen = currentChannelId();
-    const watcher = setInterval(() => {
+    const watcher = api.helpers.poll(() => {
       const team = currentTeamId();
       if (team !== seenTeam) {
-        // A different workspace: different people, different VIPs, and the
-        // cached users belong to the one we left.
+        // A different workspace: different people, different VIPs. The user
+        // directory belongs to api.slack.web, which drops it on the same
+        // signal; what is left here is what only this plugin knows.
         seenTeam = team;
-        users.clear();
         presence.clear();
         profiles.clear();
         loadVips();
@@ -655,8 +603,8 @@ export default {
     }, 1000);
 
     api.onDispose(() => {
-      clearInterval(watcher);
-      clearTimeout(presenceTimer);
+      watcher();
+      stopPolling?.();
       generation++;
     });
   },

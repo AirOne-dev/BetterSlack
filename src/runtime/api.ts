@@ -13,6 +13,7 @@ import { createSlackApi, type SlackApi } from './slack-api.js';
 import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
 import { createKit, type Kit } from './ui/kit.js';
+import { openMenu, type MenuItem, type MenuOptions } from './ui/menu.js';
 import { KIT_CSS } from './ui/kit-css.js';
 import {
   confirm,
@@ -74,6 +75,16 @@ export interface PluginApi {
     confirm(options: ConfirmOptions): Promise<boolean>;
     /** Slack-style tooltip on any element you built yourself. */
     tooltip(element: HTMLElement, options: TooltipOptions): Cleanup;
+
+    /**
+     * Slack's overflow menu, against an anchor you give it.
+     *
+     * Borrowed rather than drawn: it wears `c-menu`, so it follows every theme,
+     * including one being edited. One menu is open at a time, Escape and a
+     * click outside close it, and it flips above the anchor when there is no
+     * room below -- which is always, for a button in the control strip.
+     */
+    menu(anchor: HTMLElement, items: MenuItem[], options?: MenuOptions): Cleanup;
 
     /**
      * Slack's design system, as components, bound to a document.
@@ -258,6 +269,7 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
       },
       confirm,
       tooltip: track(attachTooltip),
+      menu: track(openMenu) as PluginApi['ui']['menu'],
       kit: (doc?: Document) => createKit(doc ?? document),
       kitCss: KIT_CSS,
     },

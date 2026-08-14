@@ -273,7 +273,9 @@ test('the overflow opens our own menu and never Slack’s profile pane', async (
     more.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const menu = document.getElementById('slackmod-profile-menu');
+    // api.ui.menu owns the layer now, so the id is the API's rather than this
+    // plugin's -- what matters is that it is Slack's markup and ours to close.
+    const menu = document.getElementById('slackmod-menu-layer');
     assert.ok(menu, 'our own menu');
     assert.ok(menu.querySelector('.c-menu__items'), 'in Slack’s menu markup, so it follows the theme');
     assert.ok(menu.querySelectorAll('.c-menu_item__button').length >= 5, 'with its entries');

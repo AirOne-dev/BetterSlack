@@ -315,13 +315,18 @@ export default {
       if (cache.has(userId)) return cache.get(userId);
       const data = await (async () => {
         try {
-          const user = await api.slack.web.userInfo(userId);
-          // Both are allowed to fail: bots have no presence, and dnd.info is
-          // not readable in every workspace.
-          const [presence, dnd] = await Promise.all([
-            api.slack.web.presence(userId).catch(() => null),
-            api.slack.web.dndInfo(userId).catch(() => null),
-          ]);
+          // Through the API's directory, so opening the same profile twice --
+          // or after another mod has already asked about them -- costs nothing.
+          const users = await api.slack.web.users([userId]);
+          // The directory answers with what it has and swallows the rest --
+          // a partial answer is normal when several people are asked about at
+          // once. For one person it is a failure, and the reason belongs on
+          // screen, so ask again the way that reports it.
+          const user = users.get(userId) ?? (await api.slack.web.userInfo(userId));
+          // Allowed to be absent: bots have no presence, and dnd.info is not
+          // readable in every workspace. availability() folds both together and
+          // never rejects.
+          const { presence, dnd } = await api.slack.web.availability(userId);
           return { user, presence, dnd };
         } catch (err) {
           api.log.error(err);

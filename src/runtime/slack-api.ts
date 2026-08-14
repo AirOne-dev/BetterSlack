@@ -483,6 +483,17 @@ export interface SlackApi {
   currentChannelId(): string | null;
   /** The author of a message, read from their avatar URL. */
   userIdFromMessage(message: MessageRef): string | null;
+
+  /**
+   * The same avatar at another size.
+   *
+   * Slack serves them as `<base>-<size>`, so asking for a bigger one is a
+   * string edit rather than another request -- the rail renders a 48 and a
+   * profile wants a 72, and every mod that shows a face was doing this by hand.
+   * Returns null for anything that is not one of Slack's avatar URLs, which is
+   * what a custom image or a data URI will be.
+   */
+  avatarUrl(url: string | null | undefined, size: number): string | null;
   /** Stable selectors, for mods that need to go beyond these helpers. */
   selectors: Readonly<Record<string, string>>;
 }
@@ -560,6 +571,8 @@ export function createSlackApi(pluginId: string): SlackApi {
     },
     describeMessage,
     composer,
+    avatarUrl: (url, size) =>
+      typeof url === 'string' && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
     userIdFromMessage: (message) =>
       userIdFromAvatarUrl(
         message.element.querySelector<HTMLImageElement>('.c-message_kit__avatar img, .c-avatar img')?.src,

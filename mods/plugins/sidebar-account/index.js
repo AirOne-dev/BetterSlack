@@ -132,11 +132,6 @@ const CSS = `
 }
 `;
 
-/** Slack serves avatars as `<base>-<size>`; the rail renders a 48. */
-function avatarAt(url, size) {
-  return typeof url === 'string' ? url.replace(/-\d+$/, `-${size}`) : null;
-}
-
 const STRINGS = {
   en: { account: 'Your account', settings: 'Account settings' },
   fr: { account: 'Votre compte', settings: 'Réglages du compte' },
@@ -226,7 +221,8 @@ export default {
       const userId = source?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i)?.[1]?.toUpperCase() ?? null;
 
       const avatar = api.dom.h('img', { class: 'slackmod-me__avatar', alt: '' });
-      const best = avatarAt(source, 72) ?? source;
+      // The rail renders a 48; this one has room for a 72.
+      const best = api.slack.avatarUrl(source, 72) ?? source;
       if (best) avatar.setAttribute('src', best);
 
       const name = api.dom.h('div', { class: 'slackmod-me__name' }, ['…']);
@@ -257,34 +253,31 @@ export default {
       });
       api.helpers.tooltip(settings, t('settings'));
 
-      /** Availability, from Slack rather than from the label beside it. */
-      const paintDot = () => {
+      /**
+       * Availability, from Slack rather than from the label beside it.
+       *
+       * Your own changes while you sit there, so it is polled -- one request a
+       * minute, about yourself, and none at all while the window is hidden,
+       * which api.helpers.poll takes care of.
+       */
+      api.helpers.poll(async () => {
+        // No isConnected guard: the first run happens while the strip is still
+        // being built, and refusing to paint then leaves the dot grey for a
+        // minute. Writing a class onto a node about to be inserted is fine.
         if (!userId || !api.slack.web.available) return;
-        void Promise.all([
-          api.slack.web.presence(userId).catch(() => null),
-          api.slack.web.dndInfo(userId).catch(() => null),
-        ]).then(([state, dnd]) => {
-          if (!dot.isConnected) return;
-          dot.classList.toggle('slackmod-me__dot--dnd', dnd?.dnd_enabled === true);
-          dot.classList.toggle(
-            'slackmod-me__dot--active',
-            dnd?.dnd_enabled !== true && state?.presence === 'active',
-          );
-        });
-      };
-      paintDot();
-      // Your own availability changes while you sit there, so it is polled --
-      // one request a minute, about yourself.
-      const timer = setInterval(paintDot, 60_000);
-      api.onDispose(() => clearInterval(timer));
+        const { state } = await api.slack.web.availability(userId);
+        dot.classList.toggle('slackmod-me__dot--dnd', state === 'dnd');
+        dot.classList.toggle('slackmod-me__dot--active', state === 'active');
+      }, 60_000);
 
       if (userId && api.slack.web.available) {
         api.slack.web
-          .userInfo(userId)
-          .then((user) => {
-            const profile = user.profile ?? {};
+          .users([userId])
+          .then((users) => {
+            const user = users.get(userId);
+            const profile = user?.profile ?? {};
             name.textContent =
-              profile.display_name || profile.real_name || user.real_name || user.name || '';
+              profile.display_name || profile.real_name || user?.real_name || user?.name || '';
             if (profile.status_text) status.textContent = profile.status_text;
           })
           .catch((err) => {

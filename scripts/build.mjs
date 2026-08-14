@@ -80,6 +80,7 @@ const runtimeModules = {
     `${root}/src/runtime/ui/kit.ts`,
     `${root}/src/runtime/ui/kit-css.ts`,
     `${root}/src/runtime/ui/code.ts`,
+    `${root}/src/runtime/ui/menu.ts`,
   ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },

@@ -88,12 +88,16 @@ test('shows availability as a dot, coloured from Slack’s answer', async () => 
   }
 });
 
-test('do not disturb outranks being active', async () => {
+test('do not disturb outranks being active, while it is actually on', async () => {
   const dom = installDom();
+  const now = Date.now() / 1000;
   const { api, recorded } = createTestApi({
     web: {
       presence: async () => ({ presence: 'active' }),
-      dndInfo: async () => ({ dnd_enabled: true }),
+      // A window covering right now. `dnd_enabled` on its own is a schedule,
+      // not a state -- someone with quiet hours every night is not away all
+      // day, which is what treating the flag as the answer would show.
+      dndInfo: async () => ({ dnd_enabled: true, next_dnd_start_ts: now - 60, next_dnd_end_ts: now + 60 }),
     },
   });
   try {
