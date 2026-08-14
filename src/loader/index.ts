@@ -320,7 +320,7 @@ class Loader {
      */
     if (process.env.SLACKMOD_SHOT) {
       void (async () => {
-        await sleep(5000);
+        await sleep(4000);
         const shot = await session
           .send<{ data: string }>('Page.captureScreenshot', { format: 'png' })
           .catch(() => null);
@@ -476,6 +476,7 @@ class Loader {
       console.warn(`[slackmod] ${request.type} failed: ${error}`);
     }
     if (envelope.rid === undefined) return;
+    if (this.verbose) console.log(`[slackmod] -> ${request.type} ${error ?? 'ok'}`);
     await this.post(session, { rid: envelope.rid, payload: { result, error } });
   }
 

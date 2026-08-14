@@ -109,11 +109,33 @@ test('every dialog we build overrides Slack’s opacity: 0', () => {
  * cleanly and throws `ReferenceError: dialog is not defined` at boot — no
  * styling, no panel, no mods, and nothing pointing at a comment. Twice now.
  */
-test('no backtick can sneak into the panel stylesheet', () => {
-  const styles = read('src/runtime/ui/styles.ts');
-  const body = styles.split('export const PANEL_CSS = `')[1]?.split('`;')[0];
-  assert.ok(body, 'PANEL_CSS must be a template literal');
-  assert.doesNotMatch(body, /`/, 'a backtick inside PANEL_CSS ends the string early');
+test('no backtick can sneak into a stylesheet that ships as a string', () => {
+  // Every one of them, not only the panel's: the kit's stylesheet and the code
+  // editor's are template literals for the same reason and would fail the same
+  // way, in a window with no DevTools to open.
+  //
+  // The check is not "is there a backtick in the CSS" -- the first one closes
+  // the literal, so by then it is code. It is: does the literal end where the
+  // declaration does. Anything between the closing backtick and the semicolon
+  // must be a plain concatenation, which is what CSS-turned-JavaScript is not.
+  for (const [file, name] of [
+    ['src/runtime/ui/styles.ts', 'PANEL_CSS'],
+    ['src/runtime/ui/kit-css.ts', 'KIT_CSS'],
+    ['src/runtime/ui/code.ts', 'CODE_CSS'],
+  ]) {
+    const declaration = read(file).split(`export const ${name} = `)[1];
+    assert.ok(declaration, `${name} must exist`);
+    const opened = declaration.indexOf('`');
+    assert.notEqual(opened, -1, `${name} must be a template literal`);
+    const closed = declaration.indexOf('`', opened + 1);
+    assert.notEqual(closed, -1, `${name} never closes its literal`);
+    const after = declaration.slice(closed + 1).split('\n')[0];
+    assert.match(
+      after,
+      /^\s*(\+\s*[A-Za-z_$][\w$]*\s*)?;/,
+      `${name} carries a backtick: the literal closed early and the CSS after it is code`,
+    );
+  }
 });
 
 /**

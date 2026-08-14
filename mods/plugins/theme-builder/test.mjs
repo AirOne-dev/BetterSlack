@@ -38,32 +38,76 @@ test('the window opens on the door, and only the door', async () => {
   }
 });
 
-test('the door offers exactly three ways in, and remembers the work', async () => {
+test('the door is a gallery: one card per theme, plus a new one, plus the draft', async () => {
   const { createStartView } = await import('./views/start.js');
   const dom = installDom();
   try {
     const { api } = createApi({ settings: { draft: { name: 'Half done', savedAt: 0, tokenOverrides: { a: 1 } } } });
-    const ui = (await import('./ui.js')).createUi(document);
-    const t = api.i18n.strings(STRINGS);
     const view = createStartView({
-      api, ui, t,
+      api,
+      ui: api.ui.kit(document),
+      t: api.i18n.strings(STRINGS),
       savedDraft: () => api.settings.get('draft', null),
       begin: () => {}, resume: () => {},
     });
     view.refresh();
+    await new Promise((resolve) => setTimeout(resolve, 10)); // the sources arrive async
+
+    const cards = view.node.querySelectorAll('.gallery__card');
+    assert.equal(cards.length, 3, 'new, plus the two themes the harness has');
+    assert.match(cards[0].textContent, /Créer un nouveau|Start a new/);
 
     const text = view.node.textContent;
-    assert.match(text, /Créer un nouveau|Start a new/, 'start something');
-    assert.match(text, /Reprendre un thème|Work on a theme/, 'open one you have');
-    assert.match(text, /Reprendre où|Carry on/, 'or carry on');
+    assert.match(text, /Aurora/, 'every theme is offered by name');
+    assert.match(text, /Midnight/);
+    assert.match(text, /Actif|On now/, 'and the one that is on says so');
     assert.match(text, /Half done/, 'the draft says what it is');
 
-    // A theme that is switched on is offered as the base of a new theme, since
-    // that is what the user is looking at while they decide.
-    assert.match(text, /Aurora/, 'the enabled theme is named');
+    // The colours are read out of each stylesheet, so a card shows the palette
+    // it is offering rather than a name and a guess.
+    const bands = view.node.querySelectorAll('.gallery__band');
+    assert.ok(bands.length > 0, 'each theme wears its own colours');
   } finally {
     dom.cleanup();
   }
+});
+
+test('a theme’s palette is read from its stylesheet, triplets included', async () => {
+  const { paletteOf } = await import('./views/start.js');
+  const css = `
+    :root {
+      --dt_color-theme-base-inv-pry: #111114;
+      --dt_color-base-pry: #1a1a1e;
+      --dt_color-base-sec: #222;
+      --dt_color-content-pry: #ededed;
+      --dt_color-content-hgl-1: #a0adf5;
+      --sk_primary_background: 26, 26, 30;
+    }`;
+  assert.deepEqual(paletteOf(css), ['#111114', '#1a1a1e', '#222', '#ededed', '#a0adf5']);
+  assert.deepEqual(paletteOf(css, ['--sk_primary_background']), ['rgb(26, 26, 30)'],
+    'a bare triplet becomes something that can actually be painted');
+
+  // What themes in this repository actually do: name their own colours once and
+  // point Slack's tokens at them. Painting the reference itself would give a
+  // card of invisible bands, since that variable does not exist in the builder.
+  const indirect = `
+    :root {
+      --dc-rail: #111114;
+      --dc-chat: #1a1a1e;
+      --dt_color-theme-base-inv-pry: var(--dc-rail);
+      --dt_color-base-pry: var(--dc-chat);
+      --dt_color-base-sec: var(--dc-missing, #232428);
+      --dt_color-content-pry: var(--dc-loop);
+      --dc-loop: var(--dt_color-content-pry);
+    }`;
+  const resolved = paletteOf(indirect);
+  assert.ok(resolved.includes('#111114') && resolved.includes('#1a1a1e'), 'references are followed');
+  assert.ok(resolved.includes('#232428'), 'and a var() fallback is used when the name is missing');
+  assert.ok(!resolved.some((colour) => colour.includes('var(')), 'nothing unpaintable survives');
+
+  // A theme that sets none of them still has colours in it; an empty card
+  // would be worse than an approximate one.
+  assert.deepEqual(paletteOf('.a:focus-visible { outline: 2px solid #6cb6ff; }'), ['#6cb6ff']);
 });
 
 test('every view the rail offers is a file that exists and exports its builder', async () => {
@@ -99,14 +143,37 @@ test('every string the interface asks for is one the dictionaries have', () => {
   assert.deepEqual(missing, [], 'these are asked for and never defined');
 });
 
-test('the window wears Slack’s design system rather than the theme being edited', () => {
-  // A workbench repainted by the work becomes unreadable exactly when you have
-  // just written something wrong, so the chrome is fixed.
+test('a class passed to a kit component adds to it rather than replacing it', () => {
+  const dom = installDom();
+  try {
+    const { api } = createApi();
+    const field = api.ui.kit(document).input({ class: 'title-input' });
+    assert.ok(field.classList.contains('sm-input'), 'the component keeps its own styling');
+    assert.ok(field.classList.contains('title-input'), 'and takes the caller’s class too');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('the window borrows the API’s components instead of rebuilding them', () => {
+  // Every button, input, card, popover and dialog in here used to be a second
+  // copy of Slack's design system, drifting on its own. They come from
+  // api.ui.kit now; what is left in this file is the layout and the things only
+  // a theme builder has.
   const css = FILES['window.css'];
-  assert.match(css, /--primary: #007a5a/, 'Slack’s confirm green');
-  assert.match(css, /Lato, Slack-Lato/, 'and its type stack');
-  assert.doesNotMatch(css, /var\(--dt_color/, 'never Slack’s live tokens');
-  assert.doesNotMatch(css, /var\(--sk_/, 'nor the legacy family');
+  assert.doesNotMatch(css, /^\.btn\s*\{/m, 'no button of its own');
+  assert.doesNotMatch(css, /^\.input\s*\{/m, 'no input of its own');
+  assert.doesNotMatch(css, /^\.card\s*\{/m, 'no card of its own');
+  assert.match(css, /var\(--sm-/, 'and it paints from the kit’s palette');
+
+  const shell = FILES['index.js'];
+  assert.match(shell, /api\.ui\.kit\(doc\)/, 'the kit is bound to this window’s document');
+  assert.match(shell, /api\.ui\.kitCss/, 'and its stylesheet goes in with it');
+
+  // Still never Slack's live tokens: a workbench repainted by the work becomes
+  // unreadable exactly when you have just written something wrong.
+  assert.doesNotMatch(css, /var\(--dt_color/);
+  assert.doesNotMatch(css, /var\(--sk_/);
 });
 
 test('maps the twelve roles across all four token families', () => {

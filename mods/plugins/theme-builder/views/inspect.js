@@ -99,7 +99,7 @@ export function createInspectView(ctx) {
     }
 
     // 1. What did I pick?
-    body.append(el('h3', { class: 'section-title', textContent: t('picked') }));
+    body.append(el('h3', { class: 'sm-section-title', textContent: t('picked') }));
 
     const selector = describe(picked);
     const selectorChip = copyable(selector, { title: t('copySelector') });
@@ -132,10 +132,10 @@ export function createInspectView(ctx) {
         });
         chips.append(chip);
       }
-      body.append(el('h3', { class: 'section-title', textContent: t('classes') }), chips);
+      body.append(el('h3', { class: 'sm-section-title', textContent: t('classes') }), chips);
     }
 
-    body.append(el('h3', { class: 'section-title', textContent: t('around') }));
+    body.append(el('h3', { class: 'sm-section-title', textContent: t('around') }));
     const chain = el('nav', { class: 'chain' });
     for (const step of ancestry(picked).reverse()) {
       const item = el('button', { class: 'chain__step', type: 'button', textContent: describe(step) });
@@ -155,8 +155,8 @@ export function createInspectView(ctx) {
       getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     const used = variablesIn(rules, resolve).filter((entry) => entry.value);
 
-    body.append(el('h3', { class: 'section-title', textContent: t('paintedBy') }));
-    body.append(el('p', { class: 'muted', textContent: used.length ? t('paintedByHint') : t('noVars') }));
+    body.append(el('h3', { class: 'sm-section-title', textContent: t('paintedBy') }));
+    body.append(el('p', { class: 'sm-muted', textContent: used.length ? t('paintedByHint') : t('noVars') }));
     const list = el('div', { class: 'token-list' });
     for (const entry of used.slice(0, 40)) {
       list.append(tokenRow({
@@ -182,7 +182,7 @@ export function createInspectView(ctx) {
       ]));
     }
     if (literals.children.length) {
-      body.append(el('h3', { class: 'section-title', textContent: t('computed') }), literals);
+      body.append(el('h3', { class: 'sm-section-title', textContent: t('computed') }), literals);
     }
 
     const ruleList = el('ul', { class: 'rules' });

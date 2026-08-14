@@ -11,6 +11,8 @@ import { JSDOM } from 'jsdom';
 // than a stand-in that could drift from it.
 import { createHelpers } from '../dist/helpers.mjs';
 import { createI18n } from '../dist/i18n.mjs';
+import { createKit } from '../dist/ui/kit.mjs';
+import { KIT_CSS } from '../dist/ui/kit-css.mjs';
 
 /** A Slack-shaped fragment: rail, sidebar, a message, a composer, a profile pane. */
 export const SLACK_FIXTURE = `
@@ -338,6 +340,10 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
         return confirmAnswer;
       },
       tooltip: () => () => {},
+      // The real kit, so a mod's test exercises the components the app builds
+      // rather than a stand-in that always agrees with it.
+      kit: (target = globalThis.document) => createKit(target),
+      kitCss: KIT_CSS,
     },
 
     files: {

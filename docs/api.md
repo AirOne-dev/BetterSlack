@@ -369,6 +369,74 @@ The loader does the fetching, because Slack's CDN serves without CORS headers
 and a `fetch` from the page always fails. https only, the file name is
 sanitised, 25 MB cap, fixed download directory.
 
+## `api.ui.kit`
+
+Slack's design system, as components, bound to a document.
+
+Inside the client, Slack's own classes are the right answer — the Mods panel
+wears `.c-dialog` and `.c-button` and follows every theme for free. They are not
+available anywhere else: a mod that opens a window of its own gets a blank
+document with no stylesheet in it, which is how the theme builder ended up
+rebuilding a button, an input, a card, a popover and a dialog by hand.
+
+```js
+const child = window.open('', 'my-tool', 'width=720,height=640');
+child.document.head.append(Object.assign(
+  child.document.createElement('style'),
+  { textContent: api.ui.kitCss },
+));
+
+const kit = api.ui.kit(child.document);
+child.document.body.append(kit.card('Colours', [
+  kit.field('Name', kit.input({ value: 'Midnight' }), 'Shown in the Themes list.'),
+  kit.button('Save', { variant: 'primary', onClick: save }),
+]));
+```
+
+| | |
+| --- | --- |
+| `el(tag, props?, children?)` | element builder; `class`, `html`, and anything hyphenated becomes an attribute |
+| `button(label, { variant, icon, title, wide, onClick, onHover })` | `default` · `primary` (Slack's confirm green) · `ghost` · `danger` |
+| `iconButton(svg, { onClick, title, danger })` | a quiet square button |
+| `field(label, control, hint?)` | label, control, and the sentence under it |
+| `input(props?)` / `select(options, { onChange })` | a class you pass is **added**, not substituted |
+| `segmented(options, { onChange })` | a row of tabs that behaves like a select; `{ node, set, value }` |
+| `card(title, children, { subtitle, actions })` | the titled block everything else sits in |
+| `emptyState(title, body, action?)` | what a view shows before it has anything |
+| `swatch(css, { size })` | a colour over a checkerboard, so transparency reads |
+| `popover(content, anchor, { onClose })` | anchored to what was clicked, flipped to stay in view |
+| `confirm({ title, body, action, cancel, danger })` | resolves `false` when dismissed |
+| `copyText(text)` | clipboard, falling back to `execCommand` when the document is not focused |
+| `hoverable(node, { enter, leave })` | also bound to focus, so a keyboard gets the same information |
+| `code(options)` | a CSS editor that colours what you type — see below |
+| `api.ui.kitCss` | the stylesheet. Put it in the document the kit is building in |
+
+Everything is prefixed `sm-`, so the stylesheet is safe to inject into the
+client itself. Its palette is Slack's own dark one, fixed rather than read from
+the app's tokens — a tool that repaints itself with the theme being edited
+becomes unreadable exactly when the theme is wrong. Override the `--sm-*`
+variables if you want it to follow the theme instead.
+
+### `kit.code(options)`
+
+A CSS editor with syntax highlighting, used by the theme builder and by the
+custom stylesheet in the Mods panel.
+
+```js
+const editor = kit.code({
+  value: current,
+  rows: 12,
+  placeholder: ':root { --dt_color-content-pry: #e8e8ea; }',
+  onChange: (css) => apply(css),
+});
+container.append(editor.node);
+editor.value();          // what is in it
+editor.set(text);        // replace it
+```
+
+Tab indents instead of moving focus. `readOnly: true` gives a highlighted,
+non-editable view — a generated stylesheet, for instance.
+
 ## `api.themes`
 
 The themes the user has, for tools that build on top of them. Read-only, and

@@ -34,7 +34,6 @@ import { buildThemeCss, ROLES, targetsForRole } from './roles.js';
 import { collectTokens, familyOf, formatFor, kindOf, swatch as swatchOf } from './tokens.js';
 import { buildTokenIndex, createHighlighter, elementsUsing } from './highlight.js';
 import { STRINGS } from './strings.js';
-import { createUi } from './ui.js';
 import { createPaletteView } from './views/palette.js';
 import { createInspectView } from './views/inspect.js';
 import { createTokensView } from './views/tokens.js';
@@ -101,7 +100,10 @@ export default {
         textContent: api.assets.text('window.css'),
       }));
 
-      const ui = createUi(doc);
+      // Slack's design system, from the API rather than rebuilt here: this
+      // window is a blank document, so the stylesheet has to come with it.
+      const ui = api.ui.kit(doc);
+      doc.head.append(Object.assign(doc.createElement('style'), { textContent: api.ui.kitCss }));
       const { el } = ui;
 
       // ------------------------------------------------------------- state
@@ -265,7 +267,7 @@ export default {
 
       // ------------------------------------------------------------ title bar
 
-      const nameInput = ui.input({ value: state.name, class: 'input title-input' });
+      const nameInput = ui.input({ value: state.name, class: 'title-input' });
       nameInput.addEventListener('input', () => { state.name = nameInput.value; apply(); });
 
       const baseSelect = ui.select(

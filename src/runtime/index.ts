@@ -16,6 +16,13 @@ declare global {
   }
 }
 
+declare global {
+  interface Window {
+    /** Set synchronously by whichever boot got here first. See boot(). */
+    __SLACKMOD_BOOTING__?: string;
+  }
+}
+
 interface SlackModGlobal {
   version: string;
   /** Which loader run created this instance. */
@@ -30,6 +37,25 @@ interface SlackModGlobal {
 async function boot(): Promise<void> {
   const payload = window.__SLACKMOD_BOOT__;
   if (!payload) return;
+
+  /*
+   * Claim the document before anything is awaited.
+   *
+   * `window.__slackmod` is only assigned at the *end* of this function, so two
+   * boots that overlap -- the document-start script and the loader injecting
+   * into the same live page, which is exactly what happens when a navigation
+   * is caught mid-flight -- both find it empty, both build a Bridge, and both
+   * start every plugin. The second Bridge overwrites the receiver on `window`,
+   * and the first runtime's plugins are left holding a dead one: every request
+   * they make is answered into a Map nobody reads, and times out fifteen
+   * seconds later. Their buttons are still on screen, so the app looks fine
+   * until something asks the loader a question.
+   *
+   * Found by way of a theme gallery that came up blank: six answers delivered
+   * by the loader, six timeouts in the page.
+   */
+  if (window.__SLACKMOD_BOOTING__ === payload.info.sessionId) return;
+  window.__SLACKMOD_BOOTING__ = payload.info.sessionId;
 
   const existing = window.__slackmod;
   if (existing) {
@@ -88,5 +114,7 @@ async function boot(): Promise<void> {
 }
 
 void boot().catch((err) => {
+  // Let the next attempt through: a boot that threw owns nothing.
+  delete window.__SLACKMOD_BOOTING__;
   console.error('[slackmod] boot failed', err);
 });

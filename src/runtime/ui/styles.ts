@@ -26,7 +26,9 @@
  *   rgba(var(--sk_foreground_low), .13)     hairlines
  *   var(--dt_color-*)                       semantic colours
  */
-export const PANEL_CSS = `
+import { CODE_CSS } from './code.js';
+
+export const PANEL_CSS = CODE_CSS + `
 /* .c-dialog ships opacity:0 and is faded in by Slack's own transition. */
 #slackmod-panel.c-dialog { opacity: 1; }
 
@@ -124,8 +126,7 @@ export const PANEL_CSS = `
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
 }
 
-.slackmod-search,
-.slackmod-css {
+.slackmod-search {
   flex: 1;
   min-width: 0;
   padding: 8px 12px;
@@ -137,13 +138,27 @@ export const PANEL_CSS = `
   background: transparent;
   border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
 }
-.slackmod-search:focus,
-.slackmod-css:focus {
+.slackmod-search:focus {
   outline: none;
   border-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
   box-shadow: 0 0 0 1px rgba(var(--sk_highlight, 18, 100, 163), 1);
 }
-.slackmod-css { width: 100%; resize: vertical; font-family: Monaco, Menlo, monospace; font-size: 13px; }
+/* The CSS box is api.ui's code editor. It brings its own metrics -- the painted
+ * copy and the textarea have to agree on every one of them -- so only the
+ * colours are set here, from Slack's tokens, which is what makes it follow the
+ * theme like the rest of the panel. Written without backticks, as everything in
+ * this file must be. */
+.sm-code {
+  border-color: rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
+  background: rgba(var(--sk_foreground_min, 29, 28, 29), 0.04);
+}
+.sm-code:focus-within {
+  border-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  box-shadow: 0 0 0 1px rgba(var(--sk_highlight, 18, 100, 163), 1);
+}
+.sm-code__paint { color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.9); }
+.sm-code__input { caret-color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1); }
+.sm-code__input::placeholder { color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.5); }
 
 .slackmod-row {
   display: flex;

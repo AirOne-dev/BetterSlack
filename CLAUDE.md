@@ -328,6 +328,31 @@ plugin id in `requires` and the panel offers to switch it on.
   in step, its own consent dialog to explain — for something plugins already
   did. If it comes up again, that is the reason it is not there.
 
+## The design system, twice
+
+Inside the client, **borrow Slack's classes** -- the Mods panel wears
+`.c-dialog` / `.c-button` and follows every theme for nothing. Anywhere else
+there is no stylesheet at all: a window a mod opens is a blank document. That is
+what `api.ui.kit(doc)` + `api.ui.kitCss` are for (`src/runtime/ui/kit.ts`), and
+they exist because the theme builder had rebuilt the whole system by hand and it
+was drifting on its own. Everything is prefixed `sm-`, so the stylesheet is safe
+in the client too.
+
+`kit.code()` is the CSS editor: a highlighted `<pre>` under a transparent
+`<textarea>`. Both must agree on **every** metric or the caret drifts from the
+text; that is why `CODE_CSS` lives beside the tokeniser and is shared by the kit
+and by `PANEL_CSS` rather than copied.
+
+**Two runtimes can boot into one document.** `window.__slackmod` is only
+assigned at the *end* of an async boot, so the document-start script and a
+loader injection into the same live page both found it empty, both built a
+Bridge, and both started every plugin -- the second receiver on `window` won and
+the first runtime's plugins were left with a bridge nothing answers: every
+request timed out after fifteen seconds while their buttons sat there looking
+fine. `boot()` now claims `window.__SLACKMOD_BOOTING__` synchronously. Found
+through a theme gallery that came up blank, with six answers delivered by the
+loader and six timeouts in the page.
+
 ## The Mods panel
 
 The repository is a **catalogue**, not a set of pre-installed mods: a fresh
