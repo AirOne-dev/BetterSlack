@@ -18,6 +18,7 @@ import type { ModRecord } from '../../shared/protocol.js';
 import { h } from '../dom.js';
 import type { ModManager } from '../manager.js';
 import { contributeUrl, repoUrl } from '../registry.js';
+import { createCodeEditor } from './code.js';
 
 type TabId = 'themes' | 'plugins' | 'css' | 'about';
 type ShelfId = 'installed' | 'enabled' | 'browse';
@@ -538,12 +539,15 @@ export class Panel {
   }
 
   private renderCustomCss(): Node[] {
-    const textarea = h('textarea', {
-      class: 'slackmod-css',
-      spellcheck: 'false',
-      rows: '16',
-    }) as HTMLTextAreaElement;
-    textarea.value = this.manager.getSettings().customCss;
+    // The same editor the theme builder uses: highlighting, and Tab that
+    // indents instead of leaving the field. A missing brace in here silently
+    // stops the whole stylesheet from applying, which is exactly the mistake
+    // colour makes visible.
+    const editor = createCodeEditor(document, {
+      value: this.manager.getSettings().customCss,
+      rows: 16,
+      placeholder: ':root { --dt_color-content-pry: #e8e8ea; }',
+    });
 
     const status = h('span', { class: 'slackmod-status' });
     const save = h('button', {
@@ -552,7 +556,7 @@ export class Panel {
     }, ['Save and apply']);
     save.addEventListener('click', () => {
       void this.manager
-        .setCustomCss(textarea.value)
+        .setCustomCss(editor.value())
         .then(() => {
           status.className = 'slackmod-status';
           status.textContent = 'Applied.';
@@ -568,7 +572,7 @@ export class Panel {
         'Applied after every theme, so it always wins. Slack exposes its palette as CSS custom ' +
           'properties (--dt_color-*), which is a steadier target than its class names.',
       ]),
-      textarea,
+      editor.node,
       h('div', { class: 'slackmod-actions' }, [save, status]),
     ];
   }

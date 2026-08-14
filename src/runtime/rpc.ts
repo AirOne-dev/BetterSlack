@@ -49,7 +49,14 @@ export class Bridge {
       return;
     }
     const slot = this.pending.get(envelope.rid);
-    if (!slot) return;
+    if (!slot) {
+      // An answer nobody is waiting for. Either it arrived after its timeout,
+      // or -- the reason this line exists -- the receiver on `window` belongs
+      // to a different Bridge than the one that asked, which is what happens
+      // when a runtime is injected over a live one.
+      console.warn(`[slackmod] an answer arrived for rid ${envelope.rid}, which nothing is waiting for`);
+      return;
+    }
     this.pending.delete(envelope.rid);
     const { result, error } = (envelope.payload ?? {}) as { result?: unknown; error?: string };
     if (error) slot.reject(new Error(error));

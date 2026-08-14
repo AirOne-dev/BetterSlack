@@ -12,6 +12,8 @@ import { createI18n, type I18n } from './i18n.js';
 import { createSlackApi, type SlackApi } from './slack-api.js';
 import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
+import { createKit, type Kit } from './ui/kit.js';
+import { KIT_CSS } from './ui/kit-css.js';
 import {
   confirm,
   modal,
@@ -72,6 +74,27 @@ export interface PluginApi {
     confirm(options: ConfirmOptions): Promise<boolean>;
     /** Slack-style tooltip on any element you built yourself. */
     tooltip(element: HTMLElement, options: TooltipOptions): Cleanup;
+
+    /**
+     * Slack's design system, as components, bound to a document.
+     *
+     * Inside the client, Slack's own classes are the right answer -- the Mods
+     * panel wears `.c-dialog` and follows every theme for free. They are not
+     * available anywhere else: a mod that opens a window of its own gets a
+     * blank document with no stylesheet in it. This is that gap filled once,
+     * rather than once per mod.
+     *
+     *   const kit = api.ui.kit(childWindow.document);
+     *   style.textContent = api.ui.kitCss;
+     *   kit.card('Palette', [kit.button('Save', { variant: 'primary' })]);
+     *
+     * Everything is prefixed `sm-`, so the stylesheet is safe to inject into
+     * the client itself.
+     */
+    kit(doc?: Document): Kit;
+
+    /** The kit's stylesheet. Put it in the document the kit is building in. */
+    readonly kitCss: string;
   };
 
   /**
@@ -235,6 +258,8 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
       },
       confirm,
       tooltip: track(attachTooltip),
+      kit: (doc?: Document) => createKit(doc ?? document),
+      kitCss: KIT_CSS,
     },
 
     files: {

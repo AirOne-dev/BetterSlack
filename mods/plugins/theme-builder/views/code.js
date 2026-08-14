@@ -11,25 +11,28 @@ export function createCodeView(ctx) {
   const { ui, t } = ctx;
   const { el } = ui;
 
-  const editor = el('textarea', {
-    class: 'code-editor',
-    spellcheck: false,
+  // The editor, its highlighting and its Tab handling come from the API: the
+  // Mods panel's own CSS box is the same component.
+  const editor = ui.code({
+    value: ctx.state.extraCss,
+    rows: 12,
     placeholder: '.c-message_kit__background {\n  border-left: 3px solid var(--dt_color-accent);\n}',
-  });
-  editor.value = ctx.state.extraCss;
-  editor.addEventListener('input', () => {
-    ctx.state.extraCss = editor.value;
-    ctx.apply();
+    onChange: (value) => {
+      ctx.state.extraCss = value;
+      ctx.apply();
+    },
   });
 
-  const output = el('pre', { class: 'code-output' });
-  const stats = el('p', { class: 'muted count' });
+  // Read-only, and highlighted for the same reason: this is the file, and a
+  // file you cannot read is a file you do not trust.
+  const output = ui.code({ readOnly: true, rows: 14 });
+  const stats = el('p', { class: 'sm-muted sm-count' });
 
   const copy = ui.button(t('copy'), { variant: 'ghost', onClick: () => ctx.copyCss() });
 
   const node = el('div', { class: 'view' }, [
-    ui.card(t('yourRules'), [editor], { subtitle: t('cssHint') }),
-    ui.card(t('output'), [stats, output], { subtitle: t('outputHint'), actions: [copy] }),
+    ui.card(t('yourRules'), [editor.node], { subtitle: t('cssHint') }),
+    ui.card(t('output'), [stats, output.node], { subtitle: t('outputHint'), actions: [copy] }),
   ]);
 
   const refresh = () => {
@@ -38,12 +41,12 @@ export function createCodeView(ctx) {
     // done for nothing.
     if (!node.isConnected) return;
     const css = ctx.themeCss();
-    output.textContent = css;
+    output.set(css);
     stats.textContent = t('outputStats', {
       lines: css.split('\n').length,
       tokens: Object.keys(ctx.state.tokenOverrides).length,
     });
-    if (editor.value !== ctx.state.extraCss) editor.value = ctx.state.extraCss;
+    if (editor.value() !== ctx.state.extraCss) editor.set(ctx.state.extraCss);
   };
 
   return { node, refresh };

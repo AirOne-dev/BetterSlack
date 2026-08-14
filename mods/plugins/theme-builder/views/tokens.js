@@ -17,10 +17,10 @@ export function createTokensView(ctx) {
   const { el } = ui;
 
   const list = el('div', { class: 'token-list token-list--tall' });
-  const count = el('p', { class: 'muted count' });
+  const count = el('p', { class: 'sm-muted sm-count' });
   const more = ui.button(t('showMore'), { variant: 'ghost', onClick: () => { limit += PAGE; refresh(); } });
 
-  const query = ui.input({ type: 'search', placeholder: t('searchTokens'), class: 'input search' });
+  const query = ui.input({ type: 'search', placeholder: t('searchTokens'), class: 'search' });
   query.addEventListener('input', () => { limit = PAGE; refresh(); });
 
   let limit = PAGE;
