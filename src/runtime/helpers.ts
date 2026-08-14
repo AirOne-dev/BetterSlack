@@ -62,6 +62,18 @@ export interface Helpers {
   /** Human-readable form of a combo, for tooltips: ⌘⇧F or Ctrl+Shift+F. */
   describeHotkey(combo: string): string;
 
+  /**
+   * Run something every so often, and stop while nobody is looking.
+   *
+   * Slack does not render while its window is hidden, so a poll that keeps
+   * going in the background is requests nobody will see the result of -- and
+   * for anything hitting Slack's API, requests against a rate limit that is
+   * shared with the client itself. This runs once immediately, then on the
+   * interval, and pauses whenever the document is hidden, catching up as soon
+   * as it comes back. Stops with the plugin.
+   */
+  poll(handler: () => void | Promise<void>, everyMs: number): Cleanup;
+
   /** A small count/dot badge pinned to any element, kept in sync by a getter. */
   badge(selector: string, id: string, value: () => string | number | null): Cleanup;
 
@@ -201,6 +213,43 @@ export function createHelpers(ctx: HelperContext): Helpers {
       );
     },
     describeHotkey: describeCombo,
+
+    poll(handler, everyMs) {
+      let timer: ReturnType<typeof setInterval> | undefined;
+      let running = false;
+
+      const tick = () => {
+        // Overlapping runs are the other half of the same problem: a slow round
+        // of requests should not have a second one starting behind it.
+        if (running || document.visibilityState === 'hidden') return;
+        running = true;
+        void Promise.resolve(handler()).finally(() => { running = false; });
+      };
+
+      const start = () => {
+        if (timer !== undefined) return;
+        tick();
+        timer = setInterval(tick, everyMs);
+      };
+      const stop = () => {
+        if (timer === undefined) return;
+        clearInterval(timer);
+        timer = undefined;
+      };
+
+      const onVisibility = () => (document.visibilityState === 'hidden' ? stop() : start());
+      document.addEventListener('visibilitychange', onVisibility);
+      if (document.visibilityState !== 'hidden') start();
+
+      ctx.track(() => {
+        document.removeEventListener('visibilitychange', onVisibility);
+        stop();
+      });
+      return () => {
+        document.removeEventListener('visibilitychange', onVisibility);
+        stop();
+      };
+    },
 
     badge(selector, id, value) {
       const nodeId = `slackmod-badge-${ctx.pluginId}-${id}`;

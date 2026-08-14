@@ -12,6 +12,7 @@ import { JSDOM } from 'jsdom';
 import { createHelpers } from '../dist/helpers.mjs';
 import { createI18n } from '../dist/i18n.mjs';
 import { createKit } from '../dist/ui/kit.mjs';
+import { openMenu } from '../dist/ui/menu.mjs';
 import { KIT_CSS } from '../dist/ui/kit-css.mjs';
 
 /** A Slack-shaped fragment: rail, sidebar, a message, a composer, a profile pane. */
@@ -179,6 +180,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
     saved: [],
     disposers: [],
     themeSuspensions: [],
+    menus: [],
     logs: [],
     navigations: [],
     savedThemes: [],
@@ -200,6 +202,49 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
     dndInfo: async () => ({ dnd_enabled: false }),
     ...web,
   };
+
+  // Built on whatever the test supplied above rather than stubbed separately,
+  // so a test that overrides `userInfo` or `presence` sees its own answers come
+  // back through the batched and combined forms as well.
+  if (!web.users) {
+    webApi.users = async (ids) => {
+      const wanted = [...new Set(ids)].filter(Boolean);
+      const out = new Map();
+      if (!wanted.length) return out;
+      // The batch form first, exactly as the real one does, so a test that
+      // stubs `call('users.info', { users })` still sees the request it expects.
+      const res = await webApi
+        .call('users.info', { users: wanted.join(','), include_locale: true })
+        .catch(() => null);
+      if (Array.isArray(res?.users)) {
+        for (const user of res.users) out.set(user.id, user);
+        return out;
+      }
+      for (const id of wanted) {
+        const user = await webApi.userInfo(id).catch(() => null);
+        if (user) out.set(id, { ...user, id: user.id ?? id });
+      }
+      return out;
+    };
+  }
+  if (!web.availability) {
+    webApi.availability = async (userId) => {
+      const [presence, dnd] = await Promise.all([
+        webApi.presence(userId).catch(() => null),
+        webApi.dndInfo(userId).catch(() => null),
+      ]);
+      // The same rule as the runtime: `dnd_enabled` alone is a *schedule*, so
+      // it only counts while now is inside the window it describes. Someone
+      // with quiet hours every night is not away all day.
+      const now = Date.now() / 1000;
+      const scheduled = Boolean(dnd?.dnd_enabled)
+        && Number(dnd?.next_dnd_start_ts) <= now
+        && now < Number(dnd?.next_dnd_end_ts);
+      if (dnd?.snooze_enabled || scheduled) return { state: 'dnd', presence, dnd };
+      if (!presence) return { state: 'unknown', presence, dnd };
+      return { state: presence.presence === 'active' ? 'active' : 'away', presence, dnd };
+    };
+  }
 
   const api = {
     id: 'test-mod',
@@ -256,6 +301,11 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
         return () => {};
       },
       onProfilePane: () => () => {},
+
+      // The real rule, not a stub: Slack serves avatars as `<base>-<size>`,
+      // and anything else is left alone.
+      avatarUrl: (url, size) =>
+        typeof url === 'string' && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
 
       // The navigation and conversation helpers. Recorded rather than
       // performed, so a test can assert a mod called one instead of driving
@@ -342,6 +392,15 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
       tooltip: () => () => {},
       // The real kit, so a mod's test exercises the components the app builds
       // rather than a stand-in that always agrees with it.
+      // The real menu, not a recorder: it is Slack's own markup positioned by
+      // us, and a mod's test asserting on `.c-menu_item__button` should be
+      // asserting on what the app really builds.
+      menu: (anchor, items, options) => {
+        const close = openMenu(anchor, items, options);
+        recorded.menus.push({ anchor, items });
+        recorded.disposers.push(close);
+        return close;
+      },
       kit: (target = globalThis.document) => createKit(target),
       kitCss: KIT_CSS,
     },

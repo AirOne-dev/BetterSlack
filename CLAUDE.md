@@ -252,8 +252,20 @@ Shape of it:
   the same keys.
 - `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
 
-When two mods want the same block, it belongs in `helpers.ts`, and the mods get
-refactored onto it in the same change.
+When two mods want the same block, it belongs in the API, and the mods get
+refactored onto it in the same change. Five things were lifted that way after an
+audit of all eleven plugins, and each one had been written two or three times:
+
+- `api.slack.web.users(ids)` — the batched `users.info`, cached per workspace.
+  Three plugins kept their own cache and their own drop-on-switch rule.
+- `api.slack.web.availability(id)` — presence and dnd folded into one state.
+  `dnd_enabled` alone is a **schedule**, not a state: someone with quiet hours
+  every night is not away all day, which is what the three copies all showed.
+- `api.ui.menu(anchor, items)` — Slack's `c-menu`, positioned and dismissed.
+- `api.slack.avatarUrl(url, size)` — Slack serves them as `<base>-<size>`.
+- `api.helpers.poll(fn, ms)` — an interval that stops while the window is
+  hidden. Slack does not render then, so a poll that keeps going spends a rate
+  limit shared with the client on answers nobody will see.
 
 ## The theme builder
 

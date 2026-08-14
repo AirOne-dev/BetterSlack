@@ -81,12 +81,46 @@ export interface WebApi {
 
   /** users.info, including locale. */
   userInfo(userId: string): Promise<SlackUser>;
+
+  /**
+   * Several users at once, cached for the session.
+   *
+   * `users.info` accepts a comma-separated `users` list and answers with a
+   * `users` array. Undocumented, but it is what Slack's own client sends, and
+   * it turns one request per member into one request. Anything already known is
+   * served from the cache, so opening the same channel twice costs nothing.
+   *
+   * The cache is dropped when the workspace changes -- two workspaces can hold
+   * different people behind the same id, and serving one's directory to the
+   * other is the kind of bug that reads as Slack being wrong.
+   */
+  users(userIds: string[]): Promise<Map<string, SlackUser>>;
+
   /** users.getPresence. */
   presence(userId: string): Promise<Record<string, unknown>>;
   /** team.info for the current workspace. */
   teamInfo(): Promise<Record<string, unknown>>;
   /** dnd.info for a user. */
   dndInfo(userId: string): Promise<Record<string, unknown>>;
+
+  /**
+   * Presence and do-not-disturb, as the one answer a UI actually wants.
+   *
+   * Both calls, and the rule between them: someone marked active who is in a
+   * do-not-disturb window is *not* available, and every mod that shows a status
+   * dot was deriving that for itself. Failures are absences, not errors -- a
+   * dot that cannot be drawn is not a reason to fail whatever asked for it.
+   */
+  availability(userId: string): Promise<Availability>;
+}
+
+export interface Availability {
+  /** What a dot should show. */
+  state: 'active' | 'away' | 'dnd' | 'unknown';
+  /** Raw `users.getPresence`, when it answered. */
+  presence: Record<string, unknown> | null;
+  /** Raw `dnd.info`, when it answered. */
+  dnd: Record<string, unknown> | null;
 }
 
 export interface SlackProfile {
@@ -145,6 +179,9 @@ export function createWebApi(): WebApi {
    * a workspace switch.
    */
   let cachedTeam: string | null | undefined;
+  /** users.info answers for this session, and the workspace they belong to. */
+  const directory = new Map<string, SlackUser>();
+  let directoryTeam: string | null | undefined;
   let cached: TeamConfig | null = null;
   const config = () => {
     const team = currentTeamId();
@@ -200,10 +237,66 @@ export function createWebApi(): WebApi {
       });
       return res.user;
     },
+    async users(userIds) {
+      const team = currentTeamId();
+      if (team !== directoryTeam) {
+        directoryTeam = team;
+        directory.clear();
+      }
+
+      const wanted = [...new Set(userIds)].filter((id) => id);
+      const missing = wanted.filter((id) => !directory.has(id));
+      if (missing.length) {
+        try {
+          const res = await call<{ users?: SlackUser[] }>('users.info', {
+            users: missing.join(','),
+            include_locale: true,
+          });
+          for (const user of res.users ?? []) directory.set(user.id, user);
+        } catch {
+          // The batch form is undocumented. If Slack ever stops accepting it,
+          // one request each still works and is only slower.
+          const each = await Promise.all(
+            missing.map((id) =>
+              call<{ user: SlackUser }>('users.info', { user: id, include_locale: true })
+                .then((res) => res.user)
+                .catch(() => null),
+            ),
+          );
+          for (const user of each) if (user) directory.set(user.id, user);
+        }
+      }
+
+      const out = new Map<string, SlackUser>();
+      for (const id of wanted) {
+        const user = directory.get(id);
+        if (user) out.set(id, user);
+      }
+      return out;
+    },
     presence: (userId) => call('users.getPresence', { user: userId }),
     teamInfo: () => call('team.info'),
     dndInfo: (userId) => call('dnd.info', { user: userId }),
+    async availability(userId) {
+      const [presence, dnd] = await Promise.all([
+        call<Record<string, unknown>>('users.getPresence', { user: userId }).catch(() => null),
+        call<Record<string, unknown>>('dnd.info', { user: userId }).catch(() => null),
+      ]);
+      const snoozed = Boolean(dnd?.snooze_enabled) || Boolean(dnd?.dnd_enabled && isInDndWindow(dnd));
+      if (snoozed) return { state: 'dnd', presence, dnd };
+      if (!presence) return { state: 'unknown', presence, dnd };
+      return { state: presence.presence === 'active' ? 'active' : 'away', presence, dnd };
+    },
   };
+}
+
+/** dnd.info gives a window in epoch seconds; "enabled" alone is a schedule, not a state. */
+function isInDndWindow(dnd: Record<string, unknown>): boolean {
+  const start = Number(dnd.next_dnd_start_ts ?? 0);
+  const end = Number(dnd.next_dnd_end_ts ?? 0);
+  if (!start || !end) return false;
+  const now = Date.now() / 1000;
+  return now >= start && now < end;
 }
 
 /**

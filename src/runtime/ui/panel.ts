@@ -19,12 +19,14 @@ import { h } from '../dom.js';
 import type { ModManager } from '../manager.js';
 import { contributeUrl, repoUrl } from '../registry.js';
 import { createCodeEditor } from './code.js';
+import { closeMenu, openMenu } from './menu.js';
 
 type TabId = 'themes' | 'plugins' | 'css' | 'about';
 type ShelfId = 'installed' | 'enabled' | 'browse';
 
 const HOST_ID = 'slackmod-panel';
-const MENU_ID = 'slackmod-panel-menu';
+/** The shared menu's layer, so Escape can tell it apart from the panel. */
+const MENU_ID = 'slackmod-menu-layer';
 const REQUIRES_ID = 'slackmod-requires';
 
 const CLOSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px">
@@ -485,62 +487,33 @@ export class Panel {
     await this.manager.setEnabled(mod.id, true);
   }
 
-  /** Slack's own menu markup, in a layer we position ourselves. */
+  /** The shared menu, so the panel and every mod open the same thing. */
   private openMenu(anchor: HTMLElement, mod: ModRecord): void {
-    this.closeMenu();
-
-    const item = (label: string, onClick: () => void, danger = false) => {
-      const button = h('button', {
-        class: 'c-button-unstyled c-menu_item__button',
-        role: 'menuitem',
-        type: 'button',
-      }, [
-        h('div', { class: `c-menu_item__label${danger ? ' slackmod-danger' : ''}` }, [label]),
-      ]);
-      button.addEventListener('click', () => {
-        this.closeMenu();
-        onClick();
-      });
-      return h('div', { class: 'c-menu_item__li', 'data-qa': 'menu_item_button-wrapper' }, [button]);
-    };
-
-    const items = h('div', { class: 'c-menu__items', role: 'menu', tabindex: '-1' }, [
-      item(this.manager.isEnabled(mod.id) ? 'Disable' : 'Enable', () => {
-        void this.withBusy(mod.id, () =>
-          this.manager.isEnabled(mod.id)
-            ? this.manager.setEnabled(mod.id, false)
-            : this.enableWithRequirements(mod));
-      }),
+    this.closeRowMenu = openMenu(anchor, [
+      {
+        label: this.manager.isEnabled(mod.id) ? 'Disable' : 'Enable',
+        onSelect: () => {
+          void this.withBusy(mod.id, () =>
+            this.manager.isEnabled(mod.id)
+              ? this.manager.setEnabled(mod.id, false)
+              : this.enableWithRequirements(mod));
+        },
+      },
+      {
+        label: 'Remove',
+        danger: true,
+        onSelect: () => {
+          void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
+        },
+      },
     ]);
-
-    items.append(item('Remove', () => {
-      void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
-    }, true));
-
-    // `.c-popover__content` pins `top` in Slack's stylesheet, so the positioned
-    // layer is ours and only the menu inside wears Slack's classes.
-    const layer = h('div', { id: MENU_ID, class: 'slackmod-menu_layer' }, [
-      h('div', { class: 'c-menu' }, [h('div', { class: 'c-menu__items_scroller' }, [items])]),
-    ]);
-    document.body.append(layer);
-
-    const rect = anchor.getBoundingClientRect();
-    const { width, height } = layer.getBoundingClientRect();
-    const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
-    const top = rect.bottom + height > window.innerHeight ? rect.top - height - 4 : rect.bottom + 4;
-    layer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
-
-    setTimeout(() => document.addEventListener('mousedown', this.onDocumentDown, true), 0);
   }
 
-  private onDocumentDown = (event: MouseEvent): void => {
-    const menu = document.getElementById(MENU_ID);
-    if (menu && !menu.contains(event.target as Node)) this.closeMenu();
-  };
+  private closeRowMenu: () => void = () => {};
 
   private closeMenu(): void {
-    document.getElementById(MENU_ID)?.remove();
-    document.removeEventListener('mousedown', this.onDocumentDown, true);
+    this.closeRowMenu();
+    closeMenu();
   }
 
   private renderCustomCss(): Node[] {

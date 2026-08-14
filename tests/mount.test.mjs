@@ -13,6 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { keepMounted } from '../dist/dom.mjs';
+import { closeMenu, openMenu } from '../dist/ui/menu.mjs';
 import { installDom } from './harness.mjs';
 
 /** Let the observer callbacks (microtasks) drain. */
@@ -138,6 +139,64 @@ test('cleanup takes the node with it and stops observing', async () => {
     await settle();
     assert.equal(document.getElementById('mine'), null, 'and does not come back');
   } finally {
+    dom.cleanup();
+  }
+});
+
+// The shared menu and the polling helper, both lifted out of mods that had a
+// copy each. Neither is interesting on its own; both are worth a test because
+// the mods that used to own them are the ones that would notice a regression,
+// and they would notice it in Slack rather than here.
+
+test('one menu at a time, closed by Escape or a click outside', async () => {
+  const dom = installDom('<button id="anchor">…</button>');
+  try {
+    const anchor = document.getElementById('anchor');
+    const chosen = [];
+    openMenu(anchor, [
+      { label: 'First', onSelect: () => chosen.push('first') },
+      { label: 'Second', onSelect: () => chosen.push('second'), danger: true },
+    ]);
+
+    const layer = document.getElementById('slackmod-menu-layer');
+    assert.ok(layer, 'the menu is in the document');
+    assert.ok(layer.querySelector('.c-menu__items'), 'in Slack’s own markup');
+    assert.equal(layer.querySelectorAll('.c-menu_item__button').length, 2);
+
+    document.querySelector('.c-menu_item__button').click();
+    assert.deepEqual(chosen, ['first'], 'choosing runs the entry');
+    assert.equal(document.getElementById('slackmod-menu-layer'), null, 'and closes it');
+
+    // Opening a second closes the first: two overflow buttons in a row should
+    // not leave two menus on screen.
+    openMenu(anchor, [{ label: 'One', onSelect: () => {} }]);
+    openMenu(anchor, [{ label: 'Two', onSelect: () => {} }]);
+    assert.equal(document.querySelectorAll('#slackmod-menu-layer').length, 1);
+    assert.match(document.getElementById('slackmod-menu-layer').textContent, /Two/);
+
+    openMenu(anchor, [{ label: 'Again', onSelect: () => chosen.push('again') }]);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+    assert.equal(document.getElementById('slackmod-menu-layer'), null, 'Escape closes it');
+    assert.deepEqual(chosen, ['first'], 'and Escape chose nothing');
+  } finally {
+    closeMenu();
+    dom.cleanup();
+  }
+});
+
+test('a disabled entry is shown and does nothing', () => {
+  const dom = installDom('<button id="anchor">…</button>');
+  try {
+    let ran = false;
+    openMenu(document.getElementById('anchor'), [
+      { label: 'Not now', disabled: true, onSelect: () => { ran = true; } },
+    ]);
+    document.querySelector('.c-menu_item__button').click();
+    assert.equal(ran, false);
+    assert.ok(document.getElementById('slackmod-menu-layer'), 'and it stays open');
+  } finally {
+    closeMenu();
     dom.cleanup();
   }
 });

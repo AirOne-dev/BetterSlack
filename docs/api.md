@@ -77,6 +77,20 @@ await zen.set(true);
 await zen.toggle();  // returns the new state
 ```
 
+### `poll(handler, everyMs)`
+
+Run something on an interval that **stops while the window is hidden**.
+
+```js
+api.helpers.poll(() => refreshPresence(), 60_000);
+```
+
+Slack does not render while its window is hidden, so a poll that keeps going in
+the background is requests nobody will see the result of — and, for anything
+hitting Slack's API, requests against a rate limit shared with the client
+itself. Runs once immediately, catches up when the window comes back, never
+overlaps itself, and stops with the plugin.
+
 ### `hotkey(combo, handler, { when })`
 
 `mod` is ⌘ on macOS and Ctrl elsewhere. **`when` gates the match, not the
@@ -368,6 +382,46 @@ const { path, bytes } = await api.files.save(url, 'avatar.png');
 The loader does the fetching, because Slack's CDN serves without CORS headers
 and a `fetch` from the page always fails. https only, the file name is
 sanitised, 25 MB cap, fixed download directory.
+
+## `api.slack.web` — users and availability
+
+```js
+// One request for the lot, cached for the session, dropped when the workspace
+// changes. `users.info` takes a comma-separated list; this is that, with the
+// per-user fallback if Slack ever stops accepting it.
+const users = await api.slack.web.users(['U1', 'U2', 'U3']);   // Map<id, SlackUser>
+
+// Presence and do-not-disturb folded into the one answer a dot needs. Never
+// rejects: a status that cannot be read is `unknown`, not an error.
+const { state, presence, dnd } = await api.slack.web.availability('U1');
+//     ^ 'active' | 'away' | 'dnd' | 'unknown'
+```
+
+`dnd_enabled` on its own is a *schedule*, not a state — someone with quiet hours
+every night is not away all day — so `dnd` means snoozed now, or inside the
+window `dnd.info` describes.
+
+```js
+// The same avatar at another size: Slack serves them as `<base>-<size>`.
+api.slack.avatarUrl(url, 72);     // null for anything that is not one of Slack's
+```
+
+## `api.ui.menu`
+
+Slack's overflow menu, against an anchor you give it.
+
+```js
+const close = api.ui.menu(button, [
+  { label: 'Copy link', onSelect: () => api.helpers.copy(url, 'Copied') },
+  { label: 'Open in Slack', onSelect: () => api.slack.openUserProfile(userId) },
+  { label: 'Hide', danger: true, onSelect: hide },
+], { align: 'left' });
+```
+
+Borrowed rather than drawn: it wears `c-menu`, so it follows every theme,
+including one being edited. One menu is open at a time, Escape and a click
+outside close it, and it flips above the anchor when there is no room below —
+which is always, for a button in the control strip.
 
 ## `api.ui.kit`
 
