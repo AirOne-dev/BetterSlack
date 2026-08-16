@@ -14,6 +14,7 @@ import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
 import { createKit, type Kit } from './ui/kit.js';
 import { openMenu, type MenuItem, type MenuOptions } from './ui/menu.js';
+import type { Command } from './ui/palette.js';
 import { KIT_CSS } from './ui/kit-css.js';
 import {
   confirm,
@@ -194,6 +195,19 @@ export interface PluginApi {
     onChange(handler: (values: Record<string, unknown>) => void): Cleanup;
   };
 
+  /**
+   * Things this mod can do, findable by typing.
+   *
+   * Every idea so far has meant another button in Slack's rail, which is
+   * Slack's and not ours. A command costs no chrome at all: it appears in the
+   * palette (⌘K), it says where it came from, and it goes when the mod does.
+   *
+   *   api.commands.add({ id: 'open', title: 'Theme builder', run: open });
+   */
+  readonly commands: {
+    add(command: { id: string; title: string; subtitle?: string; run: () => void | Promise<void> }): Cleanup;
+  };
+
   /** Register a teardown callback; runs when the plugin is disabled. */
   onDispose(fn: Cleanup): void;
 
@@ -216,6 +230,8 @@ export interface ApiContext {
   saveModSettings: (id: string, values: Record<string, unknown>) => Promise<void>;
   /** Tell a plugin its settings changed, for the ones that would rather not reload. */
   onSettingsChanged: (id: string, handler: (values: Record<string, unknown>) => void) => Cleanup;
+  /** Put a command in the palette until the plugin goes away. */
+  addCommand: (command: Command) => Cleanup;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
   listThemes: () => Array<{ id: string; name: string; description: string; enabled: boolean }>;
@@ -302,6 +318,24 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
 
     files: {
       save: (url, filename) => ctx.download(url, filename),
+    },
+
+    commands: {
+      add: (command) => {
+        // Prefixed and attributed here rather than by the caller: two mods
+        // will pick the same id eventually, and the palette should say which
+        // mod it is offering without every mod remembering to.
+        const entry: Command = {
+          id: `${record.id}:${command.id}`,
+          title: command.title,
+          subtitle: command.subtitle,
+          source: record.name,
+          run: command.run,
+        };
+        const cleanup = ctx.addCommand(entry);
+        cleanups.add(cleanup);
+        return cleanup;
+      },
     },
 
     assets: {

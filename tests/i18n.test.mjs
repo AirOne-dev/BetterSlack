@@ -96,3 +96,32 @@ test('every plugin that speaks to the user speaks both languages', async () => {
       `${mod.id}: en and fr must cover the same keys`);
   }
 });
+
+/**
+ * The panel is held to the rule it holds mods to.
+ *
+ * Every mod here must ship English and French, and a test fails one whose
+ * tables disagree — while the window around them was English only. A French
+ * user had French mods inside an English panel, which is the kind of seam that
+ * makes a product feel assembled rather than built.
+ */
+test('the panel speaks both languages, and asks for nothing it does not have', async () => {
+  const { PANEL_STRINGS } = await import('../dist/ui/strings.mjs');
+
+  const en = Object.keys(PANEL_STRINGS.en).sort();
+  const fr = Object.keys(PANEL_STRINGS.fr).sort();
+  assert.deepEqual(fr, en, 'en and fr must cover the same keys');
+
+  // Everything the panel asks for must exist, or it renders as its own key.
+  const source = readFileSync(path.join(root, 'src/runtime/ui/panel.ts'), 'utf8');
+  const asked = new Set([...source.matchAll(/\bt\('([a-zA-Z0-9_]+)'/g)].map((m) => m[1]));
+  const missing = [...asked].filter((key) => !(key in PANEL_STRINGS.en));
+  assert.deepEqual(missing, [], 'these are asked for and never defined');
+
+  // And nothing user-facing left behind: a bare English sentence in the source
+  // is a string that will never be translated.
+  const leftovers = [...source.matchAll(/(?:^|[[(,]\s*)'([A-Z][a-z]+ [a-z][^']{12,})'/gm)]
+    .map((m) => m[1])
+    .filter((text) => !/^[A-Z][a-z]+ [a-z]+\.(js|css|json)/.test(text));
+  assert.deepEqual(leftovers, [], 'move these into PANEL_STRINGS');
+});

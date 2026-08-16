@@ -13,6 +13,7 @@ import { createPluginApi } from './api.js';
 import { PluginHost } from './plugins.js';
 import type { Bridge } from './rpc.js';
 import { inlineCssImports, StyleManager } from './themes.js';
+import type { Command as PaletteCommand } from './ui/palette.js';
 
 /** Slack's client shell. Present once the app has rendered, absent while it boots. */
 const CLIENT_SELECTOR = '.p-client_container';
@@ -66,6 +67,9 @@ export class ModManager {
   update: UpdateStatus | undefined;
   /** Why a mod is not running, keyed by id. Cleared when it applies cleanly. */
   readonly errors = new Map<string, string>();
+
+  /** Everything a mod said it can do, for the palette. */
+  readonly commands = new Map<string, PaletteCommand>();
 
   /** Plugins that asked to hear about their own settings changing. */
   private settingsListeners = new Map<string, Set<(values: Record<string, unknown>) => void>>();
@@ -349,6 +353,10 @@ export class ModManager {
       getSettings: () => this.settings,
       saveModSettings: (id, values) =>
         this.patchSettings({ modSettings: { ...this.settings.modSettings, [id]: values } }),
+      addCommand: (command) => {
+        this.commands.set(command.id, command);
+        return () => this.commands.delete(command.id);
+      },
       onSettingsChanged: (id, handler) => {
         let set = this.settingsListeners.get(id);
         if (!set) this.settingsListeners.set(id, (set = new Set()));

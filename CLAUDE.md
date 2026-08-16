@@ -428,6 +428,18 @@ Browse shelf uses, which re-validates the manifest loader-side -- files off the
 network are untrusted whichever button asked for them. Before this, a one-line
 fix to a theme meant pulling the loader and the runtime with it.
 
+## The panel speaks both languages
+
+`ui/strings.ts` is the panel's dictionary and `tests/i18n.test.mjs` holds it to
+the rule mods are held to: en and fr must cover the same keys, everything the
+panel asks for must exist, and a bare English sentence left in `panel.ts` fails
+the test. It was English-only until now, around mods that were required to be
+bilingual.
+
+**⌘⇧K, not ⌘K**: Slack binds plain ⌘K to its own quick switcher, which people
+use every day. `api.commands.add` is how a mod gets into the palette without
+taking a button in the rail.
+
 ## The Mods panel
 
 The repository is a **catalogue**, not a set of pre-installed mods: a fresh

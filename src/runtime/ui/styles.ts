@@ -169,6 +169,75 @@ export const PANEL_CSS = CODE_CSS + `
 
 /* A mod and its settings read as one block, with the settings indented under
  * the row they belong to rather than floating beside it. */
+/* The palette. Slack's quick switcher is the shape people already know here,
+ * so this borrows its proportions rather than inventing any. */
+.betterslack-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgba(0, 0, 0, 0.4);
+}
+.betterslack-palette__box {
+  width: min(560px, calc(100vw - 32px));
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+.betterslack-palette__input {
+  border: 0;
+  border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  padding: 14px 16px;
+  font-size: 17px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  background: transparent;
+  outline: none;
+}
+.betterslack-palette__list { overflow-y: auto; padding: 6px; }
+.betterslack-palette__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-align: left;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  cursor: pointer;
+}
+.betterslack-palette__row[aria-selected="true"] {
+  background: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  color: #fff;
+}
+.betterslack-palette__source { font-size: 12px; opacity: 0.7; }
+.betterslack-palette__sub { flex-basis: 100%; font-size: 12px; opacity: 0.7; }
+
+.betterslack-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 20px 8px;
+}
+.betterslack-filter {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.7);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
+  cursor: pointer;
+}
+.betterslack-filter:hover { color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1); }
+.betterslack-filter[aria-pressed="true"] {
+  background: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  color: #fff;
+}
+
 /* The one tag that is a warning rather than a label. */
 .betterslack-tag--error {
   background: rgba(var(--sk_highlight_accent, 224, 30, 90), 0.16);

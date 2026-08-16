@@ -185,6 +185,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
     themeSuspensions: [],
     menus: [],
     settingsListeners: [],
+    commands: [],
     logs: [],
     navigations: [],
     savedThemes: [],
@@ -407,6 +408,17 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
       },
       kit: (target = globalThis.document) => createKit(target),
       kitCss: KIT_CSS,
+    },
+
+    // Recorded rather than run: a test asserts a mod offered a command, and
+    // can then run it by hand.
+    commands: {
+      add: (command) => {
+        recorded.commands.push(command);
+        return () => {
+          recorded.commands = recorded.commands.filter((other) => other !== command);
+        };
+      },
     },
 
     files: {
