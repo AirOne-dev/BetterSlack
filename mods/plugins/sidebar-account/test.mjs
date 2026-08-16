@@ -68,7 +68,44 @@ test('the gear opens Slack’s account menu; the strip itself is inert', async (
   }
 });
 
-test('shows availability as a dot, coloured from Slack’s answer', async () => {
+test('follows the indicator Slack draws on its own avatar', async () => {
+  // The bug this replaced: users.getPresence lags the client, worst of all just
+  // after the window comes back, so the dot said away while the app said
+  // available -- and stayed wrong until the next poll a minute later. Slack
+  // puts the answer in the DOM; copying it is instant and always agrees.
+  const dom = installDom();
+  try {
+    const rail = document.querySelector('[data-qa="user-button"]');
+    const mine = document.createElement('span');
+    mine.className = 'c-avatar__presence c-presence c-presence--active';
+    rail.append(mine);
+
+    const { api, recorded } = createTestApi({
+      // Slack's API insisting otherwise: the node wins.
+      web: { presence: async () => ({ presence: 'away' }) },
+    });
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const dot = document.querySelector('#betterslack-account-strip .betterslack-me__dot');
+    assert.ok(dot.classList.contains('betterslack-me__dot--active'), 'active, as the rail shows');
+
+    // And it follows, rather than waiting for a poll.
+    mine.classList.remove('c-presence--active');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.ok(!dot.classList.contains('betterslack-me__dot--active'), 'away the moment Slack says so');
+
+    mine.classList.add('c-presence--active');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.ok(dot.classList.contains('betterslack-me__dot--active'), 'and back again');
+
+    for (const dispose of recorded.disposers) dispose();
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('falls back to the API when Slack draws no indicator', async () => {
   const dom = installDom();
   const { api, recorded } = createTestApi({
     web: {
