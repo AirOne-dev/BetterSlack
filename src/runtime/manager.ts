@@ -77,6 +77,14 @@ export class ModManager {
    */
   readonly timings = new Map<string, number>();
 
+  /**
+   * Set by the runtime once the panel exists.
+   *
+   * The manager is built before the panel is, and a mod asking to open it
+   * should not have to know that.
+   */
+  openPanel?: (tab?: 'themes' | 'plugins' | 'css' | 'about') => void;
+
   /** Everything a mod said it can do, for the palette. */
   readonly commands = new Map<string, PaletteCommand>();
 
@@ -392,6 +400,18 @@ export class ModManager {
       getSettings: () => this.settings,
       saveModSettings: (id, values) =>
         this.patchSettings({ modSettings: { ...this.settings.modSettings, [id]: values } }),
+      listCommands: () => [...this.commands.values()],
+      listMods: () => this.mods.map((mod) => ({
+        id: mod.id,
+        name: mod.name,
+        description: mod.description,
+        type: mod.type,
+        installed: this.isInstalled(mod.id),
+        enabled: this.isEnabled(mod.id),
+      })),
+      setModEnabled: (id, enabled) => this.setEnabled(id, enabled),
+      setModInstalled: (id, installed) => this.setInstalled(id, installed),
+      openPanel: (tab) => this.openPanel?.(tab),
       addCommand: (command) => {
         this.commands.set(command.id, command);
         return () => this.commands.delete(command.id);

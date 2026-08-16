@@ -122,18 +122,6 @@ export const PANEL_STRINGS = {
     diagCopied: 'Copied',
     diagCopyFailed: 'Could not copy',
 
-    paletteSearch: 'Type a command…',
-    paletteEmpty: 'Nothing matches.',
-    paletteOpenPanel: 'Open BetterSlack',
-    paletteEnable: 'Enable',
-    paletteDisable: 'Disable',
-    paletteInstall: 'Install',
-    paletteBrowseThemes: 'Browse themes',
-    paletteBrowsePlugins: 'Browse plugins',
-    paletteCustomCss: 'Edit custom CSS',
-    paletteHint: 'mods, themes and actions',
-    shortcutTitle: 'Palette shortcut',
-    shortcutHint: '⌘K is what everyone reaches for. Slack uses it for its own quick switcher, which stays reachable from the search field — switch this off to leave ⌘K to Slack and use ⌘⇧K instead.',
   },
 
   fr: {
@@ -248,17 +236,5 @@ export const PANEL_STRINGS = {
     diagCopied: 'Copié',
     diagCopyFailed: 'Copie impossible',
 
-    paletteSearch: 'Tapez une commande…',
-    paletteEmpty: 'Aucun résultat.',
-    paletteOpenPanel: 'Ouvrir BetterSlack',
-    paletteEnable: 'Activer',
-    paletteDisable: 'Désactiver',
-    paletteInstall: 'Installer',
-    paletteBrowseThemes: 'Parcourir les thèmes',
-    paletteBrowsePlugins: 'Parcourir les plugins',
-    paletteCustomCss: 'Modifier le CSS personnalisé',
-    paletteHint: 'mods, thèmes et actions',
-    shortcutTitle: 'Raccourci de la palette',
-    shortcutHint: '⌘K est le réflexe de tout le monde. Slack s’en sert pour son propre sélecteur, qui reste accessible depuis le champ de recherche — désactivez ceci pour laisser ⌘K à Slack et utiliser ⌘⇧K.',
   },
 };

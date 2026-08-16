@@ -55,7 +55,6 @@ export async function readSettings(): Promise<Settings> {
         parsed.modSettings && typeof parsed.modSettings === 'object' ? parsed.modSettings : {},
       customCss: typeof parsed.customCss === 'string' ? parsed.customCss : '',
       hotReload: typeof parsed.hotReload === 'boolean' ? parsed.hotReload : true,
-      paletteShortcut: parsed.paletteShortcut === 'mod+shift+k' ? 'mod+shift+k' : 'mod+k',
       modFailures:
         parsed.modFailures && typeof parsed.modFailures === 'object' ? parsed.modFailures : {},
     };

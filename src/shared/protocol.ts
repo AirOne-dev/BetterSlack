@@ -136,15 +136,6 @@ export interface Settings {
   /** Reapply mods automatically when their file changes on disk. */
   hotReload: boolean;
   /**
-   * Which shortcut opens the command palette.
-   *
-   * `mod+k` is what everyone reaches for, and it is also what Slack binds to
-   * its own quick switcher -- so taking it replaces something people use daily.
-   * It is the default because that is what was asked for, and it is a setting
-   * because the other answer is defensible too.
-   */
-  paletteShortcut: 'mod+k' | 'mod+shift+k';
-  /**
    * Consecutive failures per mod, cleared as soon as one applies cleanly.
    *
    * A mod that throws on start is skipped after the second time rather than
@@ -160,7 +151,6 @@ export const DEFAULT_SETTINGS: Settings = {
   modSettings: {},
   customCss: '',
   hotReload: true,
-  paletteShortcut: 'mod+k',
   modFailures: {},
 };
 
