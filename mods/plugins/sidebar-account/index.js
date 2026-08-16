@@ -133,8 +133,20 @@ const CSS = `
 `;
 
 const STRINGS = {
-  en: { account: 'Your account', settings: 'Account settings' },
-  fr: { account: 'Votre compte', settings: 'Réglages du compte' },
+  en: {
+    account: 'Your account',
+    settings: 'Account settings',
+    available: 'Active',
+    away: 'Away',
+    dnd: 'Do not disturb',
+  },
+  fr: {
+    account: 'Votre compte',
+    settings: 'Réglages du compte',
+    available: 'Disponible',
+    away: 'Absent(e)',
+    dnd: 'Ne pas déranger',
+  },
 };
 
 /**
@@ -226,12 +238,11 @@ export default {
       if (best) avatar.setAttribute('src', best);
 
       const name = api.dom.h('div', { class: 'betterslack-me__name' }, ['…']);
-      // Slack's own screen-reader label for the presence indicator, so it is
-      // already in the user's language.
-      const presence = document
-        .querySelector('[data-qa="user-button"] [data-qa="presence_indicator"]')
-        ?.getAttribute('aria-label') ?? '';
-      const status = api.dom.h('div', { class: 'betterslack-me__status' }, [presence]);
+      // Filled in by paintDot, which is the only thing that writes this line.
+      // It used to be read once here, from Slack's screen-reader label, and
+      // then never again -- so it kept saying whatever was true at the moment
+      // the strip happened to be built, which is the whole bug.
+      const status = api.dom.h('div', { class: 'betterslack-me__status' }, ['']);
 
       const dot = api.dom.h('span', { class: 'betterslack-me__dot' });
       const me = api.dom.h('div', { class: 'betterslack-me' }, [
@@ -269,6 +280,10 @@ export default {
        * but a DND window changes rarely, so it is asked for slowly.
        */
       let dnd = false;
+      /** A status someone set for themselves, which outranks the presence word. */
+      let customStatus = '';
+      /** True once either source has actually answered about availability. */
+      let resolved = false;
       // waitFor resolves whenever Slack gets round to drawing the rail, which
       // can be after this plugin has been switched off. Touching the document
       // then is how a disabled plugin ends up throwing into a page it no longer
@@ -276,14 +291,34 @@ export default {
       let gone = false;
       api.onDispose(() => { gone = true; });
 
+      /**
+       * The dot and the word beside it, from the same reading.
+       *
+       * They are one thing: a green dot next to "Absent(e)" is worse than
+       * either being wrong on its own, and that is what happened while the text
+       * was written once at mount and the dot was polled.
+       */
       const paintDot = () => {
         if (gone) return;
         const mine = document.querySelector('[data-qa="user-button"] .c-presence');
         const active = mine ? mine.classList.contains('c-presence--active') : null;
+
         dot.classList.toggle('betterslack-me__dot--dnd', dnd);
-        // Null means Slack has not drawn it yet -- leave the dot as it is rather
+        // Null means Slack has not drawn it yet -- leave both as they are rather
         // than claiming away, which is the wrong answer more often than not.
         if (active !== null) dot.classList.toggle('betterslack-me__dot--active', active && !dnd);
+
+        if (active !== null) resolved = true;
+
+        // A status someone wrote is what they want shown; the presence word is
+        // what Slack falls back to, so this does too. Nothing is written before
+        // something has answered: an empty line for a moment is honest, "away"
+        // is a guess, and guessing wrong is the bug this whole thing is about.
+        const word = dnd
+          ? t('dnd')
+          : dot.classList.contains('betterslack-me__dot--active') ? t('available') : t('away');
+        const next = customStatus || (resolved ? word : '');
+        if (status.textContent !== next) status.textContent = next;
       };
 
       // Watch the rail rather than poll it: Slack swaps the class the moment
@@ -311,6 +346,7 @@ export default {
         // the rail not built yet. Otherwise the app's own answer wins.
         if (!document.querySelector('[data-qa="user-button"] .c-presence')) {
           dot.classList.toggle('betterslack-me__dot--active', availability.state === 'active');
+          if (availability.state !== 'unknown') resolved = true;
         }
         paintDot();
       }, 300_000);
@@ -323,7 +359,10 @@ export default {
             const profile = user?.profile ?? {};
             name.textContent =
               profile.display_name || profile.real_name || user?.real_name || user?.name || '';
-            if (profile.status_text) status.textContent = profile.status_text;
+            // Slack shows the emoji beside it; the shortcode would read as
+            // ":coffee:", so only the text is taken.
+            customStatus = profile.status_text ?? '';
+            paintDot();
           })
           .catch((err) => {
             // Not worth a visible failure: the avatar and availability are most

@@ -75,10 +75,8 @@ test('follows the indicator Slack draws on its own avatar', async () => {
   // puts the answer in the DOM; copying it is instant and always agrees.
   const dom = installDom();
   try {
-    const rail = document.querySelector('[data-qa="user-button"]');
-    const mine = document.createElement('span');
-    mine.className = 'c-avatar__presence c-presence c-presence--active';
-    rail.append(mine);
+    // The node Slack itself renders, which the fixture now carries.
+    const mine = document.querySelector('[data-qa="user-button"] .c-presence');
 
     const { api, recorded } = createTestApi({
       // Slack's API insisting otherwise: the node wins.
@@ -94,10 +92,13 @@ test('follows the indicator Slack draws on its own avatar', async () => {
     mine.classList.remove('c-presence--active');
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.ok(!dot.classList.contains('betterslack-me__dot--active'), 'away the moment Slack says so');
+    assert.equal(document.querySelector('.betterslack-me__status').textContent, 'Away',
+      'and the word beside it says the same thing');
 
     mine.classList.add('c-presence--active');
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.ok(dot.classList.contains('betterslack-me__dot--active'), 'and back again');
+    assert.equal(document.querySelector('.betterslack-me__status').textContent, 'Active');
 
     for (const dispose of recorded.disposers) dispose();
   } finally {

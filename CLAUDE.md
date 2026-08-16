@@ -231,7 +231,11 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   lags the client -- worst right after the window comes back to the front, where
   it reported away for up to a minute while the app plainly said available.
   `sidebar-account` was doing exactly that. Do-not-disturb is *not* in that
-  class, so it still comes from the API, slowly.
+  class, so it still comes from the API, slowly. The word beside the dot is
+  painted from the same reading -- it used to be read once at mount, from
+  Slack's screen-reader label, and never again, so it kept saying whatever was
+  true when the strip happened to be built. A green dot next to "Absent(e)" is
+  worse than either being wrong alone.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).

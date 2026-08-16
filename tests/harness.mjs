@@ -24,8 +24,11 @@ export const SLACK_FIXTURE = `
   <div class="p-control_strip">
     <div class="c-coachmark-anchor">
       <button data-qa="user-button">
-        <span class="c-avatar">
+        <span class="c-avatar" data-mask="mask__base-member">
           <img src="https://ca.slack-edge.com/T025V5WN2-U041KF85GP5-480e63356723-48">
+          <!-- Where Slack keeps your own availability, and swaps the modifier
+               the moment it changes. Measured against Slack 4.51. -->
+          <span class="c-avatar__presence c-presence c-presence--active block"></span>
         </span>
         <svg data-qa="presence_indicator" aria-label="Active"></svg>
       </button>
