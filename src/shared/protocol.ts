@@ -162,6 +162,10 @@ export type Request =
   | { type: 'file.download'; url: string; filename: string }
   /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
   | { type: 'app.update' }
+  /** Everything in ~/.betterslack worth keeping, as one JSON document. */
+  | { type: 'backup.export' }
+  /** Put one back. Replaces settings and user mods; never touches the install. */
+  | { type: 'backup.import'; archive: string }
   /** Which installed mods have a newer version published. */
   | { type: 'mods.checkUpdates' }
   /** Fetch one mod's folder from the branch and install it over the old one. */

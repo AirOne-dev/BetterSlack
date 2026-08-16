@@ -70,6 +70,15 @@ export interface MountOptions {
 const REMOUNT_LIMIT = 25;
 const REMOUNT_WINDOW_MS = 2000;
 
+/**
+ * How many times each node has had to be put back, for the whole session.
+ *
+ * A mount that keeps being undone is Slack re-rendering over it, and it is the
+ * cheapest signal there is that a mod is fighting the app rather than sitting
+ * in it. Kept per node id, which is prefixed with the mod's own id.
+ */
+export const mountCounts = new Map<string, number>();
+
 export function keepMounted(
   containerSelector: string,
   nodeId: string,
@@ -134,6 +143,7 @@ export function keepMounted(
 
     // Everything below is a real remount, so count it before doing it.
     if (!countAttempt()) return;
+    mountCounts.set(nodeId, (mountCounts.get(nodeId) ?? 0) + 1);
 
     current?.remove();
     const node = factory();

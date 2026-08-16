@@ -9,10 +9,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { applyUpdate, checkForUpdate, isNewer } from '../dist/update.mjs';
+
+/*
+ * store.ts resolves the home directory once, when it is imported, which is
+ * right for the app and awkward here: the variable has to be set before the
+ * module is pulled in, and one home has to serve both backup tests.
+ */
+const BACKUP_HOME = mkdtempSync(path.join(tmpdir(), 'betterslack-home-'));
+process.env.BETTERSLACK_HOME = BACKUP_HOME;
+const { exportBackup, importBackup } = await import('../dist/store.mjs');
 
 const git = (cwd, ...args) =>
   execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -202,4 +211,59 @@ test('only installed mods with a newer published version are offered', async () 
   if (updates === null) return; // offline
   assert.equal(updates.some((u) => u.id === 'not-a-real-mod'), false,
     'a mod the catalogue does not have is not an update');
+});
+
+// A backup is the part of an install that cannot be downloaded again: the
+// settings, and the mods someone wrote themselves. Catalogue mods deliberately
+// stay out of it — they come back with the project, and carrying them would
+// restore a stale copy over a newer one.
+
+test('a backup carries the settings and the user’s own mods, and nothing else', async () => {
+  const home = BACKUP_HOME;
+  try {
+    // Written the way the loader would: a user mod, and settings naming it.
+    const modDir = path.join(home, 'mods', 'my-theme');
+    execFileSync('mkdir', ['-p', modDir]);
+    writeFileSync(path.join(modDir, 'mod.json'), JSON.stringify({ id: 'my-theme' }));
+    writeFileSync(path.join(modDir, 'theme.css'), ':root { --a: 1; }');
+    writeFileSync(path.join(home, 'settings.json'), JSON.stringify({
+      installed: ['my-theme'], enabled: ['my-theme'], customCss: '.x {}', hotReload: true, modSettings: {},
+    }));
+
+    const archive = await exportBackup();
+    const parsed = JSON.parse(archive);
+    assert.equal(parsed.kind, 'betterslack-backup');
+    assert.deepEqual(parsed.settings.enabled, ['my-theme']);
+    assert.equal(parsed.mods['my-theme']['theme.css'], ':root { --a: 1; }');
+
+    // Wipe it, put it back.
+    rmSync(path.join(home, 'mods'), { recursive: true, force: true });
+    writeFileSync(path.join(home, 'settings.json'), JSON.stringify({ installed: [], enabled: [] }));
+
+    const result = await importBackup(archive);
+    assert.equal(result.ok, true);
+    assert.equal(readFileSync(path.join(modDir, 'theme.css'), 'utf8'), ':root { --a: 1; }');
+    assert.equal(JSON.parse(readFileSync(path.join(home, 'settings.json'), 'utf8')).enabled[0], 'my-theme');
+
+    // And the two things it must refuse.
+    assert.equal((await importBackup('not json')).ok, false);
+    assert.equal((await importBackup(JSON.stringify({ kind: 'something-else' }))).ok, false);
+  } finally {
+    rmSync(path.join(home, 'mods'), { recursive: true, force: true });
+  }
+});
+
+test('a backup cannot write outside the mod folder it names', async () => {
+  const home = BACKUP_HOME;
+  try {
+    const result = await importBackup(JSON.stringify({
+      kind: 'betterslack-backup',
+      settings: { installed: [], enabled: [] },
+      mods: { 'my-mod': { '../../escaped.js': 'nope' } },
+    }));
+    assert.equal(result.ok, true, 'the rest of the archive still applies');
+    assert.equal(existsSync(path.join(home, '..', 'escaped.js')), false, 'and nothing escaped');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });

@@ -103,6 +103,7 @@ const loaderLib = {
     `${root}/src/loader/update.ts`,
     `${root}/src/loader/catalog.ts`,
     `${root}/src/loader/mod-updates.ts`,
+    `${root}/src/loader/store.ts`,
   ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },

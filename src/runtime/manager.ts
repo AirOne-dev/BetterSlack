@@ -68,6 +68,14 @@ export class ModManager {
   /** Why a mod is not running, keyed by id. Cleared when it applies cleanly. */
   readonly errors = new Map<string, string>();
 
+  /**
+   * What each mod cost to start, in milliseconds.
+   *
+   * Not profiling for its own sake: "Slack feels slow since I turned things on"
+   * is unanswerable without it, and the answer is usually one mod.
+   */
+  readonly timings = new Map<string, number>();
+
   /** Everything a mod said it can do, for the palette. */
   readonly commands = new Map<string, PaletteCommand>();
 
@@ -141,6 +149,16 @@ export class ModManager {
       console.error(`[betterslack] could not reapply "${id}":`, err);
     });
     this.notify();
+  }
+
+  /** Everything in ~/.betterslack worth keeping, as one JSON document. */
+  exportBackup(): Promise<string> {
+    return this.bridge.request<string>({ type: 'backup.export' });
+  }
+
+  /** Put one back, then adopt whatever the loader says the state is now. */
+  importBackup(archive: string): Promise<{ ok: boolean; detail: string }> {
+    return this.bridge.request<{ ok: boolean; detail: string }>({ type: 'backup.import', archive });
   }
 
   /** Installed mods with a newer version published, or an empty list. */
@@ -316,8 +334,10 @@ export class ModManager {
     // Counted before the attempt, cleared after it: a mod that takes the
     // renderer down never gets to the line that would have recorded it.
     await this.recordFailure(record.id, failed + 1);
+    const started = Date.now();
     try {
       await this.apply(record, files);
+      this.timings.set(record.id, Date.now() - started);
       this.errors.delete(record.id);
       await this.recordFailure(record.id, 0);
     } catch (err) {

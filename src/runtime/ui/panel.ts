@@ -20,6 +20,7 @@ import type { ModManager } from '../manager.js';
 import { contributeUrl, repoUrl } from '../registry.js';
 import { createCodeEditor } from './code.js';
 import { closeMenu, openMenu } from './menu.js';
+import { mountCounts } from '../dom.js';
 import { createI18n } from '../i18n.js';
 import { PANEL_STRINGS } from './strings.js';
 
@@ -774,6 +775,8 @@ export class Panel {
           ]),
         ]),
       ]),
+      this.renderBackup(),
+      this.renderDiagnostics(),
       h('dl', { class: 'betterslack-info' }, [
         h('dt', {}, [t('version')]),
         h('dd', {}, [info.version]),
@@ -792,6 +795,127 @@ export class Panel {
         ]),
       ]),
     ];
+  }
+
+  /**
+   * Take everything with you, or put it back.
+   *
+   * The catalogue is deliberately not in it: those mods come back with the
+   * project, and carrying them would restore stale copies over newer ones. What
+   * a backup holds is the part that cannot be downloaded again -- the settings,
+   * and the mods someone wrote or installed themselves.
+   */
+  private renderBackup(): Node {
+    const status = h('span', { class: 'betterslack-status' });
+
+    const save = h('button', {
+      class: 'c-button c-button--outline c-button--medium',
+      type: 'button',
+    }, [t('backupExport')]);
+    save.addEventListener('click', () => {
+      void this.manager.exportBackup().then((archive) => {
+        // Through the page rather than the loader: a download belongs where the
+        // user's own download folder is, and this is the one they chose.
+        const blob = new Blob([archive], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = h('a', {
+          href: url,
+          download: `betterslack-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        }) as HTMLAnchorElement;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+        status.textContent = t('backupSaved');
+      });
+    });
+
+    const file = h('input', { type: 'file', accept: 'application/json', hidden: 'hidden' }) as HTMLInputElement;
+    file.addEventListener('change', () => {
+      const chosen = file.files?.[0];
+      if (!chosen) return;
+      status.textContent = t('backupWorking');
+      void chosen.text().then((text) =>
+        this.manager.importBackup(text).then((result) => {
+          status.textContent = result.ok ? t('backupRestored', { detail: result.detail }) : result.detail;
+          if (result.ok) this.render();
+        }));
+    });
+
+    const load = h('button', {
+      class: 'c-button c-button--outline c-button--medium',
+      type: 'button',
+    }, [t('backupImport')]);
+    load.addEventListener('click', () => file.click());
+
+    return h('div', { class: 'betterslack-row' }, [
+      h('div', { class: 'betterslack-row__meta' }, [
+        h('div', { class: 'betterslack-row__name' }, [t('backupTitle')]),
+        h('div', { class: 'betterslack-row__desc' }, [t('backupHint')]),
+      ]),
+      h('div', { class: 'betterslack-row__actions' }, [save, load, file, status]),
+    ]);
+  }
+
+  /**
+   * What the mods cost, and a report that can be pasted into an issue.
+   *
+   * "Slack feels slow since I turned things on" is unanswerable without this,
+   * and the answer is nearly always one mod. The copy button exists because
+   * the alternative is asking someone to describe their setup from memory.
+   */
+  private renderDiagnostics(): Node {
+    const rows: Node[] = [];
+    const timings = [...this.manager.timings.entries()].sort((a, b) => b[1] - a[1]);
+    for (const [id, ms] of timings) {
+      const mod = this.manager.list().find((entry) => entry.id === id);
+      const mounts = [...mountCounts.entries()]
+        .filter(([node]) => node.includes(id))
+        .reduce((total, [, count]) => total + count, 0);
+      rows.push(h('div', { class: 'betterslack-diag__row' }, [
+        h('span', {}, [mod?.name ?? id]),
+        h('span', { class: 'betterslack-diag__num' }, [
+          t('diagTiming', { ms, mounts }),
+        ]),
+      ]));
+    }
+
+    const copy = h('button', {
+      class: 'c-button c-button--outline c-button--medium',
+      type: 'button',
+    }, [t('diagCopy')]);
+    copy.addEventListener('click', () => {
+      const report = this.diagnosticReport();
+      void navigator.clipboard.writeText(report).then(
+        () => { copy.textContent = t('diagCopied'); },
+        () => { copy.textContent = report.slice(0, 0) || t('diagCopyFailed'); },
+      );
+      setTimeout(() => { copy.textContent = t('diagCopy'); }, 1600);
+    });
+
+    return h('div', { class: 'betterslack-diag' }, [
+      h('div', { class: 'betterslack-row__name' }, [t('diagTitle')]),
+      h('div', { class: 'betterslack-row__desc' }, [t('diagHint')]),
+      ...rows,
+      h('div', { class: 'betterslack-actions' }, [copy]),
+    ]);
+  }
+
+  /** Everything worth knowing about this install, as plain text. */
+  private diagnosticReport(): string {
+    const info = this.manager.info;
+    const settings = this.manager.getSettings();
+    const lines = [
+      `BetterSlack ${info.version}${info.safeMode ? ' (safe mode)' : ''}`,
+      `Slack: ${navigator.userAgent}`,
+      `Language: ${document.documentElement.lang || 'unknown'}`,
+      `Enabled: ${settings.enabled.join(', ') || 'none'}`,
+      `Failures: ${JSON.stringify(settings.modFailures ?? {})}`,
+      `Errors: ${[...this.manager.errors.entries()].map(([id, why]) => `${id}: ${why}`).join(' | ') || 'none'}`,
+      `Start times: ${[...this.manager.timings.entries()].map(([id, ms]) => `${id} ${ms}ms`).join(', ') || 'none'}`,
+      `Remounts: ${[...mountCounts.entries()].map(([id, n]) => `${id} ${n}`).join(', ') || 'none'}`,
+    ];
+    return lines.join('\n');
   }
 
   /**
