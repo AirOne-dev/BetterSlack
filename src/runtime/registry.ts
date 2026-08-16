@@ -8,7 +8,7 @@
 
 import type { ModManifest, ModRecord } from '../shared/protocol.js';
 
-const REPO = 'AirOne-dev/SlackMod';
+const REPO = 'AirOne-dev/BetterSlack';
 const BRANCH = 'master';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${BRANCH}`;
 

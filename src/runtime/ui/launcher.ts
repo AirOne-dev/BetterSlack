@@ -14,7 +14,7 @@ import type { StyleManager } from '../themes.js';
 const CONTROL_STRIP = '.p-control_strip';
 
 /**
- * The avatar's wrapper inside that strip. Inserting before it puts SlackMod
+ * The avatar's wrapper inside that strip. Inserting before it puts BetterSlack
  * directly above the profile, where the user expects it.
  */
 const AVATAR_WRAPPER = '.c-coachmark-anchor:has([data-qa="user-button"])';
@@ -32,13 +32,21 @@ const BUTTON_CLASS = 'c-button-unstyled p-control_strip__circle_button';
 const RAIL_BUTTON_CLASS =
   'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default';
 
-/** Sliders, drawn in Slack's icon idiom: 20x20 box, currentColor. */
+/*
+ * The mark.
+ *
+ * BetterDiscord's idiom: a solid rounded square with the monogram knocked out
+ * of it, rather than a line drawing. That is deliberate here too -- it sits in
+ * a strip of Slack's own outline icons, and the one button that is not Slack's
+ * should not pretend to be.
+ *
+ * Drawn as a single even-odd path so the counter shapes inside the B are holes
+ * rather than a second colour: it takes `currentColor` from whatever strip it
+ * lands in, and follows every theme with no work.
+ */
 const ICON = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" data-qa="slackmod-sliders">
-  <path fill="currentColor" d="M2.75 6.25h3.1a.75.75 0 0 1 0 1.5h-3.1a.75.75 0 0 1 0-1.5Zm8.9 0h5.6a.75.75 0 0 1 0 1.5h-5.6a.75.75 0 0 1 0-1.5Z"/>
-  <path fill="currentColor" d="M2.75 12.25h5.6a.75.75 0 0 1 0 1.5h-5.6a.75.75 0 0 1 0-1.5Zm11.4 0h3.1a.75.75 0 0 1 0 1.5h-3.1a.75.75 0 0 1 0-1.5Z"/>
-  <path fill="currentColor" fill-rule="evenodd" d="M8.75 4.75a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Zm-.75 2.25a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0Z" clip-rule="evenodd"/>
-  <path fill="currentColor" fill-rule="evenodd" d="M11.25 10.75a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Zm-.75 2.25a.75.75 0 1 1 1.5 0 .75.75 0 0 1-1.5 0Z" clip-rule="evenodd"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" data-qa="betterslack-mark">
+  <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M5 1.5h10A3.5 3.5 0 0 1 18.5 5v10a3.5 3.5 0 0 1-3.5 3.5H5A3.5 3.5 0 0 1 1.5 15V5A3.5 3.5 0 0 1 5 1.5Zm1.75 3.75a.75.75 0 0 0-.75.75v8a.75.75 0 0 0 .75.75h3.4a3.1 3.1 0 0 0 1.86-5.58 2.85 2.85 0 0 0-1.98-3.92H6.75Zm.75 1.5v2.5h2.4a1.25 1.25 0 0 0 0-2.5H7.5Zm0 4v3h2.65a1.5 1.5 0 0 0 0-3H7.5Z"/>
 </svg>`;
 
 export interface LauncherOptions {
@@ -66,14 +74,14 @@ export function installLauncher({ onActivate, styles, badge, onBadgeChange }: La
    */
   const paintBadge = (button: HTMLElement) => {
     const count = badge?.() ?? 0;
-    let dot = button.querySelector<HTMLElement>('.slackmod-launcher__badge');
+    let dot = button.querySelector<HTMLElement>('.betterslack-launcher__badge');
     if (!count) {
       dot?.remove();
       button.removeAttribute('data-badged');
       return;
     }
     if (!dot) {
-      dot = h('span', { class: 'slackmod-launcher__badge', 'aria-hidden': 'true' });
+      dot = h('span', { class: 'betterslack-launcher__badge', 'aria-hidden': 'true' });
       button.append(dot);
     }
     dot.textContent = String(count);
@@ -82,10 +90,10 @@ export function installLauncher({ onActivate, styles, badge, onBadgeChange }: La
 
   const makeButton = (className: string, placement: 'right' | 'top') => {
     const button = h('button', {
-      class: `${className} slackmod-launcher`,
+      class: `${className} betterslack-launcher`,
       type: 'button',
-      'aria-label': 'SlackMod',
-      'data-qa': 'slackmod_button',
+      'aria-label': 'BetterSlack',
+      'data-qa': 'betterslack_button',
     });
     button.innerHTML = ICON;
     buttons.add(button);
@@ -98,7 +106,7 @@ export function installLauncher({ onActivate, styles, badge, onBadgeChange }: La
     // Slack's tooltips are React portals we cannot register with, so this
     // rebuilds one from Slack's own tooltip classes. Same look, same 1s delay.
     attachTooltip(button, {
-      title: 'SlackMod',
+      title: 'BetterSlack',
       subtitle: `Thèmes, plugins et CSS personnalisé. ${shortcut}`,
       placement,
     });
@@ -107,7 +115,7 @@ export function installLauncher({ onActivate, styles, badge, onBadgeChange }: La
 
   const unmountStrip = keepMounted(
     CONTROL_STRIP,
-    'slackmod-control-button',
+    'betterslack-control-button',
     () => makeButton(BUTTON_CLASS, 'right'),
     { before: AVATAR_WRAPPER },
   );
@@ -116,7 +124,7 @@ export function installLauncher({ onActivate, styles, badge, onBadgeChange }: La
   // container is absent, so both can be registered without conflicting.
   const unmountRail = keepMounted(
     RAIL_FALLBACK,
-    'slackmod-rail-button',
+    'betterslack-rail-button',
     () => {
       if (document.querySelector(CONTROL_STRIP)) {
         // Signals "not wanted here": keepMounted still owns the node, and the

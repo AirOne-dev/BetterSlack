@@ -2,7 +2,7 @@
 
 Three tracks. Pick the one you need:
 
-- **[Just run it](#just-run-it)** — you want SlackMod on your Slack.
+- **[Just run it](#just-run-it)** — you want BetterSlack on your Slack.
 - **[Write a theme](#write-a-theme)** — you want Slack to look different.
 - **[Write a plugin](#write-a-plugin)** — you want Slack to *do* something new.
 
@@ -15,14 +15,14 @@ Then: [test it](#test-your-mod) and [ship it](#ship-it).
 Requires Node 18+ and the Slack desktop app.
 
 ```bash
-git clone https://github.com/AirOne-dev/SlackMod.git
-cd SlackMod
-npm install
-npm run build
-npm start
+git clone https://github.com/AirOne-dev/BetterSlack.git
+cd BetterSlack
+pnpm install
+pnpm build
+pnpm start
 ```
 
-`npm start` closes Slack, starts it again with SlackMod attached, and stays
+`pnpm start` closes Slack, starts it again with BetterSlack attached, and stays
 running. Leave that terminal open — mods are only active while it runs.
 
 You should see, in Slack:
@@ -34,10 +34,10 @@ Nothing is installed on a fresh setup. Open the panel → **Plugins** or
 **Themes** → **Browse** → *Install*, then flip the switch to turn it on.
 
 <details>
-<summary>Slack isn't where SlackMod expects it</summary>
+<summary>Slack isn't where BetterSlack expects it</summary>
 
 ```bash
-SLACKMOD_SLACK_PATH=/path/to/Slack npm start
+BETTERSLACK_SLACK_PATH=/path/to/Slack pnpm start
 ```
 </details>
 
@@ -45,7 +45,7 @@ SLACKMOD_SLACK_PATH=/path/to/Slack npm start
 <summary>Start it without a terminal (macOS)</summary>
 
 ```bash
-npm run build-app       # produces dist/SlackMod.app
+pnpm build-app       # produces dist/BetterSlack.app
 ```
 
 It is unsigned, so the first launch needs right-click → Open.
@@ -75,7 +75,7 @@ mkdir -p mods/themes/my-theme
   "author": "your-github-handle",
   "description": "One sentence about what a user gets, not how it works.",
   "entry": "theme.css",
-  "slackmodApi": 1
+  "betterslackApi": 1
 }
 ```
 
@@ -103,7 +103,7 @@ your theme — after that, every save re-applies it live. No rebuild, no restart
 
 ### More than one file
 
-A big theme reads better in pieces. `@import` a relative path and SlackMod
+A big theme reads better in pieces. `@import` a relative path and BetterSlack
 inlines it, in order, before anything reaches the page:
 
 ```
@@ -224,7 +224,7 @@ entry.**
 ### 4. More than one file
 
 Once a plugin is more than a screenful, split it. Import relative paths and
-SlackMod resolves them for you:
+BetterSlack resolves them for you:
 
 ```
 mods/plugins/my-plugin/
@@ -244,7 +244,7 @@ export default {
 };
 ```
 
-Three rules, all of them enforced by `npm run validate-mods`:
+Three rules, all of them enforced by `pnpm validate-mods`:
 
 - **Relative specifiers only** — `./x.js`, `../lib/x.js`. There is no npm and no
   CDN in the page; a bare `import 'lodash'` has nothing to resolve to.
@@ -255,7 +255,7 @@ Three rules, all of them enforced by `npm run validate-mods`:
 
 Why the rules: the page has no `'unsafe-eval'`, so a plugin is loaded as a real
 ES module through a `blob:` URL — and a blob URL has no directory for a relative
-path to resolve against. SlackMod therefore reads your whole folder, builds a
+path to resolve against. BetterSlack therefore reads your whole folder, builds a
 blob per file leaves-first, and rewrites each relative specifier to the blob URL
 of the file it names. The module you wrote is the module that runs; only the
 specifiers change. `.css` files in the folder are shipped too, for
@@ -324,9 +324,9 @@ themeChecks(test, assert, import.meta.url);
 Run it:
 
 ```bash
-npm run test:mod -- my-plugin     # one mod
-npm test                          # all of them
-npm run check-structure -- my-plugin
+ppnpm test:mod -- my-plugin     # one mod
+pnpm test                          # all of them
+pnpm check-structure -- my-plugin
 ```
 
 ---
@@ -336,7 +336,7 @@ npm run check-structure -- my-plugin
 Open a pull request adding your folder under `mods/`.
 
 ```bash
-npm run registry        # regenerate the catalogue, then commit it
+pnpm registry        # regenerate the catalogue, then commit it
 node scripts/changed-mods.mjs   # what CI will run for you
 ```
 
@@ -358,15 +358,15 @@ rejected.** Read it before you write, not after.
 | [docs/api.md](api.md) | The plugin API, with an example per entry |
 | [docs/themes.md](themes.md) | Slack's colour tokens, CSS traps, recipes |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | Review rules and the PR checklist |
-| [README.md](../README.md) | What SlackMod is and how it works |
+| [README.md](../README.md) | What BetterSlack is and how it works |
 | [CLAUDE.md](../CLAUDE.md) | Notes for AI agents working in this repo |
 
 ## When something does not work
 
 | Symptom | Cause |
 | --- | --- |
-| Mods stop working | The `npm start` terminal was closed. Mods live as long as the loader. |
-| Your mod is not in the panel | `id` must equal the folder name. Run `npm run check-structure -- <id>`. |
+| Mods stop working | The `pnpm start` terminal was closed. Mods live as long as the loader. |
+| Your mod is not in the panel | `id` must equal the folder name. Run `pnpm check-structure -- <id>`. |
 | Edits do not show up | Hot reload is off, or the mod is not enabled. Check the About tab. |
 | A theme changes messages but not the sidebar | You only overrode the first token family — see [themes.md](themes.md). |
 | `eval is not allowed` | Slack's CSP. There is no way around it; restructure. |

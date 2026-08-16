@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { assertPluginShape, createTestApi, installDom } from '../../../tests/harness.mjs';
 import plugin from './index.js';
 
-const FLAG = 'slackmod-focus-mode';
+const FLAG = 'betterslack-focus-mode';
 
 /** Real keyboard events, because the mod binds through api.helpers.hotkey. */
 function press(dom, init) {
@@ -111,7 +111,7 @@ test('disabling the plugin removes the flag and the indicator', async () => {
     for (const dispose of recorded.disposers) dispose();
 
     assert.equal(isOn(), false, 'flag removed');
-    assert.equal(document.getElementById('slackmod-focus-indicator'), null, 'indicator removed');
+    assert.equal(document.getElementById('betterslack-focus-indicator'), null, 'indicator removed');
   } finally {
     dom.cleanup();
   }

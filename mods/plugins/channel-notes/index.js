@@ -1,7 +1,7 @@
 /**
  * Channel Notes — a private scratchpad per channel.
  *
- * This is also the reference example for the SlackMod API. It uses one of
+ * This is also the reference example for the BetterSlack API. It uses one of
  * everything and does not contain a single line of CSS:
  *
  *   api.slack.addToolbarButton  a native-looking button in the channel header
@@ -11,7 +11,7 @@
  *   api.settings                persisted through the loader, per plugin
  *   api.dom.h / onShortcut      element building and a keyboard shortcut
  *
- * Notes live in this plugin's settings, in ~/.slackmod/settings.json. They
+ * Notes live in this plugin's settings, in ~/.betterslack/settings.json. They
  * never touch the network.
  */
 

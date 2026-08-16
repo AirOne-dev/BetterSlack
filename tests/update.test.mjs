@@ -9,17 +9,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { checkForUpdate, isNewer } from '../dist/update.mjs';
+import { applyUpdate, checkForUpdate, isNewer } from '../dist/update.mjs';
 
 const git = (cwd, ...args) =>
   execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 
 /** A real repository with a real remote: the thing being tested is git itself. */
 function scratch() {
-  const root = mkdtempSync(path.join(tmpdir(), 'slackmod-update-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'betterslack-update-'));
   const origin = path.join(root, 'origin');
   const clone = path.join(root, 'clone');
 
@@ -111,14 +111,14 @@ test('a branch that tracks nothing is not out of date, it is unknown', async () 
 });
 
 test('a copy that is not a checkout falls back to the published version', async () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'slackmod-plain-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'betterslack-plain-'));
   try {
     // No network in tests: an unreachable repo name is the offline case, and
     // the answer has to be "do not know" rather than "out of date".
     const status = await checkForUpdate({
       root,
       version: '2.0.0',
-      repo: 'slackmod-does-not-exist/nope',
+      repo: 'betterslack-does-not-exist/nope',
       branch: 'main',
     });
     assert.equal(status.behind, false);
@@ -134,4 +134,47 @@ test('versions are compared as numbers, not as text', () => {
   assert.equal(isNewer('2.0.0', '10.0.0'), false);
   assert.equal(isNewer('1.0.0', '1.0.0'), false, 'the same version is not newer');
   assert.equal(isNewer('1.1', '1.0.9'), true, 'a missing part counts as zero');
+});
+
+test('a copy with no git is offered the tarball route, not a shrug', async () => {
+  // Most people arrive through GitHub's "Download ZIP" button, which leaves no
+  // history at all. Saying "you are out of date, good luck" to the majority is
+  // not an update system.
+  const root = mkdtempSync(path.join(tmpdir(), 'betterslack-zip-'));
+  try {
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'betterslack', version: '1.0.0' }));
+    // A real repository, so the version really is read from GitHub.
+    const status = await checkForUpdate({
+      root,
+      version: '0.0.1',
+      repo: 'AirOne-dev/SlackMod',
+      branch: 'master',
+    });
+    if (status.kind === 'unknown') return; // offline: nothing to assert about
+    assert.equal(status.kind, 'package');
+    assert.equal(status.behind, true, '0.0.1 is behind whatever is published');
+    assert.equal(status.updatable, true, 'and it can be replaced without git');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('an archive that is not this project is refused, and changes nothing', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'betterslack-wrong-'));
+  try {
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'betterslack', version: '1.0.0' }));
+    writeFileSync(path.join(root, 'mine.txt'), 'do not lose me');
+
+    // A repository that exists and is emphatically not BetterSlack.
+    const result = await applyUpdate({ root, repo: 'nodejs/node', branch: 'main' });
+    assert.equal(result.ok, false);
+    assert.ok(
+      /not BetterSlack|GitHub answered|fetch failed|timed out|terminated/i.test(result.detail),
+      `unexpected reason: ${result.detail}`,
+    );
+    assert.equal(readFileSync(path.join(root, 'mine.txt'), 'utf8'), 'do not lose me',
+      'the install is untouched when the archive is refused');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

@@ -176,7 +176,7 @@ export function createHelpers(ctx: HelperContext): Helpers {
 
   return {
     toggle({ key, className, defaultOn = false, whenOn, onChange }) {
-      const flag = className ?? `slackmod-${ctx.pluginId}-${key}`;
+      const flag = className ?? `betterslack-${ctx.pluginId}-${key}`;
       if (whenOn) {
         scopedCss.set(`toggle:${key}`, whenOn.replace(/&/g, `html.${flag}`));
         applyCss();
@@ -252,7 +252,7 @@ export function createHelpers(ctx: HelperContext): Helpers {
     },
 
     badge(selector, id, value) {
-      const nodeId = `slackmod-badge-${ctx.pluginId}-${id}`;
+      const nodeId = `betterslack-badge-${ctx.pluginId}-${id}`;
       scopedCss.set(`badge:${id}`, `
         #${nodeId} {
           position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px;
@@ -301,7 +301,7 @@ export function createHelpers(ctx: HelperContext): Helpers {
 
     iconButton({ icon, label, description, surface = 'header', onClick }) {
       const button = h('button', {
-        class: `${BUTTON_CLASSES[surface]} slackmod-icon-button`,
+        class: `${BUTTON_CLASSES[surface]} betterslack-icon-button`,
         type: 'button',
         'aria-label': label,
       });

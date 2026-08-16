@@ -35,12 +35,12 @@ mods/plugins/my-plugin/
 ```
 
 Relative specifiers only, inside your own folder, no cycles — all three are
-enforced by `npm run validate-mods`, so a mistake fails the pull request rather
+enforced by `pnpm validate-mods`, so a mistake fails the pull request rather
 than the app.
 
 The reason: Slack's CSP has no `'unsafe-eval'`, so a plugin is loaded as a real
 ES module through a `blob:` URL — and a blob URL has no directory for `./x.js`
-to resolve against. SlackMod reads the whole folder, makes a blob per file
+to resolve against. BetterSlack reads the whole folder, makes a blob per file
 leaves-first, and rewrites each relative specifier to the blob URL of the file
 it names. Nothing else in your source is touched: comments, formatting and line
 numbers survive, so stack traces still point where you think they do. A JSDoc
@@ -63,7 +63,7 @@ be pure CSS. `whenOn` is CSS where `&` stands for the flag class.
 ```js
 const zen = api.helpers.toggle({
   key: 'on',                       // settings key it persists under
-  className: 'my-zen',             // optional; defaults to slackmod-<plugin>-<key>
+  className: 'my-zen',             // optional; defaults to betterslack-<plugin>-<key>
   defaultOn: false,
   whenOn: `
     & .p-channel_sidebar { display: none !important; }
@@ -122,7 +122,7 @@ api.helpers.mount('[data-qa="message_input"]', 'my-counter', () =>
 
 // sit above an existing button rather than after it
 api.helpers.mount('.p-control_strip', 'my-button', makeButton, {
-  before: '#slackmod-control-button',
+  before: '#betterslack-control-button',
 });
 ```
 
@@ -142,7 +142,7 @@ A count badge pinned to an element, kept in sync. `null` or `0` hides it.
 
 ```js
 let unread = 0;
-api.helpers.badge('[data-qa="slackmod_button"]', 'unread', () => unread);
+api.helpers.badge('[data-qa="betterslack_button"]', 'unread', () => unread);
 ```
 
 ### `tooltip(element, title, subtitle?)`
@@ -211,7 +211,7 @@ api.slack.addToolbarButton('controlStrip', {
   label: 'Notes',
   description: 'A scratchpad for this channel',   // second tooltip line
   icon: '<svg viewBox="0 0 20 20">…</svg>',
-  before: '#slackmod-control-button',             // optional: sit above it
+  before: '#betterslack-control-button',             // optional: sit above it
   onClick: () => open(),
 });
 ```
@@ -346,7 +346,7 @@ const sure = await api.ui.confirm({
 The lower-level form of `helpers.tooltip`, when you need placement:
 
 ```js
-api.ui.tooltip(el, { title: 'SlackMod', subtitle: '⌘⇧M', placement: 'right' });
+api.ui.tooltip(el, { title: 'BetterSlack', subtitle: '⌘⇧M', placement: 'right' });
 ```
 
 ---
@@ -365,7 +365,7 @@ api.dom.onShortcut((e) => e.key === 'F1', handler);          // prefer helpers.h
 
 ## `api.settings`
 
-Persisted per plugin, in `~/.slackmod/settings.json`.
+Persisted per plugin, in `~/.betterslack/settings.json`.
 
 ```js
 const limit = api.settings.get('limit', 4000);   // with a fallback

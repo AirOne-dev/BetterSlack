@@ -44,7 +44,7 @@ import { HUDDLE_ICON, MESSAGE_ICON, MORE_ICON, VIP_ICON } from './icons.js';
 import { STRINGS } from './strings.js';
 
 // Also spelled out in column.css, which cannot interpolate.
-const COLUMN_ID = 'slackmod-member-column';
+const COLUMN_ID = 'betterslack-member-column';
 
 /** Members to render at most. Slack pages `conversations.members` beyond this. */
 const MEMBER_LIMIT = 100;
@@ -94,12 +94,12 @@ export default {
     const paintPresence = () => {
       const host = document.getElementById(COLUMN_ID);
       if (!host) return;
-      for (const row of host.querySelectorAll('.slackmod-members__row')) {
+      for (const row of host.querySelectorAll('.betterslack-members__row')) {
         const state = presence.get(row.dataset.userId);
         if (!state) continue;
-        row.classList.toggle('slackmod-members__row--active', state === 'active');
-        row.querySelector('.slackmod-members__dot')
-          ?.classList.toggle('slackmod-members__dot--active', state === 'active');
+        row.classList.toggle('betterslack-members__row--active', state === 'active');
+        row.querySelector('.betterslack-members__dot')
+          ?.classList.toggle('betterslack-members__dot--active', state === 'active');
       }
     };
 
@@ -214,7 +214,7 @@ export default {
 
     /** Someone's files, in the dialog rather than by navigating away. */
     const showFiles = async (userId, name) => {
-      const body = api.dom.h('div', { class: 'slackmod-profile__note' }, [t('loading')]);
+      const body = api.dom.h('div', { class: 'betterslack-profile__note' }, [t('loading')]);
       const handle = api.ui.modal({ title: t('filesTitle', { name }), width: 520, content: body });
       try {
         const files = await api.slack.filesFrom(userId, 20);
@@ -223,10 +223,10 @@ export default {
           body.textContent = t('noFiles');
           return;
         }
-        const list = api.dom.h('div', { class: 'slackmod-profile__files' });
+        const list = api.dom.h('div', { class: 'betterslack-profile__files' });
         for (const file of files) {
           list.append(api.dom.h('a', {
-            class: 'c-link slackmod-profile__file',
+            class: 'c-link betterslack-profile__file',
             href: String(file.permalink ?? '#'),
             target: '_blank',
             rel: 'noreferrer',
@@ -250,7 +250,7 @@ export default {
      */
     const buildProfile = (userId, data, close = () => {}) => {
       const root = api.dom.h('div', {
-        class: 'slackmod-profile',
+        class: 'betterslack-profile',
         'data-qa': 'member_profile_pane',
         // Say who this is instead of leaving it to be read off the avatar URL:
         // a custom or bot avatar is not served from Slack's CDN and carries no
@@ -259,7 +259,7 @@ export default {
       });
 
       if (data.error) {
-        root.append(api.dom.h('div', { class: 'slackmod-profile__note' }, [
+        root.append(api.dom.h('div', { class: 'betterslack-profile__note' }, [
           t('refused', { reason: data.error }),
         ]));
         return root;
@@ -271,24 +271,24 @@ export default {
       const active = data.presence?.presence === 'active';
 
       const avatar = api.dom.h('img', {
-        class: 'p-r_member_profile__avatar__img slackmod-profile__avatar',
+        class: 'p-r_member_profile__avatar__img betterslack-profile__avatar',
         alt: '',
       });
       const image = profile.image_512 ?? profile.image_192 ?? profile.image_72;
       if (image) avatar.setAttribute('src', image);
 
-      const identity = api.dom.h('div', { class: 'slackmod-profile__identity' }, [
-        api.dom.h('div', { class: 'slackmod-profile__name' }, [name]),
+      const identity = api.dom.h('div', { class: 'betterslack-profile__identity' }, [
+        api.dom.h('div', { class: 'betterslack-profile__name' }, [name]),
       ]);
       const secondLine = [profile.pronouns, profile.title].filter(Boolean).join(' · ');
       if (secondLine) {
-        identity.append(api.dom.h('div', { class: 'slackmod-profile__line' }, [secondLine]));
+        identity.append(api.dom.h('div', { class: 'betterslack-profile__line' }, [secondLine]));
       }
       // status_emoji is a shortcode like `:tada:`, and a workspace's custom
       // ones have no unicode to fall back on, so printing it raw is worse than
       // leaving it out. The text is the part that carries meaning.
       if (profile.status_text) {
-        identity.append(api.dom.h('div', { class: 'slackmod-profile__line' }, [profile.status_text]));
+        identity.append(api.dom.h('div', { class: 'betterslack-profile__line' }, [profile.status_text]));
       }
 
       const clock = localTime(user.tz_offset);
@@ -297,26 +297,26 @@ export default {
         clock ? t('localTime', { time: clock }) : null,
         data.dnd?.dnd_enabled ? t('dnd') : null,
       ].filter(Boolean).join(' · ');
-      identity.append(api.dom.h('div', { class: 'slackmod-profile__presence' }, [
+      identity.append(api.dom.h('div', { class: 'betterslack-profile__presence' }, [
         api.dom.h('span', {
-          class: `slackmod-profile__dot${active ? ' slackmod-profile__dot--active' : ''}`,
+          class: `betterslack-profile__dot${active ? ' betterslack-profile__dot--active' : ''}`,
         }),
         where,
       ]));
 
-      root.append(api.dom.h('div', { class: 'slackmod-profile__head' }, [avatar, identity]));
+      root.append(api.dom.h('div', { class: 'betterslack-profile__head' }, [avatar, identity]));
 
       // The same four Slack offers, in the same order, doing the same things --
       // by pressing Slack's own buttons. The overflow opens Slack's menu whole:
       // its entries have no attribute to aim at, only a localised label and an
       // id that changes on every render.
-      const actions = api.dom.h('div', { class: 'slackmod-profile__actions' });
+      const actions = api.dom.h('div', { class: 'betterslack-profile__actions' });
 
       // Slack pairs a glyph with the label on these; icon-only reads as a
       // different control entirely.
       const labelled = (svg, text) => {
         const button = api.dom.h('button', {
-          class: 'c-button c-button--outline c-button--medium slackmod-profile__action',
+          class: 'c-button c-button--outline c-button--medium betterslack-profile__action',
           type: 'button',
         });
         button.innerHTML = svg;
@@ -336,7 +336,7 @@ export default {
       // This one is ours: it never reopens Slack's pane, and every entry is a
       // call rather than a click staged somewhere else.
       const more = api.dom.h('button', {
-        class: 'c-button c-button--outline c-button--medium slackmod-profile__more',
+        class: 'c-button c-button--outline c-button--medium betterslack-profile__more',
         type: 'button',
         'aria-label': t('more'),
         'aria-haspopup': 'menu',
@@ -398,7 +398,7 @@ export default {
         [t('memberId'), user.id],
       ].filter(([, value]) => value);
 
-      const fields = api.dom.h('div', { class: 'slackmod-profile__fields' });
+      const fields = api.dom.h('div', { class: 'betterslack-profile__fields' });
       for (const [label, value] of rows) fields.append(api.helpers.field(label, String(value)));
       root.append(fields);
 
@@ -422,7 +422,7 @@ export default {
         width: 560,
         content: known
           ? buildProfile(userId, known, close)
-          : api.dom.h('div', { class: 'slackmod-profile__note' }, ['Loading…']),
+          : api.dom.h('div', { class: 'betterslack-profile__note' }, ['Loading…']),
         // The copies Slack keeps in its overflow menu. They need nothing from
         // Slack, so they are instant and work with its window in the
         // background; false keeps the dialog open, since copying something is
@@ -467,21 +467,21 @@ export default {
 
     const row = (user) => {
       const name = displayName(user);
-      const avatar = api.dom.h('img', { class: 'slackmod-members__avatar', alt: '' });
+      const avatar = api.dom.h('img', { class: 'betterslack-members__avatar', alt: '' });
       const image = user.profile?.image_72 ?? user.profile?.image_192 ?? user.profile?.image_512;
       if (image) avatar.setAttribute('src', image);
 
       const active = presence.get(user.id) === 'active';
       const dot = api.dom.h('span', {
-        class: `slackmod-members__dot${active ? ' slackmod-members__dot--active' : ''}`,
+        class: `betterslack-members__dot${active ? ' betterslack-members__dot--active' : ''}`,
       });
 
       const button = api.dom.h('button', {
-        class: `slackmod-members__row${active ? ' slackmod-members__row--active' : ''}`,
+        class: `betterslack-members__row${active ? ' betterslack-members__row--active' : ''}`,
         type: 'button',
       }, [
-        api.dom.h('span', { class: 'slackmod-members__figure' }, [avatar, dot]),
-        api.dom.h('span', { class: 'slackmod-members__name' }, [name]),
+        api.dom.h('span', { class: 'betterslack-members__figure' }, [avatar, dot]),
+        api.dom.h('span', { class: 'betterslack-members__name' }, [name]),
       ]);
       button.dataset.userId = user.id;
       button.addEventListener('click', () => void openProfileDialog(user.id));
@@ -520,14 +520,14 @@ export default {
       host.replaceChildren();
       for (const group of groups) {
         if (group.list.length === 0) continue;
-        host.append(api.dom.h('div', { class: 'slackmod-members__heading' }, [
+        host.append(api.dom.h('div', { class: 'betterslack-members__heading' }, [
           `${group.label} — ${group.list.length}${truncated ? '+' : ''}`,
         ]));
         for (const user of group.list) host.append(row(user));
       }
 
       if (people.length > PRESENCE_LIMIT) {
-        host.append(api.dom.h('div', { class: 'slackmod-members__note' }, [
+        host.append(api.dom.h('div', { class: 'betterslack-members__note' }, [
           t('presenceCap', { count: PRESENCE_LIMIT }),
         ]));
       }
@@ -535,7 +535,7 @@ export default {
 
     const render = async (host, channel) => {
       const mine = ++generation;
-      host.replaceChildren(api.dom.h('div', { class: 'slackmod-members__note' }, [t('loading')]));
+      host.replaceChildren(api.dom.h('div', { class: 'betterslack-members__note' }, [t('loading')]));
 
       let ids = [];
       let truncated = false;
@@ -548,7 +548,7 @@ export default {
         truncated = Boolean(res.response_metadata?.next_cursor);
       } catch (err) {
         if (mine !== generation) return;
-        host.replaceChildren(api.dom.h('div', { class: 'slackmod-members__note' }, [t('noMembers')]));
+        host.replaceChildren(api.dom.h('div', { class: 'betterslack-members__note' }, [t('noMembers')]));
         api.log.warn(`could not list members of ${channel}:`, err.message);
         return;
       }

@@ -4,9 +4,9 @@
   "type": "plugin",
   "version": "1.0.0",
   "author": "AirOne-dev",
-  "description": "A private scratchpad per channel, opened from a button in the channel header. Notes are stored locally and never sent anywhere. Doubles as the worked example of the SlackMod widget API.",
+  "description": "A private scratchpad per channel, opened from a button in the channel header. Notes are stored locally and never sent anywhere. Doubles as the worked example of the BetterSlack widget API.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": ["productivity", "example"]
 }

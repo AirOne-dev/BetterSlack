@@ -172,7 +172,7 @@ export interface PluginApi {
     suspend(on: boolean): void;
   };
 
-  /** Per-plugin persisted settings, stored by the loader in ~/.slackmod. */
+  /** Per-plugin persisted settings, stored by the loader in ~/.betterslack. */
   readonly settings: {
     get<T = unknown>(key: string, fallback?: T): T | undefined;
     set(key: string, value: unknown): Promise<void>;
@@ -207,7 +207,7 @@ export interface ApiContext {
 
 export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
   const cleanups = collectCleanups();
-  const prefix = `[slackmod:${record.id}]`;
+  const prefix = `[betterslack:${record.id}]`;
 
   const track = <T extends (...args: never[]) => Cleanup>(fn: T): T =>
     ((...args: never[]) => {

@@ -14,7 +14,7 @@ export function themeChecks(test, assert, importMetaUrl) {
 
   test('manifest declares a theme', () => {
     assert.equal(manifest.type, 'theme');
-    assert.equal(manifest.slackmodApi, 1);
+    assert.equal(manifest.betterslackApi, 1);
     assert.match(manifest.entry, /\.css$/);
   });
 

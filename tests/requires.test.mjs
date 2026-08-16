@@ -89,10 +89,10 @@ test('every dialog we build overrides Slack’s opacity: 0', () => {
   const widgets = read('src/runtime/ui/widgets.ts');
   const styles = read('src/runtime/ui/styles.ts');
 
-  const hosts = new Set(['slackmod-panel']);
+  const hosts = new Set(['betterslack-panel']);
   for (const [, classes] of widgets.matchAll(/class:\s*'([^']*\bc-dialog\b[^']*)'/g)) {
     for (const name of classes.split(/\s+/)) {
-      if (name.startsWith('slackmod-') && name !== 'slackmod-dialog') hosts.add(name);
+      if (name.startsWith('betterslack-') && name !== 'betterslack-dialog') hosts.add(name);
     }
   }
   assert.ok(hosts.size > 1, 'the modal host class must be discoverable');

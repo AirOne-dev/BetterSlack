@@ -97,7 +97,7 @@ export function keepMounted(
     disposed = true;
     observer.disconnect();
     console.error(
-      `[slackmod] giving up on "${nodeId}": it moved or was re-added ` +
+      `[betterslack] giving up on "${nodeId}": it moved or was re-added ` +
         `${attempts.length} times in ${REMOUNT_WINDOW_MS}ms, so something else owns ` +
         `"${containerSelector}". Anchor it with \`before\` or pick another container.`,
     );
@@ -169,7 +169,7 @@ export function onEach<T extends Element = Element>(
       try {
         handler(element);
       } catch (err) {
-        console.error('[slackmod] onEach handler threw', err);
+        console.error('[betterslack] onEach handler threw', err);
       }
     }
   };

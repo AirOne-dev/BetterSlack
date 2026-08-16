@@ -239,7 +239,7 @@ tokens. Break it up with relative `@import`s from your entry file:
 @import './messages.css';
 ```
 
-SlackMod inlines each import, in order, before the CSS reaches the page: what
+BetterSlack inlines each import, in order, before the CSS reaches the page: what
 Slack sees is one stylesheet, so cascade order is exactly the order you wrote.
 An imported file may import further files, relative to itself.
 
@@ -253,7 +253,7 @@ wrong.
 
 Import at the top of a file, as CSS requires. Here an `@import` lower down is
 still inlined where you put it, but a browser would ignore it — and a theme that
-only works inside SlackMod is a theme nobody can debug. An `@import` inside a
+only works inside BetterSlack is a theme nobody can debug. An `@import` inside a
 comment is left alone, so commenting one out really does switch it off.
 
 ## When CSS is not enough

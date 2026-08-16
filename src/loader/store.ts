@@ -1,6 +1,6 @@
 // Settings and installed mods on disk.
 //
-// Settings live outside the repo (~/.slackmod) so that pulling the repo never
+// Settings live outside the repo (~/.betterslack) so that pulling the repo never
 // clobbers what the user has enabled, and so a mod author's working copy and
 // their real config stay separate.
 
@@ -9,11 +9,31 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { DEFAULT_SETTINGS, type Settings } from '../shared/protocol.js';
 
-export const USER_ROOT = process.env.SLACKMOD_HOME ?? path.join(homedir(), '.slackmod');
+export const USER_ROOT = process.env.BETTERSLACK_HOME ?? path.join(homedir(), '.betterslack');
 export const USER_MODS_ROOT = path.join(USER_ROOT, 'mods');
 const SETTINGS_FILE = path.join(USER_ROOT, 'settings.json');
 
+/** Where this lived when the project was called SlackMod. */
+const LEGACY_ROOT = path.join(homedir(), '.slackmod');
+
 export async function ensureUserRoot(): Promise<void> {
+  /*
+   * Carry the old home over rather than starting empty.
+   *
+   * The rename moved this directory, and everything a person has -- which mods
+   * they installed, which are on, their custom CSS, their own themes -- lives
+   * in it. Coming back to an empty catalogue after an update would read as the
+   * update having wiped them. Moved only when there is nothing at the new
+   * place, so a second run cannot clobber real state with a stale copy.
+   */
+  if (!process.env.BETTERSLACK_HOME) {
+    const arrived = await fs.stat(USER_ROOT).then(() => true).catch(() => false);
+    const legacy = await fs.stat(LEGACY_ROOT).then(() => true).catch(() => false);
+    if (!arrived && legacy) {
+      await fs.rename(LEGACY_ROOT, USER_ROOT).catch(() => undefined);
+      console.log(`[betterslack] moved ${LEGACY_ROOT} to ${USER_ROOT}`);
+    }
+  }
   await fs.mkdir(USER_MODS_ROOT, { recursive: true });
 }
 
@@ -38,7 +58,7 @@ export async function readSettings(): Promise<Settings> {
     };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.warn(`[slackmod] settings unreadable, falling back to defaults: ${err}`);
+      console.warn(`[betterslack] settings unreadable, falling back to defaults: ${err}`);
     }
     return { ...DEFAULT_SETTINGS };
   }

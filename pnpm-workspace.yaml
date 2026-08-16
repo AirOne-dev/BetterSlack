@@ -1,0 +1,5 @@
+# esbuild fetches its platform binary in an install script, and pnpm refuses to
+# run one unless it is allowed here by name. Without this, every command that
+# touches the bundler fails on a fresh checkout with "Ignored build scripts".
+allowBuilds:
+  esbuild: true

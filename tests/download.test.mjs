@@ -11,8 +11,8 @@ import { downloadFile, DownloadError, safeFilename } from '../dist/download.mjs'
 test('reduces any path to a bare file name', () => {
   assert.equal(safeFilename('../../etc/passwd'), 'passwd');
   assert.equal(safeFilename('/absolute/path/x.png'), 'x.png');
-  assert.equal(safeFilename('..'), 'slackmod-download');
-  assert.equal(safeFilename(''), 'slackmod-download');
+  assert.equal(safeFilename('..'), 'betterslack-download');
+  assert.equal(safeFilename(''), 'betterslack-download');
   assert.doesNotMatch(safeFilename('a/../../b.png'), /[/\\]/);
 });
 

@@ -1,4 +1,4 @@
-// SlackMod loader.
+// BetterSlack loader.
 //
 // Starts Slack with a debugging port, attaches over CDP and injects the runtime
 // into every Slack client target. Everything the renderer cannot do for itself
@@ -38,8 +38,8 @@ import {
   type UpdateStatus,
 } from '../shared/protocol.js';
 
-/** SLACKMOD_VERBOSE=1 forwards everything the page logs, not only its errors. */
-const verbose = process.env.SLACKMOD_VERBOSE === '1';
+/** BETTERSLACK_VERBOSE=1 forwards everything the page logs, not only its errors. */
+const verbose = process.env.BETTERSLACK_VERBOSE === '1';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..');
@@ -48,7 +48,7 @@ const RUNTIME_BUNDLE = path.join(HERE, 'runtime.js');
 const VERSION = '2.0.0';
 
 /** Where a copy of this checks whether it is current. */
-const REPO = 'AirOne-dev/SlackMod';
+const REPO = 'AirOne-dev/BetterSlack';
 const DEFAULT_BRANCH = 'master';
 
 interface Args {
@@ -61,9 +61,9 @@ function parseArgs(argv: string[]): Args {
     if (a === '--verbose' || a === '-v') args.verbose = true;
     else if (a === '--help' || a === '-h') {
       console.log(
-        `slackmod ${VERSION}\n\n` +
+        `betterslack ${VERSION}\n\n` +
           `  --verbose   log every message crossing the bridge\n\n` +
-          `SlackMod starts Slack itself and talks to it over a private CDP pipe.\n` +
+          `BetterSlack starts Slack itself and talks to it over a private CDP pipe.\n` +
           `There is no debugging port, so no other process can reach the connection.\n`,
       );
       process.exit(0);
@@ -107,7 +107,7 @@ class Loader {
     this.runtimeSource = await fs.readFile(RUNTIME_BUNDLE, 'utf8');
     await ensureUserRoot();
     await this.catalog.refresh();
-    for (const problem of this.catalog.errors) console.warn(`[slackmod] skipped mod - ${problem}`);
+    for (const problem of this.catalog.errors) console.warn(`[betterslack] skipped mod - ${problem}`);
 
     this.info = {
       version: VERSION,
@@ -121,7 +121,7 @@ class Loader {
 
     const mods = this.catalog.list();
     console.log(
-      `[slackmod] ${mods.filter((m) => m.type === 'theme').length} theme(s), ` +
+      `[betterslack] ${mods.filter((m) => m.type === 'theme').length} theme(s), ` +
         `${mods.filter((m) => m.type === 'plugin').length} plugin(s) available`,
     );
 
@@ -135,7 +135,7 @@ class Loader {
         this.update = status;
         if (status.behind) {
           console.log(
-            `[slackmod] an update is available${status.commits ? ` (${status.commits} commit(s))` : ''}` +
+            `[betterslack] an update is available${status.commits ? ` (${status.commits} commit(s))` : ''}` +
               `${status.headline ? `: ${status.headline}` : ''}`,
           );
         }
@@ -149,7 +149,7 @@ class Loader {
       for (const id of changedIds) {
         const files = await this.catalog.readSource(id).catch(() => null);
         if (files === null) continue;
-        console.log(`[slackmod] reloading "${id}"`);
+        console.log(`[betterslack] reloading "${id}"`);
         this.broadcast({ type: 'mod.changed', id, files });
       }
       this.broadcast({ type: 'catalog.changed', mods: this.catalog.list() });
@@ -162,14 +162,14 @@ class Loader {
   private async attachLoop(): Promise<void> {
     for (;;) {
       if (this.connection.isClosed) {
-        console.log('[slackmod] Slack closed, exiting');
+        console.log('[betterslack] Slack closed, exiting');
         return;
       }
       let targets: TargetInfo[] = [];
       try {
         targets = await this.connection.targets();
       } catch {
-        console.log('[slackmod] Slack closed, exiting');
+        console.log('[betterslack] Slack closed, exiting');
         return;
       }
       const pages = targets.filter((t) => t.type === 'page');
@@ -192,7 +192,7 @@ class Loader {
     try {
       session = await this.connection.attach(target.targetId);
     } catch (err) {
-      console.warn(`[slackmod] could not attach to ${target.targetId}: ${(err as Error).message}`);
+      console.warn(`[betterslack] could not attach to ${target.targetId}: ${(err as Error).message}`);
       return;
     }
     const attachment: Attachment = { session };
@@ -214,13 +214,13 @@ class Loader {
      * Without this the only way to see why a mod failed is to open DevTools
      * inside Slack, which is precisely what is hard when the failure is at
      * boot. Uncaught exceptions always print; console noise does not, because
-     * Slack's own client is chatty -- SLACKMOD_VERBOSE=1 lifts that.
+     * Slack's own client is chatty -- BETTERSLACK_VERBOSE=1 lifts that.
      */
     session.on('Runtime.exceptionThrown', (params: {
       exceptionDetails?: { exception?: { description?: string }; text?: string };
     }) => {
       const details = params.exceptionDetails;
-      console.error(`[slackmod] page error: ${details?.exception?.description ?? details?.text ?? '?'}`);
+      console.error(`[betterslack] page error: ${details?.exception?.description ?? details?.text ?? '?'}`);
     });
 
     session.on('Runtime.consoleAPICalled', (params: {
@@ -231,8 +231,8 @@ class Loader {
       const text = (params.args ?? [])
         .map((arg) => String(arg.value ?? arg.description ?? ''))
         .join(' ');
-      if (!verbose && !text.includes('slackmod')) return;
-      console.log(`[slackmod] page ${params.type}: ${text}`);
+      if (!verbose && !text.includes('betterslack')) return;
+      console.log(`[betterslack] page ${params.type}: ${text}`);
     });
 
     // A document-start script is what keeps themes from flashing, but it is not
@@ -242,14 +242,14 @@ class Loader {
     session.on('Page.loadEventFired', () => void this.ensureInjected(attachment));
     session.on('Page.frameStoppedLoading', () => void this.ensureInjected(attachment));
 
-    // SLACKMOD_NO_BOOTSCRIPT=1 reproduces the path taken when the document-start
+    // BETTERSLACK_NO_BOOTSCRIPT=1 reproduces the path taken when the document-start
     // script did not run: the runtime goes in against a finished document.
-    if (process.env.SLACKMOD_NO_BOOTSCRIPT !== '1') await this.refreshBootScript(attachment);
+    if (process.env.BETTERSLACK_NO_BOOTSCRIPT !== '1') await this.refreshBootScript(attachment);
     await this.inject(attachment);
 
-    console.log(`[slackmod] injected into ${target.title || target.url}`);
+    console.log(`[betterslack] injected into ${target.title || target.url}`);
 
-    if (process.env.SLACKMOD_DIAGNOSE === '1') {
+    if (process.env.BETTERSLACK_DIAGNOSE === '1') {
       // Enabled up front: enabling it once the thread is already busy never
       // takes, which is why the first attempt at this came back empty.
       await session.send('Debugger.enable').catch(() => undefined);
@@ -265,7 +265,7 @@ class Loader {
    * The failure this exists for is a renderer whose main thread is blocked: no
    * error is thrown, nothing reaches the console, and Runtime.evaluate simply
    * never returns -- which is itself the diagnosis, and cannot be observed from
-   * inside the page. SLACKMOD_DIAGNOSE=1.
+   * inside the page. BETTERSLACK_DIAGNOSE=1.
    */
   private async diagnose(session: CdpSession): Promise<void> {
     for (const delay of [3000, 8000, 16000]) {
@@ -276,14 +276,14 @@ class Loader {
           'JSON.stringify({' +
             ' ready: document.readyState,' +
             ' client: !!document.querySelector(".p-client_container"),' +
-            ' runtime: !!window.__slackmod,' +
-            ' panel: !!document.querySelector("#slackmod-control-button"),' +
-            ' styles: document.querySelectorAll("style[data-slackmod-style]").length,' +
+            ' runtime: !!window.__betterslack,' +
+            ' panel: !!document.querySelector("#betterslack-control-button"),' +
+            ' styles: document.querySelectorAll("style[data-betterslack-style]").length,' +
             ' nodes: document.getElementsByTagName("*").length' +
             '})',
         )
         .catch((err) => `unreachable -- ${(err as Error).message}`);
-      console.log(`[slackmod] diagnose +${delay / 1000}s: ${report}`);
+      console.log(`[betterslack] diagnose +${delay / 1000}s: ${report}`);
 
       // A renderer that will not answer is one whose main thread is busy. The
       // debugger can interrupt it where evaluate cannot, and the call frames it
@@ -313,7 +313,7 @@ class Loader {
       });
     });
     await session.send('Debugger.pause').catch(() => undefined);
-    console.log(`[slackmod] the renderer is stuck in:\n${await frames}`);
+    console.log(`[betterslack] the renderer is stuck in:\n${await frames}`);
   }
 
   private async attachAuxiliary(target: TargetInfo): Promise<void> {
@@ -335,7 +335,7 @@ class Loader {
     }) => {
       const details = params.exceptionDetails;
       console.error(
-        `[slackmod] error in ${target.title || 'another window'}: ` +
+        `[betterslack] error in ${target.title || 'another window'}: ` +
           `${details?.exception?.description ?? details?.text ?? '?'}`,
       );
     });
@@ -343,10 +343,10 @@ class Loader {
      * A window a mod opened is a renderer of its own, and it is routinely on
      * another Space or another display -- screencapture takes a picture of the
      * desktop, not of the window, so it is no help at all. CDP renders the page
-     * itself. SLACKMOD_SHOT=<dir> is how the theme builder's own interface was
+     * itself. BETTERSLACK_SHOT=<dir> is how the theme builder's own interface was
      * looked at while it was being built.
      */
-    if (process.env.SLACKMOD_SHOT) {
+    if (process.env.BETTERSLACK_SHOT) {
       void (async () => {
         await sleep(4000);
         const shot = await session
@@ -354,16 +354,16 @@ class Loader {
           .catch(() => null);
         if (!shot) return;
         const name = (target.title || 'window').replace(/[^\w-]+/g, '-').slice(0, 60);
-        const file = path.join(process.env.SLACKMOD_SHOT!, `${name}.png`);
+        const file = path.join(process.env.BETTERSLACK_SHOT!, `${name}.png`);
         await fs.writeFile(file, Buffer.from(shot.data, 'base64'));
-        console.log(`[slackmod] wrote ${file}`);
+        console.log(`[betterslack] wrote ${file}`);
       })();
     }
     const paint = () => void this.paintAuxiliary(session);
     session.on('Page.loadEventFired', paint);
     session.on('Page.frameStoppedLoading', paint);
     paint();
-    console.log(`[slackmod] theming ${target.title || 'an auxiliary window'}`);
+    console.log(`[betterslack] theming ${target.title || 'an auxiliary window'}`);
   }
 
   private async paintAuxiliary(session: CdpSession): Promise<void> {
@@ -381,9 +381,9 @@ class Loader {
      */
     const skip = await session
       .evaluate<boolean>(
-        '!!document.documentElement.hasAttribute("data-slackmod-window")' +
+        '!!document.documentElement.hasAttribute("data-betterslack-window")' +
           ' || !!document.querySelector(".p-client_container")' +
-          ' || !!window.__slackmod',
+          ' || !!window.__betterslack',
       )
       .catch(() => true); // unreadable: leave it alone rather than guess
     if (skip) return;
@@ -392,7 +392,7 @@ class Loader {
     // Re-applied wholesale each time, keyed by one element, so a reload or a
     // second call cannot leave two stylesheets fighting.
     const script = `(() => {
-      const id = 'slackmod-aux-theme';
+      const id = 'betterslack-aux-theme';
       let node = document.getElementById(id);
       if (!node) {
         node = document.createElement('style');
@@ -435,7 +435,7 @@ class Loader {
   private async inject(attachment: Attachment): Promise<void> {
     const bootstrap = await this.buildBootstrap();
     await attachment.session.evaluate(bootstrap).catch((err: Error) => {
-      console.warn(`[slackmod] injection into the live document failed: ${err.message}`);
+      console.warn(`[betterslack] injection into the live document failed: ${err.message}`);
     });
   }
 
@@ -449,13 +449,13 @@ class Loader {
       // previous loader run is still on the page with a dead bridge and a stale
       // copy of the settings, and would happily overwrite them.
       const current = await attachment.session
-        .evaluate<string | null>('window.__slackmod ? window.__slackmod.sessionId : null', false)
+        .evaluate<string | null>('window.__betterslack ? window.__betterslack.sessionId : null', false)
         .catch(() => this.info.sessionId); // on error, do nothing rather than double-inject
       if (current === this.info.sessionId) return;
       console.log(
         current === null
-          ? '[slackmod] runtime went missing after a navigation, re-injecting'
-          : '[slackmod] replacing a runtime left over from a previous session',
+          ? '[betterslack] runtime went missing after a navigation, re-injecting'
+          : '[betterslack] replacing a runtime left over from a previous session',
       );
       await this.inject(attachment);
     })().finally(() => {
@@ -475,13 +475,13 @@ class Loader {
     const sources: Record<string, ModFiles> = {};
     for (const id of settings.enabled) {
       const files = await this.catalog.readSource(id).catch((err) => {
-        console.warn(`[slackmod] enabled mod "${id}" is unreadable: ${err.message}`);
+        console.warn(`[betterslack] enabled mod "${id}" is unreadable: ${err.message}`);
         return null;
       });
       if (files !== null) sources[id] = files;
     }
     const boot = { version: VERSION, settings, mods, sources, info: this.info, update: this.update };
-    return `window.__SLACKMOD_BOOT__ = ${JSON.stringify(boot)};\n${this.runtimeSource}`;
+    return `window.__BETTERSLACK_BOOT__ = ${JSON.stringify(boot)};\n${this.runtimeSource}`;
   }
 
   private async handleMessage(session: CdpSession, raw: string): Promise<void> {
@@ -489,11 +489,11 @@ class Loader {
     try {
       envelope = JSON.parse(raw) as Envelope;
     } catch {
-      console.warn('[slackmod] dropped an unparseable message from the renderer');
+      console.warn('[betterslack] dropped an unparseable message from the renderer');
       return;
     }
     const request = envelope.payload as Request;
-    if (this.verbose) console.log(`[slackmod] <- ${request.type}`);
+    if (this.verbose) console.log(`[betterslack] <- ${request.type}`);
 
     let result: unknown;
     let error: string | undefined;
@@ -501,10 +501,10 @@ class Loader {
       result = await this.dispatch(request);
     } catch (err) {
       error = (err as Error).message;
-      console.warn(`[slackmod] ${request.type} failed: ${error}`);
+      console.warn(`[betterslack] ${request.type} failed: ${error}`);
     }
     if (envelope.rid === undefined) return;
-    if (this.verbose) console.log(`[slackmod] -> ${request.type} ${error ?? 'ok'}`);
+    if (this.verbose) console.log(`[betterslack] -> ${request.type} ${error ?? 'ok'}`);
     await this.post(session, { rid: envelope.rid, payload: { result, error } });
   }
 
@@ -554,7 +554,7 @@ class Loader {
 
       case 'file.download': {
         const result = await downloadFile(request.url, request.filename);
-        console.log(`[slackmod] saved ${result.path} (${Math.round(result.bytes / 1024)} kB)`);
+        console.log(`[betterslack] saved ${result.path} (${Math.round(result.bytes / 1024)} kB)`);
         return result;
       }
 
@@ -568,13 +568,13 @@ class Loader {
          * again, which is why the answer goes back before any of that starts --
          * the renderer is about to go away with it.
          */
-        const result = await applyUpdate(REPO_ROOT);
+        const result = await applyUpdate({ root: REPO_ROOT, repo: REPO, branch: DEFAULT_BRANCH });
         if (!result.ok) return result;
 
         setTimeout(() => {
-          console.log('[slackmod] updated; restarting');
+          console.log('[betterslack] updated; restarting');
           void stopSlack().finally(() => {
-            const entry = path.join(REPO_ROOT, 'bin/slackmod.mjs');
+            const entry = path.join(REPO_ROOT, 'bin/betterslack.mjs');
             spawn(process.execPath, [entry], {
               cwd: REPO_ROOT,
               detached: true,
@@ -587,7 +587,7 @@ class Loader {
       }
 
       case 'log':
-        console[request.level](`[slackmod:renderer] ${request.message}`);
+        console[request.level](`[betterslack:renderer] ${request.message}`);
         return null;
 
       default: {
@@ -617,7 +617,7 @@ class Loader {
       await fs.mkdir(path.dirname(target), { recursive: true });
       await fs.writeFile(target, contents, 'utf8');
     }
-    console.log(`[slackmod] installed "${parsed.id}" into ${dir}`);
+    console.log(`[betterslack] installed "${parsed.id}" into ${dir}`);
     return this.catalog.refresh();
   }
 
@@ -630,7 +630,7 @@ class Loader {
     await fs.rm(path.join(USER_MODS_ROOT, record.path), { recursive: true, force: true });
     const settings = await readSettings();
     await mergeSettings({ enabled: settings.enabled.filter((x) => x !== id) });
-    console.log(`[slackmod] uninstalled "${id}"`);
+    console.log(`[betterslack] uninstalled "${id}"`);
     return this.catalog.refresh();
   }
 
@@ -677,7 +677,7 @@ async function main(): Promise<void> {
   // The pipe descriptors only exist if we spawn Slack ourselves, so an already
   // running instance has to be restarted. That is also what keeps the loader
   // from ever needing a debugging port.
-  console.log('[slackmod] starting Slack...');
+  console.log('[betterslack] starting Slack...');
   await stopSlack();
   const child = launchSlack({ slackPath });
 
@@ -686,14 +686,14 @@ async function main(): Promise<void> {
     connection = CdpConnection.fromChild(child);
     await waitForClientTarget(connection, 90_000);
   } catch (err) {
-    console.error(`[slackmod] ${(err as Error).message}`);
+    console.error(`[betterslack] ${(err as Error).message}`);
     child.kill();
     process.exit(1);
   }
 
   const loader = new Loader(connection, slackPath, args.verbose);
   const shutdown = () => {
-    console.log('\n[slackmod] detaching (Slack keeps running; mods stay until you reload it)');
+    console.log('\n[betterslack] detaching (Slack keeps running; mods stay until you reload it)');
     loader.dispose();
     process.exit(0);
   };
@@ -705,6 +705,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('[slackmod] fatal:', err);
+  console.error('[betterslack] fatal:', err);
   process.exit(1);
 });

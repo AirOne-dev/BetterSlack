@@ -72,7 +72,7 @@ for (const kind of ['themes', 'plugins']) {
     if (!ID_PATTERN.test(manifest.id ?? '')) fail(`"id" must match ${ID_PATTERN}`);
     if (manifest.id !== entry.name) fail(`"id" must equal the folder name ("${entry.name}")`);
     if (manifest.type !== type) fail(`"type" must be "${type}"`);
-    if (manifest.slackmodApi !== API_VERSION) fail(`"slackmodApi" must be ${API_VERSION}`);
+    if (manifest.betterslackApi !== API_VERSION) fail(`"betterslackApi" must be ${API_VERSION}`);
 
     const previous = seenIds.get(manifest.id);
     if (previous) fail(`id "${manifest.id}" is already used by ${previous}`);

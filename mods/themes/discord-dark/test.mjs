@@ -40,5 +40,5 @@ test('styles only Slack, leaving the required plugins to style themselves', () =
   // The plugins read Slack's tokens, so they follow whatever theme is on. A
   // theme reaching into their markup would tie the two together and break the
   // plugins for everyone else.
-  assert.doesNotMatch(css, /slackmod-member-column|slackmod-account-strip/);
+  assert.doesNotMatch(css, /betterslack-member-column|betterslack-account-strip/);
 });

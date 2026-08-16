@@ -109,7 +109,7 @@ const loaderLib = {
 if (watch) {
   const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers), esbuild.context(runtimeI18n), esbuild.context(runtimeModules)]);
   await Promise.all(contexts.map((c) => c.watch()));
-  console.log('[slackmod] watching for changes...');
+  console.log('[betterslack] watching for changes...');
 } else {
   await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers), esbuild.build(runtimeI18n), esbuild.build(runtimeModules)]);
 }

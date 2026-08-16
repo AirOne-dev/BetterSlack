@@ -92,9 +92,9 @@ export default {
       label: t('label'),
       description: t('description'),
       icon: ICON,
-      // Both this and SlackMod's button anchor on the avatar; without an
+      // Both this and BetterSlack's button anchor on the avatar; without an
       // explicit anchor this one would land underneath it.
-      before: '#slackmod-control-button',
+      before: '#betterslack-control-button',
       onClick: () => {
         toggleDevTools(window.desktop).catch((err) => {
           api.log.error(err);

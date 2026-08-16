@@ -48,14 +48,14 @@ test('lists the channel members beside the message pane', async () => {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const column = document.getElementById('slackmod-member-column');
+    const column = document.getElementById('betterslack-member-column');
     assert.ok(column, 'the column is mounted');
     assert.ok(
       recorded.mounted.some((m) => m.container === '.p-view_contents--primary'),
       'beside the message pane, so it becomes a second flex column',
     );
 
-    const names = [...column.querySelectorAll('.slackmod-members__name')].map((n) => n.textContent);
+    const names = [...column.querySelectorAll('.betterslack-members__name')].map((n) => n.textContent);
     assert.deepEqual(names, ['Adam', 'Zoe'], 'sorted by display name');
 
     const asked = stub.calls.find((c) => c.method === 'conversations.members');
@@ -98,14 +98,14 @@ test('splits into online and offline once presence arrives', async () => {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 40));
 
-    const column = document.getElementById('slackmod-member-column');
-    const headings = [...column.querySelectorAll('.slackmod-members__heading')].map((h) => h.textContent);
+    const column = document.getElementById('betterslack-member-column');
+    const headings = [...column.querySelectorAll('.betterslack-members__heading')].map((h) => h.textContent);
     assert.deepEqual(headings, ['Online — 1', 'Offline — 1']);
 
     // Online first, whatever the alphabet says.
-    const names = [...column.querySelectorAll('.slackmod-members__name')].map((n) => n.textContent);
+    const names = [...column.querySelectorAll('.betterslack-members__name')].map((n) => n.textContent);
     assert.deepEqual(names, ['Zoe', 'Adam']);
-    assert.ok(column.querySelector('.slackmod-members__dot--active'), 'the online dot is lit');
+    assert.ok(column.querySelector('.betterslack-members__dot--active'), 'the online dot is lit');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -121,7 +121,7 @@ test('does not claim everyone is offline before presence has answered', async ()
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    const headings = [...document.querySelectorAll('.slackmod-members__heading')].map((h) => h.textContent);
+    const headings = [...document.querySelectorAll('.betterslack-members__heading')].map((h) => h.textContent);
     assert.deepEqual(headings, ['Members — 1'], 'one neutral group until it knows');
   } finally {
     for (const dispose of recorded.disposers) dispose();
@@ -145,7 +145,7 @@ test('clicking a member opens a profile dialog, filled in from Slack', async () 
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     assert.equal(recorded.modals.length, 1, 'a dialog, not Slack’s pane');
@@ -154,7 +154,7 @@ test('clicking a member opens a profile dialog, filled in from Slack', async () 
     assert.match(body.textContent, /Engineer/);
     assert.match(body.textContent, /zoe@acme\.test/, 'the fields Slack’s own pane shows');
     assert.match(body.textContent, /Active/, 'presence is resolved, not guessed');
-    assert.ok(body.querySelector('.slackmod-profile__dot--active'));
+    assert.ok(body.querySelector('.betterslack-profile__dot--active'));
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -175,7 +175,7 @@ test('the dialog is a profile pane as far as other plugins are concerned', async
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     const pane = recorded.modals[0].body.querySelector('[data-qa="member_profile_pane"]');
@@ -214,16 +214,16 @@ test('User Inspector fills in the dialog without knowing it exists', async () =>
     await inspector.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const pane = recorded.modals[0].body.querySelector('[data-qa="member_profile_pane"]');
     assert.ok(
-      pane.querySelector('.slackmod-user-details'),
+      pane.querySelector('.betterslack-user-details'),
       'User Inspector appended its sections into our dialog, with no code shared',
     );
     assert.equal(
-      document.querySelectorAll('.slackmod-user-details').length, 2,
+      document.querySelectorAll('.betterslack-user-details').length, 2,
       'and into Slack’s own pane as well — one profile does not starve the other',
     );
   } finally {
@@ -241,10 +241,10 @@ test('Message opens the direct message directly, with no staged clicks', async (
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
 
-    const message = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')]
+    const message = [...recorded.modals[0].body.querySelectorAll('.betterslack-profile__actions button')]
       .find((b) => b.textContent === 'Message');
     assert.ok(message, 'the dialog offers Message');
     message.click();
@@ -264,18 +264,18 @@ test('the overflow opens our own menu and never Slack’s profile pane', async (
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     const before = document.querySelectorAll('[data-qa="member_profile_pane"]').length;
-    const more = recorded.modals[0].body.querySelector('.slackmod-profile__more');
+    const more = recorded.modals[0].body.querySelector('.betterslack-profile__more');
     assert.ok(more.querySelector('svg'), 'the ellipsis glyph, like Slack’s');
     more.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     // api.ui.menu owns the layer now, so the id is the API's rather than this
     // plugin's -- what matters is that it is Slack's markup and ours to close.
-    const menu = document.getElementById('slackmod-menu-layer');
+    const menu = document.getElementById('betterslack-menu-layer');
     assert.ok(menu, 'our own menu');
     assert.ok(menu.querySelector('.c-menu__items'), 'in Slack’s menu markup, so it follows the theme');
     assert.ok(menu.querySelectorAll('.c-menu_item__button').length >= 5, 'with its entries');
@@ -296,7 +296,7 @@ test('a member row carries no tooltip, only its label', async () => {
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    const row = document.querySelector('.slackmod-members__row');
+    const row = document.querySelector('.betterslack-members__row');
     // The row already shows the name; hovering only repeated it.
     assert.equal(row.getAttribute('title'), null, 'no native tooltip');
     assert.equal(document.querySelector('.c-tooltip__tip'), null, 'and none of ours either');
@@ -312,7 +312,7 @@ test('says so rather than half-working without a session token', async () => {
   const { api, recorded } = createApi({ web: { available: false } });
   try {
     await plugin.start(api);
-    assert.equal(document.getElementById('slackmod-member-column'), null);
+    assert.equal(document.getElementById('betterslack-member-column'), null);
     assert.ok(recorded.logs.some(([level]) => level === 'warn'));
   } finally {
     for (const dispose of recorded.disposers) dispose();
@@ -334,7 +334,7 @@ test('undoes the layout that comes with Slack’s avatar class', () => {
   // The class is borrowed for compatibility, and Slack positions it absolutely
   // for its own pane — which parked it on top of the dialog title until this.
   const css = FILES['column.css'];
-  const rule = css.match(/\.slackmod-profile \.slackmod-profile__avatar\s*\{[^}]*\}/);
+  const rule = css.match(/\.betterslack-profile \.betterslack-profile__avatar\s*\{[^}]*\}/);
   assert.ok(rule, 'the avatar needs its own reset');
   assert.match(rule[0], /position:\s*static\s*!important/);
 });
@@ -350,7 +350,7 @@ test('never prints a raw emoji shortcode', async () => {
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     const text = recorded.modals[0].body.textContent;
@@ -371,7 +371,7 @@ test('the copy actions need nothing from Slack', async () => {
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     const actions = recorded.modals[0].options.actions;
@@ -399,10 +399,10 @@ test('offers Message and an overflow, and nothing it cannot really do', async ()
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
 
-    const buttons = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')];
+    const buttons = [...recorded.modals[0].body.querySelectorAll('.betterslack-profile__actions button')];
     assert.equal(buttons.length, 4, 'Message, Huddle, VIP and the overflow');
     assert.equal(buttons[0].textContent, 'Message');
     assert.equal(buttons[1].textContent, 'Huddle');
@@ -425,14 +425,14 @@ test('a second click replaces the dialog rather than stacking one on it', async 
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const rows = [...document.querySelectorAll('.slackmod-members__row')];
+    const rows = [...document.querySelectorAll('.betterslack-members__row')];
     rows[0].click();
     await new Promise((resolve) => setTimeout(resolve, 30));
     rows[1].click();
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     assert.equal(recorded.modals.length, 2, 'two were opened');
-    assert.equal(document.querySelectorAll('.slackmod-test-modal').length, 1, 'one is on screen');
+    assert.equal(document.querySelectorAll('.betterslack-test-modal').length, 1, 'one is on screen');
     assert.equal(recorded.modals[0].closed, true, 'the first was closed, not buried');
   } finally {
     for (const dispose of recorded.disposers) dispose();
@@ -448,10 +448,10 @@ test('speaks the app’s language', async () => {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const column = document.getElementById('slackmod-member-column');
+    const column = document.getElementById('betterslack-member-column');
     assert.match(column.textContent, /Membres/, 'the column heading is French');
 
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
     assert.equal(recorded.modals[0].options.title, 'Profil');
     assert.deepEqual(recorded.modals[0].options.actions.map((a) => a.label),
@@ -472,12 +472,12 @@ test('VIP is a direct preference write, offering add or remove as appropriate', 
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
-    recorded.modals[0].body.querySelector('.slackmod-profile__more').click();
+    recorded.modals[0].body.querySelector('.betterslack-profile__more').click();
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const vip = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')]
+    const vip = [...recorded.modals[0].body.querySelectorAll('.betterslack-profile__actions button')]
       .find((b) => /VIP/.test(b.textContent));
     assert.match(vip.textContent, /Remove from VIPs/, 'already a VIP, so the button offers removal');
     vip.click();
@@ -496,10 +496,10 @@ test('Huddle asks Slack to open its own preview', async () => {
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
 
-    const huddle = [...recorded.modals[0].body.querySelectorAll('.slackmod-profile__actions button')]
+    const huddle = [...recorded.modals[0].body.querySelectorAll('.betterslack-profile__actions button')]
       .find((b) => b.textContent === 'Huddle');
     huddle.click();
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -521,7 +521,7 @@ test('says who the profile belongs to, rather than leaving it to be guessed', as
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    document.querySelector('.slackmod-members__row').click();
+    document.querySelector('.betterslack-members__row').click();
     await new Promise((resolve) => setTimeout(resolve, 30));
 
     const pane = recorded.modals[0].body.querySelector('[data-qa="member_profile_pane"]');
@@ -550,7 +550,7 @@ test('forgets a workspace’s people when the workspace changes', async () => {
     // Same channel id, different team: the cached people belong to the old one.
     dom.dom.reconfigure({ url: 'https://app.slack.com/client/T999OTHER/C0BFQCYBRAB' });
     await new Promise((resolve) => setTimeout(resolve, 1300));
-    document.getElementById('slackmod-member-column').replaceChildren();
+    document.getElementById('betterslack-member-column').replaceChildren();
     await new Promise((resolve) => setTimeout(resolve, 1300));
     assert.ok(lookups >= 2, 'it looked them up again instead of reusing the other workspace');
   } finally {

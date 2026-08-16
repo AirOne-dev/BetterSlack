@@ -6,7 +6,7 @@
   "author": "AirOne-dev",
   "description": "Shows a live character count under the message composer, and warns before you cross Slack's 4000-character limit and get split into two messages.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": ["composer"]
 }

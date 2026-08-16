@@ -50,7 +50,7 @@ for (const mod of mods) {
   if (manifest) {
     if (manifest.id !== mod.id) problems.push(`"id" is "${manifest.id}" but the folder is "${mod.id}"`);
     if (manifest.type !== expectedType) problems.push(`"type" must be "${expectedType}"`);
-    if (manifest.slackmodApi !== API_VERSION) problems.push(`"slackmodApi" must be ${API_VERSION}`);
+    if (manifest.betterslackApi !== API_VERSION) problems.push(`"betterslackApi" must be ${API_VERSION}`);
     for (const field of ['name', 'version', 'author', 'description', 'entry']) {
       if (typeof manifest[field] !== 'string' || manifest[field].trim() === '') {
         problems.push(`"${field}" is required`);
@@ -161,9 +161,9 @@ for (const mod of mods) {
   // 4. The catalogue people install from
   const entryInRegistry = registry.mods?.find((m) => m.id === mod.id);
   if (!entryInRegistry) {
-    problems.push('missing from mods/registry.json — run `npm run registry` and commit it');
+    problems.push('missing from mods/registry.json — run `pnpm registry` and commit it');
   } else if (manifest && entryInRegistry.version !== manifest.version) {
-    problems.push('registry.json is stale — run `npm run registry` and commit it');
+    problems.push('registry.json is stale — run `pnpm registry` and commit it');
   }
 
   if (problems.length > 0) {

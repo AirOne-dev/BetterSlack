@@ -1,17 +1,17 @@
 {
-  "name": "slackmod",
+  "name": "betterslack",
   "version": "2.0.0",
   "private": false,
   "description": "Themes, plugins and mods for the Slack desktop app",
   "type": "module",
   "bin": {
-    "slackmod": "./bin/slackmod.mjs"
+    "betterslack": "./bin/betterslack.mjs"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "build-app": "node scripts/build.mjs && node scripts/build-app.mjs",
     "dev": "node scripts/build.mjs --watch",
-    "start": "node bin/slackmod.mjs",
+    "start": "node bin/betterslack.mjs",
     "registry": "node scripts/build-registry.mjs",
     "typecheck": "tsc --noEmit",
     "validate-mods": "node scripts/validate-mods.mjs",
@@ -22,7 +22,8 @@
     "test:core": "node --test tests/download.test.mjs tests/requires.test.mjs tests/i18n.test.mjs tests/mod-files.test.mjs tests/mount.test.mjs tests/update.test.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18",
+    "pnpm": ">=9"
   },
   "dependencies": {
     "ws": "^8.18.0"
@@ -35,5 +36,6 @@
     "typescript": "^5.6.0"
   },
   "license": "MIT",
-  "author": "Erwan Martin"
+  "author": "Erwan Martin",
+  "packageManager": "pnpm@11.5.2"
 }

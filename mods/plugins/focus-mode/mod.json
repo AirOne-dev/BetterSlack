@@ -6,7 +6,7 @@
   "author": "AirOne-dev",
   "description": "Press Cmd/Ctrl+Shift+F to fold away the sidebar, the rail and the top bar, leaving just the conversation on a narrower, centred column. Press again to bring it all back.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": ["productivity", "layout"]
 }

@@ -371,7 +371,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
         // Mounted for real, like the live one: a mod that fills a dialog in
         // after an await checks `body.isConnected` before touching it, and a
         // detached stand-in would make that check silently skip the update.
-        const body = h('div', { class: 'slackmod-test-modal' });
+        const body = h('div', { class: 'betterslack-test-modal' });
         if (typeof options.content === 'string') body.append(h('p', {}, [options.content]));
         else if (options.content) body.append(options.content);
         document.body.append(body);

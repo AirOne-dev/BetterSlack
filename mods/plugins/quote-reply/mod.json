@@ -6,7 +6,7 @@
   "author": "AirOne-dev",
   "description": "Adds a Reply button to the hover actions on a message. It drops a link to that message into the composer as a single \".\" and focuses it, so your answer posts in the channel with Slack's own preview of the message you are answering.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": ["messages", "composer"]
 }

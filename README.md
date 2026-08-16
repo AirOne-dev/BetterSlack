@@ -1,4 +1,7 @@
-# SlackMod
+# BetterSlack
+
+<img src="assets/mark.svg" width="72" alt="">
+
 
 Themes, plugins and custom CSS for the Slack desktop app, with a Mods panel
 inside Slack itself.
@@ -12,13 +15,13 @@ inside Slack itself.
 Requires Node 18+.
 
 ```bash
-git clone https://github.com/AirOne-dev/SlackMod.git
-cd SlackMod
-npm install && npm run build
-npm start
+git clone https://github.com/AirOne-dev/BetterSlack.git
+cd BetterSlack
+pnpm install && pnpm build
+pnpm start
 ```
 
-`npm start` restarts Slack with SlackMod attached and stays running — mods are
+`pnpm start` restarts Slack with BetterSlack attached and stays running — mods are
 active as long as it does. Nothing is installed on a fresh setup: open the panel
 and install what you want from **Browse**.
 
@@ -39,7 +42,7 @@ Several themes can run at once. Terminal is the exception: it restyles through
 
 ## How it works
 
-SlackMod attaches to Slack over the Chrome DevTools Protocol and injects a
+BetterSlack attaches to Slack over the Chrome DevTools Protocol and injects a
 runtime into the renderer. It never modifies `Slack.app`, so Slack updates
 cannot break your install.
 
@@ -96,14 +99,14 @@ in a theme) from inside its own folder.
 ## Development
 
 ```bash
-npm run dev              # rebuild on change
-npm test                 # every mod's tests
-npm run test:mod -- <id> # one mod
-npm run check-structure  # is each mod loadable
-npm run typecheck
+pnpm dev              # rebuild on change
+pnpm test                 # every mod's tests
+ppnpm test:mod -- <id> # one mod
+pnpm check-structure  # is each mod loadable
+pnpm typecheck
 ```
 
-Mods in `~/.slackmod/mods/` shadow the repo copies, which is handy for iterating
+Mods in `~/.betterslack/mods/` shadow the repo copies, which is handy for iterating
 on something already merged.
 
 ## License

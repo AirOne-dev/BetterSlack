@@ -1,7 +1,7 @@
 // Discovery and validation of mods on disk.
 //
 // Two roots are scanned: the repo's own mods/ folder (everything that went
-// through a pull request review) and ~/.slackmod/mods (what the user installed
+// through a pull request review) and ~/.betterslack/mods (what the user installed
 // or is writing themselves). Same layout in both:
 //
 //   <root>/<themes|plugins>/<id>/mod.json
@@ -87,12 +87,12 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     requires = unique.length > 0 ? unique : undefined;
   }
 
-  const api = typeof m.slackmodApi === 'number' ? m.slackmodApi : 0;
-  if (api < 1) throw new ManifestError(file, '"slackmodApi" is missing or below 1');
+  const api = typeof m.betterslackApi === 'number' ? m.betterslackApi : 0;
+  if (api < 1) throw new ManifestError(file, '"betterslackApi" is missing or below 1');
   if (api > MOD_API_VERSION) {
     throw new ManifestError(
       file,
-      `needs SlackMod API v${api} but this build speaks v${MOD_API_VERSION}`,
+      `needs BetterSlack API v${api} but this build speaks v${MOD_API_VERSION}`,
     );
   }
 
@@ -105,7 +105,7 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     description: assertString(m.description, 'description', file),
     entry,
     requires,
-    slackmodApi: api,
+    betterslackApi: api,
     slackVersion: typeof m.slackVersion === 'string' ? m.slackVersion : undefined,
     tags: Array.isArray(m.tags) ? m.tags.filter((t): t is string => typeof t === 'string') : undefined,
   };
@@ -268,7 +268,7 @@ export class Catalog {
         });
         this.watchers.push(watcher);
       } catch (err) {
-        console.warn(`[slackmod] cannot watch ${root}: ${(err as Error).message}`);
+        console.warn(`[betterslack] cannot watch ${root}: ${(err as Error).message}`);
       }
     }
   }

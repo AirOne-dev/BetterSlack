@@ -11,7 +11,7 @@
 // rules, so this is built once and kept -- rebuilding it per hover would be a
 // hundred milliseconds of work at exactly the wrong moment.
 
-const MARK_CLASS = 'slackmod-highlight-mark';
+const MARK_CLASS = 'betterslack-highlight-mark';
 
 /**
  * A selector that querySelectorAll will accept, and that still points at the
@@ -114,7 +114,7 @@ export function elementsUsing({ tokens = [], selectors: direct = [] }, index, do
  */
 export function createHighlighter(doc) {
   const layer = doc.createElement('div');
-  layer.id = 'slackmod-highlight-layer';
+  layer.id = 'betterslack-highlight-layer';
   Object.assign(layer.style, {
     position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '99998',
   });

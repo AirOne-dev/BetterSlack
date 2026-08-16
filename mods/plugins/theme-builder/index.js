@@ -53,8 +53,8 @@ export {
   contrast, derivePalette, formatCss, formatTriplet, parseColour, readability,
 } from './colour.js';
 
-const WINDOW_NAME = 'slackmod-theme-builder';
-const OVERLAY_ID = 'slackmod-inspect-overlay';
+const WINDOW_NAME = 'betterslack-theme-builder';
+const OVERLAY_ID = 'betterslack-inspect-overlay';
 
 // Two panes, so it needs the width of a preferences dialog. Slack still has
 // most of the screen, which is the point.
@@ -95,7 +95,7 @@ export default {
       doc.open();
       doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
       doc.close();
-      doc.documentElement.setAttribute('data-slackmod-window', 'theme-builder');
+      doc.documentElement.setAttribute('data-betterslack-window', 'theme-builder');
       doc.documentElement.lang = api.i18n.language;
       doc.title = t('title');
       doc.head.append(Object.assign(doc.createElement('style'), {

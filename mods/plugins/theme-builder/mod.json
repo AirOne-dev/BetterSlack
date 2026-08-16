@@ -6,7 +6,7 @@
   "author": "AirOne-dev",
   "description": "A theme workbench in its own window, with the real Slack beside it as the preview: two colours become twelve roles across all four token families, point at anything in the app to see and edit the tokens that paint it, search every colour the client defines, and add CSS of your own on top.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": [
     "themes",
