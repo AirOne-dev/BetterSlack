@@ -391,6 +391,31 @@ fine. `boot()` now claims `window.__BETTERSLACK_BOOTING__` synchronously. Found
 through a theme gallery that came up blank, with six answers delivered by the
 loader and six timeouts in the page.
 
+## Safe mode, and mods that will not start
+
+`pnpm start --safe` applies nothing. So does the next start after a run that
+never reported itself healthy: the loader writes `~/.betterslack/booting` before
+launching Slack and the runtime clears it with `app.ready` once the panel and
+the mods are in, so a marker left behind means the last run did not get there.
+This is the escape hatch the two renderer freezes did not have -- the only way
+out was killing Slack and editing settings.json by hand.
+
+A mod that throws during `start()` is recorded in `manager.errors` and shown on
+its own row, and the count is kept in `settings.modFailures`: **counted before
+the attempt, cleared after it**, because a mod that takes the renderer down
+never reaches the line that would have recorded it. Two consecutive failures and
+it is skipped at boot; switching it off and on clears the count, which is what
+the message on the row tells you to do.
+
+## Mod updates are separate from the app's
+
+A mod carries its own version, and `mod-updates.ts` compares the installed ones
+against `mods/registry.json` on the default branch. Updating one fetches its
+folder through GitHub's contents API and goes through the same install path the
+Browse shelf uses, which re-validates the manifest loader-side -- files off the
+network are untrusted whichever button asked for them. Before this, a one-line
+fix to a theme meant pulling the loader and the runtime with it.
+
 ## The Mods panel
 
 The repository is a **catalogue**, not a set of pre-installed mods: a fresh

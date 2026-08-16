@@ -13,6 +13,7 @@ import {
   MOD_API_VERSION,
   type ModFiles,
   type ModManifest,
+  type ModSettingField,
   type ModRecord,
   type ModType,
 } from '../shared/protocol.js';
@@ -35,6 +36,54 @@ function assertString(value: unknown, field: string, file: string): string {
     throw new ManifestError(file, `"${field}" must be a non-empty string`);
   }
   return value;
+}
+
+/** The five field types the panel can draw, validated before it has to. */
+const FIELD_TYPES = new Set(['boolean', 'number', 'text', 'colour', 'choice']);
+
+/**
+ * Settings a mod declares.
+ *
+ * Rejected loudly rather than ignored: a field the panel cannot draw is a
+ * setting the author thinks exists, and silence there means finding out from a
+ * user that half their options never appeared.
+ */
+function parseSettings(value: unknown, file: string): ModSettingField[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new ManifestError(file, '"settings" must be an array');
+
+  const seen = new Set<string>();
+  const fields: ModSettingField[] = [];
+  for (const raw of value) {
+    const field = raw as Partial<ModSettingField> & { options?: unknown };
+    const key = assertString(field.key, 'settings[].key', file);
+    if (!/^[a-zA-Z][\w-]{0,40}$/.test(key)) {
+      throw new ManifestError(file, `"${key}" is not a usable settings key`);
+    }
+    if (seen.has(key)) throw new ManifestError(file, `"settings" declares "${key}" twice`);
+    seen.add(key);
+
+    const type = assertString(field.type, 'settings[].type', file);
+    if (!FIELD_TYPES.has(type)) {
+      throw new ManifestError(file, `"${type}" is not a settings type (${[...FIELD_TYPES].join(', ')})`);
+    }
+    assertString(field.label, 'settings[].label', file);
+
+    if (type === 'choice') {
+      const options = field.options;
+      if (!Array.isArray(options) || options.length === 0) {
+        throw new ManifestError(file, `"${key}" is a choice and needs options`);
+      }
+      for (const option of options) {
+        const o = option as { value?: unknown; label?: unknown };
+        if (typeof o.value !== 'string' || typeof o.label !== 'string') {
+          throw new ManifestError(file, `"${key}" has an option with no value/label`);
+        }
+      }
+    }
+    fields.push(raw as ModSettingField);
+  }
+  return fields.length > 0 ? fields : undefined;
 }
 
 export function parseManifest(raw: string, file: string, expectedType: ModType): ModManifest {
@@ -87,6 +136,8 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     requires = unique.length > 0 ? unique : undefined;
   }
 
+  const settings = parseSettings(m.settings, file);
+
   const api = typeof m.betterslackApi === 'number' ? m.betterslackApi : 0;
   if (api < 1) throw new ManifestError(file, '"betterslackApi" is missing or below 1');
   if (api > MOD_API_VERSION) {
@@ -105,6 +156,7 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     description: assertString(m.description, 'description', file),
     entry,
     requires,
+    settings,
     betterslackApi: api,
     slackVersion: typeof m.slackVersion === 'string' ? m.slackVersion : undefined,
     tags: Array.isArray(m.tags) ? m.tags.filter((t): t is string => typeof t === 'string') : undefined,

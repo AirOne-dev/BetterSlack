@@ -101,6 +101,28 @@ every Slack release, tokens do not:
 The loader watches `mods/`. Save the file, open the panel, install and enable
 your theme — after that, every save re-applies it live. No rebuild, no restart.
 
+### Settings your mod can be given
+
+Declare them in `mod.json` and the Mods panel draws them; your mod reads the
+same keys with `api.settings`, and the `default` is the answer before anyone has
+chosen:
+
+```json
+"settings": [
+  { "key": "limit", "type": "number", "label": "Members to list",
+    "hint": "Higher costs one request per extra person.", "default": 100, "min": 10, "max": 500 },
+  { "key": "quiet", "type": "boolean", "label": "Stay out of the way", "default": true }
+]
+```
+
+```js
+const limit = api.settings.get('limit', 100);   // the manifest default wins if there is one
+```
+
+Types: `boolean`, `number`, `text`, `colour`, `choice` (with `options`). Changing
+one reloads your plugin so `start` runs again with the new value — unless you
+registered `api.settings.onChange`, in which case you are told and left running.
+
 ### More than one file
 
 A big theme reads better in pieces. `@import` a relative path and BetterSlack

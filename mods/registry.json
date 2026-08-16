@@ -22,10 +22,37 @@
       "id": "avatar-downloader",
       "name": "Avatar Downloader",
       "type": "plugin",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "AirOne-dev",
       "description": "Download a member's profile picture at the highest quality Slack stores — the original upload when there is one, otherwise the largest rendition. Adds a button to the profile pane and to the hover actions on a message.",
       "entry": "index.js",
+      "settings": [
+        {
+          "key": "quality",
+          "type": "choice",
+          "label": "Size to save",
+          "hint": "Slack keeps a few. Original is whatever was uploaded, which is not always the biggest.",
+          "default": "best",
+          "options": [
+            {
+              "value": "best",
+              "label": "The largest available"
+            },
+            {
+              "value": "image_original",
+              "label": "Original upload"
+            },
+            {
+              "value": "image_512",
+              "label": "512 px"
+            },
+            {
+              "value": "image_192",
+              "label": "192 px"
+            }
+          ]
+        }
+      ],
       "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
@@ -71,10 +98,29 @@
       "id": "composer-char-count",
       "name": "Composer Character Count",
       "type": "plugin",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "AirOne-dev",
       "description": "Shows a live character count under the message composer, and warns before you cross Slack's 4000-character limit and get split into two messages.",
       "entry": "index.js",
+      "settings": [
+        {
+          "key": "warnAt",
+          "type": "number",
+          "label": "Warn above",
+          "hint": "Characters. Slack itself starts splitting messages around 4000.",
+          "default": 3000,
+          "min": 200,
+          "max": 40000,
+          "step": 100
+        },
+        {
+          "key": "alwaysShow",
+          "type": "boolean",
+          "label": "Always show the count",
+          "hint": "Off: it stays out of the way until you are near the warning.",
+          "default": true
+        }
+      ],
       "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
@@ -184,10 +230,32 @@
       "id": "member-sidebar",
       "name": "Member Sidebar",
       "type": "plugin",
-      "version": "1.0.0",
+      "version": "1.3.0",
       "author": "AirOne-dev",
       "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
       "entry": "index.js",
+      "settings": [
+        {
+          "key": "memberLimit",
+          "type": "number",
+          "label": "Members to list",
+          "hint": "Slack pages the member list beyond this. Higher costs one request per extra person.",
+          "default": 100,
+          "min": 10,
+          "max": 500,
+          "step": 10
+        },
+        {
+          "key": "presenceLimit",
+          "type": "number",
+          "label": "Availability lookups",
+          "hint": "users.getPresence is one request each and rate-limits around fifty a minute. Past this, everyone is still listed, without dots.",
+          "default": 50,
+          "min": 0,
+          "max": 200,
+          "step": 10
+        }
+      ],
       "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [

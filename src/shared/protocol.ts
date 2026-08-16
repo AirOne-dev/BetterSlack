@@ -32,6 +32,17 @@ export interface ModManifest {
    * build a cycle.
    */
   requires?: string[];
+  /**
+   * Settings the panel should offer, and their defaults.
+   *
+   * A mod reads the same keys through `api.settings`; this only says what the
+   * panel should draw and what the value is when nobody has chosen one. Before
+   * this, every adjustable thing was either a constant in the source or a
+   * control the mod had to build for itself, which is why almost none of them
+   * were adjustable at all.
+   */
+  settings?: ModSettingField[];
+
   /** Manifest schema version. Mods declaring a newer version are refused. */
   betterslackApi: number;
   /** Optional: minimum tested Slack version, informational only. */
@@ -48,6 +59,36 @@ export interface ModManifest {
  * what made the theme builder a two-thousand-line wall.
  */
 export type ModFiles = Record<string, string>;
+
+/**
+ * One setting, as the panel will draw it.
+ *
+ * Deliberately few types. Anything a mod can express with a checkbox, a number,
+ * a word, a colour or a choice belongs here; anything more belongs in the mod's
+ * own window, where it can be explained properly.
+ */
+export type ModSettingField =
+  | { key: string; type: 'boolean'; label: string; hint?: string; default?: boolean }
+  | {
+    key: string;
+    type: 'number';
+    label: string;
+    hint?: string;
+    default?: number;
+    min?: number;
+    max?: number;
+    step?: number;
+  }
+  | { key: string; type: 'text'; label: string; hint?: string; default?: string; placeholder?: string }
+  | { key: string; type: 'colour'; label: string; hint?: string; default?: string }
+  | {
+    key: string;
+    type: 'choice';
+    label: string;
+    hint?: string;
+    default?: string;
+    options: Array<{ value: string; label: string }>;
+  };
 
 export interface ModRecord extends ModManifest {
   /** Where the mod came from. `builtin` = shipped in this repo's mods/ folder. */
@@ -71,6 +112,14 @@ export interface Settings {
   customCss: string;
   /** Reapply mods automatically when their file changes on disk. */
   hotReload: boolean;
+  /**
+   * Consecutive failures per mod, cleared as soon as one applies cleanly.
+   *
+   * A mod that throws on start is skipped after the second time rather than
+   * being retried at every launch: a broken mod should cost you one bad start,
+   * not every start.
+   */
+  modFailures?: Record<string, number>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -79,6 +128,7 @@ export const DEFAULT_SETTINGS: Settings = {
   modSettings: {},
   customCss: '',
   hotReload: true,
+  modFailures: {},
 };
 
 /** Requirements of `manifest` that are not currently enabled. */
@@ -112,6 +162,12 @@ export type Request =
   | { type: 'file.download'; url: string; filename: string }
   /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
   | { type: 'app.update' }
+  /** Which installed mods have a newer version published. */
+  | { type: 'mods.checkUpdates' }
+  /** Fetch one mod's folder from the branch and install it over the old one. */
+  | { type: 'mods.update'; id: string }
+  /** The renderer saying it got all the way up, which clears the crash marker. */
+  | { type: 'app.ready' }
   | { type: 'log'; level: 'log' | 'warn' | 'error'; message: string };
 
 /** Push notifications the loader sends to the renderer unprompted. */
@@ -159,6 +215,18 @@ export interface LoaderInfo {
   slackPath: string;
   /** How the loader talks to Slack, shown in the About tab. */
   transport: string;
+  /**
+   * Nothing was applied this run.
+   *
+   * Either asked for (`--safe`) or decided: a run that never reported itself
+   * healthy is assumed to have been taken down by a mod, and the next one comes
+   * up bare so there is something to click. Twice now a mod has frozen the
+   * renderer outright, and the only way out was killing Slack and editing the
+   * settings file by hand.
+   */
+  safeMode: boolean;
+  /** Why, when it was not asked for. */
+  safeModeReason?: string;
   /** Where this copy lives, so the panel can say what it would update. */
   root: string;
 }

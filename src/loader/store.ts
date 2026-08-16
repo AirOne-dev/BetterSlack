@@ -55,6 +55,8 @@ export async function readSettings(): Promise<Settings> {
         parsed.modSettings && typeof parsed.modSettings === 'object' ? parsed.modSettings : {},
       customCss: typeof parsed.customCss === 'string' ? parsed.customCss : '',
       hotReload: typeof parsed.hotReload === 'boolean' ? parsed.hotReload : true,
+      modFailures:
+        parsed.modFailures && typeof parsed.modFailures === 'object' ? parsed.modFailures : {},
     };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -62,6 +64,30 @@ export async function readSettings(): Promise<Settings> {
     }
     return { ...DEFAULT_SETTINGS };
   }
+}
+
+/**
+ * The marker that says a run started and never reported itself healthy.
+ *
+ * Written before Slack is launched and removed when the renderer says it got
+ * all the way up. Finding one at startup means the last run did not -- most
+ * likely a mod took the renderer down, since that is the failure this project
+ * has actually had, twice.
+ */
+const BOOT_MARKER = path.join(USER_ROOT, 'booting');
+
+export async function markBootStarted(): Promise<void> {
+  await ensureUserRoot();
+  await fs.writeFile(BOOT_MARKER, new Date().toISOString(), 'utf8').catch(() => undefined);
+}
+
+export async function markBootHealthy(): Promise<void> {
+  await fs.rm(BOOT_MARKER, { force: true }).catch(() => undefined);
+}
+
+/** True when the previous run never got as far as saying it was up. */
+export async function lastBootFailed(): Promise<boolean> {
+  return fs.stat(BOOT_MARKER).then(() => true).catch(() => false);
 }
 
 export async function writeSettings(settings: Settings): Promise<void> {

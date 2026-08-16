@@ -178,3 +178,28 @@ test('an archive that is not this project is refused, and changes nothing', asyn
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// Mod updates, which are a different question from the app's own: a mod carries
+// its own version, and a one-line fix to a theme should not require pulling the
+// loader and the runtime with it.
+
+test('only installed mods with a newer published version are offered', async () => {
+  const { findModUpdates, isNewerVersion } = await import('../dist/mod-updates.mjs');
+
+  assert.equal(isNewerVersion('1.3.0', '1.2.9'), true);
+  assert.equal(isNewerVersion('1.2.10', '1.2.9'), true, '10 is not smaller than 9');
+  assert.equal(isNewerVersion('1.0.0', '1.0.0'), false, 'the same version is not an update');
+
+  // Against the real registry on the default branch, which is the only honest
+  // check that the file is where this thinks it is.
+  const updates = await findModUpdates(
+    [
+      { id: 'midnight', name: 'Midnight', version: '0.0.1', type: 'theme' },
+      { id: 'not-a-real-mod', name: 'Nope', version: '0.0.1', type: 'plugin' },
+    ],
+    { repo: 'AirOne-dev/SlackMod', branch: 'master' },
+  );
+  if (updates === null) return; // offline
+  assert.equal(updates.some((u) => u.id === 'not-a-real-mod'), false,
+    'a mod the catalogue does not have is not an update');
+});

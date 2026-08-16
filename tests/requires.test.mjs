@@ -151,3 +151,51 @@ test('the session token is cached per workspace, not once', () => {
   assert.match(fn[0], /currentTeamId\(\)/, 'the cache has to be keyed by the team in the URL');
   assert.match(fn[0], /team !== cachedTeam/, 'and re-read when it changes');
 });
+
+/**
+ * Settings a mod declares, and the two rules that make them worth declaring:
+ * the panel draws them, and the mod reads the same keys with the same defaults
+ * whether or not anyone has ever opened the panel.
+ */
+test('a declared setting is validated, and rubbish is refused loudly', async () => {
+  const { parseManifest } = await import('../dist/catalog.mjs');
+  const base = {
+    id: 'example-mod', name: 'X', type: 'plugin', version: '1.0.0', author: 'a',
+    description: 'A mod long enough to describe itself properly.',
+    entry: 'index.js', betterslackApi: 1,
+  };
+  const parse = (settings) => parseManifest(JSON.stringify({ ...base, settings }), 'example-mod/mod.json', 'plugin');
+
+  const ok = parse([
+    { key: 'limit', type: 'number', label: 'Limit', default: 10 },
+    { key: 'mode', type: 'choice', label: 'Mode', options: [{ value: 'a', label: 'A' }] },
+  ]);
+  assert.equal(ok.settings.length, 2);
+
+  assert.throws(() => parse([{ key: 'a', type: 'slider', label: 'A' }]), /not a settings type/);
+  assert.throws(() => parse([{ key: 'a', type: 'choice', label: 'A' }]), /needs options/);
+  assert.throws(() => parse([{ key: 'a b', type: 'text', label: 'A' }]), /not a usable settings key/);
+  assert.throws(() => parse([
+    { key: 'a', type: 'text', label: 'A' },
+    { key: 'a', type: 'text', label: 'Again' },
+  ]), /twice/);
+  assert.throws(() => parse({ nope: true }), /must be an array/);
+});
+
+test('the mods that declare settings really read them', () => {
+  // A declaration nothing reads is a control that does nothing, which is worse
+  // than no control at all.
+  for (const [id, keys] of [
+    ['member-sidebar', ['memberLimit', 'presenceLimit']],
+    ['avatar-downloader', ['quality']],
+    ['composer-char-count', ['warnAt', 'alwaysShow']],
+  ]) {
+    const manifest = JSON.parse(read(`mods/plugins/${id}/mod.json`));
+    const source = read(`mods/plugins/${id}/index.js`);
+    assert.deepEqual(manifest.settings.map((f) => f.key).sort(), [...keys].sort(),
+      `${id} declares exactly what it reads`);
+    for (const key of keys) {
+      assert.ok(source.includes(`settings.get('${key}'`), `${id} reads ${key}`);
+    }
+  }
+});

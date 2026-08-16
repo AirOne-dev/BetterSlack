@@ -184,6 +184,7 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
     disposers: [],
     themeSuspensions: [],
     menus: [],
+    settingsListeners: [],
     logs: [],
     navigations: [],
     savedThemes: [],
@@ -447,6 +448,10 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
       all: () => ({ ...store }),
       get: (key, fallback) => (key in store ? store[key] : fallback),
       set: async (key, value) => { store[key] = value; },
+      onChange: (handler) => {
+        recorded.settingsListeners.push(handler);
+        return () => {};
+      },
     },
     helpers: undefined, // assigned below, once `api` exists
 
