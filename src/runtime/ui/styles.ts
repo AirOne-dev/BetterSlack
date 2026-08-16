@@ -176,13 +176,15 @@ export const PANEL_CSS = CODE_CSS + `
   inset: 0;
   z-index: 1100;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding-top: 12vh;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.45);
 }
+/* Centred both ways, and tall enough to be a list rather than a peek: this is
+ * the thing being searched, not a hint above the app. */
 .betterslack-palette__box {
-  width: min(560px, calc(100vw - 32px));
-  max-height: 60vh;
+  width: min(640px, calc(100vw - 48px));
+  max-height: min(560px, 70vh);
   display: flex;
   flex-direction: column;
   border-radius: 8px;
@@ -199,11 +201,15 @@ export const PANEL_CSS = CODE_CSS + `
   background: transparent;
   outline: none;
 }
-.betterslack-palette__list { overflow-y: auto; padding: 6px; }
+.betterslack-palette__list { overflow-y: auto; padding: 6px; min-height: 120px; }
 .betterslack-palette__row {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  /* Wrapping is what puts the subtitle on its own line. Without it the title
+     is squeezed into a narrow column while a description takes the rest, which
+     is what this looked like before anyone saw it. */
+  flex-wrap: wrap;
+  gap: 2px 8px;
   width: 100%;
   padding: 8px 10px;
   border-radius: 6px;
@@ -211,12 +217,29 @@ export const PANEL_CSS = CODE_CSS + `
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
   cursor: pointer;
 }
+.betterslack-palette__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .betterslack-palette__row[aria-selected="true"] {
   background: rgba(var(--sk_highlight, 18, 100, 163), 1);
   color: #fff;
 }
-.betterslack-palette__source { font-size: 12px; opacity: 0.7; }
-.betterslack-palette__sub { flex-basis: 100%; font-size: 12px; opacity: 0.7; }
+.betterslack-palette__source { flex: 0 0 auto; font-size: 12px; opacity: 0.6; }
+/* One line: a mod's description is a sentence, and three of them stacked turn
+   a list into a wall. */
+.betterslack-palette__sub {
+  flex-basis: 100%;
+  font-size: 12px;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .betterslack-remote { padding: 0 20px 10px; }
 .betterslack-remote__row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }

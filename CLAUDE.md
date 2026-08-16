@@ -443,9 +443,12 @@ panel asks for must exist, and a bare English sentence left in `panel.ts` fails
 the test. It was English-only until now, around mods that were required to be
 bilingual.
 
-**⌘⇧K, not ⌘K**: Slack binds plain ⌘K to its own quick switcher, which people
-use every day. `api.commands.add` is how a mod gets into the palette without
-taking a button in the rail.
+**⌘K, taken from Slack on purpose.** Slack binds it to its quick switcher, but
+⌘K is the key everyone reaches for and a palette on a key nobody presses is a
+palette nobody uses; Slack's switcher stays reachable from its search field, and
+`settings.paletteShortcut` puts it back on ⌘⇧K for anyone who disagrees. The
+handler runs in the capture phase, or both open at once. `api.commands.add` is
+how a mod gets in without taking a button in the rail.
 
 ## The Mods panel
 

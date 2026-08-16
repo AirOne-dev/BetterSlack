@@ -114,20 +114,60 @@ async function boot(): Promise<void> {
    */
   const commands = (): Command[] => {
     const settings = manager.getSettings();
-    const builtin: Command[] = [
+
+    /*
+     * What the palette can reach, in the order someone would want it: what the
+     * mods offered themselves, then the panel's own doors, then every mod in
+     * the catalogue -- installed ones as a switch, the rest as an install.
+     *
+     * The whole catalogue on purpose. Searching for a theme by name and being
+     * told nothing matches, because it happens not to be installed yet, is the
+     * failure that makes people stop opening a palette.
+     */
+    const actions: Command[] = [
       { id: 'panel:open', title: t('paletteOpenPanel'), source: 'BetterSlack', run: () => panel.open() },
+      {
+        id: 'panel:themes',
+        title: t('paletteBrowseThemes'),
+        source: 'BetterSlack',
+        run: () => panel.openAt('themes'),
+      },
+      {
+        id: 'panel:plugins',
+        title: t('paletteBrowsePlugins'),
+        source: 'BetterSlack',
+        run: () => panel.openAt('plugins'),
+      },
+      {
+        id: 'panel:css',
+        title: t('paletteCustomCss'),
+        source: 'BetterSlack',
+        run: () => panel.openAt('css'),
+      },
     ];
-    for (const mod of manager.list()) {
-      if (!settings.installed.includes(mod.id)) continue;
+
+    const mods: Command[] = manager.list().map((mod) => {
+      const kind = mod.type === 'theme' ? t('themes') : t('plugins');
+      if (!settings.installed.includes(mod.id)) {
+        return {
+          id: `install:${mod.id}`,
+          title: `${t('paletteInstall')} ${mod.name}`,
+          source: kind,
+          subtitle: mod.description,
+          run: () => void manager.setInstalled(mod.id, true).then(() => manager.setEnabled(mod.id, true)),
+        };
+      }
       const on = manager.isEnabled(mod.id);
-      builtin.push({
+      return {
         id: `mod:${mod.id}`,
         title: `${on ? t('paletteDisable') : t('paletteEnable')} ${mod.name}`,
-        source: mod.type === 'theme' ? t('themes') : t('plugins'),
+        source: kind,
+        subtitle: mod.description,
         run: () => void manager.setEnabled(mod.id, !on),
-      });
-    }
-    return [...manager.commands.values(), ...builtin];
+      };
+    });
+
+    return [...manager.commands.values(), ...actions, ...mods];
   };
 
   const togglePalette = () => {
@@ -138,6 +178,7 @@ async function boot(): Promise<void> {
   let unmountUi: (() => void) | undefined;
   const mountUi = () => {
     unmountUi = installLauncher({
+      paletteShortcut: manager.getSettings().paletteShortcut,
       onActivate: () => panel.toggle(),
       styles: manager.styles,
       // One thing to be told about: a version behind the one on GitHub. The
@@ -148,6 +189,21 @@ async function boot(): Promise<void> {
       onPalette: togglePalette,
     });
   };
+
+  /*
+   * Rebind when the setting changes.
+   *
+   * A keyboard shortcut that only takes effect after a restart is a setting
+   * people try once, conclude is broken, and never touch again.
+   */
+  let boundShortcut = manager.getSettings().paletteShortcut;
+  manager.onChange(() => {
+    const wanted = manager.getSettings().paletteShortcut;
+    if (wanted === boundShortcut || !unmountUi) return;
+    boundShortcut = wanted;
+    unmountUi();
+    mountUi();
+  });
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mountUi, { once: true });
   } else {
