@@ -2,11 +2,32 @@
   "id": "composer-char-count",
   "name": "Composer Character Count",
   "type": "plugin",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "AirOne-dev",
   "description": "Shows a live character count under the message composer, and warns before you cross Slack's 4000-character limit and get split into two messages.",
   "entry": "index.js",
+  "settings": [
+    {
+      "key": "warnAt",
+      "type": "number",
+      "label": "Warn above",
+      "hint": "Characters. Slack itself starts splitting messages around 4000.",
+      "default": 3000,
+      "min": 200,
+      "max": 40000,
+      "step": 100
+    },
+    {
+      "key": "alwaysShow",
+      "type": "boolean",
+      "label": "Always show the count",
+      "hint": "Off: it stays out of the way until you are near the warning.",
+      "default": true
+    }
+  ],
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["composer"]
+  "tags": [
+    "composer"
+  ]
 }

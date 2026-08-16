@@ -14,11 +14,15 @@ import { Catalog, parseManifest } from './catalog.js';
 import { downloadFile } from './download.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack } from './slack.js';
 import { applyUpdate, checkForUpdate } from './update.js';
+import { fetchModFiles, findModUpdates, folderFor, manifestFrom } from './mod-updates.js';
 // Shared with the runtime so a theme's @import behaves the same in Slack's
 // other windows as it does in the client.
 import { inlineCssImports } from '../runtime/themes.js';
 import {
   ensureUserRoot,
+  lastBootFailed,
+  markBootHealthy,
+  markBootStarted,
   mergeSettings,
   readSettings,
   setModEnabled,
@@ -53,16 +57,20 @@ const DEFAULT_BRANCH = 'master';
 
 interface Args {
   verbose: boolean;
+  /** Start with nothing applied, whatever the settings say. */
+  safe: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { verbose: false };
+  const args: Args = { verbose: false, safe: false };
   for (const a of argv) {
     if (a === '--verbose' || a === '-v') args.verbose = true;
+    else if (a === '--safe') args.safe = true;
     else if (a === '--help' || a === '-h') {
       console.log(
         `betterslack ${VERSION}\n\n` +
-          `  --verbose   log every message crossing the bridge\n\n` +
+          `  --verbose   log every message crossing the bridge\n` +
+          `  --safe      start with every mod off, and say so in the panel\n\n` +
           `BetterSlack starts Slack itself and talks to it over a private CDP pipe.\n` +
           `There is no debugging port, so no other process can reach the connection.\n`,
       );
@@ -99,6 +107,7 @@ class Loader {
     private readonly connection: CdpConnection,
     private readonly slackPath: string,
     private readonly verbose: boolean,
+    private readonly safeRequested: boolean = false,
   ) {
     this.catalog = new Catalog(BUILTIN_MODS_ROOT, USER_MODS_ROOT);
   }
@@ -117,7 +126,27 @@ class Loader {
       slackPath: this.slackPath,
       transport: 'CDP pipe (no network port)',
       root: REPO_ROOT,
+      safeMode: this.safeRequested,
     };
+
+    /*
+     * A run that never reported itself healthy is assumed to have been taken
+     * down by a mod, and the next one comes up bare.
+     *
+     * This is the escape hatch the two renderer freezes did not have: the only
+     * way out was killing Slack and editing settings.json by hand. The marker
+     * is written now and removed when the renderer says it is up.
+     */
+    if (!this.safeRequested && (await lastBootFailed())) {
+      this.info.safeMode = true;
+      this.info.safeModeReason =
+        'the last start never finished, so nothing was loaded this time';
+      console.warn(`[betterslack] ${this.info.safeModeReason}`);
+    }
+    if (this.info.safeMode) {
+      console.log('[betterslack] safe mode: no mods will be applied');
+    }
+    await markBootStarted();
 
     const mods = this.catalog.list();
     console.log(
@@ -586,6 +615,37 @@ class Loader {
         return result;
       }
 
+      case 'mods.checkUpdates': {
+        const installed = (await readSettings()).installed;
+        const records = this.catalog.list().filter((mod) => installed.includes(mod.id));
+        return findModUpdates(records, { repo: REPO, branch: DEFAULT_BRANCH });
+      }
+
+      case 'mods.update': {
+        const record = this.catalog.list().find((mod) => mod.id === request.id);
+        if (!record) return { ok: false, detail: 'no such mod' };
+
+        const source = { repo: REPO, branch: DEFAULT_BRANCH };
+        const files = await fetchModFiles(source, folderFor(record));
+        if (!files) return { ok: false, detail: 'could not read it from GitHub' };
+        const manifest = manifestFrom(files);
+        if (!manifest || manifest.id !== record.id) {
+          return { ok: false, detail: 'the download is not that mod' };
+        }
+        // Through the same path the Browse shelf uses, which re-validates the
+        // manifest here: files off the network are untrusted whichever button
+        // asked for them.
+        await this.install(record.id, manifest, files);
+        console.log(`[betterslack] updated "${record.id}" to ${manifest.version}`);
+        return { ok: true, detail: manifest.version };
+      }
+
+      case 'app.ready':
+        // The renderer got all the way up, so this run is not the one that
+        // needs a safe start next time.
+        await markBootHealthy();
+        return null;
+
       case 'log':
         console[request.level](`[betterslack:renderer] ${request.message}`);
         return null;
@@ -691,7 +751,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const loader = new Loader(connection, slackPath, args.verbose);
+  const loader = new Loader(connection, slackPath, args.verbose, args.safe);
   const shutdown = () => {
     console.log('\n[betterslack] detaching (Slack keeps running; mods stay until you reload it)');
     loader.dispose();

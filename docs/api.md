@@ -491,6 +491,22 @@ editor.set(text);        // replace it
 Tab indents instead of moving focus. `readOnly: true` gives a highlighted,
 non-editable view — a generated stylesheet, for instance.
 
+## `api.settings`
+
+```js
+api.settings.get('limit', 100);   // stored → the manifest default → your fallback
+await api.settings.set('limit', 40);
+api.settings.all();
+
+// Optional: hear about a change instead of being reloaded for it.
+api.settings.onChange((values) => resize(values.limit));
+```
+
+Keys declared in `mod.json` under `settings` are drawn by the Mods panel — see
+[getting-started](getting-started.md#settings-your-mod-can-be-given). A plugin
+that registers `onChange` keeps running when one changes; every other plugin is
+reloaded, so respecting a setting costs nothing.
+
 ## `api.themes`
 
 The themes the user has, for tools that build on top of them. Read-only, and

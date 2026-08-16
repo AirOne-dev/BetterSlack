@@ -172,11 +172,26 @@ export interface PluginApi {
     suspend(on: boolean): void;
   };
 
-  /** Per-plugin persisted settings, stored by the loader in ~/.betterslack. */
+  /**
+   * Per-plugin persisted settings, stored by the loader in ~/.betterslack.
+   *
+   * A key declared in `mod.json` under `settings` is drawn by the Mods panel,
+   * and its `default` is what `get` answers before anyone has chosen: the mod
+   * reads the same key either way, and does not have to know which happened.
+   */
   readonly settings: {
     get<T = unknown>(key: string, fallback?: T): T | undefined;
     set(key: string, value: unknown): Promise<void>;
     all(): Record<string, unknown>;
+    /**
+     * Called when the panel changes one of the declared settings.
+     *
+     * A plugin that does nothing here is still correct: the runtime reloads it
+     * after a change, so `start` simply runs again with the new values. This is
+     * for the ones where reloading would be visible -- a list that would flicker,
+     * a window that would close.
+     */
+    onChange(handler: (values: Record<string, unknown>) => void): Cleanup;
   };
 
   /** Register a teardown callback; runs when the plugin is disabled. */
@@ -199,10 +214,21 @@ export interface ApiContext {
   styles: StyleManager;
   getSettings: () => Settings;
   saveModSettings: (id: string, values: Record<string, unknown>) => Promise<void>;
+  /** Tell a plugin its settings changed, for the ones that would rather not reload. */
+  onSettingsChanged: (id: string, handler: (values: Record<string, unknown>) => void) => Cleanup;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
   listThemes: () => Array<{ id: string; name: string; description: string; enabled: boolean }>;
   themeSource: (id: string) => Promise<string>;
+}
+
+/** What the manifest says a setting should be before anyone has chosen. */
+function declaredDefaults(record: ModRecord): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const field of record.settings ?? []) {
+    if (field.default !== undefined) out[field.key] = field.default;
+  }
+  return out;
 }
 
 export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
@@ -311,14 +337,24 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
     },
 
     settings: {
-      all: () => ctx.getSettings().modSettings[record.id] ?? {},
+      all: () => ({ ...declaredDefaults(record), ...(ctx.getSettings().modSettings[record.id] ?? {}) }),
       get<T = unknown>(key: string, fallback?: T): T | undefined {
         const bag = ctx.getSettings().modSettings[record.id] ?? {};
-        return (key in bag ? (bag[key] as T) : fallback);
+        if (key in bag) return bag[key] as T;
+        // The manifest's default comes before the caller's: it is the one the
+        // panel shows, so answering something else would make the control and
+        // the behaviour disagree.
+        const declared = declaredDefaults(record);
+        return (key in declared ? (declared[key] as T) : fallback);
       },
       async set(key: string, value: unknown) {
         const bag = { ...(ctx.getSettings().modSettings[record.id] ?? {}), [key]: value };
         await ctx.saveModSettings(record.id, bag);
+      },
+      onChange(handler) {
+        const cleanup = ctx.onSettingsChanged(record.id, handler);
+        cleanups.add(cleanup);
+        return cleanup;
       },
     },
 

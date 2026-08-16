@@ -14,7 +14,7 @@
 // can make it ugly. Everything under `mods/themes/` is reviewed, so that is a
 // fair deal.
 
-import type { ModRecord } from '../../shared/protocol.js';
+import type { ModRecord, ModSettingField } from '../../shared/protocol.js';
 import { h } from '../dom.js';
 import type { ModManager } from '../manager.js';
 import { contributeUrl, repoUrl } from '../registry.js';
@@ -65,6 +65,17 @@ export class Panel {
     document.addEventListener('keydown', this.onKeyDown, true);
     this.render();
     queueMicrotask(() => this.host?.querySelector<HTMLElement>('.betterslack-nav__item')?.focus());
+
+    // Once a session, and never during a render: it is a network round trip,
+    // and the panel re-renders several times per click.
+    if (!this.checkedModUpdates) {
+      this.checkedModUpdates = true;
+      void this.manager.checkModUpdates().then((updates) => {
+        if (updates.length === 0) return;
+        this.modUpdates = updates;
+        this.renderIfOpen();
+      });
+    }
   }
 
   close(): void {
@@ -182,7 +193,9 @@ export class Panel {
     // Above whatever tab is open, not tucked behind About: a notice you have to
     // go looking for is a notice nobody finds. It renders as nothing at all
     // unless this copy is genuinely behind.
+    body.append(...this.renderSafeMode());
     body.append(...this.renderUpdate());
+    body.append(...this.renderModUpdates());
 
     switch (this.tab) {
       case 'themes':
@@ -346,6 +359,16 @@ export class Panel {
       h('div', { class: 'betterslack-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
     ]);
 
+    // A mod that would not start says so where it is, rather than in a console
+    // nobody has open.
+    const failure = this.manager.errors.get(mod.id);
+    if (failure) {
+      title.append(h('span', { class: 'betterslack-tag betterslack-tag--error' }, ['not running']));
+      meta.append(h('div', { class: 'betterslack-row__requires betterslack-row__requires--missing' }, [
+        failure,
+      ]));
+    }
+
     const requires = mod.requires ?? [];
     if (requires.length > 0) {
       const { found, unknown } = this.missingRecords(mod);
@@ -378,8 +401,132 @@ export class Panel {
       meta.append(note);
     }
 
-    return h('div', { class: 'betterslack-row' }, [meta, actions]);
+    const row = h('div', { class: 'betterslack-row' }, [meta, actions]);
+
+    // Settings hang under the row they belong to, and only while the mod is on:
+    // a control that changes nothing is a control that lies.
+    const fields = mod.settings ?? [];
+    if (fields.length > 0 && enabled) {
+      const open = this.openSettings.has(mod.id);
+      const toggle = h('button', {
+        class: 'c-button-unstyled betterslack-row__review',
+        type: 'button',
+        'aria-expanded': String(open),
+      }, [open ? 'Hide settings' : `Settings (${fields.length})`]);
+      toggle.addEventListener('click', () => {
+        if (open) this.openSettings.delete(mod.id);
+        else this.openSettings.add(mod.id);
+        this.render();
+      });
+      meta.append(h('div', { class: 'betterslack-row__sub' }, [toggle]));
+
+      if (open) {
+        return h('div', { class: 'betterslack-row__group' }, [row, this.renderModSettings(mod, fields)]);
+      }
+    }
+
+    return row;
   }
+
+  /**
+   * The controls a mod declared, drawn from its manifest.
+   *
+   * Written straight through to the same keys the mod reads with
+   * `api.settings`, and the mod is reloaded afterwards unless it asked to be
+   * told instead -- so respecting a setting costs a mod nothing at all.
+   */
+  private renderModSettings(mod: ModRecord, fields: ModSettingField[]): Node {
+    const values = this.manager.getSettings().modSettings[mod.id] ?? {};
+    const box = h('div', { class: 'betterslack-settings' });
+
+    for (const field of fields) {
+      const current = field.key in values ? values[field.key] : field.default;
+      const write = (value: unknown) => {
+        void this.manager.setModSetting(mod.id, field.key, value);
+      };
+
+      let control: HTMLElement;
+      switch (field.type) {
+        case 'boolean': {
+          const input = h('input', {
+            type: 'checkbox',
+            id: `betterslack-set-${mod.id}-${field.key}`,
+          }) as HTMLInputElement;
+          input.checked = current === true;
+          input.addEventListener('change', () => write(input.checked));
+          control = h('label', { class: 'betterslack-switch', for: input.id }, [
+            input,
+            h('span', { class: 'betterslack-switch__track' }, [
+              h('span', { class: 'betterslack-switch__thumb' }),
+            ]),
+          ]);
+          break;
+        }
+        case 'number': {
+          const input = h('input', {
+            type: 'number',
+            class: 'betterslack-search betterslack-settings__input',
+            ...(field.min === undefined ? {} : { min: String(field.min) }),
+            ...(field.max === undefined ? {} : { max: String(field.max) }),
+            ...(field.step === undefined ? {} : { step: String(field.step) }),
+          }) as HTMLInputElement;
+          input.value = String(current ?? '');
+          // On change, not on input: a number field passes through 1 and 12 on
+          // the way to 120, and each one would reload the mod.
+          input.addEventListener('change', () => {
+            const parsed = Number(input.value);
+            if (Number.isFinite(parsed)) write(parsed);
+          });
+          control = input;
+          break;
+        }
+        case 'colour': {
+          const input = h('input', { type: 'color' }) as HTMLInputElement;
+          input.value = typeof current === 'string' ? current : '#000000';
+          input.addEventListener('change', () => write(input.value));
+          control = input;
+          break;
+        }
+        case 'choice': {
+          const select = h('select', { class: 'betterslack-search betterslack-settings__input' }) as HTMLSelectElement;
+          for (const option of field.options) {
+            select.append(h('option', { value: option.value }, [option.label]));
+          }
+          select.value = typeof current === 'string' ? current : (field.default ?? field.options[0]!.value);
+          select.addEventListener('change', () => write(select.value));
+          control = select;
+          break;
+        }
+        default: {
+          const input = h('input', {
+            type: 'text',
+            class: 'betterslack-search betterslack-settings__input',
+            ...(field.placeholder ? { placeholder: field.placeholder } : {}),
+          }) as HTMLInputElement;
+          input.value = typeof current === 'string' ? current : '';
+          input.addEventListener('change', () => write(input.value));
+          control = input;
+        }
+      }
+
+      box.append(h('div', { class: 'betterslack-settings__row' }, [
+        h('div', { class: 'betterslack-settings__meta' }, [
+          h('div', { class: 'betterslack-row__name' }, [field.label]),
+          field.hint ? h('div', { class: 'betterslack-row__desc' }, [field.hint]) : null,
+        ].filter(Boolean) as Node[]),
+        h('div', { class: 'betterslack-row__actions' }, [control]),
+      ]));
+    }
+
+    return box;
+  }
+
+  /** Mods whose settings are unfolded, so a render does not close them. */
+  private openSettings = new Set<string>();
+
+  /** Answered once per session, when the panel is first opened. */
+  private modUpdates: Array<{ id: string; name: string; from: string; to: string }> = [];
+  private checkedModUpdates = false;
 
   /** Set while the requirements dialog is open, so Escape can cancel it. */
   private dismissRequires: (() => void) | null = null;
@@ -607,6 +754,77 @@ export class Panel {
         ' · ',
         h('a', { class: 'c-link', href: contributeUrl, target: '_blank', rel: 'noreferrer' }, [
           'Submit a mod',
+        ]),
+      ]),
+    ];
+  }
+
+  /**
+   * Mods with a newer version published, updated one at a time.
+   *
+   * Separate from the app's own update on purpose: mods change far more often
+   * than the loader does, and making a theme fix wait for a release of the
+   * whole project is what this is for. Checked once when the panel first opens,
+   * because it is a network round trip and nobody wants one per render.
+   */
+  private renderModUpdates(): Node[] {
+    if (this.modUpdates.length === 0) return [];
+
+    const rows = this.modUpdates.map((update) => {
+      const status = h('span', { class: 'betterslack-status' });
+      const button = h('button', {
+        class: 'c-button c-button--primary c-button--medium',
+        type: 'button',
+      }, ['Update']);
+      button.addEventListener('click', () => {
+        button.setAttribute('disabled', 'disabled');
+        status.textContent = 'Downloading…';
+        void this.manager.updateMod(update.id).then((result) => {
+          if (!result.ok) {
+            status.textContent = result.detail;
+            button.removeAttribute('disabled');
+            return;
+          }
+          this.modUpdates = this.modUpdates.filter((other) => other.id !== update.id);
+          this.render();
+        });
+      });
+
+      return h('div', { class: 'betterslack-row betterslack-row--notice' }, [
+        h('div', { class: 'betterslack-row__meta' }, [
+          h('div', { class: 'betterslack-row__name' }, [`${update.name} ${update.to} is out`]),
+          h('div', { class: 'betterslack-row__desc' }, [
+            `You have ${update.from}. Updating replaces this mod alone, and reapplies it if it is on.`,
+          ]),
+        ]),
+        h('div', { class: 'betterslack-row__actions' }, [button, status]),
+      ]);
+    });
+
+    return rows;
+  }
+
+  /**
+   * The banner that says nothing is running, and why.
+   *
+   * Deliberately not a dialog: safe mode is a state to work in, not an alert to
+   * dismiss. The way out is to restart normally, and saying so is the whole
+   * point -- the two freezes this exists for left no way back except editing
+   * the settings file by hand.
+   */
+  private renderSafeMode(): Node[] {
+    const info = this.manager.info;
+    if (!info.safeMode) return [];
+
+    return [
+      h('div', { class: 'betterslack-row betterslack-row--notice' }, [
+        h('div', { class: 'betterslack-row__meta' }, [
+          h('div', { class: 'betterslack-row__name' }, ['Safe mode — nothing is loaded']),
+          h('div', { class: 'betterslack-row__desc' }, [
+            info.safeModeReason
+              ? `${info.safeModeReason}. Switch off whatever you suspect, then start BetterSlack again.`
+              : 'Started with --safe. Your mods are untouched; start again without it to load them.',
+          ]),
         ]),
       ]),
     ];

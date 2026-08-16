@@ -47,14 +47,14 @@ import { STRINGS } from './strings.js';
 const COLUMN_ID = 'betterslack-member-column';
 
 /** Members to render at most. Slack pages `conversations.members` beyond this. */
-const MEMBER_LIMIT = 100;
+const MEMBER_LIMIT_DEFAULT = 100;
 
 /**
  * Members to ask presence for. `users.getPresence` is one request each and sits
  * in a rate-limit tier that starts complaining around fifty a minute, so past
  * this the column still lists everyone, without dots.
  */
-const PRESENCE_LIMIT = 50;
+const PRESENCE_LIMIT_DEFAULT = 50;
 const PRESENCE_INTERVAL_MS = 60_000;
 
 /** Team id from the client URL: /client/<team>/<channel>. */
@@ -83,6 +83,12 @@ export default {
       api.log.warn(t('noToken'));
       return;
     }
+
+    // Declared in mod.json, so the panel draws them and this reads the same
+    // keys. The defaults here are the fallback for a settings file written
+    // before the declaration existed.
+    const MEMBER_LIMIT = api.settings.get('memberLimit', MEMBER_LIMIT_DEFAULT);
+    const PRESENCE_LIMIT = api.settings.get('presenceLimit', PRESENCE_LIMIT_DEFAULT);
 
     /** Latest availability per user id, as api.slack.web reports it. */
     const presence = new Map();

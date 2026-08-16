@@ -167,6 +167,30 @@ export const PANEL_CSS = CODE_CSS + `
   padding-left: 12px;
 }
 
+/* A mod and its settings read as one block, with the settings indented under
+ * the row they belong to rather than floating beside it. */
+/* The one tag that is a warning rather than a label. */
+.betterslack-tag--error {
+  background: rgba(var(--sk_highlight_accent, 224, 30, 90), 0.16);
+  color: rgba(var(--sk_highlight_accent, 224, 30, 90), 1);
+}
+
+.betterslack-settings {
+  padding: 4px 0 12px 16px;
+  border-left: 2px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  margin: 0 0 8px 8px;
+}
+.betterslack-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+}
+.betterslack-settings__meta { min-width: 0; }
+.betterslack-settings__input { max-width: 200px; }
+.betterslack-row__group { display: block; }
+
 .betterslack-row {
   display: flex;
   align-items: flex-start;

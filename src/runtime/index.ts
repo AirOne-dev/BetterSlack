@@ -114,6 +114,10 @@ async function boot(): Promise<void> {
     },
   };
 
+  // The loader clears its crash marker on this. Sent after everything above,
+  // so "up" means the panel exists and the mods have had their turn.
+  bridge.notify({ type: 'app.ready' });
+
   console.log(
     `%c BetterSlack ${payload.version} %c ${payload.settings.enabled.length} mod(s) active — ⌘⇧M `,
     'background:#611f69;color:#fff;border-radius:3px 0 0 3px;padding:2px 4px',

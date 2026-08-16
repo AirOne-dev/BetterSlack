@@ -25,6 +25,7 @@ export default {
    */
   start(api) {
     const warnAt = api.settings.get('warnAt', Math.floor(SLACK_LIMIT * 0.9));
+    const alwaysShow = api.settings.get('alwaysShow', true) !== false;
 
     api.css(`
       #${NODE_ID} {
@@ -73,7 +74,9 @@ export default {
         length === 0 ? 'hidden'
           : length > SLACK_LIMIT ? 'over'
             : length >= warnAt ? 'warn'
-              : 'visible';
+              // Quiet until it matters, unless someone asked to always see it.
+              : alwaysShow ? 'visible'
+                : 'hidden';
     };
 
     // The composer is a contenteditable, so there is no `input` event to bind

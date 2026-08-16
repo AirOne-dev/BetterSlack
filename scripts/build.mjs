@@ -96,7 +96,12 @@ const runtimeModules = {
  * download guards without pulling in the whole loader entry point.
  */
 const loaderLib = {
-  entryPoints: [`${root}/src/loader/download.ts`, `${root}/src/loader/update.ts`],
+  entryPoints: [
+    `${root}/src/loader/download.ts`,
+    `${root}/src/loader/update.ts`,
+    `${root}/src/loader/catalog.ts`,
+    `${root}/src/loader/mod-updates.ts`,
+  ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },
   bundle: true,
