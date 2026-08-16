@@ -4,8 +4,8 @@
 // through Runtime.evaluate. Both directions are plain JSON strings, so nothing
 // here may reference Node or DOM types.
 
-export const BINDING_NAME = '__slackmodSend';
-export const RECEIVER_NAME = '__slackmodRecv';
+export const BINDING_NAME = '__betterslackSend';
+export const RECEIVER_NAME = '__betterslackRecv';
 export const MOD_API_VERSION = 1;
 
 export type ModType = 'theme' | 'plugin';
@@ -33,7 +33,7 @@ export interface ModManifest {
    */
   requires?: string[];
   /** Manifest schema version. Mods declaring a newer version are refused. */
-  slackmodApi: number;
+  betterslackApi: number;
   /** Optional: minimum tested Slack version, informational only. */
   slackVersion?: string;
   tags?: string[];

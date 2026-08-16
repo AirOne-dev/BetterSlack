@@ -24,10 +24,10 @@ import { closeMenu, openMenu } from './menu.js';
 type TabId = 'themes' | 'plugins' | 'css' | 'about';
 type ShelfId = 'installed' | 'enabled' | 'browse';
 
-const HOST_ID = 'slackmod-panel';
+const HOST_ID = 'betterslack-panel';
 /** The shared menu's layer, so Escape can tell it apart from the panel. */
-const MENU_ID = 'slackmod-menu-layer';
-const REQUIRES_ID = 'slackmod-requires';
+const MENU_ID = 'betterslack-menu-layer';
+const REQUIRES_ID = 'betterslack-requires';
 
 const CLOSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px">
   <path fill="currentColor" d="M5.72 5.72a.75.75 0 0 1 1.06 0L10 8.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L11.06 10l3.22 3.22a.75.75 0 1 1-1.06 1.06L10 11.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L8.94 10 5.72 6.78a.75.75 0 0 1 0-1.06Z"/>
@@ -60,11 +60,11 @@ export class Panel {
 
   open(): void {
     if (this.isOpen) return;
-    this.host = h('div', { id: HOST_ID, class: 'c-dialog slackmod-dialog', role: 'presentation' });
+    this.host = h('div', { id: HOST_ID, class: 'c-dialog betterslack-dialog', role: 'presentation' });
     document.body.append(this.host);
     document.addEventListener('keydown', this.onKeyDown, true);
     this.render();
-    queueMicrotask(() => this.host?.querySelector<HTMLElement>('.slackmod-nav__item')?.focus());
+    queueMicrotask(() => this.host?.querySelector<HTMLElement>('.betterslack-nav__item')?.focus());
   }
 
   close(): void {
@@ -105,14 +105,14 @@ export class Panel {
 
     const close = h('button', {
       class:
-        'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default slackmod-close',
+        'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default betterslack-close',
       type: 'button',
       'aria-label': 'Close',
     });
     close.innerHTML = CLOSE_ICON;
     close.addEventListener('click', () => this.close());
 
-    const body = h('div', { class: 'c-dialog__body slackmod-body' });
+    const body = h('div', { class: 'c-dialog__body betterslack-body' });
     // The panel re-renders wholesale on every change, and one toggle triggers
     // several renders in a frame; the user's own scrolling is the only
     // reliable source of position.
@@ -121,16 +121,16 @@ export class Panel {
     }, { passive: true });
 
     const content = h('div', {
-      class: 'c-dialog__content slackmod-content',
+      class: 'c-dialog__content betterslack-content',
       role: 'dialog',
       'aria-modal': 'true',
-      'aria-label': 'SlackMod',
+      'aria-label': 'BetterSlack',
     }, [
-      h('div', { class: 'c-dialog__header slackmod-header' }, [
-        h('h1', { class: 'c-dialog__title' }, ['SlackMod']),
+      h('div', { class: 'c-dialog__header betterslack-header' }, [
+        h('h1', { class: 'c-dialog__title' }, ['BetterSlack']),
         close,
       ]),
-      h('div', { class: 'slackmod-layout' }, [this.renderNav(), body]),
+      h('div', { class: 'betterslack-layout' }, [this.renderNav(), body]),
     ]);
 
     host.append(content);
@@ -154,16 +154,16 @@ export class Panel {
       { id: 'about', label: 'About' },
     ];
 
-    const nav = h('nav', { class: 'slackmod-nav', role: 'tablist' });
+    const nav = h('nav', { class: 'betterslack-nav', role: 'tablist' });
     for (const item of items) {
       const button = h('button', {
-        class: 'c-button-unstyled slackmod-nav__item',
+        class: 'c-button-unstyled betterslack-nav__item',
         role: 'tab',
         'aria-selected': String(this.tab === item.id),
         type: 'button',
       }, [item.label]);
       if (item.count !== undefined) {
-        button.append(h('span', { class: 'slackmod-count' }, [String(item.count)]));
+        button.append(h('span', { class: 'betterslack-count' }, [String(item.count)]));
       }
       button.addEventListener('click', () => {
         if (this.tab === item.id) return;
@@ -213,14 +213,14 @@ export class Panel {
       { id: 'browse', label: 'Browse', list: mods.filter((m) => !this.manager.isInstalled(m.id)) },
     ];
 
-    const tabs = h('div', { class: 'slackmod-shelves', role: 'tablist' });
+    const tabs = h('div', { class: 'betterslack-shelves', role: 'tablist' });
     for (const shelf of shelves) {
       const button = h('button', {
-        class: 'c-button-unstyled slackmod-shelf',
+        class: 'c-button-unstyled betterslack-shelf',
         role: 'tab',
         'aria-selected': String(this.shelf === shelf.id),
         type: 'button',
-      }, [shelf.label, h('span', { class: 'slackmod-count' }, [String(shelf.list.length)])]);
+      }, [shelf.label, h('span', { class: 'betterslack-count' }, [String(shelf.list.length)])]);
       button.addEventListener('click', () => {
         if (this.shelf === shelf.id) return;
         this.shelf = shelf.id;
@@ -233,7 +233,7 @@ export class Panel {
     const current = shelves.find((shelf) => shelf.id === this.shelf) ?? shelves[0]!;
 
     const search = h('input', {
-      class: 'slackmod-search',
+      class: 'betterslack-search',
       type: 'text',
       placeholder: `Search ${kind}s`,
       spellcheck: 'false',
@@ -249,13 +249,13 @@ export class Panel {
     queueMicrotask(() => this.renderList(current.list, kind));
 
     return [
-      h('div', { class: 'slackmod-toolbar' }, [tabs, search]),
-      h('div', { class: 'slackmod-list' }),
+      h('div', { class: 'betterslack-toolbar' }, [tabs, search]),
+      h('div', { class: 'betterslack-list' }),
     ];
   }
 
   private renderList(mods: ModRecord[], kind: 'theme' | 'plugin'): void {
-    const host = this.host?.querySelector('.slackmod-list');
+    const host = this.host?.querySelector('.betterslack-list');
     if (!host) return;
 
     const query = this.search.trim().toLowerCase();
@@ -272,7 +272,7 @@ export class Panel {
         enabled: `Nothing switched on. Installed ${kind}s can be enabled here.`,
         browse: 'Everything in the catalogue is already installed.',
       };
-      host.append(h('div', { class: 'slackmod-empty' }, [
+      host.append(h('div', { class: 'betterslack-empty' }, [
         query ? 'Nothing matches that search.' : messages[this.shelf],
       ]));
       return;
@@ -287,12 +287,12 @@ export class Panel {
     const enabled = this.manager.isEnabled(mod.id);
     const busy = this.busy.has(mod.id);
 
-    const actions = h('div', { class: 'slackmod-row__actions' });
+    const actions = h('div', { class: 'betterslack-row__actions' });
 
     if (installed) {
       const input = h('input', {
         type: 'checkbox',
-        id: `slackmod-toggle-${mod.id}`,
+        id: `betterslack-toggle-${mod.id}`,
         'aria-label': `Enable ${mod.name}`,
       }) as HTMLInputElement;
       input.checked = enabled;
@@ -306,7 +306,7 @@ export class Panel {
       // dialog. Slack puts destructive actions behind an overflow menu.
       const overflow = h('button', {
         class:
-          'c-button-unstyled c-icon_button c-icon_button--size_smedium c-icon_button--default slackmod-row__more',
+          'c-button-unstyled c-icon_button c-icon_button--size_smedium c-icon_button--default betterslack-row__more',
         type: 'button',
         'aria-label': `More actions for ${mod.name}`,
         'aria-haspopup': 'menu',
@@ -317,10 +317,10 @@ export class Panel {
         this.openMenu(overflow, mod);
       });
 
-      actions.append(overflow, h('label', { class: 'slackmod-switch', for: input.id }, [
+      actions.append(overflow, h('label', { class: 'betterslack-switch', for: input.id }, [
         input,
-        h('span', { class: 'slackmod-switch__track' }, [
-          h('span', { class: 'slackmod-switch__thumb' }),
+        h('span', { class: 'betterslack-switch__track' }, [
+          h('span', { class: 'betterslack-switch__thumb' }),
         ]),
       ]));
     } else {
@@ -335,15 +335,15 @@ export class Panel {
       actions.append(install);
     }
 
-    const title = h('div', { class: 'slackmod-row__name' }, [mod.name]);
+    const title = h('div', { class: 'betterslack-row__name' }, [mod.name]);
     for (const tag of (mod.tags ?? []).slice(0, 3)) {
-      title.append(h('span', { class: 'slackmod-tag' }, [tag]));
+      title.append(h('span', { class: 'betterslack-tag' }, [tag]));
     }
 
-    const meta = h('div', { class: 'slackmod-row__meta' }, [
+    const meta = h('div', { class: 'betterslack-row__meta' }, [
       title,
-      h('div', { class: 'slackmod-row__desc' }, [mod.description]),
-      h('div', { class: 'slackmod-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
+      h('div', { class: 'betterslack-row__desc' }, [mod.description]),
+      h('div', { class: 'betterslack-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
     ]);
 
     const requires = mod.requires ?? [];
@@ -353,14 +353,14 @@ export class Panel {
       const satisfied = found.length === 0 && unknown.length === 0;
 
       const note = h('div', {
-        class: `slackmod-row__requires${satisfied ? '' : ' slackmod-row__requires--missing'}`,
+        class: `betterslack-row__requires${satisfied ? '' : ' betterslack-row__requires--missing'}`,
       }, [satisfied ? `Uses ${names.join(', ')}` : `Needs ${names.join(', ')}`]);
 
       // Only offer the button once the theme is on: before that, switching it
       // on is what asks the question anyway.
       if (found.length > 0 && enabled) {
         const fix = h('button', {
-          class: 'c-button-unstyled slackmod-row__review',
+          class: 'c-button-unstyled betterslack-row__review',
           type: 'button',
         }, [found.length === 1 ? 'Enable it' : 'Enable them']);
         fix.addEventListener('click', () => {
@@ -371,14 +371,14 @@ export class Panel {
       if (unknown.length > 0) {
         // A theme naming a plugin nobody has. Say which, rather than leaving
         // the user to wonder why it looks wrong.
-        note.append(h('div', { class: 'slackmod-row__sub' }, [
+        note.append(h('div', { class: 'betterslack-row__sub' }, [
           `Not in the catalogue: ${unknown.join(', ')}`,
         ]));
       }
       meta.append(note);
     }
 
-    return h('div', { class: 'slackmod-row' }, [meta, actions]);
+    return h('div', { class: 'betterslack-row' }, [meta, actions]);
   }
 
   /** Set while the requirements dialog is open, so Escape can cancel it. */
@@ -418,26 +418,26 @@ export class Panel {
       }, [missing.length === 1 ? 'Enable it' : `Enable all ${missing.length}`]);
       accept.addEventListener('click', () => finish(true));
 
-      const list = h('ul', { class: 'slackmod-requires' });
+      const list = h('ul', { class: 'betterslack-requires' });
       for (const plugin of missing) {
-        list.append(h('li', { class: 'slackmod-require' }, [
-          h('div', { class: 'slackmod-require__title' }, [plugin.name]),
-          h('div', { class: 'slackmod-require__detail' }, [plugin.description]),
+        list.append(h('li', { class: 'betterslack-require' }, [
+          h('div', { class: 'betterslack-require__title' }, [plugin.name]),
+          h('div', { class: 'betterslack-require__detail' }, [plugin.description]),
         ]));
       }
 
-      const layer = h('div', { id: REQUIRES_ID, class: 'c-dialog slackmod-dialog' }, [
+      const layer = h('div', { id: REQUIRES_ID, class: 'c-dialog betterslack-dialog' }, [
         h('div', {
-          class: 'c-dialog__content slackmod-content slackmod-content--narrow',
+          class: 'c-dialog__content betterslack-content betterslack-content--narrow',
           role: 'dialog',
           'aria-modal': 'true',
           'aria-label': `Plugins required by ${mod.name}`,
         }, [
-          h('div', { class: 'c-dialog__header slackmod-header' }, [
+          h('div', { class: 'c-dialog__header betterslack-header' }, [
             h('h1', { class: 'c-dialog__title' }, [mod.name]),
           ]),
-          h('div', { class: 'c-dialog__body slackmod-body' }, [
-            h('p', { class: 'slackmod-hint' }, [
+          h('div', { class: 'c-dialog__body betterslack-body' }, [
+            h('p', { class: 'betterslack-hint' }, [
               missing.length === 1
                 ? 'This theme needs a plugin to look the way it is meant to. Plugins run code in ' +
                   'your Slack window, and this one stays on until you switch it off yourself.'
@@ -446,7 +446,7 @@ export class Panel {
             ]),
             list,
           ]),
-          h('div', { class: 'slackmod-actions slackmod-actions--dialog' }, [cancel, accept]),
+          h('div', { class: 'betterslack-actions betterslack-actions--dialog' }, [cancel, accept]),
         ]),
       ]);
 
@@ -527,7 +527,7 @@ export class Panel {
       placeholder: ':root { --dt_color-content-pry: #e8e8ea; }',
     });
 
-    const status = h('span', { class: 'slackmod-status' });
+    const status = h('span', { class: 'betterslack-status' });
     const save = h('button', {
       class: 'c-button c-button--primary c-button--medium',
       type: 'button',
@@ -536,22 +536,22 @@ export class Panel {
       void this.manager
         .setCustomCss(editor.value())
         .then(() => {
-          status.className = 'slackmod-status';
+          status.className = 'betterslack-status';
           status.textContent = 'Applied.';
         })
         .catch((err: Error) => {
-          status.className = 'slackmod-status slackmod-danger';
+          status.className = 'betterslack-status betterslack-danger';
           status.textContent = err.message;
         });
     });
 
     return [
-      h('p', { class: 'slackmod-hint' }, [
+      h('p', { class: 'betterslack-hint' }, [
         'Applied after every theme, so it always wins. Slack exposes its palette as CSS custom ' +
           'properties (--dt_color-*), which is a steadier target than its class names.',
       ]),
       editor.node,
-      h('div', { class: 'slackmod-actions' }, [save, status]),
+      h('div', { class: 'betterslack-actions' }, [save, status]),
     ];
   }
 
@@ -561,7 +561,7 @@ export class Panel {
 
     const hotReload = h('input', {
       type: 'checkbox',
-      id: 'slackmod-hot-reload',
+      id: 'betterslack-hot-reload',
       'aria-label': 'Hot reload',
     }) as HTMLInputElement;
     hotReload.checked = settings.hotReload;
@@ -570,29 +570,29 @@ export class Panel {
     });
 
     return [
-      h('p', { class: 'slackmod-hint' }, [
-        'SlackMod injects into the Slack renderer over the Chrome DevTools Protocol, carried on a ' +
+      h('p', { class: 'betterslack-hint' }, [
+        'BetterSlack injects into the Slack renderer over the Chrome DevTools Protocol, carried on a ' +
           'private pipe rather than a debugging port — nothing listens on the network. It does not ' +
           'modify Slack.app, so Slack updates cannot break your install, but mods stay loaded only ' +
           'while the loader runs.',
       ]),
-      h('div', { class: 'slackmod-row' }, [
-        h('div', { class: 'slackmod-row__meta' }, [
-          h('div', { class: 'slackmod-row__name' }, ['Hot reload']),
-          h('div', { class: 'slackmod-row__desc' }, [
+      h('div', { class: 'betterslack-row' }, [
+        h('div', { class: 'betterslack-row__meta' }, [
+          h('div', { class: 'betterslack-row__name' }, ['Hot reload']),
+          h('div', { class: 'betterslack-row__desc' }, [
             'Reapply a mod as soon as its file changes on disk.',
           ]),
         ]),
-        h('div', { class: 'slackmod-row__actions' }, [
-          h('label', { class: 'slackmod-switch', for: hotReload.id }, [
+        h('div', { class: 'betterslack-row__actions' }, [
+          h('label', { class: 'betterslack-switch', for: hotReload.id }, [
             hotReload,
-            h('span', { class: 'slackmod-switch__track' }, [
-              h('span', { class: 'slackmod-switch__thumb' }),
+            h('span', { class: 'betterslack-switch__track' }, [
+              h('span', { class: 'betterslack-switch__thumb' }),
             ]),
           ]),
         ]),
       ]),
-      h('dl', { class: 'slackmod-info' }, [
+      h('dl', { class: 'betterslack-info' }, [
         h('dt', {}, ['Version']),
         h('dd', {}, [info.version]),
         h('dt', {}, ['Catalogue']),
@@ -602,7 +602,7 @@ export class Panel {
         h('dt', {}, ['Transport']),
         h('dd', {}, [info.transport]),
       ]),
-      h('p', { class: 'slackmod-hint' }, [
+      h('p', { class: 'betterslack-hint' }, [
         h('a', { class: 'c-link', href: repoUrl, target: '_blank', rel: 'noreferrer' }, ['Repository']),
         ' · ',
         h('a', { class: 'c-link', href: contributeUrl, target: '_blank', rel: 'noreferrer' }, [
@@ -624,12 +624,17 @@ export class Panel {
     const status = this.manager.update;
     if (!status || !status.behind) return [];
 
+    // What will happen, in the words of the install it will happen to: a
+    // checkout is pulled, a downloaded copy is replaced from GitHub. Someone
+    // about to press this should know which.
     const detail = status.kind === 'git'
       ? `${status.commits} commit${status.commits === 1 ? '' : 's'} behind${
-        status.headline ? ` — latest: ${status.headline}` : ''}`
-      : `Version ${status.latest} is out; this is ${this.manager.info.version}.`;
+        status.headline ? ` — latest: ${status.headline}` : ''}. Updating pulls and rebuilds.`
+      : `Version ${status.latest} is out; this is ${this.manager.info.version}. `
+        + 'Updating downloads it from GitHub and replaces this copy — your mods and settings are '
+        + 'kept, they live outside it.';
 
-    const status_line = h('span', { class: 'slackmod-status' });
+    const status_line = h('span', { class: 'betterslack-status' });
     const actions: Node[] = [];
 
     if (status.updatable) {
@@ -665,14 +670,14 @@ export class Panel {
     actions.push(status_line);
 
     return [
-      h('div', { class: 'slackmod-row slackmod-row--notice' }, [
-        h('div', { class: 'slackmod-row__meta' }, [
-          h('div', { class: 'slackmod-row__name' }, ['An update is available']),
-          h('div', { class: 'slackmod-row__desc' }, [
+      h('div', { class: 'betterslack-row betterslack-row--notice' }, [
+        h('div', { class: 'betterslack-row__meta' }, [
+          h('div', { class: 'betterslack-row__name' }, ['An update is available']),
+          h('div', { class: 'betterslack-row__desc' }, [
             status.note ? `${detail} — ${status.note}` : detail,
           ]),
         ]),
-        h('div', { class: 'slackmod-row__actions' }, actions),
+        h('div', { class: 'betterslack-row__actions' }, actions),
       ]),
     ];
   }
@@ -683,7 +688,7 @@ export class Panel {
     try {
       await work();
     } catch (err) {
-      console.error('[slackmod]', err);
+      console.error('[betterslack]', err);
     } finally {
       this.busy.delete(id);
       this.renderIfOpen();

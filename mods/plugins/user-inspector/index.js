@@ -27,7 +27,7 @@ const PANE = '[data-qa="member_profile_pane"]';
 // keepMounted owns the element's id (it uses it to find its own node), so the
 // styling hook is a class. One pane, one id; the class is what CSS and tests
 // look for.
-const NODE_CLASS = 'slackmod-user-details';
+const NODE_CLASS = 'betterslack-user-details';
 
 /**
  * Boolean flags worth surfacing, in the order they matter, as translation keys.
@@ -222,14 +222,14 @@ export default {
     // Slack's own classes do the heavy lifting; this only covers the few things
     // it has no class for.
     api.css(`
-      .${NODE_CLASS} .slackmod-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-      .${NODE_CLASS} .slackmod-chip {
+      .${NODE_CLASS} .betterslack-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+      .${NODE_CLASS} .betterslack-chip {
         font-size: 12px; padding: 2px 8px; border-radius: 999px;
         border: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
         color: var(--dt_color-content-sec, #454447);
       }
-      .${NODE_CLASS} .slackmod-muted { color: var(--dt_color-content-ter, #5e5d60); font-size: 13px; }
-      .${NODE_CLASS} .slackmod-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+      .${NODE_CLASS} .betterslack-muted { color: var(--dt_color-content-ter, #5e5d60); font-size: 13px; }
+      .${NODE_CLASS} .betterslack-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     `);
 
     const cache = new Map();
@@ -242,13 +242,13 @@ export default {
 
       if (data.error) {
         host.append(section(t('moreDetails'), [
-          api.dom.h('div', { class: 'slackmod-muted' }, [data.error]),
+          api.dom.h('div', { class: 'betterslack-muted' }, [data.error]),
         ]));
         return;
       }
       if (!data.user) {
         host.append(section(t('moreDetails'), [
-          api.dom.h('div', { class: 'slackmod-muted' }, [t('loading')]),
+          api.dom.h('div', { class: 'betterslack-muted' }, [t('loading')]),
         ]));
         return;
       }
@@ -266,8 +266,8 @@ export default {
             api.dom.h('div', { class: 'p-rimeto_member_profile_field' }, [
               api.dom.h('div', { class: 'p-rimeto_member_profile_field__primary' }, [
                 api.dom.h('div', { class: 'p-rimeto_member_profile_field__label' }, [t('roles')]),
-                api.dom.h('div', { class: 'slackmod-chips' },
-                  roleChips.map((r) => api.dom.h('span', { class: 'slackmod-chip' }, [r]))),
+                api.dom.h('div', { class: 'betterslack-chips' },
+                  roleChips.map((r) => api.dom.h('span', { class: 'betterslack-chip' }, [r]))),
               ]),
             ]),
           ]),
@@ -278,11 +278,11 @@ export default {
 
       const sizes = avatarSizes(data.user.profile, t);
       if (sizes.length > 0) {
-        const links = api.dom.h('div', { class: 'slackmod-chips' });
+        const links = api.dom.h('div', { class: 'betterslack-chips' });
         for (const size of sizes) {
           links.append(
             api.dom.h('a', {
-              class: 'slackmod-chip c-link',
+              class: 'betterslack-chip c-link',
               href: size.url,
               target: '_blank',
               rel: 'noreferrer',
@@ -304,10 +304,10 @@ export default {
         void api.helpers.copy(JSON.stringify(data, null, 2), t('copiedRaw'));
       });
       host.append(section(t('rawData'), [
-        api.dom.h('div', { class: 'slackmod-muted' }, [
+        api.dom.h('div', { class: 'betterslack-muted' }, [
           t('rawSummary', { count: Object.keys(data.user).length }),
         ]),
-        api.dom.h('div', { class: 'slackmod-actions' }, [copy]),
+        api.dom.h('div', { class: 'betterslack-actions' }, [copy]),
       ]));
     };
 
@@ -383,8 +383,8 @@ export default {
     let seq = 0;
     api.dom.onEach(PANE, (pane) => {
       const key = `${NODE_CLASS}-${seq++}`;
-      pane.setAttribute('data-slackmod-pane', key);
-      api.helpers.mount(`[data-slackmod-pane="${key}"]`, key, () => {
+      pane.setAttribute('data-betterslack-pane', key);
+      api.helpers.mount(`[data-betterslack-pane="${key}"]`, key, () => {
         const host = api.dom.h('div', { class: NODE_CLASS });
         fill(host, pane);
         return host;

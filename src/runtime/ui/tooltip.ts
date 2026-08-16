@@ -63,7 +63,7 @@ export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cl
     // tooltip stuck to the top of the window. Only the inner tip wears Slack's
     // classes, which is where all the visual styling lives anyway.
     return h('div', {
-      class: 'slackmod-tooltip',
+      class: 'betterslack-tooltip',
       role: 'tooltip',
       'data-qa': 'tooltip-popover',
       style:

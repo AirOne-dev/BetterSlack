@@ -5,7 +5,7 @@
  * on <html>, so the behaviour is pure CSS and the state survives a restart.
  */
 
-const INDICATOR_ID = 'slackmod-focus-indicator';
+const INDICATOR_ID = 'betterslack-focus-indicator';
 
 export default {
   /**
@@ -18,7 +18,7 @@ export default {
 
     const focus = api.helpers.toggle({
       key: 'on',
-      className: 'slackmod-focus-mode',
+      className: 'betterslack-focus-mode',
       // `&` is the flag class; this CSS only applies while the toggle is on.
       whenOn: `
         & [data-qa="channel-sidebar"],

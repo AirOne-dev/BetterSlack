@@ -7,7 +7,7 @@ const root = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const entry = `${root}/dist/loader.mjs`;
 
 if (!existsSync(entry)) {
-  console.error('SlackMod is not built yet. Run:\n\n  npm install && npm run build\n');
+  console.error('BetterSlack is not built yet. Run:\n\n  pnpm install && pnpm build\n');
   process.exit(1);
 }
 

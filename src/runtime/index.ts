@@ -11,19 +11,19 @@ import { Panel } from './ui/panel.js';
 
 declare global {
   interface Window {
-    __SLACKMOD_BOOT__?: BootPayload;
-    __slackmod?: SlackModGlobal;
+    __BETTERSLACK_BOOT__?: BootPayload;
+    __betterslack?: BetterSlackGlobal;
   }
 }
 
 declare global {
   interface Window {
     /** Set synchronously by whichever boot got here first. See boot(). */
-    __SLACKMOD_BOOTING__?: string;
+    __BETTERSLACK_BOOTING__?: string;
   }
 }
 
-interface SlackModGlobal {
+interface BetterSlackGlobal {
   version: string;
   /** Which loader run created this instance. */
   sessionId: string;
@@ -35,13 +35,13 @@ interface SlackModGlobal {
 }
 
 async function boot(): Promise<void> {
-  const payload = window.__SLACKMOD_BOOT__;
+  const payload = window.__BETTERSLACK_BOOT__;
   if (!payload) return;
 
   /*
    * Claim the document before anything is awaited.
    *
-   * `window.__slackmod` is only assigned at the *end* of this function, so two
+   * `window.__betterslack` is only assigned at the *end* of this function, so two
    * boots that overlap -- the document-start script and the loader injecting
    * into the same live page, which is exactly what happens when a navigation
    * is caught mid-flight -- both find it empty, both build a Bridge, and both
@@ -54,10 +54,10 @@ async function boot(): Promise<void> {
    * Found by way of a theme gallery that came up blank: six answers delivered
    * by the loader, six timeouts in the page.
    */
-  if (window.__SLACKMOD_BOOTING__ === payload.info.sessionId) return;
-  window.__SLACKMOD_BOOTING__ = payload.info.sessionId;
+  if (window.__BETTERSLACK_BOOTING__ === payload.info.sessionId) return;
+  window.__BETTERSLACK_BOOTING__ = payload.info.sessionId;
 
-  const existing = window.__slackmod;
+  const existing = window.__betterslack;
   if (existing) {
     // Same loader run injecting twice into one document: nothing to do, and
     // going further would double every observer.
@@ -65,9 +65,9 @@ async function boot(): Promise<void> {
     // A different run: the old instance's bridge is dead and its settings are
     // stale, so it has to go before the new one starts.
     await existing.dispose().catch((err) => {
-      console.warn('[slackmod] could not dispose the previous runtime', err);
+      console.warn('[betterslack] could not dispose the previous runtime', err);
     });
-    delete window.__slackmod;
+    delete window.__betterslack;
   }
 
   const bridge = new Bridge();
@@ -100,7 +100,7 @@ async function boot(): Promise<void> {
     mountUi();
   }
 
-  window.__slackmod = {
+  window.__betterslack = {
     version: payload.version,
     sessionId: payload.info.sessionId,
     manager,
@@ -115,7 +115,7 @@ async function boot(): Promise<void> {
   };
 
   console.log(
-    `%c SlackMod ${payload.version} %c ${payload.settings.enabled.length} mod(s) active — ⌘⇧M `,
+    `%c BetterSlack ${payload.version} %c ${payload.settings.enabled.length} mod(s) active — ⌘⇧M `,
     'background:#611f69;color:#fff;border-radius:3px 0 0 3px;padding:2px 4px',
     'background:#222;color:#ddd;border-radius:0 3px 3px 0;padding:2px 4px',
   );
@@ -123,6 +123,6 @@ async function boot(): Promise<void> {
 
 void boot().catch((err) => {
   // Let the next attempt through: a boot that threw owns nothing.
-  delete window.__SLACKMOD_BOOTING__;
-  console.error('[slackmod] boot failed', err);
+  delete window.__BETTERSLACK_BOOTING__;
+  console.error('[betterslack] boot failed', err);
 });

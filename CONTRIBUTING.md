@@ -6,7 +6,7 @@ merges.
 
 ## Why the review is strict
 
-A SlackMod plugin runs inside an authenticated Slack tab. It can read every
+A BetterSlack plugin runs inside an authenticated Slack tab. It can read every
 message you can read, and it can talk to the network. There is no sandbox around
 it and no permission prompt in front of it.
 
@@ -52,7 +52,7 @@ with English holes nobody notices.
 
 You are not expected to speak every language — two is the bar. If you add
 another, add it to every plugin or none: one plugin speaking German inside an
-otherwise English SlackMod is worse than consistency.
+otherwise English BetterSlack is worse than consistency.
 
 Do not print emoji shortcodes. `status_emoji` is `:tada:`, and a workspace's
 custom ones have no unicode to fall back on, so show the text without them.
@@ -89,11 +89,11 @@ unexplained one is an automatic no.
    page, so a bare specifier (`import 'lodash'`) is rejected, as is a path
    that climbs out of the folder or a cycle.
 
-2. `npm run validate-mods` passes.
-3. **A `test.mjs` next to your `mod.json`, and `npm run test:mod -- <id>`
+2. `pnpm validate-mods` passes.
+3. **A `test.mjs` next to your `mod.json`, and `ppnpm test:mod -- <id>`
    passes.** Every mod ships tests. There is no way to opt out: a mod with no
    `test.mjs` fails the structure check immediately.
-4. `npm run registry` has been run and `mods/registry.json` is committed.
+4. `pnpm registry` has been run and `mods/registry.json` is committed.
 5. Tested against the current Slack release. Put the version you tested in
    `slackVersion`.
 6. The description is one sentence that says what a user gets, not how it works.
@@ -107,7 +107,7 @@ cannot block theirs:
 | Workflow | Per changed mod | Checks |
 | --- | --- | --- |
 | **Mod structure** | `node scripts/check-structure.mjs <id>` | manifest, entry file exists and imports, a real `start()` export, every relative import lands on a file that is there, CSS parses, `test.mjs` present, registry entry current |
-| **Mod tests** | `npm run test:mod -- <id>` | your own tests |
+| **Mod tests** | `ppnpm test:mod -- <id>` | your own tests |
 
 Each mod gets its own job, so a failure names the mod at fault. Both workflows
 end in a job with a stable name (`mod structure`, `mod tests`) — those are the
@@ -122,8 +122,8 @@ Run the same thing locally before pushing:
 
 ```bash
 node scripts/changed-mods.mjs           # what CI will pick up
-npm run check-structure -- <id>
-npm run test:mod -- <id>
+pnpm check-structure -- <id>
+ppnpm test:mod -- <id>
 ```
 
 ### Writing the tests
@@ -171,10 +171,10 @@ The short version:
 ## Local development
 
 ```bash
-npm install && npm run build
-npm start
+pnpm install && pnpm build
+pnpm start
 ```
 
 Edit files in `mods/` and they reload in Slack immediately. Mods in
-`~/.slackmod/mods/` shadow the repo copies, which is convenient for iterating on
+`~/.betterslack/mods/` shadow the repo copies, which is convenient for iterating on
 something already merged.

@@ -92,8 +92,8 @@ export default {
   start(api) {
     const t = api.i18n.strings(STRINGS);
     api.css(`
-      .slackmod-profile-row { padding: 8px 20px 12px; }
-      .slackmod-profile-row .c-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
+      .betterslack-profile-row { padding: 8px 20px 12px; }
+      .betterslack-profile-row .c-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
     `);
 
     const download = async (userId) => {

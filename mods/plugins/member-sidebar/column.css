@@ -6,9 +6,9 @@
  */
 /* The pane is a column of one child; making it a row leaves room beside it. */
 .p-view_contents--primary { flex-direction: row !important; }
-.p-view_contents--primary > div:not(#slackmod-member-column) { flex: 1 1 auto; min-width: 0; }
+.p-view_contents--primary > div:not(#betterslack-member-column) { flex: 1 1 auto; min-width: 0; }
 
-#slackmod-member-column {
+#betterslack-member-column {
   flex: 0 0 240px;
   order: 99;
   display: flex;
@@ -30,18 +30,18 @@
  * 42, tightening as the window got shorter, and there was never any overflow
  * for the scrollbar to appear on. Both reported symptoms were this one line.
  */
-#slackmod-member-column .slackmod-members__heading,
-#slackmod-member-column .slackmod-members__row,
-#slackmod-member-column .slackmod-members__note { flex: 0 0 auto; }
+#betterslack-member-column .betterslack-members__heading,
+#betterslack-member-column .betterslack-members__row,
+#betterslack-member-column .betterslack-members__note { flex: 0 0 auto; }
 
-#slackmod-member-column .slackmod-members__heading {
+#betterslack-member-column .betterslack-members__heading {
   padding: 12px 8px 4px;
   font-size: 12px;
   font-weight: var(--custom-font-weight-bold, 700);
   text-transform: uppercase;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
 }
-#slackmod-member-column .slackmod-members__row {
+#betterslack-member-column .betterslack-members__row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -55,11 +55,11 @@
   border: 0;
   font: inherit;
 }
-#slackmod-member-column .slackmod-members__row:hover {
+#betterslack-member-column .betterslack-members__row:hover {
   background: var(--dt_color-base-pry-hover, rgba(var(--sk_foreground_low, 29, 28, 29), 0.06));
 }
-#slackmod-member-column .slackmod-members__figure { position: relative; flex: 0 0 auto; }
-#slackmod-member-column .slackmod-members__avatar {
+#betterslack-member-column .betterslack-members__figure { position: relative; flex: 0 0 auto; }
+#betterslack-member-column .betterslack-members__avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -67,7 +67,7 @@
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
 }
 /* Slack draws presence as a ring cut into the avatar; this is Discord's dot. */
-#slackmod-member-column .slackmod-members__dot {
+#betterslack-member-column .betterslack-members__dot {
   position: absolute;
   right: -2px;
   bottom: -2px;
@@ -77,10 +77,10 @@
   border: 3px solid var(--dt_color-base-sec, #f8f8f8);
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.4);
 }
-#slackmod-member-column .slackmod-members__dot--active {
+#betterslack-member-column .betterslack-members__dot--active {
   background: var(--dt_color-content-hgl-2, #007a5a);
 }
-#slackmod-member-column .slackmod-members__name {
+#betterslack-member-column .betterslack-members__name {
   min-width: 0;
   font-size: 15px;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
@@ -88,10 +88,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#slackmod-member-column .slackmod-members__row--active .slackmod-members__name {
+#betterslack-member-column .betterslack-members__row--active .betterslack-members__name {
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
 }
-#slackmod-member-column .slackmod-members__note {
+#betterslack-member-column .betterslack-members__note {
   padding: 8px;
   font-size: 13px;
   line-height: 1.5;
@@ -99,11 +99,11 @@
 }
 
 /* Below this the column costs more width than it earns. */
-@media (max-width: 1100px) { #slackmod-member-column { display: none; } }
+@media (max-width: 1100px) { #betterslack-member-column { display: none; } }
 
 /* The profile dialog. Slack has no class for any of this, so it is built from
    its design tokens and follows whatever theme is on. */
-.slackmod-profile__head { display: flex; gap: 16px; align-items: flex-start; }
+.betterslack-profile__head { display: flex; gap: 16px; align-items: flex-start; }
 /*
  * The avatar wears Slack's own p-r_member_profile__avatar__img, because that is
  * the hook other plugins read the user id from. Borrowing the class borrows its
@@ -112,7 +112,7 @@
  * explicitly, hence the !important on a selector that is already specific.
  * (No backticks in here: this whole block is inside a template literal.)
  */
-.slackmod-profile .slackmod-profile__avatar {
+.betterslack-profile .betterslack-profile__avatar {
   position: static !important;
   inset: auto !important;
   width: 96px !important;
@@ -123,50 +123,50 @@
   object-fit: cover;
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
 }
-.slackmod-profile__identity { min-width: 0; padding-top: 2px; }
-.slackmod-profile__name {
+.betterslack-profile__identity { min-width: 0; padding-top: 2px; }
+.betterslack-profile__name {
   font-size: 22px;
   font-weight: var(--custom-font-weight-black, 900);
   line-height: 1.2;
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
 }
-.slackmod-profile__line {
+.betterslack-profile__line {
   margin-top: 4px;
   font-size: 15px;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
 }
-.slackmod-profile__presence { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
-.slackmod-profile__dot {
+.betterslack-profile__presence { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
+.betterslack-profile__dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.5);
 }
-.slackmod-profile__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
-.slackmod-profile__actions {
+.betterslack-profile__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
+.betterslack-profile__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 18px;
 }
-.slackmod-profile__menu { position: fixed; top: 0; left: 0; z-index: 1100; }
-.slackmod-profile__danger { color: var(--dt_color-content-imp, #c01343); }
-.slackmod-profile__files { display: flex; flex-direction: column; gap: 8px; }
-.slackmod-profile__file { font-size: 14px; }
+.betterslack-profile__menu { position: fixed; top: 0; left: 0; z-index: 1100; }
+.betterslack-profile__danger { color: var(--dt_color-content-imp, #c01343); }
+.betterslack-profile__files { display: flex; flex-direction: column; gap: 8px; }
+.betterslack-profile__file { font-size: 14px; }
 
 /* Slack pairs a glyph with the label; the gap is its own. */
-.slackmod-profile__action { display: inline-flex; align-items: center; gap: 6px; }
+.betterslack-profile__action { display: inline-flex; align-items: center; gap: 6px; }
 
 /* Slack's own overflow button is square and icon-only; match it. */
-.slackmod-profile__more {
+.betterslack-profile__more {
   min-width: 0;
   padding: 0 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-.slackmod-profile__fields { margin-top: 20px; }
-.slackmod-profile__note {
+.betterslack-profile__fields { margin-top: 20px; }
+.betterslack-profile__note {
   margin-top: 16px;
   font-size: 12px;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.55);

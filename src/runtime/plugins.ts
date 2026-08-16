@@ -133,7 +133,7 @@ export class PluginHost {
     try {
       await plugin.module.stop?.();
     } catch (err) {
-      console.error(`[slackmod] plugin "${id}" threw during stop():`, err);
+      console.error(`[betterslack] plugin "${id}" threw during stop():`, err);
     }
     // Run whatever the plugin registered through the api, even if stop() failed
     // or never existed: a plugin that leaks observers degrades the whole app.
@@ -155,7 +155,7 @@ export function collectCleanups(): { add: (fn: Cleanup) => void; disposeAll: () 
         try {
           cleanups.pop()!();
         } catch (err) {
-          console.error('[slackmod] cleanup threw', err);
+          console.error('[betterslack] cleanup threw', err);
         }
       }
     },

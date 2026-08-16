@@ -6,7 +6,7 @@
   "author": "AirOne-dev",
   "description": "One-click permalink copy in the hover actions, instead of opening the overflow menu and hunting for Copy link. Confirms with a small toast.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": ["messages"]
 }

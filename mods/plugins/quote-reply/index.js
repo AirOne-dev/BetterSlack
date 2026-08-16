@@ -35,7 +35,7 @@ export default {
     // Slack sizes its own action buttons through classes we reuse, so this only
     // needs to cover the icon itself.
     api.css(`
-      .slackmod-action svg { width: 20px; height: 20px; display: block; }
+      .betterslack-action svg { width: 20px; height: 20px; display: block; }
     `);
 
     api.slack.addMessageAction({

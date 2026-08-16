@@ -1,7 +1,7 @@
 // Renderer half of the bridge to the loader.
 //
 // Outbound goes through the CDP binding the loader registered on `window`;
-// inbound arrives as a call to `window.__slackmodRecv` driven by
+// inbound arrives as a call to `window.__betterslackRecv` driven by
 // Runtime.evaluate. Both sides speak JSON strings.
 
 import {
@@ -43,7 +43,7 @@ export class Bridge {
         try {
           listener(envelope.payload as PushEvent);
         } catch (err) {
-          console.error('[slackmod] event listener threw', err);
+          console.error('[betterslack] event listener threw', err);
         }
       }
       return;
@@ -54,7 +54,7 @@ export class Bridge {
       // or -- the reason this line exists -- the receiver on `window` belongs
       // to a different Bridge than the one that asked, which is what happens
       // when a runtime is injected over a live one.
-      console.warn(`[slackmod] an answer arrived for rid ${envelope.rid}, which nothing is waiting for`);
+      console.warn(`[betterslack] an answer arrived for rid ${envelope.rid}, which nothing is waiting for`);
       return;
     }
     this.pending.delete(envelope.rid);
@@ -71,7 +71,7 @@ export class Bridge {
   request<T = unknown>(payload: Request): Promise<T> {
     const send = (window as unknown as Record<string, unknown>)[BINDING_NAME];
     if (typeof send !== 'function') {
-      return Promise.reject(new Error('SlackMod loader is not attached'));
+      return Promise.reject(new Error('BetterSlack loader is not attached'));
     }
     const rid = this.nextRid++;
     return new Promise<T>((resolve, reject) => {

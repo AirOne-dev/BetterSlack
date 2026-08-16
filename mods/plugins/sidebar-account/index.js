@@ -13,7 +13,7 @@
 // the strip presses that button, so the menu that opens is Slack's own with all
 // of its behaviour intact, and nothing here has to reimplement it.
 
-const STRIP_ID = 'slackmod-account-strip';
+const STRIP_ID = 'betterslack-account-strip';
 const STRIP_HEIGHT = 52;
 const BANNER_GAP = 8;
 
@@ -63,7 +63,7 @@ const CSS = `
      than as two add-ons that happened to land in the same window. */
   background: var(--dt_color-base-sec, rgba(var(--sk_foreground_min_solid, 248, 248, 248), 1));
 }
-#${STRIP_ID} .slackmod-me {
+#${STRIP_ID} .betterslack-me {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -74,8 +74,8 @@ const CSS = `
      press. A hover state here would promise a click that does nothing. */
   cursor: default;
 }
-#${STRIP_ID} .slackmod-me__figure { position: relative; flex: 0 0 auto; }
-#${STRIP_ID} .slackmod-me__dot {
+#${STRIP_ID} .betterslack-me__figure { position: relative; flex: 0 0 auto; }
+#${STRIP_ID} .betterslack-me__dot {
   position: absolute;
   right: -2px;
   bottom: -2px;
@@ -86,10 +86,10 @@ const CSS = `
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.45);
 }
 /* Availability, in the theme's own colours rather than Discord's literals. */
-#${STRIP_ID} .slackmod-me__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
-#${STRIP_ID} .slackmod-me__dot--dnd { background: var(--dt_color-content-imp, #c01343); }
+#${STRIP_ID} .betterslack-me__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
+#${STRIP_ID} .betterslack-me__dot--dnd { background: var(--dt_color-content-imp, #c01343); }
 
-#${STRIP_ID} .slackmod-me__settings {
+#${STRIP_ID} .betterslack-me__settings {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -102,11 +102,11 @@ const CSS = `
   cursor: pointer;
   color: var(--dt_color-theme-content-inv-sec, rgba(255, 255, 255, 0.7));
 }
-#${STRIP_ID} .slackmod-me__settings:hover {
+#${STRIP_ID} .betterslack-me__settings:hover {
   background: var(--dt_color-base-pry-hover, rgba(var(--sk_foreground_low, 29, 28, 29), 0.1));
   color: var(--dt_color-theme-content-inv-pry, #fff);
 }
-#${STRIP_ID} .slackmod-me__avatar {
+#${STRIP_ID} .betterslack-me__avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -114,19 +114,19 @@ const CSS = `
   object-fit: cover;
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
 }
-#${STRIP_ID} .slackmod-me__text { min-width: 0; line-height: 1.2; }
-#${STRIP_ID} .slackmod-me__name,
-#${STRIP_ID} .slackmod-me__status {
+#${STRIP_ID} .betterslack-me__text { min-width: 0; line-height: 1.2; }
+#${STRIP_ID} .betterslack-me__name,
+#${STRIP_ID} .betterslack-me__status {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#${STRIP_ID} .slackmod-me__name {
+#${STRIP_ID} .betterslack-me__name {
   font-size: 14px;
   font-weight: var(--custom-font-weight-bold, 700);
   color: var(--dt_color-theme-content-inv-pry, #fff);
 }
-#${STRIP_ID} .slackmod-me__status {
+#${STRIP_ID} .betterslack-me__status {
   font-size: 12px;
   color: var(--dt_color-theme-content-inv-sec, rgba(255, 255, 255, 0.7));
 }
@@ -220,29 +220,29 @@ export default {
       // which the button's aria-label ("User: ...", "Utilisateur : ...") does not.
       const userId = source?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i)?.[1]?.toUpperCase() ?? null;
 
-      const avatar = api.dom.h('img', { class: 'slackmod-me__avatar', alt: '' });
+      const avatar = api.dom.h('img', { class: 'betterslack-me__avatar', alt: '' });
       // The rail renders a 48; this one has room for a 72.
       const best = api.slack.avatarUrl(source, 72) ?? source;
       if (best) avatar.setAttribute('src', best);
 
-      const name = api.dom.h('div', { class: 'slackmod-me__name' }, ['…']);
+      const name = api.dom.h('div', { class: 'betterslack-me__name' }, ['…']);
       // Slack's own screen-reader label for the presence indicator, so it is
       // already in the user's language.
       const presence = document
         .querySelector('[data-qa="user-button"] [data-qa="presence_indicator"]')
         ?.getAttribute('aria-label') ?? '';
-      const status = api.dom.h('div', { class: 'slackmod-me__status' }, [presence]);
+      const status = api.dom.h('div', { class: 'betterslack-me__status' }, [presence]);
 
-      const dot = api.dom.h('span', { class: 'slackmod-me__dot' });
-      const me = api.dom.h('div', { class: 'slackmod-me' }, [
-        api.dom.h('span', { class: 'slackmod-me__figure' }, [avatar, dot]),
-        api.dom.h('div', { class: 'slackmod-me__text' }, [name, status]),
+      const dot = api.dom.h('span', { class: 'betterslack-me__dot' });
+      const me = api.dom.h('div', { class: 'betterslack-me' }, [
+        api.dom.h('span', { class: 'betterslack-me__figure' }, [avatar, dot]),
+        api.dom.h('div', { class: 'betterslack-me__text' }, [name, status]),
       ]);
 
       // The gear is the control. Pressing it opens Slack's own account menu,
       // which is what clicking the whole strip used to do.
       const settings = api.dom.h('button', {
-        class: 'slackmod-me__settings',
+        class: 'betterslack-me__settings',
         type: 'button',
         'aria-label': t('settings'),
       });
@@ -266,8 +266,8 @@ export default {
         // minute. Writing a class onto a node about to be inserted is fine.
         if (!userId || !api.slack.web.available) return;
         const { state } = await api.slack.web.availability(userId);
-        dot.classList.toggle('slackmod-me__dot--dnd', state === 'dnd');
-        dot.classList.toggle('slackmod-me__dot--active', state === 'active');
+        dot.classList.toggle('betterslack-me__dot--dnd', state === 'dnd');
+        dot.classList.toggle('betterslack-me__dot--active', state === 'active');
       }, 60_000);
 
       if (userId && api.slack.web.available) {

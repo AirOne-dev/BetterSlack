@@ -8,7 +8,7 @@
 const LAYER_ORDER = ['theme', 'plugin', 'user'] as const;
 export type Layer = (typeof LAYER_ORDER)[number];
 
-const ATTR = 'data-slackmod-style';
+const ATTR = 'data-betterslack-style';
 
 /**
  * Follow a theme's own `@import './...'` statements and paste the files in.
@@ -68,7 +68,7 @@ export function inlineCssImports(
   const source = files[entry];
   if (source === undefined) return '';
   if (seen.includes(entry)) {
-    console.warn(`[slackmod] circular @import: ${[...seen, entry].join(' -> ')}`);
+    console.warn(`[betterslack] circular @import: ${[...seen, entry].join(' -> ')}`);
     return '';
   }
   return replaceOutsideComments(
@@ -77,7 +77,7 @@ export function inlineCssImports(
     ([whole, spec]) => {
       const target = resolvePath(entry, spec!);
       if (files[target] === undefined) {
-        console.warn(`[slackmod] @import "${spec}" from "${entry}" matches no file`);
+        console.warn(`[betterslack] @import "${spec}" from "${entry}" matches no file`);
         return whole;
       }
       return `\n/* ${target} */\n${inlineCssImports(files, target, [...seen, entry])}\n`;

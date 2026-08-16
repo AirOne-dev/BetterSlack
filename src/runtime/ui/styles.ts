@@ -30,9 +30,9 @@ import { CODE_CSS } from './code.js';
 
 export const PANEL_CSS = CODE_CSS + `
 /* .c-dialog ships opacity:0 and is faded in by Slack's own transition. */
-#slackmod-panel.c-dialog { opacity: 1; }
+#betterslack-panel.c-dialog { opacity: 1; }
 
-.slackmod-content {
+.betterslack-content {
   display: flex;
   flex-direction: column;
   width: min(880px, calc(100% - 32px));
@@ -42,18 +42,18 @@ export const PANEL_CSS = CODE_CSS + `
   opacity: 1;
 }
 
-.slackmod-header {
+.betterslack-header {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 20px 24px 12px;
 }
-.slackmod-close { margin-left: auto; flex: 0 0 auto; }
+.betterslack-close { margin-left: auto; flex: 0 0 auto; }
 
-.slackmod-layout { display: flex; flex: 1; min-height: 0; }
+.betterslack-layout { display: flex; flex: 1; min-height: 0; }
 
 /* Left rail, in the shape Slack's Preferences dialog uses. */
-.slackmod-nav {
+.betterslack-nav {
   flex: 0 0 176px;
   display: flex;
   flex-direction: column;
@@ -61,7 +61,7 @@ export const PANEL_CSS = CODE_CSS + `
   padding: 4px 8px 16px 16px;
   overflow-y: auto;
 }
-.slackmod-nav__item {
+.betterslack-nav__item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -73,18 +73,18 @@ export const PANEL_CSS = CODE_CSS + `
   text-align: left;
   cursor: pointer;
 }
-.slackmod-nav__item:hover { background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08); }
-.slackmod-nav__item[aria-selected="true"] {
+.betterslack-nav__item:hover { background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08); }
+.betterslack-nav__item[aria-selected="true"] {
   background: rgba(var(--sk_highlight, 18, 100, 163), 1);
   color: rgba(var(--sk_primary_background, 255, 255, 255), 1);
   font-weight: var(--custom-font-weight-bold, 700);
 }
-.slackmod-nav__item[aria-selected="true"] .slackmod-count {
+.betterslack-nav__item[aria-selected="true"] .betterslack-count {
   background: rgba(255, 255, 255, 0.24);
   color: inherit;
 }
 
-.slackmod-count {
+.betterslack-count {
   margin-left: auto;
   min-width: 20px;
   padding: 0 6px;
@@ -96,9 +96,9 @@ export const PANEL_CSS = CODE_CSS + `
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
 }
 
-.slackmod-body { flex: 1; min-width: 0; padding-bottom: 20px; }
+.betterslack-body { flex: 1; min-width: 0; padding-bottom: 20px; }
 
-.slackmod-toolbar {
+.betterslack-toolbar {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -108,8 +108,8 @@ export const PANEL_CSS = CODE_CSS + `
   padding: 8px 0 12px;
   background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
 }
-.slackmod-shelves { display: flex; gap: 2px; }
-.slackmod-shelf {
+.betterslack-shelves { display: flex; gap: 2px; }
+.betterslack-shelf {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -119,14 +119,14 @@ export const PANEL_CSS = CODE_CSS + `
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
   cursor: pointer;
 }
-.slackmod-shelf:hover { background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08); }
-.slackmod-shelf[aria-selected="true"] {
+.betterslack-shelf:hover { background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08); }
+.betterslack-shelf[aria-selected="true"] {
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
   font-weight: var(--custom-font-weight-bold, 700);
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
 }
 
-.slackmod-search {
+.betterslack-search {
   flex: 1;
   min-width: 0;
   padding: 8px 12px;
@@ -138,7 +138,7 @@ export const PANEL_CSS = CODE_CSS + `
   background: transparent;
   border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
 }
-.slackmod-search:focus {
+.betterslack-search:focus {
   outline: none;
   border-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
   box-shadow: 0 0 0 1px rgba(var(--sk_highlight, 18, 100, 163), 1);
@@ -162,21 +162,21 @@ export const PANEL_CSS = CODE_CSS + `
 
 /* The update notice: the same row as everything else, marked by an accent edge
  * rather than a colour of its own, so it reads as important without shouting. */
-.slackmod-row--notice {
+.betterslack-row--notice {
   border-left: 3px solid rgba(var(--sk_highlight, 18, 100, 163), 1);
   padding-left: 12px;
 }
 
-.slackmod-row {
+.betterslack-row {
   display: flex;
   align-items: flex-start;
   gap: 16px;
   padding: 14px 0;
   border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.13);
 }
-.slackmod-row:last-child { border-bottom: none; }
-.slackmod-row__meta { flex: 1; min-width: 0; }
-.slackmod-row__name {
+.betterslack-row:last-child { border-bottom: none; }
+.betterslack-row__meta { flex: 1; min-width: 0; }
+.betterslack-row__name {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -184,23 +184,23 @@ export const PANEL_CSS = CODE_CSS + `
   font-weight: var(--custom-font-weight-bold, 700);
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
 }
-.slackmod-row__desc {
+.betterslack-row__desc {
   margin-top: 2px;
   font-size: 13px;
   line-height: 1.46;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
 }
-.slackmod-row__sub {
+.betterslack-row__sub {
   margin-top: 6px;
   font-size: 12px;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.55);
 }
-.slackmod-row__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.slackmod-row__more { opacity: 0; transition: opacity 80ms ease; }
-.slackmod-row:hover .slackmod-row__more,
-.slackmod-row__more:focus-visible { opacity: 1; }
+.betterslack-row__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.betterslack-row__more { opacity: 0; transition: opacity 80ms ease; }
+.betterslack-row:hover .betterslack-row__more,
+.betterslack-row__more:focus-visible { opacity: 1; }
 
-.slackmod-tag {
+.betterslack-tag {
   padding: 1px 6px;
   border-radius: 3px;
   font-size: 11px;
@@ -212,17 +212,17 @@ export const PANEL_CSS = CODE_CSS + `
 }
 
 /* A theme's required plugins, on its row and in the dialog. */
-.slackmod-row__requires {
+.betterslack-row__requires {
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.4;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
 }
-.slackmod-row__requires--missing {
+.betterslack-row__requires--missing {
   color: var(--dt_color-content-warn, #b8730a);
   font-weight: var(--custom-font-weight-bold, 700);
 }
-.slackmod-row__review {
+.betterslack-row__review {
   color: var(--dt_color-content-link, #1264a3);
   font-size: 12px;
   font-weight: var(--custom-font-weight-bold, 700);
@@ -230,15 +230,15 @@ export const PANEL_CSS = CODE_CSS + `
   cursor: pointer;
 }
 
-#slackmod-requires.c-dialog { opacity: 1; z-index: 1101; }
-.slackmod-content--narrow {
+#betterslack-requires.c-dialog { opacity: 1; z-index: 1101; }
+.betterslack-content--narrow {
   width: min(520px, calc(100% - 32px));
   max-width: min(520px, calc(100% - 32px));
   height: auto;
   max-height: min(560px, calc(100% - 64px));
 }
-.slackmod-requires { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
-.slackmod-require {
+.betterslack-requires { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.betterslack-require {
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -248,33 +248,33 @@ export const PANEL_CSS = CODE_CSS + `
      not an error the user is being blamed for. */
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08);
 }
-.slackmod-require__title {
+.betterslack-require__title {
   font-size: 15px;
   font-weight: var(--custom-font-weight-bold, 700);
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
 }
-.slackmod-require__detail {
+.betterslack-require__detail {
   font-size: 13px;
   line-height: 1.5;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
 }
-.slackmod-actions--dialog {
+.betterslack-actions--dialog {
   justify-content: flex-end;
   padding: 4px 24px 20px;
   margin-top: 0;
 }
 
 /* Slack has no reusable switch class, so this is built from its variables. */
-.slackmod-switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; cursor: pointer; }
-.slackmod-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.slackmod-switch__track {
+.betterslack-switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; cursor: pointer; }
+.betterslack-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.betterslack-switch__track {
   position: absolute;
   inset: 0;
   border-radius: 999px;
   background: rgba(var(--sk_foreground_max, 29, 28, 29), 0.4);
   transition: background 120ms ease;
 }
-.slackmod-switch__thumb {
+.betterslack-switch__thumb {
   position: absolute;
   top: 3px;
   left: 3px;
@@ -284,41 +284,41 @@ export const PANEL_CSS = CODE_CSS + `
   background: #fff;
   transition: transform 120ms ease;
 }
-.slackmod-switch input:checked + .slackmod-switch__track {
+.betterslack-switch input:checked + .betterslack-switch__track {
   background: var(--dt_color-content-hgl-2, #007a5a);
 }
-.slackmod-switch input:checked + .slackmod-switch__track .slackmod-switch__thumb {
+.betterslack-switch input:checked + .betterslack-switch__track .betterslack-switch__thumb {
   transform: translateX(16px);
 }
-.slackmod-switch input:focus-visible + .slackmod-switch__track {
+.betterslack-switch input:focus-visible + .betterslack-switch__track {
   box-shadow: 0 0 0 2px rgba(var(--sk_highlight, 18, 100, 163), 1);
 }
 
-.slackmod-empty {
+.betterslack-empty {
   padding: 32px 16px;
   text-align: center;
   font-size: 14px;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
 }
-.slackmod-hint {
+.betterslack-hint {
   margin: 4px 0 16px;
   font-size: 13px;
   line-height: 1.5;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
 }
-.slackmod-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
-.slackmod-status { font-size: 13px; color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
-.slackmod-danger { color: var(--dt_color-content-imp, #c01343); }
+.betterslack-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.betterslack-status { font-size: 13px; color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
+.betterslack-danger { color: var(--dt_color-content-imp, #c01343); }
 
-.slackmod-info {
+.betterslack-info {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 6px 16px;
   margin: 16px 0 0;
   font-size: 13px;
 }
-.slackmod-info dt { color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
-.slackmod-info dd {
+.betterslack-info dt { color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
+.betterslack-info dd {
   margin: 0;
   font-family: Monaco, Menlo, monospace;
   font-size: 12px;
@@ -334,12 +334,12 @@ export const PANEL_CSS = CODE_CSS + `
  * since it moved into the light DOM; api.ui.modal did not, so every dialog a
  * mod opened was in the document, focusable, and completely invisible.
  */
-.slackmod-widget_dialog { z-index: 1014; opacity: 1; }
-.slackmod-widget_content { height: auto; max-height: min(640px, calc(100% - 64px)); }
-.slackmod-widget_content .slackmod-body { flex: 0 1 auto; padding-bottom: 8px; }
-.slackmod-widget_titles { flex: 1; min-width: 0; }
-.slackmod-widget_subtitle { margin: 4px 0 0; }
-.slackmod-widget_footer {
+.betterslack-widget_dialog { z-index: 1014; opacity: 1; }
+.betterslack-widget_content { height: auto; max-height: min(640px, calc(100% - 64px)); }
+.betterslack-widget_content .betterslack-body { flex: 0 1 auto; padding-bottom: 8px; }
+.betterslack-widget_titles { flex: 1; min-width: 0; }
+.betterslack-widget_subtitle { margin: 4px 0 0; }
+.betterslack-widget_footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -347,14 +347,14 @@ export const PANEL_CSS = CODE_CSS + `
 }
 
 /* Slack pins the top offset on .c-popover__content, so this layer is ours. */
-.slackmod-menu_layer {
+.betterslack-menu_layer {
   position: fixed;
   top: 0;
   left: 0;
   z-index: 1013;
   will-change: transform;
 }
-.slackmod-menu_layer .c-menu {
+.betterslack-menu_layer .c-menu {
   min-width: 180px;
   border-radius: 6px;
   background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
@@ -449,9 +449,9 @@ export const WIDGET_CSS = `
  * wrapper this button does not use.
  */
 export const LAUNCHER_CSS = `
-.slackmod-launcher svg,
-.slackmod-toolbar-button svg,
-.slackmod-action svg {
+.betterslack-launcher svg,
+.betterslack-toolbar-button svg,
+.betterslack-action svg {
   width: 20px;
   height: 20px;
   display: block;
@@ -464,7 +464,7 @@ export const LAUNCHER_CSS = `
  * one of theirs and the name would lie about what the button is; this states
  * the size directly instead.
  */
-.p-view_header__actions .slackmod-toolbar-button {
+.p-view_header__actions .betterslack-toolbar-button {
   width: 28px;
   height: 28px;
 }
@@ -472,8 +472,8 @@ export const LAUNCHER_CSS = `
 /* Slack's unread badge, on our own button: the same pill, the same red, the
  * same place. Anything else in that strip would read as a Slack control that
  * had gone wrong. */
-.slackmod-launcher { position: relative; }
-.slackmod-launcher__badge {
+.betterslack-launcher { position: relative; }
+.betterslack-launcher__badge {
   position: absolute;
   top: -2px;
   right: -2px;

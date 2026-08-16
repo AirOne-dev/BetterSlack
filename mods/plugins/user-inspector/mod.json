@@ -6,7 +6,7 @@
   "author": "AirOne-dev",
   "description": "Shows everything Slack's API knows about a member \u2014 roles, timezone, presence, do-not-disturb, custom fields and every avatar size \u2014 as extra sections inside their profile, styled like Slack's own. Read-only; nothing leaves your machine.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": [
     "profile",

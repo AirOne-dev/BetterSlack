@@ -10,7 +10,7 @@
     "member-sidebar",
     "sidebar-account"
   ],
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": [
     "dark",

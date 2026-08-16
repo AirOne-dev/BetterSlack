@@ -14,7 +14,7 @@ test('mounts at the foot of the sidebar and fills in the looked-up name', async 
   try {
     await plugin.start(api);
 
-    const strip = document.getElementById('slackmod-account-strip');
+    const strip = document.getElementById('betterslack-account-strip');
     assert.ok(strip, 'the strip is mounted');
     assert.ok(
       recorded.mounted.some((m) => m.container === '.p-channel_sidebar'),
@@ -22,10 +22,10 @@ test('mounts at the foot of the sidebar and fills in the looked-up name', async 
     );
 
     // Availability comes straight off the page, so it is right immediately.
-    assert.equal(strip.querySelector('.slackmod-me__status').textContent, 'Active');
+    assert.equal(strip.querySelector('.betterslack-me__status').textContent, 'Active');
 
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.equal(strip.querySelector('.slackmod-me__name').textContent, 'Erwan');
+    assert.equal(strip.querySelector('.betterslack-me__name').textContent, 'Erwan');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -57,10 +57,10 @@ test('the gear opens Slack’s account menu; the strip itself is inert', async (
     document.querySelector('[data-qa="user-button"]').addEventListener('click', () => { clicked++; });
 
     // The strip shows who you are; it promises no click, so it performs none.
-    document.querySelector('#slackmod-account-strip .slackmod-me').click();
+    document.querySelector('#betterslack-account-strip .betterslack-me').click();
     assert.equal(clicked, 0);
 
-    document.querySelector('#slackmod-account-strip .slackmod-me__settings').click();
+    document.querySelector('#betterslack-account-strip .betterslack-me__settings').click();
     assert.equal(clicked, 1, 'Slack opens its own menu rather than one we reimplemented');
   } finally {
     for (const dispose of recorded.disposers) dispose();
@@ -79,9 +79,9 @@ test('shows availability as a dot, coloured from Slack’s answer', async () => 
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    const dot = document.querySelector('#slackmod-account-strip .slackmod-me__dot');
+    const dot = document.querySelector('#betterslack-account-strip .betterslack-me__dot');
     assert.ok(dot, 'the dot sits on the avatar, the way every chat app does it');
-    assert.ok(dot.classList.contains('slackmod-me__dot--active'));
+    assert.ok(dot.classList.contains('betterslack-me__dot--active'));
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -103,9 +103,9 @@ test('do not disturb outranks being active, while it is actually on', async () =
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    const dot = document.querySelector('#slackmod-account-strip .slackmod-me__dot');
-    assert.ok(dot.classList.contains('slackmod-me__dot--dnd'));
-    assert.ok(!dot.classList.contains('slackmod-me__dot--active'));
+    const dot = document.querySelector('#betterslack-account-strip .betterslack-me__dot');
+    assert.ok(dot.classList.contains('betterslack-me__dot--dnd'));
+    assert.ok(!dot.classList.contains('betterslack-me__dot--active'));
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -123,9 +123,9 @@ test('survives having no session token', async () => {
   const { api, recorded } = createTestApi({ web: { available: false } });
   try {
     await plugin.start(api);
-    const strip = document.getElementById('slackmod-account-strip');
+    const strip = document.getElementById('betterslack-account-strip');
     assert.ok(strip, 'the avatar and availability still render');
-    assert.equal(strip.querySelector('.slackmod-me__name').textContent, '');
+    assert.equal(strip.querySelector('.betterslack-me__name').textContent, '');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -193,7 +193,7 @@ test('moves Slack’s account menu next to the gear that opened it', async () =>
       document.body.append(panel);
     });
 
-    document.querySelector('#slackmod-account-strip .slackmod-me__settings').click();
+    document.querySelector('#betterslack-account-strip .betterslack-me__settings').click();
     await new Promise((resolve) => setTimeout(resolve, 250));
 
     assert.notEqual(panel.style.top, '946px', 'it was moved off Slack’s anchor');

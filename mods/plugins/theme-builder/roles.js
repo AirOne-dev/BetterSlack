@@ -56,7 +56,7 @@ export function buildThemeCss(palette, name = 'Custom', extra = '', tokens = {})
   const rgb = (key) => formatTriplet(palette[key]);
   const dark = luminance(palette.bg) < 0.4;
   return `/*
- * ${name} — built with SlackMod's theme builder.
+ * ${name} — built with BetterSlack's theme builder.
  *
  * Twelve roles across the four families Slack paints from. The chrome
  * (--dt_color-theme-*) and legacy (--sk_*) families need !important because

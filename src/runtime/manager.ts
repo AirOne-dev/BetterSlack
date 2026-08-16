@@ -39,7 +39,7 @@ function waitForClient(): Promise<void> {
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
     const timer = setTimeout(() => {
-      console.warn('[slackmod] Slack’s client never appeared; starting plugins anyway');
+      console.warn('[betterslack] Slack’s client never appeared; starting plugins anyway');
       finish();
     }, CLIENT_TIMEOUT_MS);
   });
@@ -135,7 +135,7 @@ export class ModManager {
       try {
         listener();
       } catch (err) {
-        console.error('[slackmod] change listener threw', err);
+        console.error('[betterslack] change listener threw', err);
       }
     }
   }
@@ -150,12 +150,12 @@ export class ModManager {
     // its own colours before ours land.
     for (const { record, files, id } of enabled) {
       if (!record || files === undefined) {
-        console.warn(`[slackmod] "${id}" is enabled but was not delivered by the loader`);
+        console.warn(`[betterslack] "${id}" is enabled but was not delivered by the loader`);
         continue;
       }
       if (record.type !== 'theme') continue;
       await this.apply(record, files).catch((err) => {
-        console.error(`[slackmod] could not apply "${id}":`, err);
+        console.error(`[betterslack] could not apply "${id}":`, err);
       });
     }
 
@@ -181,7 +181,7 @@ export class ModManager {
     for (const { record, files, id } of enabled) {
       if (!record || files === undefined || record.type === 'theme') continue;
       await this.apply(record, files).catch((err) => {
-        console.error(`[slackmod] could not apply "${id}":`, err);
+        console.error(`[betterslack] could not apply "${id}":`, err);
       });
     }
     this.applyCustomCss();
@@ -247,7 +247,7 @@ export class ModManager {
           author: 'you',
           description,
           entry: 'theme.css',
-          slackmodApi: 1,
+          betterslackApi: 1,
         };
         this.mods = await this.bridge.request<ModRecord[]>({
           type: 'mod.install',
@@ -295,7 +295,7 @@ export class ModManager {
       const files = this.sources[id] ?? (await this.fetchSource(id).catch(() => null));
       if (files === null) continue;
       await this.apply(record, files).catch((err) => {
-        console.error(`[slackmod] could not apply "${id}":`, err);
+        console.error(`[betterslack] could not apply "${id}":`, err);
       });
     }
   }
@@ -375,7 +375,7 @@ export class ModManager {
       // copies of the plugin end up fighting over the same DOM.
       await this.unapply(record);
       await this.apply(record, event.files).catch((err) => {
-        console.error(`[slackmod] hot reload of "${event.id}" failed:`, err);
+        console.error(`[betterslack] hot reload of "${event.id}" failed:`, err);
       });
       this.notify();
     }

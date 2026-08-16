@@ -12,7 +12,7 @@
 
 import { h, type Cleanup } from '../dom.js';
 
-const LAYER_ID = 'slackmod-menu-layer';
+const LAYER_ID = 'betterslack-menu-layer';
 const MARGIN = 8;
 
 export interface MenuItem {
@@ -78,7 +78,7 @@ export function openMenu(anchor: HTMLElement, items: MenuItem[], options: MenuOp
       ...(item.disabled ? { disabled: 'disabled', 'aria-disabled': 'true' } : {}),
     }, [
       item.icon ? h('span', { class: 'c-menu_item__icon' }) : null,
-      h('div', { class: `c-menu_item__label${item.danger ? ' slackmod-danger' : ''}` }, [item.label]),
+      h('div', { class: `c-menu_item__label${item.danger ? ' betterslack-danger' : ''}` }, [item.label]),
     ].filter(Boolean) as Node[]);
     if (item.icon) {
       const icon = button.querySelector('.c-menu_item__icon');
@@ -93,7 +93,7 @@ export function openMenu(anchor: HTMLElement, items: MenuItem[], options: MenuOp
     list.append(h('div', { class: 'c-menu_item__li', 'data-qa': 'menu_item_button-wrapper' }, [button]));
   }
 
-  const layer = h('div', { id: LAYER_ID, class: 'slackmod-menu_layer' }, [
+  const layer = h('div', { id: LAYER_ID, class: 'betterslack-menu_layer' }, [
     h('div', { class: 'c-menu' }, [h('div', { class: 'c-menu__items_scroller' }, [list])]),
   ]);
   doc.body.append(layer);

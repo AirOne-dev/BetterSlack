@@ -1,7 +1,7 @@
 /**
  * Composer Character Count
  *
- * A worked example of the SlackMod plugin API:
+ * A worked example of the BetterSlack plugin API:
  *   - anchors on `data-qa` attributes rather than Slack's hashed class names
  *   - keeps its node mounted across Slack's re-renders without duplicating it
  *   - reads a threshold from persisted settings
@@ -17,7 +17,7 @@ const SLACK_LIMIT = 4000;
 
 const COMPOSER = '[data-qa="message_input"]';
 const EDITOR = '.ql-editor';
-const NODE_ID = 'slackmod-char-count';
+const NODE_ID = 'betterslack-char-count';
 
 export default {
   /**

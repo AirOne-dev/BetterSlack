@@ -19,16 +19,22 @@ tests/         Shared test harness (jsdom + a recording fake api)
 
 ## Commands
 
+**pnpm, not npm.** `pnpm-workspace.yaml` carries `allowBuilds: esbuild: true` --
+pnpm refuses to run a dependency's install script unless it is named there, and
+esbuild fetches its platform binary in one, so a fresh checkout fails on every
+command that touches the bundler without it.
+
 ```bash
-npm run build            # both bundles + dist/download.mjs
-npm start                # launch Slack with mods
-npm test                 # every mod's tests
-npm run test:mod -- <id> # one mod
-npm run test:core        # loader unit tests
-npm run check-structure  # is every mod loadable
-npm run validate-mods    # manifests
-npm run registry         # regenerate mods/registry.json (commit it)
-npm run typecheck
+pnpm install            # once; pnpm, and the lockfile is committed
+pnpm build            # both bundles + dist/download.mjs
+pnpm start                # launch Slack with mods
+pnpm test                 # every mod's tests
+ppnpm test:mod -- <id> # one mod
+ppnpm test:core        # loader unit tests
+pnpm check-structure  # is every mod loadable
+pnpm validate-mods    # manifests
+pnpm registry         # regenerate mods/registry.json (commit it)
+pnpm typecheck
 ```
 
 Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
@@ -89,7 +95,7 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   solid: grey window, no error, no console, `Runtime.evaluate` times out and
   Slack has to be killed. Slack's coachmark code evidently loops with whatever
   changes the DOM around it. Bisected against a running client — the same button
-  anchored on `#slackmod-control-button` is fine every time, which is now the
+  anchored on `#betterslack-control-button` is fine every time, which is now the
   control strip's default. When an anchor is missing, `addToolbarButton`
   prepends rather than appends: the end of a container is where the app's own
   re-renders land.
@@ -99,7 +105,7 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 - **Two mods anchored on the same neighbour froze Slack**, and this is the
   second freeze of exactly that shape. `keepMounted` used to ask its node to be
   the anchor's *immediate previous sibling*; every control-strip button defaults
-  to `before: '#slackmod-control-button'`, so with two of them each shoved the
+  to `before: '#betterslack-control-button'`, so with two of them each shoved the
   other aside, forever, inside a MutationObserver callback. Being anywhere
   before the anchor satisfies both. Every DOM touch -- move as well as insert --
   now counts toward the give-up limit, so no branch of that callback can spin.
@@ -107,8 +113,8 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 - **When Slack freezes, `Debugger.pause` names the loop** -- but only if
   `Debugger.enable` was sent *before* the thread got busy; enabling it
   afterwards never takes, and the first attempt at this came back empty.
-  `SLACKMOD_DIAGNOSE=1` does both, and prints what the client looks like at 3s,
-  8s and 16s. `SLACKMOD_NO_BOOTSCRIPT=1` forces the runtime in against a
+  `BETTERSLACK_DIAGNOSE=1` does both, and prints what the client looks like at 3s,
+  8s and 16s. `BETTERSLACK_NO_BOOTSCRIPT=1` forces the runtime in against a
   finished document, which is what made the freeze reproducible every time
   instead of one boot in five. `sample <renderer pid>` confirms it is JS rather
   than layout: V8 frames under `MicrotasksScope`.
@@ -122,8 +128,8 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   it depends on when the attach loop finds the target, and it looks exactly like
   the coachmark freeze, so check both.
 - **The loader forwards the page's own errors to the terminal**: uncaught
-  exceptions always, console warnings and errors mentioning slackmod, and
-  everything with `SLACKMOD_VERBOSE=1`. Without it the only way to see why a mod
+  exceptions always, console warnings and errors mentioning betterslack, and
+  everything with `BETTERSLACK_VERBOSE=1`. Without it the only way to see why a mod
   failed at boot is DevTools inside a Slack that may not be responding.
 - Reuse Slack's button classes rather than styling your own. Watch for
   `c-icon_button--default`: without it, icon buttons render 36px instead of 28px.
@@ -151,7 +157,7 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   both; `user-inspector` finds it and appends its sections, and reads the user
   id off the avatar URL. `member-sidebar`'s dialog is the first non-Slack thing
   to do it. `user-inspector` mounts **per pane** (stamped with
-  `data-slackmod-pane`) — a single `helpers.mount` filled whichever profile it
+  `data-betterslack-pane`) — a single `helpers.mount` filled whichever profile it
   reached first and starved the other.
 - **Borrowing a Slack class borrows its layout.** The avatar class above is
   `position: absolute` in Slack's stylesheet, which parked the dialog's avatar
@@ -317,7 +323,7 @@ the handful of rules `roles.js` writes directly (rail, sidebar,
 Chrome lighting up nothing. Both derived from `buildThemeCss` with a sentinel
 colour per role, never from a second table.
 
-**To see a mod's own window, screenshot it through CDP** -- `SLACKMOD_SHOT=<dir>`
+**To see a mod's own window, screenshot it through CDP** -- `BETTERSLACK_SHOT=<dir>`
 writes a PNG per attached window. `screencapture` photographs the desktop, and a
 window Slack opened is routinely on another Space or display, so it comes back
 without the window in it. This is how the builder's interface was looked at
@@ -364,13 +370,13 @@ in the client too.
 text; that is why `CODE_CSS` lives beside the tokeniser and is shared by the kit
 and by `PANEL_CSS` rather than copied.
 
-**Two runtimes can boot into one document.** `window.__slackmod` is only
+**Two runtimes can boot into one document.** `window.__betterslack` is only
 assigned at the *end* of an async boot, so the document-start script and a
 loader injection into the same live page both found it empty, both built a
 Bridge, and both started every plugin -- the second receiver on `window` won and
 the first runtime's plugins were left with a bridge nothing answers: every
 request timed out after fifteen seconds while their buttons sat there looking
-fine. `boot()` now claims `window.__SLACKMOD_BOOTING__` synchronously. Found
+fine. `boot()` now claims `window.__BETTERSLACK_BOOTING__` synchronously. Found
 through a theme gallery that came up blank, with six answers delivered by the
 loader and six timeouts in the page.
 

@@ -36,7 +36,7 @@ const button = (text) => () => {
 
 test('two mods anchored on the same neighbour settle instead of fighting', async () => {
   // The freeze this repository shipped: every control-strip button defaults to
-  // `before: "#slackmod-control-button"`, so with two of them each kept shoving
+  // `before: "#betterslack-control-button"`, so with two of them each kept shoving
   // the other aside to become its immediate previous sibling. Every shove is a
   // mutation, every mutation ran the callback again, and the renderer stopped
   // answering CDP altogether. Being *somewhere* before the anchor satisfies
@@ -158,26 +158,26 @@ test('one menu at a time, closed by Escape or a click outside', async () => {
       { label: 'Second', onSelect: () => chosen.push('second'), danger: true },
     ]);
 
-    const layer = document.getElementById('slackmod-menu-layer');
+    const layer = document.getElementById('betterslack-menu-layer');
     assert.ok(layer, 'the menu is in the document');
     assert.ok(layer.querySelector('.c-menu__items'), 'in Slack’s own markup');
     assert.equal(layer.querySelectorAll('.c-menu_item__button').length, 2);
 
     document.querySelector('.c-menu_item__button').click();
     assert.deepEqual(chosen, ['first'], 'choosing runs the entry');
-    assert.equal(document.getElementById('slackmod-menu-layer'), null, 'and closes it');
+    assert.equal(document.getElementById('betterslack-menu-layer'), null, 'and closes it');
 
     // Opening a second closes the first: two overflow buttons in a row should
     // not leave two menus on screen.
     openMenu(anchor, [{ label: 'One', onSelect: () => {} }]);
     openMenu(anchor, [{ label: 'Two', onSelect: () => {} }]);
-    assert.equal(document.querySelectorAll('#slackmod-menu-layer').length, 1);
-    assert.match(document.getElementById('slackmod-menu-layer').textContent, /Two/);
+    assert.equal(document.querySelectorAll('#betterslack-menu-layer').length, 1);
+    assert.match(document.getElementById('betterslack-menu-layer').textContent, /Two/);
 
     openMenu(anchor, [{ label: 'Again', onSelect: () => chosen.push('again') }]);
     await new Promise((resolve) => setTimeout(resolve, 5));
     document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
-    assert.equal(document.getElementById('slackmod-menu-layer'), null, 'Escape closes it');
+    assert.equal(document.getElementById('betterslack-menu-layer'), null, 'Escape closes it');
     assert.deepEqual(chosen, ['first'], 'and Escape chose nothing');
   } finally {
     closeMenu();
@@ -194,7 +194,7 @@ test('a disabled entry is shown and does nothing', () => {
     ]);
     document.querySelector('.c-menu_item__button').click();
     assert.equal(ran, false);
-    assert.ok(document.getElementById('slackmod-menu-layer'), 'and it stays open');
+    assert.ok(document.getElementById('betterslack-menu-layer'), 'and it stays open');
   } finally {
     closeMenu();
     dom.cleanup();
