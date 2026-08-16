@@ -267,3 +267,36 @@ test('a backup cannot write outside the mod folder it names', async () => {
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+// Mods from outside this repository. The security model here is human review —
+// everything in the catalogue was read by someone before it was merged — and a
+// mod from a URL was not. What the code has to guarantee is that the user is
+// asked before anything is written, and that the mod says where it came from
+// for as long as it exists.
+
+test('a URL is read and described before anything is installed', async () => {
+  const { inspectRemote } = await import('../dist/mod-updates.mjs');
+
+  for (const bad of ['not a url', 'https://gitlab.com/a/b', 'ftp://x']) {
+    const result = await inspectRemote(bad);
+    assert.ok('error' in result, `${bad} should be refused`);
+  }
+
+  // A real folder in this repository, read as if it were somebody else's.
+  const result = await inspectRemote(
+    'https://github.com/AirOne-dev/SlackMod/tree/master/mods/plugins/quote-reply',
+  );
+  if ('error' in result) return; // offline, or rate-limited
+  assert.equal(result.manifest.id, 'quote-reply');
+  assert.equal(result.repo, 'AirOne-dev/SlackMod');
+  assert.ok(result.scripts.includes('index.js'), 'it says which files will run');
+  assert.ok(result.bytes > 0, 'and how much of it there is');
+  assert.equal(result.files['test.mjs'], undefined, 'tests are not part of a mod');
+});
+
+test('a folder with no mod.json is refused rather than half-installed', async () => {
+  const { inspectRemote } = await import('../dist/mod-updates.mjs');
+  const result = await inspectRemote('https://github.com/AirOne-dev/SlackMod/tree/master/docs');
+  if (!('error' in result)) assert.fail('docs/ is not a mod');
+  assert.match(result.error, /mod\.json/);
+});

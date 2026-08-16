@@ -14,7 +14,7 @@
 // can make it ugly. Everything under `mods/themes/` is reviewed, so that is a
 // fair deal.
 
-import type { ModRecord, ModSettingField } from '../../shared/protocol.js';
+import type { ModRecord, ModSettingField, RemoteMod } from '../../shared/protocol.js';
 import { h } from '../dom.js';
 import type { ModManager } from '../manager.js';
 import { contributeUrl, repoUrl } from '../registry.js';
@@ -302,6 +302,7 @@ export class Panel {
 
     return [
       h('div', { class: 'betterslack-toolbar' }, [tabs, search]),
+      ...(this.shelf === 'browse' ? [this.renderRemoteInstall()] : []),
       ...(tags.length > 1 ? [filters] : []),
       h('div', { class: 'betterslack-list' }),
     ];
@@ -402,6 +403,14 @@ export class Panel {
 
     // A mod that would not start says so where it is, rather than in a console
     // nobody has open.
+    if (mod.origin === 'third-party') {
+      // Permanent, and on every row: nobody here has read this code, and that
+      // fact does not expire once it is installed.
+      const badge = h('span', { class: 'betterslack-tag betterslack-tag--warn' }, [t('remoteBadge')]);
+      badge.title = t('remoteBadgeHint', { source: mod.source ?? '?' });
+      title.append(badge);
+    }
+
     const failure = this.manager.errors.get(mod.id);
     if (failure) {
       title.append(h('span', { class: 'betterslack-tag betterslack-tag--error' }, [t('notRunning')]));
@@ -795,6 +804,117 @@ export class Panel {
         ]),
       ]),
     ];
+  }
+
+  /**
+   * Install a mod from somebody else's repository.
+   *
+   * The security model here is human review: everything in the catalogue was
+   * read by a person before it was merged. A mod from a URL was not, and a
+   * plugin runs unsandboxed in an authenticated Slack -- it can read every
+   * message and the session token. So this asks, in those words, before
+   * anything is written, and the mod carries a permanent mark afterwards.
+   */
+  private renderRemoteInstall(): Node {
+    const input = h('input', {
+      class: 'betterslack-search',
+      type: 'text',
+      placeholder: t('remotePlaceholder'),
+      spellcheck: 'false',
+    }) as HTMLInputElement;
+    const status = h('span', { class: 'betterslack-status' });
+
+    const go = h('button', {
+      class: 'c-button c-button--outline c-button--medium',
+      type: 'button',
+    }, [t('remoteFetch')]);
+
+    const fetchIt = () => {
+      const url = input.value.trim();
+      if (!url) return;
+      status.textContent = t('remoteReading');
+      void this.manager.inspectRemote(url).then(async (result) => {
+        if ('error' in result) {
+          status.textContent = result.error;
+          return;
+        }
+        status.textContent = '';
+        const accepted = await this.requestRemoteConsent(result);
+        if (!accepted) return;
+        status.textContent = t('remoteInstalling');
+        await this.manager.installRemote(result);
+        input.value = '';
+        status.textContent = t('remoteInstalled', { name: result.manifest.name });
+        this.render();
+      });
+    };
+    go.addEventListener('click', fetchIt);
+    input.addEventListener('keydown', (event) => {
+      if ((event as KeyboardEvent).key === 'Enter') fetchIt();
+    });
+
+    return h('div', { class: 'betterslack-remote' }, [
+      h('div', { class: 'betterslack-row__desc' }, [t('remoteHint')]),
+      h('div', { class: 'betterslack-remote__row' }, [input, go, status]),
+    ]);
+  }
+
+  /** The dialog that says what installing somebody else's code means. */
+  private requestRemoteConsent(remote: RemoteMod): Promise<boolean> {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (accepted: boolean) => {
+        if (settled) return;
+        settled = true;
+        this.dismissRequires = null;
+        document.getElementById(REQUIRES_ID)?.remove();
+        resolve(accepted);
+      };
+      this.dismissRequires = () => finish(false);
+
+      const cancel = h('button', {
+        class: 'c-button c-button--outline c-button--medium',
+        type: 'button',
+      }, [t('cancel')]);
+      cancel.addEventListener('click', () => finish(false));
+
+      const accept = h('button', {
+        class: 'c-button c-button--danger c-button--medium',
+        type: 'button',
+      }, [t('remoteAccept')]);
+      accept.addEventListener('click', () => finish(true));
+
+      const facts = h('dl', { class: 'betterslack-info' }, [
+        h('dt', {}, [t('remoteFrom')]),
+        h('dd', {}, [`${remote.repo}${remote.folder ? `/${remote.folder}` : ''}`]),
+        h('dt', {}, [t('remoteKind')]),
+        h('dd', {}, [remote.manifest.type === 'plugin' ? t('plugins') : t('themes')]),
+        h('dt', {}, [t('remoteScripts')]),
+        h('dd', {}, [
+          remote.scripts.length === 0 ? t('remoteNoScripts') : remote.scripts.join(', '),
+        ]),
+        h('dt', {}, [t('remoteSize')]),
+        h('dd', {}, [`${Math.max(1, Math.round(remote.bytes / 1024))} kB`]),
+      ]);
+
+      const layer = h('div', { id: REQUIRES_ID, class: 'betterslack-requires' }, [
+        h('div', { class: 'c-dialog betterslack-dialog betterslack-dialog--small', role: 'dialog', 'aria-modal': 'true' }, [
+          h('div', { class: 'c-dialog__header betterslack-header' }, [
+            h('h1', { class: 'c-dialog__title' }, [remote.manifest.name]),
+          ]),
+          h('div', { class: 'c-dialog__body betterslack-body' }, [
+            h('p', { class: 'betterslack-hint betterslack-danger' }, [
+              remote.manifest.type === 'plugin' ? t('remoteWarningPlugin') : t('remoteWarningTheme'),
+            ]),
+            h('p', { class: 'betterslack-hint' }, [remote.manifest.description]),
+            facts,
+          ]),
+          h('div', { class: 'betterslack-actions betterslack-actions--dialog' }, [cancel, accept]),
+        ]),
+      ]);
+      document.body.append(layer);
+      queueMicrotask(() => cancel.focus());
+    });
   }
 
   /**

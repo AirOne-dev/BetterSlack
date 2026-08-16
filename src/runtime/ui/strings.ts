@@ -88,6 +88,25 @@ export const PANEL_STRINGS = {
     repository: 'Repository',
     contribute: 'Submit a mod',
 
+    remoteHint: 'Install from a GitHub URL — a repository, or a folder inside one.',
+    remotePlaceholder: 'github.com/someone/their-mods/tree/main/my-plugin',
+    remoteFetch: 'Read it',
+    remoteReading: 'Reading…',
+    remoteInstalling: 'Installing…',
+    remoteInstalled: '{name} installed. It is off until you switch it on.',
+    remoteAccept: 'Install anyway',
+    remoteFrom: 'From',
+    remoteKind: 'Kind',
+    remoteScripts: 'Code that will run',
+    remoteNoScripts: 'none — this one is stylesheets only',
+    remoteSize: 'Size',
+    remoteBadge: 'unreviewed',
+    remoteBadgeHint: 'From {source}. Nobody in this project has read it.',
+    remoteWarningPlugin:
+      'This is somebody else’s code, and nobody here has read it. A plugin runs unsandboxed in your signed-in Slack: it can read every message you can, and the session token. Install it only if you trust whoever wrote it.',
+    remoteWarningTheme:
+      'This is somebody else’s theme, and nobody here has read it. A theme is CSS, so it cannot read your messages — but it can hide or fake parts of the interface. Install it only if you trust whoever wrote it.',
+
     backupTitle: 'Backup',
     backupHint: 'Your settings and the mods you wrote or installed yourself. Catalogue mods come back with the project, so they are not in it.',
     backupExport: 'Save a backup',
@@ -187,6 +206,25 @@ export const PANEL_STRINGS = {
     transport: 'Transport',
     repository: 'Dépôt',
     contribute: 'Proposer un mod',
+
+    remoteHint: 'Installer depuis une URL GitHub — un dépôt, ou un dossier dedans.',
+    remotePlaceholder: 'github.com/quelquun/ses-mods/tree/main/mon-plugin',
+    remoteFetch: 'Le lire',
+    remoteReading: 'Lecture…',
+    remoteInstalling: 'Installation…',
+    remoteInstalled: '{name} installé. Il est éteint tant que vous ne l’allumez pas.',
+    remoteAccept: 'Installer quand même',
+    remoteFrom: 'Provenance',
+    remoteKind: 'Type',
+    remoteScripts: 'Code qui s’exécutera',
+    remoteNoScripts: 'aucun — uniquement des feuilles de style',
+    remoteSize: 'Taille',
+    remoteBadge: 'non revu',
+    remoteBadgeHint: 'Depuis {source}. Personne dans ce projet ne l’a lu.',
+    remoteWarningPlugin:
+      'C’est le code de quelqu’un d’autre, que personne ici n’a lu. Un plugin s’exécute sans bac à sable dans votre Slack connecté : il peut lire tous vos messages, et le jeton de session. Ne l’installez que si vous faites confiance à son auteur.',
+    remoteWarningTheme:
+      'C’est le thème de quelqu’un d’autre, que personne ici n’a lu. Un thème est du CSS, il ne peut donc pas lire vos messages — mais il peut masquer ou falsifier des parties de l’interface. Ne l’installez que si vous faites confiance à son auteur.',
 
     backupTitle: 'Sauvegarde',
     backupHint: 'Vos réglages et les mods que vous avez écrits ou installés vous-même. Les mods du catalogue reviennent avec le projet, ils n’y sont pas.',

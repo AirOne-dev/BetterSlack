@@ -90,9 +90,32 @@ export type ModSettingField =
     options: Array<{ value: string; label: string }>;
   };
 
+/** What a mod from outside this repository looks like before it is installed. */
+export interface RemoteMod {
+  manifest: ModManifest;
+  files: ModFiles;
+  /** owner/name, for the record and for the warning. */
+  repo: string;
+  /** Where in it the mod was found. */
+  folder: string;
+  /** Files that will be executed, so the number is not a surprise. */
+  scripts: string[];
+  /** Total size, because "one small mod" and 400kB are different things. */
+  bytes: number;
+}
+
 export interface ModRecord extends ModManifest {
-  /** Where the mod came from. `builtin` = shipped in this repo's mods/ folder. */
-  origin: 'builtin' | 'installed';
+  /**
+   * Where the mod came from.
+   *
+   * `builtin` = shipped in this repository, so it went through review.
+   * `installed` = written by the user or installed from the catalogue.
+   * `third-party` = fetched from somebody else's repository, which nobody here
+   * has read. The panel says so, permanently, on the row.
+   */
+  origin: 'builtin' | 'installed' | 'third-party';
+  /** For a third-party mod: where it came from, shown wherever it is listed. */
+  source?: string;
   /** Path relative to the mods root, e.g. "themes/midnight". */
   path: string;
 }
@@ -151,7 +174,8 @@ export type Request =
   | { type: 'mod.setInstalled'; id: string; installed: boolean }
   /** Every file of a mod, keyed by relative path. */
   | { type: 'mod.source'; id: string }
-  | { type: 'mod.install'; id: string; manifest: ModManifest; files: ModFiles }
+  /** `source` marks it as coming from outside this repository, for good. */
+  | { type: 'mod.install'; id: string; manifest: ModManifest; files: ModFiles; source?: string }
   | { type: 'mod.uninstall'; id: string }
   | { type: 'loader.info' }
   /**
@@ -166,6 +190,14 @@ export type Request =
   | { type: 'backup.export' }
   /** Put one back. Replaces settings and user mods; never touches the install. */
   | { type: 'backup.import'; archive: string }
+  /**
+   * Read a mod from a GitHub URL, without installing it.
+   *
+   * Two steps on purpose: this fetches and describes, the panel asks, and only
+   * then does `mod.install` write anything. Consent has to come between reading
+   * and installing, or it is not consent.
+   */
+  | { type: 'mods.inspectRemote'; url: string }
   /** Which installed mods have a newer version published. */
   | { type: 'mods.checkUpdates' }
   /** Fetch one mod's folder from the branch and install it over the old one. */

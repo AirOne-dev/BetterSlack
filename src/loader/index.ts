@@ -14,7 +14,9 @@ import { Catalog, parseManifest } from './catalog.js';
 import { downloadFile } from './download.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack } from './slack.js';
 import { applyUpdate, checkForUpdate } from './update.js';
-import { fetchModFiles, findModUpdates, folderFor, manifestFrom } from './mod-updates.js';
+import {
+  fetchModFiles, findModUpdates, folderFor, inspectRemote, manifestFrom,
+} from './mod-updates.js';
 // Shared with the runtime so a theme's @import behaves the same in Slack's
 // other windows as it does in the client.
 import { inlineCssImports } from '../runtime/themes.js';
@@ -690,7 +692,7 @@ class Loader {
         return this.catalog.readSource(request.id);
 
       case 'mod.install':
-        return this.install(request.id, request.manifest, request.files);
+        return this.install(request.id, request.manifest, request.files, request.source);
 
       case 'mod.uninstall':
         return this.uninstall(request.id);
@@ -746,6 +748,9 @@ class Loader {
         return result;
       }
 
+      case 'mods.inspectRemote':
+        return inspectRemote(request.url);
+
       case 'mods.checkUpdates': {
         const installed = (await readSettings()).installed;
         const records = this.catalog.list().filter((mod) => installed.includes(mod.id));
@@ -788,7 +793,12 @@ class Loader {
     }
   }
 
-  private async install(id: string, manifest: unknown, files: ModFiles): Promise<ModRecord[]> {
+  private async install(
+    id: string,
+    manifest: unknown,
+    files: ModFiles,
+    source?: string,
+  ): Promise<ModRecord[]> {
     // Re-validate here: the renderer fetched this from the network, so the
     // manifest is untrusted input no matter how it looked on the other side.
     const type = (manifest as { type?: unknown }).type === 'plugin' ? 'plugin' : 'theme';
@@ -797,7 +807,10 @@ class Loader {
 
     const dir = path.join(USER_MODS_ROOT, `${parsed.type}s`, parsed.id);
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, 'mod.json'), JSON.stringify(parsed, null, 2), 'utf8');
+    // Where it came from is written into the manifest, not held in memory: a
+    // mod nobody here has read must still say so after a restart.
+    const written = source ? { ...parsed, origin: 'third-party', source } : parsed;
+    await fs.writeFile(path.join(dir, 'mod.json'), JSON.stringify(written, null, 2), 'utf8');
     for (const [rel, contents] of Object.entries(files)) {
       // Re-checked here rather than trusted: this writes to disk from a message
       // the renderer sent, so a "../" in a key must not escape the folder.
