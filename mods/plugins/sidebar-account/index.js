@@ -253,22 +253,67 @@ export default {
       });
       api.helpers.tooltip(settings, t('settings'));
 
-      /**
-       * Availability, from Slack rather than from the label beside it.
+      /*
+       * Availability, copied from the indicator Slack already draws on your own
+       * avatar in the rail -- `.c-presence--active` on
+       * `[data-qa="user-button"] .c-presence`.
        *
-       * Your own changes while you sit there, so it is polled -- one request a
-       * minute, about yourself, and none at all while the window is hidden,
-       * which api.helpers.poll takes care of.
+       * It used to ask users.getPresence once a minute, and that is why the dot
+       * so often said away while the app plainly said available: the API answer
+       * lags the client, most of all just after the window comes back to the
+       * front, and until the next tick a whole minute later the strip kept
+       * showing the stale one. Slack's own node is instant, always agrees with
+       * the app it sits in, and costs no request at all.
+       *
+       * Do-not-disturb is not in that class, so it still comes from the API --
+       * but a DND window changes rarely, so it is asked for slowly.
        */
+      let dnd = false;
+      // waitFor resolves whenever Slack gets round to drawing the rail, which
+      // can be after this plugin has been switched off. Touching the document
+      // then is how a disabled plugin ends up throwing into a page it no longer
+      // belongs to.
+      let gone = false;
+      api.onDispose(() => { gone = true; });
+
+      const paintDot = () => {
+        if (gone) return;
+        const mine = document.querySelector('[data-qa="user-button"] .c-presence');
+        const active = mine ? mine.classList.contains('c-presence--active') : null;
+        dot.classList.toggle('betterslack-me__dot--dnd', dnd);
+        // Null means Slack has not drawn it yet -- leave the dot as it is rather
+        // than claiming away, which is the wrong answer more often than not.
+        if (active !== null) dot.classList.toggle('betterslack-me__dot--active', active && !dnd);
+      };
+
+      // Watch the rail rather than poll it: Slack swaps the class the moment
+      // your availability changes, and the strip should change with it.
+      const railWatcher = new MutationObserver(paintDot);
+      void api.dom.waitFor('[data-qa="user-button"]').then((button) => {
+        if (!button || gone) return;
+        railWatcher.observe(button, {
+          attributes: true,
+          attributeFilter: ['class'],
+          subtree: true,
+          childList: true,
+        });
+        paintDot();
+      });
+      api.onDispose(() => railWatcher.disconnect());
+      paintDot();
+
       api.helpers.poll(async () => {
-        // No isConnected guard: the first run happens while the strip is still
-        // being built, and refusing to paint then leaves the dot grey for a
-        // minute. Writing a class onto a node about to be inserted is fine.
-        if (!userId || !api.slack.web.available) return;
-        const { state } = await api.slack.web.availability(userId);
-        dot.classList.toggle('betterslack-me__dot--dnd', state === 'dnd');
-        dot.classList.toggle('betterslack-me__dot--active', state === 'active');
-      }, 60_000);
+        if (gone || !userId || !api.slack.web.available) return;
+        const availability = await api.slack.web.availability(userId);
+        if (gone) return;
+        dnd = availability.state === 'dnd';
+        // Only when Slack draws no indicator of its own: an older layout, or
+        // the rail not built yet. Otherwise the app's own answer wins.
+        if (!document.querySelector('[data-qa="user-button"] .c-presence')) {
+          dot.classList.toggle('betterslack-me__dot--active', availability.state === 'active');
+        }
+        paintDot();
+      }, 300_000);
 
       if (userId && api.slack.web.available) {
         api.slack.web
