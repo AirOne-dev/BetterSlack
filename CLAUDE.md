@@ -19,6 +19,15 @@ tests/         Shared test harness (jsdom + a recording fake api)
 
 ## Commands
 
+`pnpm test:live` boots the real Slack, asks the runtime what loaded and turns
+the answer into an exit code. Every failure that has mattered here -- a wedged
+renderer, two runtimes in one document, a mod that threw on start -- was
+invisible to the unit tests and obvious to this. It closes Slack afterwards,
+which is why it is not part of `pnpm test`.
+
+The loader also watches while it runs: if the renderer stops answering, it says
+so, names the mods that were on, and re-arms the safe-start marker.
+
 **pnpm, not npm.** `pnpm-workspace.yaml` carries `allowBuilds: esbuild: true` --
 pnpm refuses to run a dependency's install script unless it is named there, and
 esbuild fetches its platform binary in one, so a fresh checkout fails on every
@@ -26,6 +35,9 @@ command that touches the bundler without it.
 
 ```bash
 pnpm install            # once; pnpm, and the lockfile is committed
+pnpm new-mod plugin my-plugin "What a user gets"   # a mod that already passes
+pnpm release patch      # bumps, writes CHANGELOG.md from the commits, tags
+pnpm test:live          # boots real Slack and checks what loaded
 pnpm build            # both bundles + dist/download.mjs
 pnpm start                # launch Slack with mods
 pnpm test                 # every mod's tests

@@ -23,6 +23,20 @@ declare global {
   }
 }
 
+/** What `health()` answers: enough to say whether this run is sound. */
+export interface Health {
+  version: string;
+  safeMode: boolean;
+  /** Mods the settings say should be on. */
+  enabled: string[];
+  /** Plugins actually loaded, and stylesheets actually attached. */
+  applied: string[];
+  /** Mods that would not start, with why. */
+  errors: Array<[string, string]>;
+  /** Whether the panel's own button made it into Slack's chrome. */
+  launcher: boolean;
+}
+
 interface BetterSlackGlobal {
   version: string;
   /** Which loader run created this instance. */
@@ -32,6 +46,14 @@ interface BetterSlackGlobal {
   open(): void;
   close(): void;
   dispose(): Promise<void>;
+  /**
+   * A summary of this run, for the live test and the watchdog.
+   *
+   * Deliberately on the global rather than behind the bridge: the point is to
+   * be answerable from outside, over CDP, when something has gone wrong enough
+   * that the bridge may not be moving.
+   */
+  health(): Health;
 }
 
 async function boot(): Promise<void> {
@@ -107,6 +129,17 @@ async function boot(): Promise<void> {
     panel,
     open: () => panel.open(),
     close: () => panel.close(),
+    health: () => ({
+      version: payload.version,
+      safeMode: payload.info.safeMode === true,
+      enabled: [...manager.getSettings().enabled],
+      applied: [
+        ...manager.loadedPluginIds(),
+        ...manager.getSettings().enabled.filter((id) => manager.styles.has('theme', id)),
+      ],
+      errors: [...manager.errors.entries()],
+      launcher: Boolean(document.getElementById('betterslack-control-button')),
+    }),
     dispose: async () => {
       panel.close();
       unmountUi?.();

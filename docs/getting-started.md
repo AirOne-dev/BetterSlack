@@ -15,7 +15,7 @@ Then: [test it](#test-your-mod) and [ship it](#ship-it).
 Requires Node 18+ and the Slack desktop app.
 
 ```bash
-git clone https://github.com/AirOne-dev/BetterSlack.git
+git clone https://github.com/AirOne-dev/SlackMod.git
 cd BetterSlack
 pnpm install
 pnpm build

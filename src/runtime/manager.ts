@@ -216,6 +216,11 @@ export class ModManager {
     }
   }
 
+  /** Plugin ids the host has actually loaded. */
+  loadedPluginIds(): string[] {
+    return this.plugins.loadedIds();
+  }
+
   get safeMode(): boolean {
     return this.boot.info.safeMode === true;
   }
