@@ -52,25 +52,40 @@ const RUNTIME_BUNDLE = path.join(HERE, 'runtime.js');
 const VERSION = '2.0.0';
 
 /** Where a copy of this checks whether it is current. */
-const REPO = 'AirOne-dev/BetterSlack';
+/*
+ * The GitHub repository, which is still named SlackMod: the project was
+ * renamed, the remote was not. The blanket rename changed this constant too and
+ * would have pointed every update check at a repository that does not exist --
+ * caught here rather than by someone whose update button quietly stopped
+ * working. GitHub redirects a renamed repository, so this keeps working either
+ * way.
+ */
+const REPO = 'AirOne-dev/SlackMod';
+
+/** How often the watchdog asks the renderer whether it is still there. */
+const WATCHDOG_INTERVAL_MS = 30_000;
 const DEFAULT_BRANCH = 'master';
 
 interface Args {
   verbose: boolean;
   /** Start with nothing applied, whatever the settings say. */
   safe: boolean;
+  /** Boot, ask the runtime how it is, print it and leave. */
+  healthcheck: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { verbose: false, safe: false };
+  const args: Args = { verbose: false, safe: false, healthcheck: false };
   for (const a of argv) {
     if (a === '--verbose' || a === '-v') args.verbose = true;
     else if (a === '--safe') args.safe = true;
+    else if (a === '--healthcheck') args.healthcheck = true;
     else if (a === '--help' || a === '-h') {
       console.log(
         `betterslack ${VERSION}\n\n` +
           `  --verbose   log every message crossing the bridge\n` +
-          `  --safe      start with every mod off, and say so in the panel\n\n` +
+          `  --safe      start with every mod off, and say so in the panel\n` +
+          `  --healthcheck  boot, report what loaded, and exit (used by pnpm test:live)\n\n` +
           `BetterSlack starts Slack itself and talks to it over a private CDP pipe.\n` +
           `There is no debugging port, so no other process can reach the connection.\n`,
       );
@@ -108,6 +123,7 @@ class Loader {
     private readonly slackPath: string,
     private readonly verbose: boolean,
     private readonly safeRequested: boolean = false,
+    private readonly healthcheck: boolean = false,
   ) {
     this.catalog = new Catalog(BUILTIN_MODS_ROOT, USER_MODS_ROOT);
   }
@@ -278,6 +294,9 @@ class Loader {
 
     console.log(`[betterslack] injected into ${target.title || target.url}`);
 
+    if (this.healthcheck) void this.reportHealth(session);
+    else this.watch(session);
+
     if (process.env.BETTERSLACK_DIAGNOSE === '1') {
       // Enabled up front: enabling it once the thread is already busy never
       // takes, which is why the first attempt at this came back empty.
@@ -285,6 +304,102 @@ class Loader {
       void this.diagnose(session);
     }
 
+  }
+
+  /**
+   * Ask the runtime how it is, print it, and leave.
+   *
+   * `--healthcheck` exists so the whole stack can be tested against a real
+   * Slack rather than a jsdom impression of one: every freeze this project has
+   * had was invisible to the unit tests and obvious here, and it was being
+   * checked by hand.
+   */
+  private async reportHealth(session: CdpSession): Promise<void> {
+    // Long enough for Slack to build its client and the mods to mount, since
+    // the interesting failures happen in that window.
+    await sleep(12_000);
+
+    const raw = await session
+      .evaluate<string>('JSON.stringify(window.__betterslack ? window.__betterslack.health() : null)')
+      .catch((err: Error) => `!${err.message}`);
+
+    if (typeof raw === 'string' && raw.startsWith('!')) {
+      console.error(`[betterslack] health: the renderer did not answer — ${raw.slice(1)}`);
+      console.error('[betterslack] this is what a wedged renderer looks like; see CLAUDE.md');
+      process.exitCode = 1;
+    } else {
+      const health = JSON.parse(raw ?? 'null') as {
+        enabled: string[];
+        applied: string[];
+        errors: Array<[string, string]>;
+        launcher: boolean;
+        safeMode: boolean;
+      } | null;
+      if (!health) {
+        console.error('[betterslack] health: no runtime in the page');
+        process.exitCode = 1;
+      } else {
+        const missing = health.enabled.filter((id) => !health.applied.includes(id));
+        console.log(`[betterslack] health: ${JSON.stringify(health)}`);
+        if (!health.launcher) {
+          console.error('[betterslack] health: the panel button never mounted');
+          process.exitCode = 1;
+        }
+        if (health.errors.length > 0) {
+          console.error(`[betterslack] health: ${health.errors.length} mod(s) failed to start`);
+          process.exitCode = 1;
+        }
+        if (!health.safeMode && missing.length > 0) {
+          console.error(`[betterslack] health: enabled but not applied — ${missing.join(', ')}`);
+          process.exitCode = 1;
+        }
+      }
+    }
+
+    await markBootHealthy();
+    await stopSlack().catch(() => undefined);
+    process.exit(process.exitCode ?? 0);
+  }
+
+  /**
+   * Keep asking whether the renderer is still answering.
+   *
+   * A wedged renderer is silent: no error, no console, a grey window. Both
+   * freezes this project has had were found by noticing that Runtime.evaluate
+   * never came back, by hand, after the fact. This notices for you, names the
+   * mods that were on at the time, and leaves the marker that makes the next
+   * start a safe one.
+   */
+  private watch(session: CdpSession): void {
+    void (async () => {
+      let complained = false;
+      for (;;) {
+        await sleep(WATCHDOG_INTERVAL_MS);
+        if (session.isClosed || this.connection.isClosed) return;
+
+        const alive = await session
+          .evaluate<number>('1', false)
+          .then(() => true)
+          .catch(() => false);
+
+        if (alive) {
+          complained = false;
+          continue;
+        }
+        if (complained) continue;
+        complained = true;
+
+        const settings = await readSettings().catch(() => null);
+        console.error(
+          '[betterslack] the renderer stopped answering — Slack is wedged, not slow.' +
+            (settings ? ` Mods on at the time: ${settings.enabled.join(', ') || 'none'}.` : ''),
+        );
+        console.error('[betterslack] the next start will come up in safe mode.');
+        // Re-arm what app.ready cleared: whatever just happened, starting bare
+        // next time is the only way back that does not involve a text editor.
+        await markBootStarted();
+      }
+    })();
   }
 
   /** Give one of Slack's other windows the active theme, and nothing else. */
@@ -751,7 +866,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const loader = new Loader(connection, slackPath, args.verbose, args.safe);
+  const loader = new Loader(connection, slackPath, args.verbose, args.safe, args.healthcheck);
   const shutdown = () => {
     console.log('\n[betterslack] detaching (Slack keeps running; mods stay until you reload it)');
     loader.dispose();

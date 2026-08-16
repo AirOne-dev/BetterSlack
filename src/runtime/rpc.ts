@@ -54,7 +54,13 @@ export class Bridge {
       // or -- the reason this line exists -- the receiver on `window` belongs
       // to a different Bridge than the one that asked, which is what happens
       // when a runtime is injected over a live one.
-      console.warn(`[betterslack] an answer arrived for rid ${envelope.rid}, which nothing is waiting for`);
+      // Ordinary after a navigation: the request was made by the runtime that
+      // the old document took with it. Worth a line all the same, because the
+      // other cause is two runtimes in one page, which is a real bug.
+      console.warn(
+        `[betterslack] an answer arrived for rid ${envelope.rid} with nothing waiting for it` +
+          ' (usually a request made before a navigation)',
+      );
       return;
     }
     this.pending.delete(envelope.rid);

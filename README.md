@@ -15,7 +15,7 @@ inside Slack itself.
 Requires Node 18+.
 
 ```bash
-git clone https://github.com/AirOne-dev/BetterSlack.git
+git clone https://github.com/AirOne-dev/SlackMod.git
 cd BetterSlack
 pnpm install && pnpm build
 pnpm start
