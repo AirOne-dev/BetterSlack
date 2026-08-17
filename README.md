@@ -6,6 +6,8 @@
 Themes, plugins and custom CSS for the Slack desktop app, with a Mods panel
 inside Slack itself.
 
+**→ [airone-dev.github.io/SlackMod](https://airone-dev.github.io/SlackMod/)** — screenshots, the catalogue, and what the API looks like.
+
 ```
 ⌘⇧M  (Ctrl+Shift+M on Windows/Linux)   or the sliders button above your avatar
 ```
