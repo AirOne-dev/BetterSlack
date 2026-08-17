@@ -108,6 +108,10 @@ async function boot(): Promise<void> {
   const panel = new Panel(manager);
   // So a mod can open it without reaching into the page for it.
   manager.openPanel = (tab) => (tab ? panel.openAt(tab) : panel.open());
+  // "Configure X" from the palette: the panel already knows how to draw a
+  // manifest's settings, so the palette points at it rather than growing its
+  // own form.
+  manager.openMod = (id) => panel.openMod(id);
 
   let unmountUi: (() => void) | undefined;
   const mountUi = () => {

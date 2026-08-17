@@ -84,6 +84,8 @@ export class ModManager {
    * should not have to know that.
    */
   openPanel?: (tab?: 'themes' | 'plugins' | 'css' | 'about') => void;
+  /** Set by the runtime: open the panel on one mod, settings unfolded. */
+  openMod?: (id: string) => void;
 
   /** Everything a mod said it can do, for the palette. */
   readonly commands = new Map<string, PaletteCommand>();
@@ -408,10 +410,12 @@ export class ModManager {
         type: mod.type,
         installed: this.isInstalled(mod.id),
         enabled: this.isEnabled(mod.id),
+        settings: mod.settings?.length ?? 0,
       })),
       setModEnabled: (id, enabled) => this.setEnabled(id, enabled),
       setModInstalled: (id, installed) => this.setInstalled(id, installed),
       openPanel: (tab) => this.openPanel?.(tab),
+      openMod: (id) => this.openMod?.(id),
       addCommand: (command) => {
         this.commands.set(command.id, command);
         return () => this.commands.delete(command.id);

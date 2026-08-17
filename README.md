@@ -38,8 +38,8 @@ gradient), Cocoa (warm light), Terminal (monospace phosphor), Discord Dark and
 Discord Light (Slack rebuilt as Discord, colours sampled from the real client),
 Focus Rings.
 
-**Plugins** — Command Palette (⌘K: every conversation, every mod command, every
-theme, in one list), Theme Builder (a workbench in its own window with the real
+**Plugins** — Command Palette (⌘K: any conversation, anyone in the workspace,
+every mod command and every theme in one list, with `/` `@` `#` to narrow it), Theme Builder (a workbench in its own window with the real
 Slack as the preview), Member Sidebar, Sidebar Account Strip, Quote Reply, Copy
 Message Link, Focus Mode (⌘⇧F), Composer Character Count, Channel Notes, User
 Inspector, Avatar Downloader, DevTools.

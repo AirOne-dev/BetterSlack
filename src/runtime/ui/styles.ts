@@ -220,6 +220,49 @@ export const PANEL_CSS = CODE_CSS + `
   outline: none;
 }
 
+/* The mode you are in, in front of the field rather than in your memory. */
+.betterslack-palette__chip {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.9);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.16);
+}
+.betterslack-palette__chip[hidden] { display: none; }
+
+/* What the prefixes do, shown when there is nothing else to show -- a palette
+   whose shortcuts are only in the documentation has no shortcuts. */
+.betterslack-palette__modes[hidden] { display: none; }
+.betterslack-palette__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.16);
+}
+.betterslack-palette__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.75);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
+}
+.betterslack-palette__mode kbd {
+  font-family: inherit;
+  font-weight: 700;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.18);
+}
+
 .betterslack-palette__list { overflow-y: auto; padding: 6px; flex: 1 1 auto; min-height: 140px; }
 .betterslack-palette__section {
   padding: 10px 10px 4px;

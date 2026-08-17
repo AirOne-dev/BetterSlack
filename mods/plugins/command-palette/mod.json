@@ -2,9 +2,9 @@
   "id": "command-palette",
   "name": "Command Palette",
   "type": "plugin",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "AirOne-dev",
-  "description": "Slack's quick switcher with everything else in it: jump to any conversation, run any mod's commands, and switch themes and plugins on or off — all from one keystroke.",
+  "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods — all from one keystroke, with / @ # to narrow it down.",
   "entry": "index.js",
   "settings": [
     {
