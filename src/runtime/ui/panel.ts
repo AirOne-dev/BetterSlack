@@ -89,6 +89,13 @@ export class Panel {
     }
   }
 
+  /** Open straight to a tab, for the palette's doors. */
+  openAt(tab: 'themes' | 'plugins' | 'css' | 'about'): void {
+    this.tab = tab;
+    if (this.isOpen) this.render();
+    else this.open();
+  }
+
   close(): void {
     this.closeMenu();
     this.dismissRequires?.();

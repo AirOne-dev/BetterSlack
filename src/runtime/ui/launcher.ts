@@ -58,10 +58,12 @@ export interface LauncherOptions {
   onBadgeChange?: (repaint: () => void) => void;
   /** Opened with the palette shortcut. */
   onPalette?: () => void;
+  /** Which shortcut that is; `mod+k` takes the key Slack uses for its own. */
+  paletteShortcut?: 'mod+k' | 'mod+shift+k';
 }
 
 export function installLauncher(
-  { onActivate, styles, badge, onBadgeChange, onPalette }: LauncherOptions,
+  { onActivate, styles, badge, onBadgeChange, onPalette, paletteShortcut = 'mod+k' }: LauncherOptions,
 ): Cleanup {
   styles.set('plugin', '__launcher', LAUNCHER_CSS);
 
@@ -155,16 +157,25 @@ export function installLauncher(
   );
 
   /*
-   * Cmd+K for the palette -- which Slack also uses, for its own switcher.
+   * Cmd+K for the palette, which is also what Slack binds to its own quick
+   * switcher.
    *
-   * Taken deliberately, and only with Shift held... no: measured first. Slack
-   * binds plain Cmd+K to the quick switcher, so plain Cmd+K here would replace
-   * a thing people use every day. Cmd+Shift+K is free and is what this takes.
+   * Taking it is a real trade and it is deliberate: ⌘K is the key everyone
+   * reaches for, and a palette on a key nobody presses is a palette nobody
+   * uses. Slack's switcher stays reachable from its own search field, and the
+   * About tab has a switch for anyone who wants ⌘K back.
+   *
+   * The event has to be stopped in the capture phase, before Slack's own
+   * handler sees it, or both open at once.
    */
+  const wantsShift = paletteShortcut === 'mod+shift+k';
   const unbindPalette = onPalette
     ? onShortcut(
       (event) =>
-        event.shiftKey && (event.metaKey || event.ctrlKey) && !event.altKey && event.code === 'KeyK',
+        (event.metaKey || event.ctrlKey)
+        && !event.altKey
+        && event.shiftKey === wantsShift
+        && event.code === 'KeyK',
       onPalette,
     )
     : () => {};
