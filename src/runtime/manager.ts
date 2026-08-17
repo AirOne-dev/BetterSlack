@@ -6,6 +6,7 @@ import {
   type LoaderInfo,
   type ModFiles,
   type ModRecord,
+  type RemoteMod,
   type Settings,
   type UpdateStatus,
 } from '../shared/protocol.js';
@@ -148,6 +149,24 @@ export class ModManager {
     await this.apply(record, files).catch((err) => {
       console.error(`[betterslack] could not reapply "${id}":`, err);
     });
+    this.notify();
+  }
+
+  /** Read a mod from a URL without installing it, so the user can be asked. */
+  inspectRemote(url: string): Promise<RemoteMod | { error: string }> {
+    return this.bridge.request<RemoteMod | { error: string }>({ type: 'mods.inspectRemote', url });
+  }
+
+  /** Install one that was inspected and consented to. */
+  async installRemote(remote: RemoteMod): Promise<void> {
+    this.mods = await this.bridge.request<ModRecord[]>({
+      type: 'mod.install',
+      id: remote.manifest.id,
+      manifest: remote.manifest,
+      files: remote.files,
+      source: `${remote.repo}${remote.folder ? `/${remote.folder}` : ''}`,
+    });
+    await this.setInstalled(remote.manifest.id, true);
     this.notify();
   }
 

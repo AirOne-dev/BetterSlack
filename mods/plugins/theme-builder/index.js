@@ -430,9 +430,65 @@ export default {
         },
       });
 
+      /*
+       * A theme you can hand to someone.
+       *
+       * Saving puts it in your own Themes list, which is where you want it and
+       * nowhere anyone else can reach. Export writes the same stylesheet as a
+       * file; import reads one back in as the base, which is also how a theme
+       * someone sent you becomes something you can edit rather than just run.
+       */
+      const exportCss = ui.button(t('exportTheme'), {
+        variant: 'ghost',
+        title: t('exportHint'),
+        onClick: () => {
+          const blob = new child.Blob([themeCss()], { type: 'text/css' });
+          const url = child.URL.createObjectURL(blob);
+          const link = el('a', {
+            href: url,
+            download: `${(state.name || 'theme').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.css`,
+          });
+          doc.body.append(link);
+          link.click();
+          link.remove();
+          setTimeout(() => child.URL.revokeObjectURL(url), 10_000);
+          status.textContent = t('exported');
+        },
+      });
+
+      const picker = el('input', { type: 'file', accept: '.css,text/css', hidden: 'hidden' });
+      picker.addEventListener('change', () => {
+        const chosen = picker.files?.[0];
+        if (!chosen) return;
+        void chosen.text().then((css) => {
+          state.base = '';
+          state.baseCss = css;
+          baseSelect.value = '';
+          // Read back into the palette, so an imported theme is editable rather
+          // than a stylesheet sitting underneath one that overwrites it.
+          const roles = rolesFrom(css);
+          const { bg, accent, ...rest } = roles;
+          if (bg) state.seeds.bg = bg;
+          if (accent) state.seeds.accent = accent;
+          state.roleOverrides = rest;
+          state.name = chosen.name.replace(/\.css$/i, '');
+          nameInput.value = state.name;
+          status.textContent = t('imported', { name: chosen.name });
+          apply();
+        });
+      });
+      const importCss = ui.button(t('importTheme'), {
+        variant: 'ghost',
+        title: t('importHint'),
+        onClick: () => picker.click(),
+      });
+
       const footer = el('footer', { class: 'actions' }, [
         suspend,
         reset,
+        importCss,
+        exportCss,
+        picker,
         status,
         ui.button(t('copy'), { variant: 'ghost', onClick: () => ctx.copyCss() }),
         save,

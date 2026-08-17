@@ -186,14 +186,23 @@ async function scanKind(
     if (!dirent.isDirectory()) continue;
     const manifestPath = path.join(dir, dirent.name, 'mod.json');
     try {
-      const manifest = parseManifest(await fs.readFile(manifestPath, 'utf8'), manifestPath, kind);
+      const rawManifest = await fs.readFile(manifestPath, 'utf8');
+      const manifest = parseManifest(rawManifest, manifestPath, kind);
       if (manifest.id !== dirent.name) {
         out.errors.push(`${manifestPath}: "id" ("${manifest.id}") must match the folder name ("${dirent.name}")`);
         continue;
       }
       // Fail here rather than at enable-time in the UI.
       await fs.access(path.join(dir, dirent.name, manifest.entry));
-      out.mods.push({ ...manifest, origin, path: `${kind}s/${dirent.name}` });
+      // A mod that recorded where it came from keeps saying so, whatever the
+      // folder it was found in would have implied.
+      const declared = JSON.parse(rawManifest) as { origin?: string; source?: string };
+      out.mods.push({
+        ...manifest,
+        origin: declared.origin === 'third-party' ? 'third-party' : origin,
+        source: typeof declared.source === 'string' ? declared.source : undefined,
+        path: `${kind}s/${dirent.name}`,
+      });
     } catch (err) {
       const e = err as NodeJS.ErrnoException;
       if (e.code === 'ENOENT' && e.path?.endsWith('mod.json')) continue; // not a mod folder

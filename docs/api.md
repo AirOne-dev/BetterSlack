@@ -363,6 +363,18 @@ api.dom.onShortcut((e) => e.key === 'F1', handler);          // prefer helpers.h
 
 ---
 
+## Installing a mod from outside this repository
+
+The Browse shelf takes a GitHub URL — a repository, or a folder inside one. It
+is read and described first, and installed only after a dialog that says what it
+means: a plugin runs unsandboxed in a signed-in Slack and can read every message
+and the session token, and nobody in this project has reviewed it. The mod then
+carries an **unreviewed** badge for as long as it exists, recorded in its
+manifest so a restart cannot lose it.
+
+The catalogue's security model is human review. This is the explicit exception,
+and it is labelled as one.
+
 ## `api.commands`
 
 Things your mod can do, findable by typing — ⌘⇧K opens the palette.
@@ -507,6 +519,18 @@ editor.set(text);        // replace it
 
 Tab indents instead of moving focus. `readOnly: true` gives a highlighted,
 non-editable view — a generated stylesheet, for instance.
+
+## Installing a mod from outside this repository
+
+The Browse shelf takes a GitHub URL — a repository, or a folder inside one. It
+is read and described first, and installed only after a dialog that says what it
+means: a plugin runs unsandboxed in a signed-in Slack and can read every message
+and the session token, and nobody in this project has reviewed it. The mod then
+carries an **unreviewed** badge for as long as it exists, recorded in its
+manifest so a restart cannot lose it.
+
+The catalogue's security model is human review. This is the explicit exception,
+and it is labelled as one.
 
 ## `api.commands`
 

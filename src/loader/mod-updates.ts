@@ -11,7 +11,7 @@
 // manifest loader-side -- what arrives from the network is untrusted whichever
 // button asked for it.
 
-import type { ModFiles, ModManifest, ModRecord } from '../shared/protocol.js';
+import type { ModFiles, ModManifest, ModRecord, RemoteMod } from '../shared/protocol.js';
 
 const HTTP_TIMEOUT_MS = 15_000;
 
@@ -157,4 +157,39 @@ export function manifestFrom(files: ModFiles): ModManifest | null {
 /** Where a mod's folder lives in the repository, for a given record. */
 export function folderFor(mod: Pick<ModRecord, 'type' | 'id'>): string {
   return `mods/${mod.type === 'theme' ? 'themes' : 'plugins'}/${mod.id}`;
+}
+
+/**
+ * Read a mod out of somebody else's repository.
+ *
+ * Accepts what a person would actually paste: a repository URL, a tree URL
+ * pointing at a folder, or `owner/name`. Nothing is installed here -- this
+ * fetches and describes so the panel can ask, because consent that comes after
+ * the files are on disk is not consent.
+ */
+export async function inspectRemote(url: string): Promise<RemoteMod | { error: string }> {
+  const cleaned = url.trim().replace(/\.git$/, '');
+  const match =
+    /^(?:https?:\/\/github\.com\/)?([\w.-]+)\/([\w.-]+)(?:\/tree\/([^/]+)(?:\/(.*))?)?\/?$/.exec(cleaned);
+  if (!match) return { error: 'that is not a GitHub repository or folder URL' };
+
+  const [, owner, name, ref, folder] = match;
+  const repo = `${owner}/${name}`;
+  const branch = ref ?? (await defaultBranch(repo));
+  if (!branch) return { error: 'could not reach that repository' };
+
+  const files = await fetchModFiles({ repo, branch }, folder ?? '');
+  if (!files) return { error: 'no mod.json there — point at the folder holding it' };
+
+  const manifest = manifestFrom(files);
+  if (!manifest?.id || !manifest.entry) return { error: 'its mod.json is not usable' };
+
+  const scripts = Object.keys(files).filter((file) => /\.(js|mjs)$/.test(file));
+  const bytes = Object.values(files).reduce((total, text) => total + text.length, 0);
+  return { manifest, files, repo, folder: folder ?? '', scripts, bytes };
+}
+
+async function defaultBranch(repo: string): Promise<string | null> {
+  const info = await getJson<{ default_branch?: string }>(`https://api.github.com/repos/${repo}`);
+  return info?.default_branch ?? null;
 }

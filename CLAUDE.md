@@ -403,6 +403,13 @@ fine. `boot()` now claims `window.__BETTERSLACK_BOOTING__` synchronously. Found
 through a theme gallery that came up blank, with six answers delivered by the
 loader and six timeouts in the page.
 
+**`store.ts` resolves `~/.betterslack` once, when it is imported.** A test that
+wants a scratch home has to set `BETTERSLACK_HOME` *before* importing it —
+`tests/update.test.mjs` does that at module scope, with a comment saying why.
+Getting it the wrong way round runs the test against the real home, and the
+backup test then wrote its empty fixture over a real settings file. It cost
+someone their installed list once; it should not cost it twice.
+
 ## Safe mode, and mods that will not start
 
 `pnpm start --safe` applies nothing. So does the next start after a run that

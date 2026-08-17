@@ -218,6 +218,14 @@ export const PANEL_CSS = CODE_CSS + `
 .betterslack-palette__source { font-size: 12px; opacity: 0.7; }
 .betterslack-palette__sub { flex-basis: 100%; font-size: 12px; opacity: 0.7; }
 
+.betterslack-remote { padding: 0 20px 10px; }
+.betterslack-remote__row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.betterslack-tag--warn {
+  background: rgba(242, 163, 94, 0.18);
+  color: rgba(180, 95, 6, 1);
+}
+.betterslack-dialog--small { max-width: 520px; }
+
 .betterslack-diag { padding: 12px 20px; }
 .betterslack-diag__row {
   display: flex;
