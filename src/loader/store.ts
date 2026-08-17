@@ -90,6 +90,87 @@ export async function lastBootFailed(): Promise<boolean> {
   return fs.stat(BOOT_MARKER).then(() => true).catch(() => false);
 }
 
+/**
+ * Everything a person has, as one document.
+ *
+ * Settings and the mods they wrote or installed themselves -- which is the part
+ * that cannot be downloaded again. Deliberately not the catalogue: those come
+ * back with the project, and a backup that carries them would restore stale
+ * copies over newer ones.
+ */
+export async function exportBackup(): Promise<string> {
+  const settings = await readSettings();
+  const mods: Record<string, Record<string, string>> = {};
+
+  const walk = async (dir: string, prefix: string, into: Record<string, string>) => {
+    for (const entry of await fs.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+      if (entry.name.startsWith('.')) continue;
+      const full = path.join(dir, entry.name);
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) await walk(full, rel, into);
+      else if (/\.(js|mjs|css|json)$/.test(entry.name)) {
+        into[rel] = await fs.readFile(full, 'utf8');
+      }
+    }
+  };
+
+  for (const entry of await fs.readdir(USER_MODS_ROOT, { withFileTypes: true }).catch(() => [])) {
+    if (!entry.isDirectory()) continue;
+    const files: Record<string, string> = {};
+    await walk(path.join(USER_MODS_ROOT, entry.name), '', files);
+    if (Object.keys(files).length > 0) mods[entry.name] = files;
+  }
+
+  return JSON.stringify(
+    { kind: 'betterslack-backup', version: 1, exportedAt: new Date().toISOString(), settings, mods },
+    null,
+    2,
+  );
+}
+
+export interface RestoreResult {
+  ok: boolean;
+  detail: string;
+}
+
+/**
+ * Put a backup back.
+ *
+ * Refuses anything that is not one rather than guessing, and writes mods before
+ * settings so a restored `enabled` list never names something that is not there
+ * yet. Nothing outside ~/.betterslack is touched: the install is not part of
+ * what a person owns.
+ */
+export async function importBackup(archive: string): Promise<RestoreResult> {
+  let parsed: { kind?: string; settings?: Partial<Settings>; mods?: Record<string, Record<string, string>> };
+  try {
+    parsed = JSON.parse(archive);
+  } catch {
+    return { ok: false, detail: 'that is not a backup file' };
+  }
+  if (parsed.kind !== 'betterslack-backup' || !parsed.settings) {
+    return { ok: false, detail: 'that is not a BetterSlack backup' };
+  }
+
+  await ensureUserRoot();
+  let restored = 0;
+  for (const [id, files] of Object.entries(parsed.mods ?? {})) {
+    if (!/^[a-z0-9][a-z0-9-]{1,48}$/.test(id)) continue;
+    for (const [name, contents] of Object.entries(files)) {
+      // A path that climbs out of the mod folder is the one thing an archive
+      // must never be able to do.
+      const target = path.join(USER_MODS_ROOT, id, name);
+      if (!target.startsWith(path.join(USER_MODS_ROOT, id) + path.sep)) continue;
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, contents, 'utf8');
+    }
+    restored++;
+  }
+
+  await writeSettings({ ...DEFAULT_SETTINGS, ...parsed.settings } as Settings);
+  return { ok: true, detail: `${restored} mod(s) and your settings` };
+}
+
 export async function writeSettings(settings: Settings): Promise<void> {
   await ensureUserRoot();
   // Write-then-rename so a crash mid-write cannot leave a truncated file.

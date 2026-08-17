@@ -88,6 +88,21 @@ export const PANEL_STRINGS = {
     repository: 'Repository',
     contribute: 'Submit a mod',
 
+    backupTitle: 'Backup',
+    backupHint: 'Your settings and the mods you wrote or installed yourself. Catalogue mods come back with the project, so they are not in it.',
+    backupExport: 'Save a backup',
+    backupImport: 'Restore one',
+    backupSaved: 'Saved to your downloads.',
+    backupWorking: 'Restoring…',
+    backupRestored: 'Restored {detail}.',
+
+    diagTitle: 'What the mods cost',
+    diagHint: 'Time spent starting, and how often Slack has undone each mod’s work.',
+    diagTiming: '{ms} ms · {mounts} mounts',
+    diagCopy: 'Copy a report',
+    diagCopied: 'Copied',
+    diagCopyFailed: 'Could not copy',
+
     paletteSearch: 'Type a command…',
     paletteEmpty: 'Nothing matches.',
     paletteOpenPanel: 'Open BetterSlack',
@@ -172,6 +187,21 @@ export const PANEL_STRINGS = {
     transport: 'Transport',
     repository: 'Dépôt',
     contribute: 'Proposer un mod',
+
+    backupTitle: 'Sauvegarde',
+    backupHint: 'Vos réglages et les mods que vous avez écrits ou installés vous-même. Les mods du catalogue reviennent avec le projet, ils n’y sont pas.',
+    backupExport: 'Enregistrer une sauvegarde',
+    backupImport: 'En restaurer une',
+    backupSaved: 'Enregistré dans vos téléchargements.',
+    backupWorking: 'Restauration…',
+    backupRestored: 'Restauré : {detail}.',
+
+    diagTitle: 'Ce que coûtent les mods',
+    diagHint: 'Temps de démarrage, et combien de fois Slack a défait le travail de chacun.',
+    diagTiming: '{ms} ms · {mounts} montages',
+    diagCopy: 'Copier un rapport',
+    diagCopied: 'Copié',
+    diagCopyFailed: 'Copie impossible',
 
     paletteSearch: 'Tapez une commande…',
     paletteEmpty: 'Aucun résultat.',

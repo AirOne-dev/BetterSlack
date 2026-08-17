@@ -218,6 +218,17 @@ export const PANEL_CSS = CODE_CSS + `
 .betterslack-palette__source { font-size: 12px; opacity: 0.7; }
 .betterslack-palette__sub { flex-basis: 100%; font-size: 12px; opacity: 0.7; }
 
+.betterslack-diag { padding: 12px 20px; }
+.betterslack-diag__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: 13px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.85);
+}
+.betterslack-diag__num { font-variant-numeric: tabular-nums; opacity: 0.7; }
+
 .betterslack-filters {
   display: flex;
   flex-wrap: wrap;

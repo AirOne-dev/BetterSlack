@@ -20,6 +20,8 @@ import { fetchModFiles, findModUpdates, folderFor, manifestFrom } from './mod-up
 import { inlineCssImports } from '../runtime/themes.js';
 import {
   ensureUserRoot,
+  exportBackup,
+  importBackup,
   lastBootFailed,
   markBootHealthy,
   markBootStarted,
@@ -727,6 +729,20 @@ class Loader {
             process.exit(0);
           });
         }, 400);
+        return result;
+      }
+
+      case 'backup.export':
+        return exportBackup();
+
+      case 'backup.import': {
+        const result = await importBackup(request.archive);
+        if (result.ok) {
+          // The renderer's copy of everything just changed underneath it.
+          this.broadcast({ type: 'settings.changed', settings: await readSettings() });
+          await this.catalog.refresh();
+          this.broadcast({ type: 'catalog.changed', mods: this.catalog.list() });
+        }
         return result;
       }
 
