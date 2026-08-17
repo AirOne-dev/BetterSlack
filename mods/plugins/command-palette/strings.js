@@ -1,0 +1,36 @@
+// What the palette says, in every language it says it in.
+
+export const STRINGS = {
+  en: {
+    command: 'Command palette',
+    placeholder: 'Jump to a conversation, or type a command…',
+    empty: 'Nothing matches.',
+    channel: 'Channel',
+    directMessage: 'Direct message',
+    openPanel: 'Open BetterSlack',
+    browseThemes: 'Browse themes',
+    browsePlugins: 'Browse plugins',
+    customCss: 'Edit custom CSS',
+    theme: 'Theme',
+    plugin: 'Plugin',
+    enable: 'Enable',
+    disable: 'Disable',
+    install: 'Install',
+  },
+  fr: {
+    command: 'Palette de commandes',
+    placeholder: 'Aller à une conversation, ou taper une commande…',
+    empty: 'Aucun résultat.',
+    channel: 'Canal',
+    directMessage: 'Message direct',
+    openPanel: 'Ouvrir BetterSlack',
+    browseThemes: 'Parcourir les thèmes',
+    browsePlugins: 'Parcourir les plugins',
+    customCss: 'Modifier le CSS personnalisé',
+    theme: 'Thème',
+    plugin: 'Plugin',
+    enable: 'Activer',
+    disable: 'Désactiver',
+    install: 'Installer',
+  },
+};

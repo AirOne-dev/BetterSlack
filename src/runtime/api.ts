@@ -14,7 +14,7 @@ import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
 import { createKit, type Kit } from './ui/kit.js';
 import { openMenu, type MenuItem, type MenuOptions } from './ui/menu.js';
-import type { Command } from './ui/palette.js';
+import { openPalette, type Command } from './ui/palette.js';
 import { KIT_CSS } from './ui/kit-css.js';
 import {
   confirm,
@@ -107,6 +107,41 @@ export interface PluginApi {
 
     /** The kit's stylesheet. Put it in the document the kit is building in. */
     readonly kitCss: string;
+
+    /**
+     * The command palette, as a component.
+     *
+     * The list is yours: this draws it, ranks it as you type, moves with the
+     * arrow keys and closes on Escape. Nothing about what belongs in it is
+     * decided here -- the mod that opens it decides, which is what lets one
+     * plugin put Slack's own conversations and BetterSlack's actions in the
+     * same list.
+     */
+    palette(entries: Command[], labels: { placeholder: string; empty: string }): Cleanup;
+  };
+
+  /**
+   * BetterSlack itself, for the mods that extend it rather than Slack.
+   *
+   * Deliberately small and deliberately here: a mod that wants to list the
+   * catalogue or open the panel should not be reaching into `window` for it.
+   */
+  readonly app: {
+    /** Every mod in the catalogue, with what the user has done about it. */
+    mods(): Array<{
+      id: string;
+      name: string;
+      description: string;
+      type: 'theme' | 'plugin';
+      installed: boolean;
+      enabled: boolean;
+    }>;
+    setEnabled(id: string, enabled: boolean): Promise<void>;
+    setInstalled(id: string, installed: boolean): Promise<void>;
+    /** Open the Mods panel, optionally straight to a tab. */
+    openPanel(tab?: 'themes' | 'plugins' | 'css' | 'about'): void;
+    /** What every other mod has registered, so a palette can show them all. */
+    commands(): Command[];
   };
 
   /**
@@ -232,6 +267,18 @@ export interface ApiContext {
   onSettingsChanged: (id: string, handler: (values: Record<string, unknown>) => void) => Cleanup;
   /** Put a command in the palette until the plugin goes away. */
   addCommand: (command: Command) => Cleanup;
+  listCommands: () => Command[];
+  listMods: () => Array<{
+    id: string;
+    name: string;
+    description: string;
+    type: 'theme' | 'plugin';
+    installed: boolean;
+    enabled: boolean;
+  }>;
+  setModEnabled: (id: string, enabled: boolean) => Promise<void>;
+  setModInstalled: (id: string, installed: boolean) => Promise<void>;
+  openPanel: (tab?: 'themes' | 'plugins' | 'css' | 'about') => void;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
   listThemes: () => Array<{ id: string; name: string; description: string; enabled: boolean }>;
@@ -312,12 +359,21 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
       confirm,
       tooltip: track(attachTooltip),
       menu: track(openMenu) as PluginApi['ui']['menu'],
+      palette: track(openPalette) as PluginApi['ui']['palette'],
       kit: (doc?: Document) => createKit(doc ?? document),
       kitCss: KIT_CSS,
     },
 
     files: {
       save: (url, filename) => ctx.download(url, filename),
+    },
+
+    app: {
+      mods: () => ctx.listMods(),
+      setEnabled: (id, enabled) => ctx.setModEnabled(id, enabled),
+      setInstalled: (id, installed) => ctx.setModInstalled(id, installed),
+      openPanel: (tab) => ctx.openPanel(tab),
+      commands: () => ctx.listCommands(),
     },
 
     commands: {

@@ -443,10 +443,19 @@ panel asks for must exist, and a bare English sentence left in `panel.ts` fails
 the test. It was English-only until now, around mods that were required to be
 bilingual.
 
+**The palette is a mod, not the app.** `mods/plugins/command-palette` binds the
+shortcut and assembles the list; the runtime only provides the component
+(`api.ui.palette`) and a small surface for mods that extend BetterSlack rather
+than Slack (`api.app`: the catalogue, enable/install, open the panel, other
+mods' commands). Taking a key that belongs to Slack should be something you can
+switch off, and the whole thing doubles as the worked example of what the API
+can do.
+
 **⌘K, taken from Slack on purpose.** Slack binds it to its quick switcher, but
 ⌘K is the key everyone reaches for and a palette on a key nobody presses is a
 palette nobody uses; Slack's switcher stays reachable from its search field, and
-`settings.paletteShortcut` puts it back on ⌘⇧K for anyone who disagrees. The
+the plugin's own `shortcut` setting puts it back on ⌘⇧K for anyone who
+disagrees. The
 handler runs in the capture phase, or both open at once. `api.commands.add` is
 how a mod gets in without taking a button in the rail.
 
