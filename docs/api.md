@@ -501,12 +501,20 @@ and it is labelled as one.
 BetterSlack itself, for the mods that extend it rather than Slack.
 
 ```js
-api.app.mods();                    // [{ id, name, description, type, installed, enabled }]
+api.app.mods();     // [{ id, name, description, type, installed, enabled, settings }]
 await api.app.setEnabled('midnight', true);
 await api.app.setInstalled('aurora', true);
 api.app.openPanel('themes');       // or no argument for wherever it was
+api.app.openMod('channel-notes');  // the panel, on that mod, settings unfolded
 api.app.commands();                // what every other mod has registered
 ```
+
+`settings` is how many controls the mod declared in its manifest — 0 for one
+there is nothing to configure. Offer "Configure" only above 0, and only while
+the mod is on: the panel hides a switched-off mod's controls, so the row would
+lead to an empty box. `openMod` points at the panel rather than reimplementing
+it, because the panel is where a manifest's settings are drawn, checked and
+saved.
 
 Small on purpose, and here rather than on `window`: a mod that wants to list the
 catalogue or open the panel should not be reaching into the page for it. The
@@ -520,13 +528,39 @@ as you type, walks it with the arrow keys (or `ctrl+n` / `ctrl+p`) and closes on
 Escape.
 
 ```js
-api.ui.palette(entries, {
+const palette = api.ui.palette(source, {
   placeholder: 'Type a command…',
   empty: 'Nothing matches.',
   openHint: 'open',                 // the footer: "↵ open · esc close"
   closeHint: 'close',
+  searching: 'searching…',          // while a source is still answering
+  modes: [                          // prefixes that narrow the list
+    { id: 'actions', prefix: '/', label: 'Actions', placeholder: 'Run an action…' },
+    { id: 'people', prefix: '@', label: 'People' },
+  ],
 });
+
+palette.refresh();                  // paint again — an answer arrived late
+palette();                          // the cleanup: close it
 ```
+
+**The source is a list or a function.** A function is called on every keystroke
+with `(query, mode)` — `mode` being the id of the prefix in use, or `null` — and
+may return a promise, in which case only the answer to the newest query is
+painted:
+
+```js
+const source = (query, mode) => {
+  if (mode === 'people') return people(query);      // instant, from memory
+  void searchSlack(query);                          // and repaint when it lands
+  return [...conversations(query), ...actions(query)];
+};
+```
+
+Answering synchronously is what makes a palette feel instant, so hand back what
+is already in memory and call `refresh()` when the network answers. Typing a
+prefix turns it into a chip in front of the field — the mode is visible rather
+than remembered — and Backspace or Escape takes it off again.
 
 An entry:
 
@@ -538,7 +572,12 @@ An entry:
 | `source` | where it came from, shown greyed on the right |
 | `subtitle` | one line under the title |
 | `icon` | an image URL (an avatar), an emoji, or one or two characters like `#` |
+| `always` | keep it whatever the query is — for rows a server already matched |
 | `run()` | may return a promise; the palette closes first |
+
+`always` exists because the palette ranks what it is given against what is on
+screen: someone found by their email, or by a real name behind a nickname, would
+otherwise be filtered straight back out.
 
 Rows carry a picture of what they are, because a list of identical rows takes as
 long to scan as it does to read — a flat one was the first version, and searching

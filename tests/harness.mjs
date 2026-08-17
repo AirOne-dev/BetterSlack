@@ -169,7 +169,15 @@ function h(tag, attrs = {}, children = []) {
  * handlers directly. Anything a mod is expected to render (modals, toasts) is
  * captured too.
  */
-export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files = {} } = {}) {
+export function createTestApi({
+  settings = {},
+  web = {},
+  locale = 'en-GB',
+  files = {},
+  // The catalogue a mod sees through `api.app`. Empty by default: a mod that
+  // reads it should behave with nothing installed.
+  mods = [],
+} = {}) {
   const recorded = {
     css: [],
     toasts: [],
@@ -192,6 +200,12 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
     hidden: [],
     huddles: [],
     vips: new Set(),
+    /** Panels opened through `api.app`: a tab name, or { mod: id }. */
+    panels: [],
+    /** Every `api.ui.palette(...)`, with the source it was given. */
+    palettes: [],
+    /** `api.app.setEnabled` / `setInstalled` calls. */
+    modChanges: [],
   };
   const store = { ...settings };
   let confirmAnswer = true;
@@ -408,6 +422,43 @@ export function createTestApi({ settings = {}, web = {}, locale = 'en-GB', files
       },
       kit: (target = globalThis.document) => createKit(target),
       kitCss: KIT_CSS,
+
+      // Recorded rather than drawn. What a palette is for is the list it is
+      // given, so a test asks for that list -- and since the source may be a
+      // function of the query, the recording keeps the function itself.
+      palette: (source, labels) => {
+        const entry = {
+          source,
+          labels,
+          /** What the palette would show for a query, in that mode. */
+          entries: (query = '', mode = null) =>
+            (typeof source === 'function' ? source(query, mode) : source),
+        };
+        recorded.palettes.push(entry);
+        const close = () => {};
+        close.refresh = () => {};
+        return close;
+      },
+    },
+
+    /*
+     * BetterSlack itself, as a mod sees it.
+     *
+     * Modelled here rather than in each test because it is a real surface with
+     * real rules -- `settings` is the count of what a mod declared, and a mod
+     * offering to configure one that declared none is the bug this catches.
+     */
+    app: {
+      mods: () => mods.map((mod) => ({ settings: 0, ...mod })),
+      commands: () => [...recorded.commands],
+      setEnabled: async (id, enabled) => {
+        recorded.modChanges.push({ id, enabled });
+      },
+      setInstalled: async (id, installed) => {
+        recorded.modChanges.push({ id, installed });
+      },
+      openPanel: (tab) => recorded.panels.push(tab ?? 'default'),
+      openMod: (id) => recorded.panels.push({ mod: id }),
     },
 
     // Recorded rather than run: a test asserts a mod offered a command, and

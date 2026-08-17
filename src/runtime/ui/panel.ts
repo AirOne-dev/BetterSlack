@@ -96,6 +96,37 @@ export class Panel {
     else this.open();
   }
 
+  /**
+   * Open on one mod, with its settings unfolded.
+   *
+   * The palette can offer "Configure X" without knowing anything about how a
+   * setting is drawn, checked or saved: the manifest describes it and this
+   * panel is the one place that renders it. Everything here is what a person
+   * would have done by hand -- the right tab, the Installed shelf, no filter in
+   * the way, that row's settings open -- so what they end up looking at is a
+   * panel they could have reached themselves.
+   */
+  openMod(id: string): void {
+    const mod = this.manager.list().find((entry) => entry.id === id);
+    if (!mod) return;
+
+    this.tab = mod.type === 'theme' ? 'themes' : 'plugins';
+    this.shelf = 'installed';
+    this.search = '';
+    this.tag = null;
+    this.openSettings.add(id);
+    this.scrollTop = 0;
+    if (this.isOpen) this.render();
+    else this.open();
+
+    // After the render, because the row does not exist until then.
+    requestAnimationFrame(() => {
+      this.host
+        ?.querySelector<HTMLElement>(`[data-betterslack-mod="${CSS.escape(id)}"]`)
+        ?.scrollIntoView({ block: 'center' });
+    });
+  }
+
   close(): void {
     this.closeMenu();
     this.dismissRequires?.();
@@ -458,7 +489,7 @@ export class Panel {
       meta.append(note);
     }
 
-    const row = h('div', { class: 'betterslack-row' }, [meta, actions]);
+    const row = h('div', { class: 'betterslack-row', 'data-betterslack-mod': mod.id }, [meta, actions]);
 
     // Settings hang under the row they belong to, and only while the mod is on:
     // a control that changes nothing is a control that lies.

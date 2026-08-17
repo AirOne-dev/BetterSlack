@@ -14,7 +14,13 @@ import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
 import { createKit, type Kit } from './ui/kit.js';
 import { openMenu, type MenuItem, type MenuOptions } from './ui/menu.js';
-import { openPalette, type Command, type PaletteLabels } from './ui/palette.js';
+import {
+  openPalette,
+  type Command,
+  type PaletteHandle,
+  type PaletteLabels,
+  type PaletteSource,
+} from './ui/palette.js';
 import { KIT_CSS } from './ui/kit-css.js';
 import {
   confirm,
@@ -117,7 +123,7 @@ export interface PluginApi {
      * plugin put Slack's own conversations and BetterSlack's actions in the
      * same list.
      */
-    palette(entries: Command[], labels: PaletteLabels): Cleanup;
+    palette(source: PaletteSource, labels: PaletteLabels): PaletteHandle;
   };
 
   /**
@@ -135,11 +141,25 @@ export interface PluginApi {
       type: 'theme' | 'plugin';
       installed: boolean;
       enabled: boolean;
+      /**
+       * How many settings it declares in its manifest -- 0 for a mod there is
+       * nothing to configure. Offering "Configure" for one of those is how a
+       * list of actions stops meaning anything.
+       */
+      settings: number;
     }>;
     setEnabled(id: string, enabled: boolean): Promise<void>;
     setInstalled(id: string, installed: boolean): Promise<void>;
     /** Open the Mods panel, optionally straight to a tab. */
     openPanel(tab?: 'themes' | 'plugins' | 'css' | 'about'): void;
+    /**
+     * Open the panel on one mod, with its settings unfolded.
+     *
+     * The panel is where a setting is drawn from the manifest, checked and
+     * saved; this points at the mod rather than reimplementing any of that
+     * somewhere with less room.
+     */
+    openMod(id: string): void;
     /** What every other mod has registered, so a palette can show them all. */
     commands(): Command[];
   };
@@ -282,10 +302,12 @@ export interface ApiContext {
     type: 'theme' | 'plugin';
     installed: boolean;
     enabled: boolean;
+    settings: number;
   }>;
   setModEnabled: (id: string, enabled: boolean) => Promise<void>;
   setModInstalled: (id: string, installed: boolean) => Promise<void>;
   openPanel: (tab?: 'themes' | 'plugins' | 'css' | 'about') => void;
+  openMod: (id: string) => void;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
   listThemes: () => Array<{ id: string; name: string; description: string; enabled: boolean }>;
@@ -380,6 +402,7 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
       setEnabled: (id, enabled) => ctx.setModEnabled(id, enabled),
       setInstalled: (id, installed) => ctx.setModInstalled(id, installed),
       openPanel: (tab) => ctx.openPanel(tab),
+      openMod: (id) => ctx.openMod(id),
       commands: () => ctx.listCommands(),
     },
 
