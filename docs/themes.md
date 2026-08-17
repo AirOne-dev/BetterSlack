@@ -3,6 +3,14 @@
 Everything below was measured against a live Slack, not assumed. New here?
 Start with **[getting-started.md](getting-started.md#write-a-theme)**.
 
+**There is a tool for this.** The **Theme Builder** plugin opens a window of its
+own and paints the client live, so the preview is Slack itself: two colours
+become twelve roles across all four families below, hovering a colour outlines
+what it paints, pointing at anything in the app shows the tokens behind it, and
+what it writes is the CSS this document describes. Everything here still applies
+— the builder is a faster way to reach the same stylesheet, and it exports one
+you can commit.
+
 ## Four families, not one
 
 Slack's colours come from four separate sets of custom properties. Override only
@@ -98,6 +106,15 @@ Slack uses two conventions that both contain `__`:
 
 The tell is the suffix: module hashes carry uppercase letters. The theme test
 rejects them automatically, so this fails CI rather than your users.
+
+### Slack has two "jump to unread" pills
+
+One for unread above, one for unread below, in the sidebar. They share every
+class except a hashed CSS-module name that changes with each build, so a rule
+written against what looks like "the pill" matches both — and setting `top` on
+one and `bottom` on the other means setting both on the same element, which
+stretches it the height of the sidebar. Tell them apart by which half of the
+sidebar they sit in, never by the hashed name.
 
 ### Light themes and dark mode
 

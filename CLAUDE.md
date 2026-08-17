@@ -34,18 +34,18 @@ esbuild fetches its platform binary in one, so a fresh checkout fails on every
 command that touches the bundler without it.
 
 ```bash
-pnpm install            # once; pnpm, and the lockfile is committed
+pnpm install           # once; pnpm, and the lockfile is committed
 pnpm new-mod plugin my-plugin "What a user gets"   # a mod that already passes
-pnpm release patch      # bumps, writes CHANGELOG.md from the commits, tags
-pnpm test:live          # boots real Slack and checks what loaded
-pnpm build            # both bundles + dist/download.mjs
-pnpm start                # launch Slack with mods
-pnpm test                 # every mod's tests
-ppnpm test:mod -- <id> # one mod
-ppnpm test:core        # loader unit tests
-pnpm check-structure  # is every mod loadable
-pnpm validate-mods    # manifests
-pnpm registry         # regenerate mods/registry.json (commit it)
+pnpm release patch     # bumps, writes CHANGELOG.md from the commits, tags
+pnpm test:live         # boots real Slack and checks what loaded
+pnpm build             # both bundles + dist/download.mjs
+pnpm start             # launch Slack with mods
+pnpm test              # every mod's tests
+pnpm test:mod -- <id>  # one mod
+pnpm test:core         # loader and runtime unit tests
+pnpm check-structure   # is every mod loadable
+pnpm validate-mods     # manifests
+pnpm registry          # regenerate mods/registry.json (commit it)
 pnpm typecheck
 ```
 
@@ -111,6 +111,13 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   control strip's default. When an anchor is missing, `addToolbarButton`
   prepends rather than appends: the end of a container is where the app's own
   re-renders land.
+- **`installLauncher` owns more than the launcher.** It is also what installs
+  `LAUNCHER_CSS`, where `.betterslack-toolbar-button svg` gets its 20px. A
+  refactor once dropped the `mountUi()` call in `index.ts`: the BetterSlack
+  button vanished, every mod's icon drew at its SVG's intrinsic size, and the
+  other buttons lost the anchor they position against (`before:
+  '#betterslack-control-button'`). `--healthcheck` reports `launcher` and fails
+  on it -- it caught nothing because `pnpm test:live` was not run.
 - `keepMounted` gives up after 25 remounts in two seconds and logs which node
   and container, rather than looping forever. A missing button is a bug report;
   a frozen Slack is not.

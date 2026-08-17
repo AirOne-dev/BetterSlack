@@ -90,13 +90,21 @@ unexplained one is an automatic no.
    that climbs out of the folder or a cycle.
 
 2. `pnpm validate-mods` passes.
-3. **A `test.mjs` next to your `mod.json`, and `ppnpm test:mod -- <id>`
+3. **A `test.mjs` next to your `mod.json`, and `pnpm test:mod -- <id>`
    passes.** Every mod ships tests. There is no way to opt out: a mod with no
    `test.mjs` fails the structure check immediately.
 4. `pnpm registry` has been run and `mods/registry.json` is committed.
 5. Tested against the current Slack release. Put the version you tested in
    `slackVersion`.
 6. The description is one sentence that says what a user gets, not how it works.
+7. **Bump `version` whenever you change a mod that is already in the catalogue.**
+   The panel updates mods one at a time by comparing what is installed against
+   `mods/registry.json` on the default branch, so a fix shipped without a bump
+   reaches nobody.
+
+`pnpm new-mod plugin my-plugin "What a user gets"` writes a folder that already
+passes every check above — manifest, entry, test, registry entry — which is the
+shortest way to start from something green.
 
 ### What CI does with your pull request
 
@@ -107,7 +115,7 @@ cannot block theirs:
 | Workflow | Per changed mod | Checks |
 | --- | --- | --- |
 | **Mod structure** | `node scripts/check-structure.mjs <id>` | manifest, entry file exists and imports, a real `start()` export, every relative import lands on a file that is there, CSS parses, `test.mjs` present, registry entry current |
-| **Mod tests** | `ppnpm test:mod -- <id>` | your own tests |
+| **Mod tests** | `pnpm test:mod -- <id>` | your own tests |
 
 Each mod gets its own job, so a failure names the mod at fault. Both workflows
 end in a job with a stable name (`mod structure`, `mod tests`) — those are the
@@ -123,7 +131,7 @@ Run the same thing locally before pushing:
 ```bash
 node scripts/changed-mods.mjs           # what CI will pick up
 pnpm check-structure -- <id>
-ppnpm test:mod -- <id>
+pnpm test:mod -- <id>
 ```
 
 ### Writing the tests
@@ -174,6 +182,10 @@ The short version:
 pnpm install && pnpm build
 pnpm start
 ```
+
+pnpm, not npm: esbuild fetches its platform binary in an install script, and
+`pnpm-workspace.yaml` is what allows that script to run. `corepack enable` gets
+you pnpm if you do not have it.
 
 Edit files in `mods/` and they reload in Slack immediately. Mods in
 `~/.betterslack/mods/` shadow the repo copies, which is convenient for iterating on

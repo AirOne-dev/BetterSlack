@@ -12,11 +12,14 @@ Then: [test it](#test-your-mod) and [ship it](#ship-it).
 
 ## Just run it
 
-Requires Node 18+ and the Slack desktop app.
+Requires Node 18+, pnpm, and the Slack desktop app. Node ships Corepack, so
+`corepack enable` gets you pnpm; `npm i -g pnpm` works too. It has to be pnpm —
+esbuild fetches its platform binary in an install script, and `pnpm-workspace.yaml`
+is what allows that script to run.
 
 ```bash
 git clone https://github.com/AirOne-dev/SlackMod.git
-cd BetterSlack
+cd SlackMod
 pnpm install
 pnpm build
 pnpm start
@@ -280,8 +283,8 @@ ES module through a `blob:` URL — and a blob URL has no directory for a relati
 path to resolve against. BetterSlack therefore reads your whole folder, builds a
 blob per file leaves-first, and rewrites each relative specifier to the blob URL
 of the file it names. The module you wrote is the module that runs; only the
-specifiers change. `.css` files in the folder are shipped too, for
-`api.css.inject(...)`.
+specifiers change. `.css` files in the folder are shipped too, so a plugin can
+keep its stylesheet in a real `.css` file: `api.css(api.assets.text('ui/panel.css'))`.
 
 ### 5. Read a real one
 
@@ -346,10 +349,15 @@ themeChecks(test, assert, import.meta.url);
 Run it:
 
 ```bash
-ppnpm test:mod -- my-plugin     # one mod
-pnpm test                          # all of them
+pnpm test:mod -- my-plugin     # one mod
+pnpm test                      # all of them
 pnpm check-structure -- my-plugin
 ```
+
+jsdom cannot see the failures that matter most — a mod that wedges the renderer,
+a mod that throws on start. `pnpm test:live` boots the real Slack, asks the
+runtime what actually loaded, and turns the answer into an exit code. It closes
+Slack afterwards, so it is not part of `pnpm test`.
 
 ---
 
@@ -394,4 +402,7 @@ rejected.** Read it before you write, not after.
 | `eval is not allowed` | Slack's CSP. There is no way around it; restructure. |
 | `Failed to fetch` on a Slack CDN URL | No CORS headers. Use `api.files.save`. |
 | Nothing in the console | Install the **DevTools** plugin, or press ⌘⌥I. |
+| Slack comes up grey, or the panel never appears | A mod wedged the renderer. The next start applies nothing on its own; `pnpm start --safe` forces it. Switch the suspect off, then start again. |
+| A mod's row says it is not running | It threw during `start()`. Two failures and it is skipped at boot — switching it off and on again clears the count. |
+| ⌘K opens Slack's switcher, not BetterSlack's | The **Command Palette** plugin is not installed or not enabled. Its own settings can move it to ⌘⇧K instead. |
 
