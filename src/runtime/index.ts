@@ -122,6 +122,17 @@ async function boot(): Promise<void> {
     });
   };
 
+  // Actually mount it. This call went missing when the palette moved out into a
+  // plugin, and it took more with it than the button: `installLauncher` is also
+  // what installs LAUNCHER_CSS, which is where every toolbar button's icon gets
+  // its 20px. Without the call there was no BetterSlack button, and every mod's
+  // button drew its icon at whatever size the SVG happened to carry.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountUi, { once: true });
+  } else {
+    mountUi();
+  }
+
   window.__betterslack = {
     version: payload.version,
     sessionId: payload.info.sessionId,
