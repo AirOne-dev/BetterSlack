@@ -14,7 +14,7 @@ import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
 import { createKit, type Kit } from './ui/kit.js';
 import { openMenu, type MenuItem, type MenuOptions } from './ui/menu.js';
-import { openPalette, type Command } from './ui/palette.js';
+import { openPalette, type Command, type PaletteLabels } from './ui/palette.js';
 import { KIT_CSS } from './ui/kit-css.js';
 import {
   confirm,
@@ -117,7 +117,7 @@ export interface PluginApi {
      * plugin put Slack's own conversations and BetterSlack's actions in the
      * same list.
      */
-    palette(entries: Command[], labels: { placeholder: string; empty: string }): Cleanup;
+    palette(entries: Command[], labels: PaletteLabels): Cleanup;
   };
 
   /**
@@ -240,7 +240,14 @@ export interface PluginApi {
    *   api.commands.add({ id: 'open', title: 'Theme builder', run: open });
    */
   readonly commands: {
-    add(command: { id: string; title: string; subtitle?: string; run: () => void | Promise<void> }): Cleanup;
+    add(command: {
+      id: string;
+      title: string;
+      subtitle?: string;
+      /** An emoji, a short glyph, or an image URL -- the palette draws it. */
+      icon?: string;
+      run: () => void | Promise<void>;
+    }): Cleanup;
   };
 
   /** Register a teardown callback; runs when the plugin is disabled. */

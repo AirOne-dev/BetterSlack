@@ -14,8 +14,11 @@ Anything registered through `api` is undone when the plugin is switched off.
 `stop()` is only for state the API cannot know about.
 
 **Jump to:** [helpers](#apihelpers) · [slack](#apislack) · [ui](#apiui) ·
-[dom](#apidom) · [settings](#apisettings) · [files](#apifiles) ·
-[assets](#apiassets) · [css](#apicss) · [log](#apilog) · [recipes](#recipes)
+[dom](#apidom) · [files](#apifiles) · [slack.web](#apislackweb--users-and-availability) ·
+[ui.menu](#apiuimenu) · [ui.kit](#apiuikit) · [app](#apiapp) ·
+[ui.palette](#apiuipalette) · [commands](#apicommands) · [settings](#apisettings) ·
+[themes](#apithemes) · [assets](#apiassets) · [css](#apicss) · [log](#apilog) ·
+[i18n](#apii18n) · [recipes](#recipes)
 
 ---
 
@@ -363,75 +366,6 @@ api.dom.onShortcut((e) => e.key === 'F1', handler);          // prefer helpers.h
 
 ---
 
-## Installing a mod from outside this repository
-
-The Browse shelf takes a GitHub URL — a repository, or a folder inside one. It
-is read and described first, and installed only after a dialog that says what it
-means: a plugin runs unsandboxed in a signed-in Slack and can read every message
-and the session token, and nobody in this project has reviewed it. The mod then
-carries an **unreviewed** badge for as long as it exists, recorded in its
-manifest so a restart cannot lose it.
-
-The catalogue's security model is human review. This is the explicit exception,
-and it is labelled as one.
-
-## `api.app`
-
-BetterSlack itself, for the mods that extend it rather than Slack.
-
-```js
-api.app.mods();                    // [{ id, name, description, type, installed, enabled }]
-await api.app.setEnabled('midnight', true);
-await api.app.setInstalled('aurora', true);
-api.app.openPanel('themes');       // or no argument for wherever it was
-api.app.commands();                // what every other mod has registered
-```
-
-Small on purpose, and here rather than on `window`: a mod that wants to list the
-catalogue or open the panel should not be reaching into the page for it. The
-Command Palette plugin is what it exists for — it is an ordinary mod, and it can
-be switched off.
-
-## `api.ui.palette`
-
-The command palette, as a component. You supply the list; it draws it, ranks it
-as you type, moves with the arrow keys and closes on Escape.
-
-```js
-api.ui.palette(entries, { placeholder: 'Type a command…', empty: 'Nothing matches.' });
-// entries: [{ id, title, source?, subtitle?, run() }]
-```
-
-Nothing about what belongs in the list is decided here, which is what lets one
-plugin put Slack's own conversations and BetterSlack's actions in the same one.
-
-## `api.commands`
-
-Things your mod can do, findable by typing — ⌘⇧K opens the palette.
-
-```js
-api.commands.add({
-  id: 'open',                       // unique within your mod
-  title: 'Theme builder',
-  subtitle: 'Design a theme with the app as the preview',
-  run: () => open(),
-});
-```
-
-Every idea so far has meant another button in Slack's rail, which is Slack's and
-has room for about three. A command costs no chrome: it is attributed to your
-mod automatically, and it goes when your mod is switched off.
-
-## `api.settings`
-
-Persisted per plugin, in `~/.betterslack/settings.json`.
-
-```js
-const limit = api.settings.get('limit', 4000);   // with a fallback
-await api.settings.set('limit', 3000);
-api.settings.all();                              // the whole bag
-```
-
 ## `api.files`
 
 ```js
@@ -582,25 +516,49 @@ be switched off.
 ## `api.ui.palette`
 
 The command palette, as a component. You supply the list; it draws it, ranks it
-as you type, moves with the arrow keys and closes on Escape.
+as you type, walks it with the arrow keys (or `ctrl+n` / `ctrl+p`) and closes on
+Escape.
 
 ```js
-api.ui.palette(entries, { placeholder: 'Type a command…', empty: 'Nothing matches.' });
-// entries: [{ id, title, source?, subtitle?, run() }]
+api.ui.palette(entries, {
+  placeholder: 'Type a command…',
+  empty: 'Nothing matches.',
+  openHint: 'open',                 // the footer: "↵ open · esc close"
+  closeHint: 'close',
+});
 ```
 
-Nothing about what belongs in the list is decided here, which is what lets one
-plugin put Slack's own conversations and BetterSlack's actions in the same one.
+An entry:
+
+| | |
+| --- | --- |
+| `id` | unique within your mod |
+| `title` | what is read first, so put the distinguishing word early |
+| `section` | the heading it is grouped under; entries with none come first |
+| `source` | where it came from, shown greyed on the right |
+| `subtitle` | one line under the title |
+| `icon` | an image URL (an avatar), an emoji, or one or two characters like `#` |
+| `run()` | may return a promise; the palette closes first |
+
+Rows carry a picture of what they are, because a list of identical rows takes as
+long to scan as it does to read — a flat one was the first version, and searching
+it for a person meant reading every line. Nothing about *what* belongs in the
+list is decided here, which is what lets one plugin put Slack's own conversations
+and BetterSlack's actions in the same one.
 
 ## `api.commands`
 
-Things your mod can do, findable by typing — ⌘⇧K opens the palette.
+Things your mod can do, findable by typing. The **Command Palette** plugin is
+what shows them — ⌘K by default, and it is a mod like any other, so a user who
+would rather keep Slack's own switcher on that key can switch it off or move it
+to ⌘⇧K in its settings.
 
 ```js
 api.commands.add({
   id: 'open',                       // unique within your mod
   title: 'Theme builder',
   subtitle: 'Design a theme with the app as the preview',
+  icon: '🎨',                       // optional; the palette falls back to ⌘
   run: () => open(),
 });
 ```

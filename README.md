@@ -12,11 +12,14 @@ inside Slack itself.
 
 ## Install
 
-Requires Node 18+.
+Requires Node 18+ and pnpm. Node ships Corepack, so `corepack enable` is enough
+to get it; `npm i -g pnpm` works too. It has to be pnpm — esbuild fetches its
+platform binary in an install script, and only `pnpm-workspace.yaml` says which
+scripts may run.
 
 ```bash
 git clone https://github.com/AirOne-dev/SlackMod.git
-cd BetterSlack
+cd SlackMod
 pnpm install && pnpm build
 pnpm start
 ```
@@ -28,17 +31,37 @@ and install what you want from **Browse**.
 **→ [docs/getting-started.md](docs/getting-started.md)** covers running it,
 writing a theme, writing a plugin, testing and shipping.
 
-## What ships with it
+## What is in the catalogue
 
-**Themes** — Midnight, Aurora (frosted glass over a drifting gradient),
-Terminal (monospace, square corners, phosphor), Cocoa (warm light), Focus Rings.
+**Themes** — Midnight (a deeper dark), Aurora (frosted glass over a drifting
+gradient), Cocoa (warm light), Terminal (monospace phosphor), Discord Dark and
+Discord Light (Slack rebuilt as Discord, colours sampled from the real client),
+Focus Rings.
 
-**Plugins** — Quote Reply (answer in-channel with an unfurl of the message),
-Copy Message Link, Focus Mode (⌘⇧F), Composer Character Count, Channel Notes,
-User Inspector, Avatar Downloader, DevTools.
+**Plugins** — Command Palette (⌘K: every conversation, every mod command, every
+theme, in one list), Theme Builder (a workbench in its own window with the real
+Slack as the preview), Member Sidebar, Sidebar Account Strip, Quote Reply, Copy
+Message Link, Focus Mode (⌘⇧F), Composer Character Count, Channel Notes, User
+Inspector, Avatar Downloader, DevTools.
 
 Several themes can run at once. Terminal is the exception: it restyles through
 `*` selectors, so run it on its own.
+
+A mod carries its own version and updates on its own, so a fix to one theme does
+not mean pulling the whole project. The panel also offers to update BetterSlack
+itself — over git when there is a checkout, and by downloading the release from
+GitHub when there is not.
+
+## If something goes wrong
+
+`pnpm start --safe` applies nothing, and so does the next start after a run that
+never reported itself healthy — a mod that wedges the renderer cannot lock you
+out. A mod that throws on start is named on its own row, and is skipped after two
+failures until you switch it off and on again.
+
+```bash
+pnpm test:live        # boots the real Slack and checks what actually loaded
+```
 
 ## How it works
 
@@ -99,11 +122,17 @@ in a theme) from inside its own folder.
 ## Development
 
 ```bash
-pnpm dev              # rebuild on change
-pnpm test                 # every mod's tests
-ppnpm test:mod -- <id> # one mod
-pnpm check-structure  # is each mod loadable
+pnpm dev                          # rebuild on change
+pnpm new-mod plugin my-plugin "What a user gets"   # a mod that already passes
+pnpm test                         # every mod's tests
+pnpm test:mod -- <id>             # one mod
+pnpm test:core                    # loader and runtime unit tests
+pnpm test:live                    # boot the real Slack and grade what loaded
+pnpm check-structure              # is each mod loadable
+pnpm validate-mods                # manifests
+pnpm registry                     # regenerate mods/registry.json, then commit it
 pnpm typecheck
+pnpm release patch                # bump, write CHANGELOG.md, tag
 ```
 
 Mods in `~/.betterslack/mods/` shadow the repo copies, which is handy for iterating
