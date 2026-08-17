@@ -6,7 +6,7 @@ merges.
 
 ## Why the review is strict
 
-A SlackMod plugin runs inside an authenticated Slack tab. It can read every
+A BetterSlack plugin runs inside an authenticated Slack tab. It can read every
 message you can read, and it can talk to the network. There is no sandbox around
 it and no permission prompt in front of it.
 
@@ -52,7 +52,7 @@ with English holes nobody notices.
 
 You are not expected to speak every language — two is the bar. If you add
 another, add it to every plugin or none: one plugin speaking German inside an
-otherwise English SlackMod is worse than consistency.
+otherwise English BetterSlack is worse than consistency.
 
 Do not print emoji shortcodes. `status_emoji` is `:tada:`, and a workspace's
 custom ones have no unicode to fall back on, so show the text without them.
@@ -82,14 +82,29 @@ unexplained one is an automatic no.
    mods/plugins/<id>/mod.json + <entry>.js
    ```
 
-2. `npm run validate-mods` passes.
-3. **A `test.mjs` next to your `mod.json`, and `npm run test:mod -- <id>`
+   A mod is a folder, not a file: `entry` is only where the app starts
+   reading. Split the rest however you like -- `import './lib/x.js'` in a
+   plugin, `@import './tokens.css'` in a theme -- as long as every path is
+   relative and stays inside your folder. There is no npm and no CDN in the
+   page, so a bare specifier (`import 'lodash'`) is rejected, as is a path
+   that climbs out of the folder or a cycle.
+
+2. `pnpm validate-mods` passes.
+3. **A `test.mjs` next to your `mod.json`, and `pnpm test:mod -- <id>`
    passes.** Every mod ships tests. There is no way to opt out: a mod with no
    `test.mjs` fails the structure check immediately.
-4. `npm run registry` has been run and `mods/registry.json` is committed.
+4. `pnpm registry` has been run and `mods/registry.json` is committed.
 5. Tested against the current Slack release. Put the version you tested in
    `slackVersion`.
 6. The description is one sentence that says what a user gets, not how it works.
+7. **Bump `version` whenever you change a mod that is already in the catalogue.**
+   The panel updates mods one at a time by comparing what is installed against
+   `mods/registry.json` on the default branch, so a fix shipped without a bump
+   reaches nobody.
+
+`pnpm new-mod plugin my-plugin "What a user gets"` writes a folder that already
+passes every check above — manifest, entry, test, registry entry — which is the
+shortest way to start from something green.
 
 ### What CI does with your pull request
 
@@ -99,8 +114,8 @@ cannot block theirs:
 
 | Workflow | Per changed mod | Checks |
 | --- | --- | --- |
-| **Mod structure** | `node scripts/check-structure.mjs <id>` | manifest, entry file exists and imports, a real `start()` export, CSS parses, `test.mjs` present, registry entry current |
-| **Mod tests** | `npm run test:mod -- <id>` | your own tests |
+| **Mod structure** | `node scripts/check-structure.mjs <id>` | manifest, entry file exists and imports, a real `start()` export, every relative import lands on a file that is there, CSS parses, `test.mjs` present, registry entry current |
+| **Mod tests** | `pnpm test:mod -- <id>` | your own tests |
 
 Each mod gets its own job, so a failure names the mod at fault. Both workflows
 end in a job with a stable name (`mod structure`, `mod tests`) — those are the
@@ -115,8 +130,8 @@ Run the same thing locally before pushing:
 
 ```bash
 node scripts/changed-mods.mjs           # what CI will pick up
-npm run check-structure -- <id>
-npm run test:mod -- <id>
+pnpm check-structure -- <id>
+pnpm test:mod -- <id>
 ```
 
 ### Writing the tests
@@ -164,10 +179,14 @@ The short version:
 ## Local development
 
 ```bash
-npm install && npm run build
-npm start
+pnpm install && pnpm build
+pnpm start
 ```
 
+pnpm, not npm: esbuild fetches its platform binary in an install script, and
+`pnpm-workspace.yaml` is what allows that script to run. `corepack enable` gets
+you pnpm if you do not have it.
+
 Edit files in `mods/` and they reload in Slack immediately. Mods in
-`~/.slackmod/mods/` shadow the repo copies, which is convenient for iterating on
+`~/.betterslack/mods/` shadow the repo copies, which is convenient for iterating on
 something already merged.

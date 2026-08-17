@@ -1,7 +1,7 @@
 // Discovery and validation of mods on disk.
 //
 // Two roots are scanned: the repo's own mods/ folder (everything that went
-// through a pull request review) and ~/.slackmod/mods (what the user installed
+// through a pull request review) and ~/.betterslack/mods (what the user installed
 // or is writing themselves). Same layout in both:
 //
 //   <root>/<themes|plugins>/<id>/mod.json
@@ -9,7 +9,19 @@
 
 import { promises as fs, watch as fsWatch, type FSWatcher } from 'node:fs';
 import path from 'node:path';
-import { MOD_API_VERSION, type ModManifest, type ModRecord, type ModType } from '../shared/protocol.js';
+import {
+  MOD_API_VERSION,
+  type ModFiles,
+  type ModManifest,
+  type ModSettingField,
+  type ModRecord,
+  type ModType,
+} from '../shared/protocol.js';
+
+/** Guard rails on reading a folder handed to us by a pull request. */
+const MAX_FILES = 60;
+const MAX_BYTES = 2_000_000;
+const READABLE = /\.(js|mjs|css)$/;
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,48}$/;
 
@@ -24,6 +36,54 @@ function assertString(value: unknown, field: string, file: string): string {
     throw new ManifestError(file, `"${field}" must be a non-empty string`);
   }
   return value;
+}
+
+/** The five field types the panel can draw, validated before it has to. */
+const FIELD_TYPES = new Set(['boolean', 'number', 'text', 'colour', 'choice']);
+
+/**
+ * Settings a mod declares.
+ *
+ * Rejected loudly rather than ignored: a field the panel cannot draw is a
+ * setting the author thinks exists, and silence there means finding out from a
+ * user that half their options never appeared.
+ */
+function parseSettings(value: unknown, file: string): ModSettingField[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new ManifestError(file, '"settings" must be an array');
+
+  const seen = new Set<string>();
+  const fields: ModSettingField[] = [];
+  for (const raw of value) {
+    const field = raw as Partial<ModSettingField> & { options?: unknown };
+    const key = assertString(field.key, 'settings[].key', file);
+    if (!/^[a-zA-Z][\w-]{0,40}$/.test(key)) {
+      throw new ManifestError(file, `"${key}" is not a usable settings key`);
+    }
+    if (seen.has(key)) throw new ManifestError(file, `"settings" declares "${key}" twice`);
+    seen.add(key);
+
+    const type = assertString(field.type, 'settings[].type', file);
+    if (!FIELD_TYPES.has(type)) {
+      throw new ManifestError(file, `"${type}" is not a settings type (${[...FIELD_TYPES].join(', ')})`);
+    }
+    assertString(field.label, 'settings[].label', file);
+
+    if (type === 'choice') {
+      const options = field.options;
+      if (!Array.isArray(options) || options.length === 0) {
+        throw new ManifestError(file, `"${key}" is a choice and needs options`);
+      }
+      for (const option of options) {
+        const o = option as { value?: unknown; label?: unknown };
+        if (typeof o.value !== 'string' || typeof o.label !== 'string') {
+          throw new ManifestError(file, `"${key}" has an option with no value/label`);
+        }
+      }
+    }
+    fields.push(raw as ModSettingField);
+  }
+  return fields.length > 0 ? fields : undefined;
 }
 
 export function parseManifest(raw: string, file: string, expectedType: ModType): ModManifest {
@@ -76,12 +136,14 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     requires = unique.length > 0 ? unique : undefined;
   }
 
-  const api = typeof m.slackmodApi === 'number' ? m.slackmodApi : 0;
-  if (api < 1) throw new ManifestError(file, '"slackmodApi" is missing or below 1');
+  const settings = parseSettings(m.settings, file);
+
+  const api = typeof m.betterslackApi === 'number' ? m.betterslackApi : 0;
+  if (api < 1) throw new ManifestError(file, '"betterslackApi" is missing or below 1');
   if (api > MOD_API_VERSION) {
     throw new ManifestError(
       file,
-      `needs SlackMod API v${api} but this build speaks v${MOD_API_VERSION}`,
+      `needs BetterSlack API v${api} but this build speaks v${MOD_API_VERSION}`,
     );
   }
 
@@ -94,7 +156,8 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     description: assertString(m.description, 'description', file),
     entry,
     requires,
-    slackmodApi: api,
+    settings,
+    betterslackApi: api,
     slackVersion: typeof m.slackVersion === 'string' ? m.slackVersion : undefined,
     tags: Array.isArray(m.tags) ? m.tags.filter((t): t is string => typeof t === 'string') : undefined,
   };
@@ -123,14 +186,23 @@ async function scanKind(
     if (!dirent.isDirectory()) continue;
     const manifestPath = path.join(dir, dirent.name, 'mod.json');
     try {
-      const manifest = parseManifest(await fs.readFile(manifestPath, 'utf8'), manifestPath, kind);
+      const rawManifest = await fs.readFile(manifestPath, 'utf8');
+      const manifest = parseManifest(rawManifest, manifestPath, kind);
       if (manifest.id !== dirent.name) {
         out.errors.push(`${manifestPath}: "id" ("${manifest.id}") must match the folder name ("${dirent.name}")`);
         continue;
       }
       // Fail here rather than at enable-time in the UI.
       await fs.access(path.join(dir, dirent.name, manifest.entry));
-      out.mods.push({ ...manifest, origin, path: `${kind}s/${dirent.name}` });
+      // A mod that recorded where it came from keeps saying so, whatever the
+      // folder it was found in would have implied.
+      const declared = JSON.parse(rawManifest) as { origin?: string; source?: string };
+      out.mods.push({
+        ...manifest,
+        origin: declared.origin === 'third-party' ? 'third-party' : origin,
+        source: typeof declared.source === 'string' ? declared.source : undefined,
+        path: `${kind}s/${dirent.name}`,
+      });
     } catch (err) {
       const e = err as NodeJS.ErrnoException;
       if (e.code === 'ENOENT' && e.path?.endsWith('mod.json')) continue; // not a mod folder
@@ -185,10 +257,45 @@ export class Catalog {
     return path.join(entry.root, entry.record.path, entry.record.entry);
   }
 
-  async readSource(id: string): Promise<string> {
-    const file = this.entryPath(id);
-    if (!file) throw new Error(`unknown mod "${id}"`);
-    return fs.readFile(file, 'utf8');
+  /**
+   * Every readable file in a mod's folder, keyed by relative path.
+   *
+   * Only .js, .mjs and .css: a mod folder may hold a README or a screenshot,
+   * and neither belongs in the renderer. The two limits are there because this
+   * reads a directory that arrived through a pull request, and an accidental
+   * node_modules would otherwise be shipped into the page.
+   */
+  async readSource(id: string): Promise<ModFiles> {
+    const entry = this.records.get(id);
+    if (!entry) throw new Error(`unknown mod "${id}"`);
+    const root = path.join(entry.root, entry.record.path);
+    const files: ModFiles = {};
+    let bytes = 0;
+
+    const walk = async (dir: string, prefix: string): Promise<void> => {
+      for (const item of await fs.readdir(dir, { withFileTypes: true })) {
+        const rel = prefix ? `${prefix}/${item.name}` : item.name;
+        if (item.isDirectory()) {
+          if (item.name === 'node_modules' || item.name.startsWith('.')) continue;
+          await walk(path.join(dir, item.name), rel);
+          continue;
+        }
+        if (!READABLE.test(item.name)) continue;
+        if (Object.keys(files).length >= MAX_FILES) {
+          throw new Error(`"${id}" has more than ${MAX_FILES} files`);
+        }
+        const source = await fs.readFile(path.join(dir, item.name), 'utf8');
+        bytes += source.length;
+        if (bytes > MAX_BYTES) throw new Error(`"${id}" is larger than ${MAX_BYTES} bytes`);
+        files[rel] = source;
+      }
+    };
+    await walk(root, '');
+
+    if (!files[entry.record.entry]) {
+      throw new Error(`"${id}" has no ${entry.record.entry}`);
+    }
+    return files;
   }
 
   /**
@@ -222,7 +329,7 @@ export class Catalog {
         });
         this.watchers.push(watcher);
       } catch (err) {
-        console.warn(`[slackmod] cannot watch ${root}: ${(err as Error).message}`);
+        console.warn(`[betterslack] cannot watch ${root}: ${(err as Error).message}`);
       }
     }
   }

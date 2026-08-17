@@ -1,7 +1,7 @@
 /**
  * Composer Character Count
  *
- * A worked example of the SlackMod plugin API:
+ * A worked example of the BetterSlack plugin API:
  *   - anchors on `data-qa` attributes rather than Slack's hashed class names
  *   - keeps its node mounted across Slack's re-renders without duplicating it
  *   - reads a threshold from persisted settings
@@ -17,7 +17,7 @@ const SLACK_LIMIT = 4000;
 
 const COMPOSER = '[data-qa="message_input"]';
 const EDITOR = '.ql-editor';
-const NODE_ID = 'slackmod-char-count';
+const NODE_ID = 'betterslack-char-count';
 
 export default {
   /**
@@ -25,6 +25,7 @@ export default {
    */
   start(api) {
     const warnAt = api.settings.get('warnAt', Math.floor(SLACK_LIMIT * 0.9));
+    const alwaysShow = api.settings.get('alwaysShow', true) !== false;
 
     api.css(`
       #${NODE_ID} {
@@ -73,7 +74,9 @@ export default {
         length === 0 ? 'hidden'
           : length > SLACK_LIMIT ? 'over'
             : length >= warnAt ? 'warn'
-              : 'visible';
+              // Quiet until it matters, unless someone asked to always see it.
+              : alwaysShow ? 'visible'
+                : 'hidden';
     };
 
     // The composer is a contenteditable, so there is no `input` event to bind

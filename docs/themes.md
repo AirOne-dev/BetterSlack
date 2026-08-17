@@ -3,6 +3,14 @@
 Everything below was measured against a live Slack, not assumed. New here?
 Start with **[getting-started.md](getting-started.md#write-a-theme)**.
 
+**There is a tool for this.** The **Theme Builder** plugin opens a window of its
+own and paints the client live, so the preview is Slack itself: two colours
+become twelve roles across all four families below, hovering a colour outlines
+what it paints, pointing at anything in the app shows the tokens behind it, and
+what it writes is the CSS this document describes. Everything here still applies
+— the builder is a faster way to reach the same stylesheet, and it exports one
+you can commit.
+
 ## Four families, not one
 
 Slack's colours come from four separate sets of custom properties. Override only
@@ -98,6 +106,15 @@ Slack uses two conventions that both contain `__`:
 
 The tell is the suffix: module hashes carry uppercase letters. The theme test
 rejects them automatically, so this fails CI rather than your users.
+
+### Slack has two "jump to unread" pills
+
+One for unread above, one for unread below, in the sidebar. They share every
+class except a hashed CSS-module name that changes with each build, so a rule
+written against what looks like "the pill" matches both — and setting `top` on
+one and `bottom` on the other means setting both on the same element, which
+stretches it the height of the sidebar. Tell them apart by which half of the
+sidebar they sit in, never by the hashed name.
 
 ### Light themes and dark mode
 
@@ -226,6 +243,35 @@ real value.
   backdrop-filter: blur(22px) saturate(140%);
 }
 ```
+
+## Splitting a theme across files
+
+One stylesheet stops being readable somewhere around the third family of
+tokens. Break it up with relative `@import`s from your entry file:
+
+```css
+/* theme.css -- the entry named in mod.json */
+@import './tokens.css';    /* the four colour families */
+@import './chrome.css';    /* rail, sidebar, headers */
+@import './messages.css';
+```
+
+BetterSlack inlines each import, in order, before the CSS reaches the page: what
+Slack sees is one stylesheet, so cascade order is exactly the order you wrote.
+An imported file may import further files, relative to itself.
+
+Two limits, both from how themes are applied. Only relative paths inside your
+own folder work — a theme is injected as a `<style>` element with no URL to
+resolve against, and a real `@import url(https://…)` would be a network request
+Slack's CSP blocks anyway. And an import that leads back to a file already being
+inlined is cut, with a line in the console naming the loop: the rest of the
+theme still applies, since a stylesheet is worth having even when part of it is
+wrong.
+
+Import at the top of a file, as CSS requires. Here an `@import` lower down is
+still inlined where you put it, but a browser would ignore it — and a theme that
+only works inside BetterSlack is a theme nobody can debug. An `@import` inside a
+comment is left alone, so commenting one out really does switch it off.
 
 ## When CSS is not enough
 

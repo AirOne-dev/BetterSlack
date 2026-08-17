@@ -67,12 +67,46 @@ const runtimeI18n = {
 };
 
 /**
+ * How a mod's folder becomes something loadable: the module graph for plugins
+ * and the @import inlining for themes, plus the DOM helpers every mod mounts
+ * through. Emitted so `tests/mod-files.test.mjs` and `tests/mount.test.mjs` can
+ * exercise the real thing instead of asserting on the source text of it.
+ */
+const runtimeModules = {
+  entryPoints: [
+    `${root}/src/runtime/plugins.ts`,
+    `${root}/src/runtime/themes.ts`,
+    `${root}/src/runtime/dom.ts`,
+    `${root}/src/runtime/ui/kit.ts`,
+    `${root}/src/runtime/ui/kit-css.ts`,
+    `${root}/src/runtime/ui/code.ts`,
+    `${root}/src/runtime/ui/menu.ts`,
+    `${root}/src/runtime/ui/strings.ts`,
+    `${root}/src/runtime/ui/palette.ts`,
+  ],
+  outdir: `${root}/dist`,
+  outExtension: { '.js': '.mjs' },
+  bundle: true,
+  platform: 'browser',
+  format: 'esm',
+  target: 'es2022',
+  logLevel: 'warning',
+};
+
+/**
  * Pure loader helpers, emitted so `tests/download.test.mjs` can exercise the
  * download guards without pulling in the whole loader entry point.
  */
 const loaderLib = {
-  entryPoints: [`${root}/src/loader/download.ts`],
-  outfile: `${root}/dist/download.mjs`,
+  entryPoints: [
+    `${root}/src/loader/download.ts`,
+    `${root}/src/loader/update.ts`,
+    `${root}/src/loader/catalog.ts`,
+    `${root}/src/loader/mod-updates.ts`,
+    `${root}/src/loader/store.ts`,
+  ],
+  outdir: `${root}/dist`,
+  outExtension: { '.js': '.mjs' },
   bundle: true,
   platform: 'node',
   format: 'esm',
@@ -81,9 +115,9 @@ const loaderLib = {
 };
 
 if (watch) {
-  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers), esbuild.context(runtimeI18n)]);
+  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers), esbuild.context(runtimeI18n), esbuild.context(runtimeModules)]);
   await Promise.all(contexts.map((c) => c.watch()));
-  console.log('[slackmod] watching for changes...');
+  console.log('[betterslack] watching for changes...');
 } else {
-  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers), esbuild.build(runtimeI18n)]);
+  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers), esbuild.build(runtimeI18n), esbuild.build(runtimeModules)]);
 }

@@ -19,16 +19,34 @@ tests/         Shared test harness (jsdom + a recording fake api)
 
 ## Commands
 
+`pnpm test:live` boots the real Slack, asks the runtime what loaded and turns
+the answer into an exit code. Every failure that has mattered here -- a wedged
+renderer, two runtimes in one document, a mod that threw on start -- was
+invisible to the unit tests and obvious to this. It closes Slack afterwards,
+which is why it is not part of `pnpm test`.
+
+The loader also watches while it runs: if the renderer stops answering, it says
+so, names the mods that were on, and re-arms the safe-start marker.
+
+**pnpm, not npm.** `pnpm-workspace.yaml` carries `allowBuilds: esbuild: true` --
+pnpm refuses to run a dependency's install script unless it is named there, and
+esbuild fetches its platform binary in one, so a fresh checkout fails on every
+command that touches the bundler without it.
+
 ```bash
-npm run build            # both bundles + dist/download.mjs
-npm start                # launch Slack with mods
-npm test                 # every mod's tests
-npm run test:mod -- <id> # one mod
-npm run test:core        # loader unit tests
-npm run check-structure  # is every mod loadable
-npm run validate-mods    # manifests
-npm run registry         # regenerate mods/registry.json (commit it)
-npm run typecheck
+pnpm install           # once; pnpm, and the lockfile is committed
+pnpm new-mod plugin my-plugin "What a user gets"   # a mod that already passes
+pnpm release patch     # bumps, writes CHANGELOG.md from the commits, tags
+pnpm test:live         # boots real Slack and checks what loaded
+pnpm build             # both bundles + dist/download.mjs
+pnpm start             # launch Slack with mods
+pnpm test              # every mod's tests
+pnpm test:mod -- <id>  # one mod
+pnpm test:core         # loader and runtime unit tests
+pnpm check-structure   # is every mod loadable
+pnpm validate-mods     # manifests
+pnpm registry          # regenerate mods/registry.json (commit it)
+pnpm typecheck
 ```
 
 Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
@@ -40,6 +58,12 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   `'unsafe-eval'`. Plugins load as ES modules through `blob:` URLs, which *is*
   in `script-src`. Note that code run through CDP `Runtime.evaluate` is exempt,
   so a console test of `eval` misleadingly succeeds.
+- **A `blob:` URL has no directory**, so `import './x.js'` inside one resolves
+  to `blob:https://app.slack.com/x.js` and fails. `buildModuleGraph` in
+  `plugins.ts` is the answer: read the folder, blob each file leaves-first, and
+  rewrite relative specifiers to the blob URL of the file they name. It rewrites
+  *only* specifiers, and skips comments -- mods type `api` with a JSDoc
+  `{import('../../../src/runtime/api.js')}`, which is not an import.
 - **No debugging port.** The loader uses `--remote-debugging-pipe` (fds 3 and 4),
   so Slack listens on no TCP port. Do not add a flag that reopens one.
 - **`app.asar` cannot be patched.** `EnableEmbeddedAsarIntegrityValidation` and
@@ -78,6 +102,54 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   palette, also triplets). The middle two need `!important`.
 - `.p-theme_background` is a full-viewport opaque layer above `<body>`; clear or
   repaint it or any gradient is invisible.
+- **Never insert next to `.c-coachmark-anchor`.** Anchoring a toolbar button
+  before the coachmark wrapper around the user button freezes the renderer
+  solid: grey window, no error, no console, `Runtime.evaluate` times out and
+  Slack has to be killed. Slack's coachmark code evidently loops with whatever
+  changes the DOM around it. Bisected against a running client — the same button
+  anchored on `#betterslack-control-button` is fine every time, which is now the
+  control strip's default. When an anchor is missing, `addToolbarButton`
+  prepends rather than appends: the end of a container is where the app's own
+  re-renders land.
+- **`installLauncher` owns more than the launcher.** It is also what installs
+  `LAUNCHER_CSS`, where `.betterslack-toolbar-button svg` gets its 20px. A
+  refactor once dropped the `mountUi()` call in `index.ts`: the BetterSlack
+  button vanished, every mod's icon drew at its SVG's intrinsic size, and the
+  other buttons lost the anchor they position against (`before:
+  '#betterslack-control-button'`). `--healthcheck` reports `launcher` and fails
+  on it -- it caught nothing because `pnpm test:live` was not run.
+- `keepMounted` gives up after 25 remounts in two seconds and logs which node
+  and container, rather than looping forever. A missing button is a bug report;
+  a frozen Slack is not.
+- **Two mods anchored on the same neighbour froze Slack**, and this is the
+  second freeze of exactly that shape. `keepMounted` used to ask its node to be
+  the anchor's *immediate previous sibling*; every control-strip button defaults
+  to `before: '#betterslack-control-button'`, so with two of them each shoved the
+  other aside, forever, inside a MutationObserver callback. Being anywhere
+  before the anchor satisfies both. Every DOM touch -- move as well as insert --
+  now counts toward the give-up limit, so no branch of that callback can spin.
+  Covered by `tests/mount.test.mjs`.
+- **When Slack freezes, `Debugger.pause` names the loop** -- but only if
+  `Debugger.enable` was sent *before* the thread got busy; enabling it
+  afterwards never takes, and the first attempt at this came back empty.
+  `BETTERSLACK_DIAGNOSE=1` does both, and prints what the client looks like at 3s,
+  8s and 16s. `BETTERSLACK_NO_BOOTSCRIPT=1` forces the runtime in against a
+  finished document, which is what made the freeze reproducible every time
+  instead of one boot in five. `sample <renderer pid>` confirms it is JS rather
+  than layout: V8 frames under `MicrotasksScope`.
+- **Plugins start only once `.p-client_container` exists** (`waitForClient` in
+  `manager.ts`); themes go in immediately, since CSS cannot loop. The runtime is
+  injected at document-start on a fresh navigation *or* straight into a page the
+  loader caught mid-boot, and in that second case mods used to start against a
+  half-built DOM -- mount observers firing on every node Slack adds while it
+  renders, with the microtask queue never draining. The renderer blocks outright:
+  grey window, no error, `Runtime.evaluate` never returning. It is intermittent,
+  it depends on when the attach loop finds the target, and it looks exactly like
+  the coachmark freeze, so check both.
+- **The loader forwards the page's own errors to the terminal**: uncaught
+  exceptions always, console warnings and errors mentioning betterslack, and
+  everything with `BETTERSLACK_VERBOSE=1`. Without it the only way to see why a mod
+  failed at boot is DevTools inside a Slack that may not be responding.
 - Reuse Slack's button classes rather than styling your own. Watch for
   `c-icon_button--default`: without it, icon buttons render 36px instead of 28px.
 - Slack's real DevTools open with **`desktop.app.toggleDevTools()`** — its own
@@ -104,7 +176,7 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   both; `user-inspector` finds it and appends its sections, and reads the user
   id off the avatar URL. `member-sidebar`'s dialog is the first non-Slack thing
   to do it. `user-inspector` mounts **per pane** (stamped with
-  `data-slackmod-pane`) — a single `helpers.mount` filled whichever profile it
+  `data-betterslack-pane`) — a single `helpers.mount` filled whichever profile it
   reached first and starved the other.
 - **Borrowing a Slack class borrows its layout.** The avatar class above is
   `position: absolute` in Slack's stylesheet, which parked the dialog's avatar
@@ -172,6 +244,17 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   form: passing `users` is accepted and ignored, and it answers about the caller
   instead — a silent wrong answer, so presence is one call each and has to be
   capped.
+- **Your own presence is in the DOM**: `[data-qa="user-button"] .c-presence`
+  carries `c-presence--active` or `c-presence--away`, and Slack swaps it the
+  moment it changes. Copy that rather than polling `users.getPresence`, which
+  lags the client -- worst right after the window comes back to the front, where
+  it reported away for up to a minute while the app plainly said available.
+  `sidebar-account` was doing exactly that. Do-not-disturb is *not* in that
+  class, so it still comes from the API, slowly. The word beside the dot is
+  painted from the same reading -- it used to be read once at mount, from
+  Slack's screen-reader label, and never again, so it kept saying whatever was
+  true when the strip happened to be built. A green dot next to "Absent(e)" is
+  worse than either being wrong alone.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
@@ -205,8 +288,83 @@ Shape of it:
   the same keys.
 - `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
 
-When two mods want the same block, it belongs in `helpers.ts`, and the mods get
-refactored onto it in the same change.
+When two mods want the same block, it belongs in the API, and the mods get
+refactored onto it in the same change. Five things were lifted that way after an
+audit of all eleven plugins, and each one had been written two or three times:
+
+- `api.slack.web.users(ids)` — the batched `users.info`, cached per workspace.
+  Three plugins kept their own cache and their own drop-on-switch rule.
+- `api.slack.web.availability(id)` — presence and dnd folded into one state.
+  `dnd_enabled` alone is a **schedule**, not a state: someone with quiet hours
+  every night is not away all day, which is what the three copies all showed.
+- `api.ui.menu(anchor, items)` — Slack's `c-menu`, positioned and dismissed.
+- `api.slack.avatarUrl(url, size)` — Slack serves them as `<base>-<size>`.
+- `api.helpers.poll(fn, ms)` — an interval that stops while the window is
+  hidden. Slack does not render then, so a poll that keeps going spends a rate
+  limit shared with the client on answers nobody will see.
+
+## The theme builder
+
+`mods/plugins/theme-builder` opens a window of its own and paints the client
+live through `api.css`, so **the preview is Slack**. It used to draw fragments
+of Slack inside its own window as well; they were a worse copy of what was
+already on screen and took half the width. The window is one narrow column of
+controls now, deliberately.
+
+Its own chrome is fixed, not themed: a workbench repainted by the work becomes
+unreadable exactly when you have just written something wrong. `window.css`
+mirrors Slack's design system by hand instead -- separate window, so none of
+Slack's stylesheet reaches it.
+
+It opens on a **door** (`views/start.js`): new theme, open one you have, or
+carry on. Work is kept through `api.settings` -- the loader's file on disk --
+not `localStorage`, which is Slack's storage and is wiped by an app update.
+
+**Choosing a base reads that theme's colours into the palette** -- loading its
+stylesheet under the generated one is not enough, and the way that failed was
+confusing: the base went in first, the twelve derived roles went in after and
+painted over every colour it had set, so a chosen theme's fonts and layout
+appeared while its colours did not. `read-theme.js` maps Slack's tokens back to
+the twelve roles, following `var()` references (themes name their own colours
+and point Slack's tokens at them) and unwrapping triplets. Roles a theme is
+silent about stay derived.
+
+**While the builder is open it holds the user's themes back**
+(`api.themes.suspend`, which detaches the whole `theme` layer without touching
+the settings). Without that, choosing a base changes nothing you can see: the
+theme that is switched on is still painting underneath, and the builder's job is
+to show what *it* is painting. `StyleManager.reattachOrphans` skips a suppressed
+layer, or Slack's next touch of `<head>` puts it straight back.
+
+Laid out like Slack's preferences: a rail of sections, one view at a time, a bar
+of actions along the bottom (`ui.js` holds the primitives, `views/` a file per
+section). A first attempt stacked every tool in one scrolling column and it read
+as a list of controls in the order they were written, which is the thing to
+avoid if this is ever rebuilt again.
+
+**Hovering a colour outlines what it paints**, which is `highlight.js`: the
+stylesheet inverted once into token -> selectors, then queried. Two things that
+look like details and are not. State pseudo-classes are *stripped* from a
+selector rather than skipped -- the hover colour only ever appears in a `:hover`
+rule, so skipping them left the role called "the row under the pointer"
+highlighting nothing. And a role reaches Slack through its tokens *and* through
+the handful of rules `roles.js` writes directly (rail, sidebar,
+`.p-theme_background`), so `targetsForRole` returns both; tokens alone left
+Chrome lighting up nothing. Both derived from `buildThemeCss` with a sentinel
+colour per role, never from a second table.
+
+**To see a mod's own window, screenshot it through CDP** -- `BETTERSLACK_SHOT=<dir>`
+writes a PNG per attached window. `screencapture` photographs the desktop, and a
+window Slack opened is routinely on another Space or display, so it comes back
+without the window in it. This is how the builder's interface was looked at
+while it was being built.
+
+`tokens.js` reads the client's own custom properties rather than shipping a
+list: there are ~525 colour tokens in Slack 4.51, they change between releases,
+and the only honest source is the page. Two families take bare `r, g, b`
+triplets (`--sk_*`, `--dt_color-plt-*`) -- writing a colour there parses, paints
+nothing, and reports nothing, which is why every value goes through
+`formatFor(kind, colour)`.
 
 ## Themes require plugins; they do not run code
 
@@ -226,6 +384,87 @@ plugin id in `requires` and the panel offers to switch it on.
   It put a second, weaker plugin model beside the real one — its own API to keep
   in step, its own consent dialog to explain — for something plugins already
   did. If it comes up again, that is the reason it is not there.
+
+## The design system, twice
+
+Inside the client, **borrow Slack's classes** -- the Mods panel wears
+`.c-dialog` / `.c-button` and follows every theme for nothing. Anywhere else
+there is no stylesheet at all: a window a mod opens is a blank document. That is
+what `api.ui.kit(doc)` + `api.ui.kitCss` are for (`src/runtime/ui/kit.ts`), and
+they exist because the theme builder had rebuilt the whole system by hand and it
+was drifting on its own. Everything is prefixed `sm-`, so the stylesheet is safe
+in the client too.
+
+`kit.code()` is the CSS editor: a highlighted `<pre>` under a transparent
+`<textarea>`. Both must agree on **every** metric or the caret drifts from the
+text; that is why `CODE_CSS` lives beside the tokeniser and is shared by the kit
+and by `PANEL_CSS` rather than copied.
+
+**Two runtimes can boot into one document.** `window.__betterslack` is only
+assigned at the *end* of an async boot, so the document-start script and a
+loader injection into the same live page both found it empty, both built a
+Bridge, and both started every plugin -- the second receiver on `window` won and
+the first runtime's plugins were left with a bridge nothing answers: every
+request timed out after fifteen seconds while their buttons sat there looking
+fine. `boot()` now claims `window.__BETTERSLACK_BOOTING__` synchronously. Found
+through a theme gallery that came up blank, with six answers delivered by the
+loader and six timeouts in the page.
+
+**`store.ts` resolves `~/.betterslack` once, when it is imported.** A test that
+wants a scratch home has to set `BETTERSLACK_HOME` *before* importing it —
+`tests/update.test.mjs` does that at module scope, with a comment saying why.
+Getting it the wrong way round runs the test against the real home, and the
+backup test then wrote its empty fixture over a real settings file. It cost
+someone their installed list once; it should not cost it twice.
+
+## Safe mode, and mods that will not start
+
+`pnpm start --safe` applies nothing. So does the next start after a run that
+never reported itself healthy: the loader writes `~/.betterslack/booting` before
+launching Slack and the runtime clears it with `app.ready` once the panel and
+the mods are in, so a marker left behind means the last run did not get there.
+This is the escape hatch the two renderer freezes did not have -- the only way
+out was killing Slack and editing settings.json by hand.
+
+A mod that throws during `start()` is recorded in `manager.errors` and shown on
+its own row, and the count is kept in `settings.modFailures`: **counted before
+the attempt, cleared after it**, because a mod that takes the renderer down
+never reaches the line that would have recorded it. Two consecutive failures and
+it is skipped at boot; switching it off and on clears the count, which is what
+the message on the row tells you to do.
+
+## Mod updates are separate from the app's
+
+A mod carries its own version, and `mod-updates.ts` compares the installed ones
+against `mods/registry.json` on the default branch. Updating one fetches its
+folder through GitHub's contents API and goes through the same install path the
+Browse shelf uses, which re-validates the manifest loader-side -- files off the
+network are untrusted whichever button asked for them. Before this, a one-line
+fix to a theme meant pulling the loader and the runtime with it.
+
+## The panel speaks both languages
+
+`ui/strings.ts` is the panel's dictionary and `tests/i18n.test.mjs` holds it to
+the rule mods are held to: en and fr must cover the same keys, everything the
+panel asks for must exist, and a bare English sentence left in `panel.ts` fails
+the test. It was English-only until now, around mods that were required to be
+bilingual.
+
+**The palette is a mod, not the app.** `mods/plugins/command-palette` binds the
+shortcut and assembles the list; the runtime only provides the component
+(`api.ui.palette`) and a small surface for mods that extend BetterSlack rather
+than Slack (`api.app`: the catalogue, enable/install, open the panel, other
+mods' commands). Taking a key that belongs to Slack should be something you can
+switch off, and the whole thing doubles as the worked example of what the API
+can do.
+
+**⌘K, taken from Slack on purpose.** Slack binds it to its quick switcher, but
+⌘K is the key everyone reaches for and a palette on a key nobody presses is a
+palette nobody uses; Slack's switcher stays reachable from its search field, and
+the plugin's own `shortcut` setting puts it back on ⌘⇧K for anyone who
+disagrees. The
+handler runs in the capture phase, or both open at once. `api.commands.add` is
+how a mod gets in without taking a button in the rail.
 
 ## The Mods panel
 

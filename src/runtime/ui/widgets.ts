@@ -1,7 +1,7 @@
 // Widgets mods can use without writing any CSS: toasts, modals, confirmations.
 //
 // Modals wear Slack's own `c-dialog` classes and render into the light DOM, so
-// a mod's dialog is indistinguishable from Slack's and from the SlackMod panel.
+// a mod's dialog is indistinguishable from Slack's and from the BetterSlack panel.
 // Toasts stay in a shadow root: Slack has no toast of its own to borrow from,
 // and isolating them means a theme cannot make an error message unreadable.
 // Their colours still come from Slack's --dt_color-* tokens, which cross the
@@ -10,7 +10,7 @@
 import { h, type Cleanup } from '../dom.js';
 import { WIDGET_CSS } from './styles.js';
 
-const TOAST_HOST_ID = 'slackmod-toast-host';
+const TOAST_HOST_ID = 'betterslack-toast-host';
 
 function makeHost(id: string): { host: HTMLElement; root: ShadowRoot } {
   const existing = document.getElementById(id);
@@ -119,13 +119,13 @@ export function modal(options: ModalOptions): ModalHandle {
   } = options;
 
   const host = h('div', {
-    class: 'c-dialog slackmod-dialog slackmod-widget_dialog',
+    class: 'c-dialog betterslack-dialog betterslack-widget_dialog',
     role: 'presentation',
   });
   document.body.append(host);
 
-  const body = h('div', { class: 'c-dialog__body slackmod-body' });
-  if (typeof content === 'string') body.append(h('p', { class: 'slackmod-hint' }, [content]));
+  const body = h('div', { class: 'c-dialog__body betterslack-body' });
+  if (typeof content === 'string') body.append(h('p', { class: 'betterslack-hint' }, [content]));
   else if (content) body.append(content);
 
   let closed = false;
@@ -147,7 +147,7 @@ export function modal(options: ModalOptions): ModalHandle {
 
   const closeButton = h('button', {
     class:
-      'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default slackmod-close',
+      'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default betterslack-close',
     type: 'button',
     'aria-label': 'Close',
   });
@@ -156,15 +156,15 @@ export function modal(options: ModalOptions): ModalHandle {
     '<path fill="currentColor" d="M5.72 5.72a.75.75 0 0 1 1.06 0L10 8.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L11.06 10l3.22 3.22a.75.75 0 1 1-1.06 1.06L10 11.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L8.94 10 5.72 6.78a.75.75 0 0 1 0-1.06Z"/></svg>';
   closeButton.addEventListener('click', close);
 
-  const titles = h('div', { class: 'slackmod-widget_titles' }, [
+  const titles = h('div', { class: 'betterslack-widget_titles' }, [
     h('h1', { class: 'c-dialog__title' }, [title]),
-    ...(subtitle ? [h('p', { class: 'slackmod-hint slackmod-widget_subtitle' }, [subtitle])] : []),
+    ...(subtitle ? [h('p', { class: 'betterslack-hint betterslack-widget_subtitle' }, [subtitle])] : []),
   ]);
 
-  const header = h('div', { class: 'c-dialog__header slackmod-header' }, [titles]);
+  const header = h('div', { class: 'c-dialog__header betterslack-header' }, [titles]);
   if (dismissible) header.append(closeButton);
 
-  const footer = h('div', { class: 'c-dialog__footer slackmod-widget_footer' });
+  const footer = h('div', { class: 'c-dialog__footer betterslack-widget_footer' });
   for (const action of actions) {
     // Slack's own button variants, so a mod's dialog buttons look like Slack's.
     const variant =
@@ -183,7 +183,7 @@ export function modal(options: ModalOptions): ModalHandle {
   }
 
   const content_ = h('div', {
-    class: 'c-dialog__content slackmod-content slackmod-widget_content',
+    class: 'c-dialog__content betterslack-content betterslack-widget_content',
     role: 'dialog',
     'aria-modal': 'true',
     'aria-label': title,
@@ -197,7 +197,7 @@ export function modal(options: ModalOptions): ModalHandle {
     });
   }
 
-  queueMicrotask(() => host.querySelector<HTMLElement>('.c-button, .slackmod-close')?.focus());
+  queueMicrotask(() => host.querySelector<HTMLElement>('.c-button, .betterslack-close')?.focus());
 
   return { close, body };
 }
@@ -237,6 +237,6 @@ export function confirm(options: ConfirmOptions): Promise<boolean> {
 export function disposeWidgets(): Cleanup {
   return () => {
     document.getElementById(TOAST_HOST_ID)?.remove();
-    for (const node of document.querySelectorAll('.slackmod-modal-host')) node.remove();
+    for (const node of document.querySelectorAll('.betterslack-modal-host')) node.remove();
   };
 }

@@ -21,7 +21,7 @@ const MAX_BYTES = 25 * 1024 * 1024;
 const TIMEOUT_MS = 30_000;
 
 export const DOWNLOAD_DIR =
-  process.env.SLACKMOD_DOWNLOAD_DIR ?? path.join(homedir(), 'Downloads');
+  process.env.BETTERSLACK_DOWNLOAD_DIR ?? path.join(homedir(), 'Downloads');
 
 export class DownloadError extends Error {}
 
@@ -37,7 +37,7 @@ export function safeFilename(input: string): string {
     .replace(/\.{2,}/g, '.')
     .replace(/^[.\-]+/, '')
     .slice(0, 120);
-  return cleaned || 'slackmod-download';
+  return cleaned || 'betterslack-download';
 }
 
 /** Add " (2)", " (3)"… rather than overwriting a file the user already has. */

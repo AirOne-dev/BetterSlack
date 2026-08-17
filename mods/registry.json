@@ -9,7 +9,7 @@
       "author": "AirOne-dev",
       "description": "Frosted glass over a slow aurora gradient. Translucent panels, soft 14px corners, a violet glow that follows what you hover. Heavier on the GPU than a flat theme.",
       "entry": "theme.css",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "dark",
@@ -22,11 +22,38 @@
       "id": "avatar-downloader",
       "name": "Avatar Downloader",
       "type": "plugin",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "AirOne-dev",
       "description": "Download a member's profile picture at the highest quality Slack stores — the original upload when there is one, otherwise the largest rendition. Adds a button to the profile pane and to the hover actions on a message.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "settings": [
+        {
+          "key": "quality",
+          "type": "choice",
+          "label": "Size to save",
+          "hint": "Slack keeps a few. Original is whatever was uploaded, which is not always the biggest.",
+          "default": "best",
+          "options": [
+            {
+              "value": "best",
+              "label": "The largest available"
+            },
+            {
+              "value": "image_original",
+              "label": "Original upload"
+            },
+            {
+              "value": "image_512",
+              "label": "512 px"
+            },
+            {
+              "value": "image_192",
+              "label": "192 px"
+            }
+          ]
+        }
+      ],
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "profile",
@@ -40,9 +67,9 @@
       "type": "plugin",
       "version": "1.0.0",
       "author": "AirOne-dev",
-      "description": "A private scratchpad per channel, opened from a button in the channel header. Notes are stored locally and never sent anywhere. Doubles as the worked example of the SlackMod widget API.",
+      "description": "A private scratchpad per channel, opened from a button in the channel header. Notes are stored locally and never sent anywhere. Doubles as the worked example of the BetterSlack widget API.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "productivity",
@@ -58,7 +85,7 @@
       "author": "AirOne-dev",
       "description": "A warm, low-contrast light theme: cream paper, cocoa text, generous 18px corners and soft shadows instead of borders. Easy on the eyes for a long day of reading.",
       "entry": "theme.css",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "light",
@@ -68,14 +95,69 @@
       "path": "themes/cocoa"
     },
     {
+      "id": "command-palette",
+      "name": "Command Palette",
+      "type": "plugin",
+      "version": "1.1.0",
+      "author": "AirOne-dev",
+      "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods — all from one keystroke, with / @ # to narrow it down.",
+      "entry": "index.js",
+      "settings": [
+        {
+          "key": "shortcut",
+          "type": "choice",
+          "label": "Shortcut",
+          "hint": "⌘K is the one everyone reaches for, and it is also Slack's own quick switcher — which stays reachable from the search field. Pick ⌘⇧K to leave it alone.",
+          "default": "mod+k",
+          "options": [
+            {
+              "value": "mod+k",
+              "label": "⌘K — replaces Slack's switcher"
+            },
+            {
+              "value": "mod+shift+k",
+              "label": "⌘⇧K — leaves Slack's alone"
+            }
+          ]
+        }
+      ],
+      "betterslackApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "navigation",
+        "keyboard",
+        "tools"
+      ],
+      "path": "plugins/command-palette"
+    },
+    {
       "id": "composer-char-count",
       "name": "Composer Character Count",
       "type": "plugin",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "AirOne-dev",
       "description": "Shows a live character count under the message composer, and warns before you cross Slack's 4000-character limit and get split into two messages.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "settings": [
+        {
+          "key": "warnAt",
+          "type": "number",
+          "label": "Warn above",
+          "hint": "Characters. Slack itself starts splitting messages around 4000.",
+          "default": 3000,
+          "min": 200,
+          "max": 40000,
+          "step": 100
+        },
+        {
+          "key": "alwaysShow",
+          "type": "boolean",
+          "label": "Always show the count",
+          "hint": "Off: it stays out of the way until you are near the warning.",
+          "default": true
+        }
+      ],
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "composer"
@@ -90,7 +172,7 @@
       "author": "AirOne-dev",
       "description": "One-click permalink copy in the hover actions, instead of opening the overflow menu and hunting for Copy link. Confirms with a small toast.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "messages"
@@ -103,9 +185,9 @@
       "type": "plugin",
       "version": "1.0.0",
       "author": "AirOne-dev",
-      "description": "Opens and closes Slack's real Chrome DevTools — console, elements, network, the lot — from a button above the SlackMod one. Same action as Slack's own hidden ⌘⌥I menu item.",
+      "description": "Opens and closes Slack's real Chrome DevTools — console, elements, network, the lot — from a button above the BetterSlack one. Same action as Slack's own hidden ⌘⌥I menu item.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "developer",
@@ -125,7 +207,7 @@
         "member-sidebar",
         "sidebar-account"
       ],
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "dark",
@@ -141,7 +223,7 @@
       "author": "AirOne-dev",
       "description": "Slack wearing Discord's default light theme: white chat on grey chrome, blurple accent, gg sans type stack, 8px corners and circular avatars.",
       "entry": "theme.css",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "light",
@@ -157,7 +239,7 @@
       "author": "AirOne-dev",
       "description": "Press Cmd/Ctrl+Shift+F to fold away the sidebar, the rail and the top bar, leaving just the conversation on a narrower, centred column. Press again to bring it all back.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "productivity",
@@ -173,7 +255,7 @@
       "author": "AirOne-dev",
       "description": "Thicker, higher-contrast keyboard focus outlines everywhere in Slack. Useful if you drive Slack from the keyboard or lose the cursor on a large screen.",
       "entry": "theme.css",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "accessibility"
@@ -184,11 +266,33 @@
       "id": "member-sidebar",
       "name": "Member Sidebar",
       "type": "plugin",
-      "version": "1.0.0",
+      "version": "1.3.0",
       "author": "AirOne-dev",
       "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "settings": [
+        {
+          "key": "memberLimit",
+          "type": "number",
+          "label": "Members to list",
+          "hint": "Slack pages the member list beyond this. Higher costs one request per extra person.",
+          "default": 100,
+          "min": 10,
+          "max": 500,
+          "step": 10
+        },
+        {
+          "key": "presenceLimit",
+          "type": "number",
+          "label": "Availability lookups",
+          "hint": "users.getPresence is one request each and rate-limits around fifty a minute. Past this, everyone is still listed, without dots.",
+          "default": 50,
+          "min": 0,
+          "max": 200,
+          "step": 10
+        }
+      ],
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "members",
@@ -205,7 +309,7 @@
       "author": "AirOne-dev",
       "description": "A deeper, cooler dark theme. Overrides Slack's design tokens rather than its class names, so it keeps working across Slack updates.",
       "entry": "theme.css",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "dark"
@@ -220,7 +324,7 @@
       "author": "AirOne-dev",
       "description": "Adds a Reply button to the hover actions on a message. It drops a link to that message into the composer as a single \".\" and focuses it, so your answer posts in the channel with Slack's own preview of the message you are answering.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "messages",
@@ -236,7 +340,7 @@
       "author": "AirOne-dev",
       "description": "Your avatar, name and availability at the bottom of the channel sidebar, the way Discord and other chat apps put them; clicking it opens Slack's own account menu.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "sidebar",
@@ -252,7 +356,7 @@
       "author": "AirOne-dev",
       "description": "Slack as a phosphor terminal: monospace everywhere, zero rounded corners, hairline borders, amber and green on near-black. Square avatars included.",
       "entry": "theme.css",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "dark",
@@ -262,6 +366,24 @@
       "path": "themes/terminal"
     },
     {
+      "id": "theme-builder",
+      "name": "Theme Builder",
+      "type": "plugin",
+      "version": "3.0.0",
+      "author": "AirOne-dev",
+      "description": "A theme workbench in its own window, with the real Slack beside it as the preview: two colours become twelve roles across all four token families, point at anything in the app to see and edit the tokens that paint it, search every colour the client defines, and add CSS of your own on top.",
+      "entry": "index.js",
+      "betterslackApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "themes",
+        "tools",
+        "colours",
+        "inspector"
+      ],
+      "path": "plugins/theme-builder"
+    },
+    {
       "id": "user-inspector",
       "name": "User Inspector",
       "type": "plugin",
@@ -269,7 +391,7 @@
       "author": "AirOne-dev",
       "description": "Shows everything Slack's API knows about a member — roles, timezone, presence, do-not-disturb, custom fields and every avatar size — as extra sections inside their profile, styled like Slack's own. Read-only; nothing leaves your machine.",
       "entry": "index.js",
-      "slackmodApi": 1,
+      "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
         "profile",

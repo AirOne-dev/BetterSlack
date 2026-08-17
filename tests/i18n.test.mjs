@@ -58,33 +58,70 @@ test('the language comes from Slack’s <html lang>, not from localStorage', () 
 
 test('every plugin that speaks to the user speaks both languages', async () => {
   const { listMods } = await import('../scripts/test-mods.mjs');
+  const { readModFiles } = await import('./harness.mjs');
+
   for (const mod of listMods()) {
     if (mod.kind !== 'plugins') continue;
-    const source = readFileSync(path.join(mod.dir, 'index.js'), 'utf8');
-    if (!/const STRINGS = \{/.test(source)) {
+
+    // A mod is a folder, and a split mod usually keeps its dictionaries in a
+    // file of their own. Look through all of them, not only the entry.
+    const files = Object.entries(readModFiles(mod.dir)).filter(([name]) => name.endsWith('.js'));
+    const table = files.find(([, text]) => /(?:export )?const STRINGS = \{/.test(text));
+
+    if (!table) {
       // Fine, as long as it genuinely shows no text of its own.
-      assert.doesNotMatch(
-        source,
-        /(?:label|title|subtitle|placeholder|description):\s*'[A-Z]/,
-        `${mod.id} shows text but ships no translations`,
-      );
+      for (const [name, text] of files) {
+        assert.doesNotMatch(
+          text,
+          /(?:label|title|subtitle|placeholder|description):\s*'[A-Z]/,
+          `${mod.id} (${name}) shows text but ships no translations`,
+        );
+      }
       continue;
     }
-    const { default: _plugin, ...rest } = await import(path.join(mod.dir, 'index.js'));
-    void rest;
-    assert.match(source, /en:\s*\{/, `${mod.id} must have an English table`);
-    assert.match(source, /fr:\s*\{/, `${mod.id} must have a French table`);
+
+    const [name, source] = table;
+    assert.match(source, /en:\s*\{/, `${mod.id}: ${name} must have an English table`);
+    assert.match(source, /fr:\s*\{/, `${mod.id}: ${name} must have a French table`);
 
     // The two tables must cover the same keys, or French users get English
     // holes that nobody notices until someone screenshots them.
-    const table = (lang) => {
+    const keys = (lang) => {
       const start = source.indexOf(`\n  ${lang}: {`);
       assert.ok(start !== -1, `${mod.id}: no ${lang} table`);
       const end = source.indexOf('\n  },', start);
       return new Set([...source.slice(start, end).matchAll(/^\s{4}(\w+):/gm)].map((m) => m[1]));
     };
-    const en = table('en');
-    const fr = table('fr');
-    assert.deepEqual([...fr].sort(), [...en].sort(), `${mod.id}: en and fr must cover the same keys`);
+    assert.deepEqual([...keys('fr')].sort(), [...keys('en')].sort(),
+      `${mod.id}: en and fr must cover the same keys`);
   }
+});
+
+/**
+ * The panel is held to the rule it holds mods to.
+ *
+ * Every mod here must ship English and French, and a test fails one whose
+ * tables disagree — while the window around them was English only. A French
+ * user had French mods inside an English panel, which is the kind of seam that
+ * makes a product feel assembled rather than built.
+ */
+test('the panel speaks both languages, and asks for nothing it does not have', async () => {
+  const { PANEL_STRINGS } = await import('../dist/ui/strings.mjs');
+
+  const en = Object.keys(PANEL_STRINGS.en).sort();
+  const fr = Object.keys(PANEL_STRINGS.fr).sort();
+  assert.deepEqual(fr, en, 'en and fr must cover the same keys');
+
+  // Everything the panel asks for must exist, or it renders as its own key.
+  const source = readFileSync(path.join(root, 'src/runtime/ui/panel.ts'), 'utf8');
+  const asked = new Set([...source.matchAll(/\bt\('([a-zA-Z0-9_]+)'/g)].map((m) => m[1]));
+  const missing = [...asked].filter((key) => !(key in PANEL_STRINGS.en));
+  assert.deepEqual(missing, [], 'these are asked for and never defined');
+
+  // And nothing user-facing left behind: a bare English sentence in the source
+  // is a string that will never be translated.
+  const leftovers = [...source.matchAll(/(?:^|[[(,]\s*)'([A-Z][a-z]+ [a-z][^']{12,})'/gm)]
+    .map((m) => m[1])
+    .filter((text) => !/^[A-Z][a-z]+ [a-z]+\.(js|css|json)/.test(text));
+  assert.deepEqual(leftovers, [], 'move these into PANEL_STRINGS');
 });

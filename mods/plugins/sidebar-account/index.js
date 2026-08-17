@@ -13,7 +13,7 @@
 // the strip presses that button, so the menu that opens is Slack's own with all
 // of its behaviour intact, and nothing here has to reimplement it.
 
-const STRIP_ID = 'slackmod-account-strip';
+const STRIP_ID = 'betterslack-account-strip';
 const STRIP_HEIGHT = 52;
 const BANNER_GAP = 8;
 
@@ -63,7 +63,7 @@ const CSS = `
      than as two add-ons that happened to land in the same window. */
   background: var(--dt_color-base-sec, rgba(var(--sk_foreground_min_solid, 248, 248, 248), 1));
 }
-#${STRIP_ID} .slackmod-me {
+#${STRIP_ID} .betterslack-me {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -74,8 +74,8 @@ const CSS = `
      press. A hover state here would promise a click that does nothing. */
   cursor: default;
 }
-#${STRIP_ID} .slackmod-me__figure { position: relative; flex: 0 0 auto; }
-#${STRIP_ID} .slackmod-me__dot {
+#${STRIP_ID} .betterslack-me__figure { position: relative; flex: 0 0 auto; }
+#${STRIP_ID} .betterslack-me__dot {
   position: absolute;
   right: -2px;
   bottom: -2px;
@@ -86,10 +86,10 @@ const CSS = `
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.45);
 }
 /* Availability, in the theme's own colours rather than Discord's literals. */
-#${STRIP_ID} .slackmod-me__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
-#${STRIP_ID} .slackmod-me__dot--dnd { background: var(--dt_color-content-imp, #c01343); }
+#${STRIP_ID} .betterslack-me__dot--active { background: var(--dt_color-content-hgl-2, #007a5a); }
+#${STRIP_ID} .betterslack-me__dot--dnd { background: var(--dt_color-content-imp, #c01343); }
 
-#${STRIP_ID} .slackmod-me__settings {
+#${STRIP_ID} .betterslack-me__settings {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -102,11 +102,11 @@ const CSS = `
   cursor: pointer;
   color: var(--dt_color-theme-content-inv-sec, rgba(255, 255, 255, 0.7));
 }
-#${STRIP_ID} .slackmod-me__settings:hover {
+#${STRIP_ID} .betterslack-me__settings:hover {
   background: var(--dt_color-base-pry-hover, rgba(var(--sk_foreground_low, 29, 28, 29), 0.1));
   color: var(--dt_color-theme-content-inv-pry, #fff);
 }
-#${STRIP_ID} .slackmod-me__avatar {
+#${STRIP_ID} .betterslack-me__avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -114,32 +114,39 @@ const CSS = `
   object-fit: cover;
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
 }
-#${STRIP_ID} .slackmod-me__text { min-width: 0; line-height: 1.2; }
-#${STRIP_ID} .slackmod-me__name,
-#${STRIP_ID} .slackmod-me__status {
+#${STRIP_ID} .betterslack-me__text { min-width: 0; line-height: 1.2; }
+#${STRIP_ID} .betterslack-me__name,
+#${STRIP_ID} .betterslack-me__status {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#${STRIP_ID} .slackmod-me__name {
+#${STRIP_ID} .betterslack-me__name {
   font-size: 14px;
   font-weight: var(--custom-font-weight-bold, 700);
   color: var(--dt_color-theme-content-inv-pry, #fff);
 }
-#${STRIP_ID} .slackmod-me__status {
+#${STRIP_ID} .betterslack-me__status {
   font-size: 12px;
   color: var(--dt_color-theme-content-inv-sec, rgba(255, 255, 255, 0.7));
 }
 `;
 
-/** Slack serves avatars as `<base>-<size>`; the rail renders a 48. */
-function avatarAt(url, size) {
-  return typeof url === 'string' ? url.replace(/-\d+$/, `-${size}`) : null;
-}
-
 const STRINGS = {
-  en: { account: 'Your account', settings: 'Account settings' },
-  fr: { account: 'Votre compte', settings: 'Réglages du compte' },
+  en: {
+    account: 'Your account',
+    settings: 'Account settings',
+    available: 'Active',
+    away: 'Away',
+    dnd: 'Do not disturb',
+  },
+  fr: {
+    account: 'Votre compte',
+    settings: 'Réglages du compte',
+    available: 'Disponible',
+    away: 'Absent(e)',
+    dnd: 'Ne pas déranger',
+  },
 };
 
 /**
@@ -225,28 +232,28 @@ export default {
       // which the button's aria-label ("User: ...", "Utilisateur : ...") does not.
       const userId = source?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i)?.[1]?.toUpperCase() ?? null;
 
-      const avatar = api.dom.h('img', { class: 'slackmod-me__avatar', alt: '' });
-      const best = avatarAt(source, 72) ?? source;
+      const avatar = api.dom.h('img', { class: 'betterslack-me__avatar', alt: '' });
+      // The rail renders a 48; this one has room for a 72.
+      const best = api.slack.avatarUrl(source, 72) ?? source;
       if (best) avatar.setAttribute('src', best);
 
-      const name = api.dom.h('div', { class: 'slackmod-me__name' }, ['…']);
-      // Slack's own screen-reader label for the presence indicator, so it is
-      // already in the user's language.
-      const presence = document
-        .querySelector('[data-qa="user-button"] [data-qa="presence_indicator"]')
-        ?.getAttribute('aria-label') ?? '';
-      const status = api.dom.h('div', { class: 'slackmod-me__status' }, [presence]);
+      const name = api.dom.h('div', { class: 'betterslack-me__name' }, ['…']);
+      // Filled in by paintDot, which is the only thing that writes this line.
+      // It used to be read once here, from Slack's screen-reader label, and
+      // then never again -- so it kept saying whatever was true at the moment
+      // the strip happened to be built, which is the whole bug.
+      const status = api.dom.h('div', { class: 'betterslack-me__status' }, ['']);
 
-      const dot = api.dom.h('span', { class: 'slackmod-me__dot' });
-      const me = api.dom.h('div', { class: 'slackmod-me' }, [
-        api.dom.h('span', { class: 'slackmod-me__figure' }, [avatar, dot]),
-        api.dom.h('div', { class: 'slackmod-me__text' }, [name, status]),
+      const dot = api.dom.h('span', { class: 'betterslack-me__dot' });
+      const me = api.dom.h('div', { class: 'betterslack-me' }, [
+        api.dom.h('span', { class: 'betterslack-me__figure' }, [avatar, dot]),
+        api.dom.h('div', { class: 'betterslack-me__text' }, [name, status]),
       ]);
 
       // The gear is the control. Pressing it opens Slack's own account menu,
       // which is what clicking the whole strip used to do.
       const settings = api.dom.h('button', {
-        class: 'slackmod-me__settings',
+        class: 'betterslack-me__settings',
         type: 'button',
         'aria-label': t('settings'),
       });
@@ -257,35 +264,105 @@ export default {
       });
       api.helpers.tooltip(settings, t('settings'));
 
-      /** Availability, from Slack rather than from the label beside it. */
+      /*
+       * Availability, copied from the indicator Slack already draws on your own
+       * avatar in the rail -- `.c-presence--active` on
+       * `[data-qa="user-button"] .c-presence`.
+       *
+       * It used to ask users.getPresence once a minute, and that is why the dot
+       * so often said away while the app plainly said available: the API answer
+       * lags the client, most of all just after the window comes back to the
+       * front, and until the next tick a whole minute later the strip kept
+       * showing the stale one. Slack's own node is instant, always agrees with
+       * the app it sits in, and costs no request at all.
+       *
+       * Do-not-disturb is not in that class, so it still comes from the API --
+       * but a DND window changes rarely, so it is asked for slowly.
+       */
+      let dnd = false;
+      /** A status someone set for themselves, which outranks the presence word. */
+      let customStatus = '';
+      /** True once either source has actually answered about availability. */
+      let resolved = false;
+      // waitFor resolves whenever Slack gets round to drawing the rail, which
+      // can be after this plugin has been switched off. Touching the document
+      // then is how a disabled plugin ends up throwing into a page it no longer
+      // belongs to.
+      let gone = false;
+      api.onDispose(() => { gone = true; });
+
+      /**
+       * The dot and the word beside it, from the same reading.
+       *
+       * They are one thing: a green dot next to "Absent(e)" is worse than
+       * either being wrong on its own, and that is what happened while the text
+       * was written once at mount and the dot was polled.
+       */
       const paintDot = () => {
-        if (!userId || !api.slack.web.available) return;
-        void Promise.all([
-          api.slack.web.presence(userId).catch(() => null),
-          api.slack.web.dndInfo(userId).catch(() => null),
-        ]).then(([state, dnd]) => {
-          if (!dot.isConnected) return;
-          dot.classList.toggle('slackmod-me__dot--dnd', dnd?.dnd_enabled === true);
-          dot.classList.toggle(
-            'slackmod-me__dot--active',
-            dnd?.dnd_enabled !== true && state?.presence === 'active',
-          );
-        });
+        if (gone) return;
+        const mine = document.querySelector('[data-qa="user-button"] .c-presence');
+        const active = mine ? mine.classList.contains('c-presence--active') : null;
+
+        dot.classList.toggle('betterslack-me__dot--dnd', dnd);
+        // Null means Slack has not drawn it yet -- leave both as they are rather
+        // than claiming away, which is the wrong answer more often than not.
+        if (active !== null) dot.classList.toggle('betterslack-me__dot--active', active && !dnd);
+
+        if (active !== null) resolved = true;
+
+        // A status someone wrote is what they want shown; the presence word is
+        // what Slack falls back to, so this does too. Nothing is written before
+        // something has answered: an empty line for a moment is honest, "away"
+        // is a guess, and guessing wrong is the bug this whole thing is about.
+        const word = dnd
+          ? t('dnd')
+          : dot.classList.contains('betterslack-me__dot--active') ? t('available') : t('away');
+        const next = customStatus || (resolved ? word : '');
+        if (status.textContent !== next) status.textContent = next;
       };
+
+      // Watch the rail rather than poll it: Slack swaps the class the moment
+      // your availability changes, and the strip should change with it.
+      const railWatcher = new MutationObserver(paintDot);
+      void api.dom.waitFor('[data-qa="user-button"]').then((button) => {
+        if (!button || gone) return;
+        railWatcher.observe(button, {
+          attributes: true,
+          attributeFilter: ['class'],
+          subtree: true,
+          childList: true,
+        });
+        paintDot();
+      });
+      api.onDispose(() => railWatcher.disconnect());
       paintDot();
-      // Your own availability changes while you sit there, so it is polled --
-      // one request a minute, about yourself.
-      const timer = setInterval(paintDot, 60_000);
-      api.onDispose(() => clearInterval(timer));
+
+      api.helpers.poll(async () => {
+        if (gone || !userId || !api.slack.web.available) return;
+        const availability = await api.slack.web.availability(userId);
+        if (gone) return;
+        dnd = availability.state === 'dnd';
+        // Only when Slack draws no indicator of its own: an older layout, or
+        // the rail not built yet. Otherwise the app's own answer wins.
+        if (!document.querySelector('[data-qa="user-button"] .c-presence')) {
+          dot.classList.toggle('betterslack-me__dot--active', availability.state === 'active');
+          if (availability.state !== 'unknown') resolved = true;
+        }
+        paintDot();
+      }, 300_000);
 
       if (userId && api.slack.web.available) {
         api.slack.web
-          .userInfo(userId)
-          .then((user) => {
-            const profile = user.profile ?? {};
+          .users([userId])
+          .then((users) => {
+            const user = users.get(userId);
+            const profile = user?.profile ?? {};
             name.textContent =
-              profile.display_name || profile.real_name || user.real_name || user.name || '';
-            if (profile.status_text) status.textContent = profile.status_text;
+              profile.display_name || profile.real_name || user?.real_name || user?.name || '';
+            // Slack shows the emoji beside it; the shortcode would read as
+            // ":coffee:", so only the text is taken.
+            customStatus = profile.status_text ?? '';
+            paintDot();
           })
           .catch((err) => {
             // Not worth a visible failure: the avatar and availability are most

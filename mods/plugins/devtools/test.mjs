@@ -74,7 +74,7 @@ test('never goes through redux.dispatchUpdate', async () => {
   assert.doesNotMatch(source, /dispatchUpdate/);
 });
 
-test('sits above the SlackMod button in the control strip', async () => {
+test('sits above the BetterSlack button in the control strip', async () => {
   const dom = installDom();
   try {
     const { api, recorded } = createTestApi();
@@ -82,8 +82,8 @@ test('sits above the SlackMod button in the control strip', async () => {
 
     assert.equal(recorded.toolbarButtons.length, 1);
     assert.equal(recorded.toolbarButtons[0].toolbar, 'controlStrip');
-    assert.equal(recorded.toolbarButtons[0].button.before, '#slackmod-control-button',
-      'without this anchor it would land under the SlackMod button');
+    assert.equal(recorded.toolbarButtons[0].button.before, '#betterslack-control-button',
+      'without this anchor it would land under the BetterSlack button');
   } finally {
     dom.cleanup();
   }

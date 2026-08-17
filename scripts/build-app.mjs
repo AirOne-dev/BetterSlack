@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds dist/SlackMod.app — a thin macOS wrapper that starts the loader
+// Builds dist/BetterSlack.app — a thin macOS wrapper that starts the loader
 // without leaving a terminal window open.
 //
 // It is a launcher, not a bundle: it runs the loader from this checkout, so the
@@ -16,7 +16,7 @@ if (process.platform !== 'darwin') {
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const app = path.join(root, 'dist', 'SlackMod.app');
+const app = path.join(root, 'dist', 'BetterSlack.app');
 const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
 
 await fs.rm(app, { recursive: true, force: true });
@@ -27,9 +27,9 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleExecutable</key><string>slackmod</string>
-  <key>CFBundleIdentifier</key><string>dev.airone.slackmod</string>
-  <key>CFBundleName</key><string>SlackMod</string>
+  <key>CFBundleExecutable</key><string>betterslack</string>
+  <key>CFBundleIdentifier</key><string>dev.airone.betterslack</string>
+  <key>CFBundleName</key><string>BetterSlack</string>
   <key>CFBundleVersion</key><string>${version}</string>
   <key>CFBundleShortVersionString</key><string>${version}</string>
   <key>CFBundleIconFile</key><string>icon.icns</string>
@@ -45,26 +45,26 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
 const launcher = `#!/bin/bash
 set -e
 REPO="${root}"
-LOG="$HOME/Library/Logs/SlackMod.log"
+LOG="$HOME/Library/Logs/BetterSlack.log"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$PATH"
 if [ -s "$HOME/.nvm/nvm.sh" ]; then . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1 || true; fi
 
 NODE="$(command -v node || true)"
 if [ -z "$NODE" ]; then
-  osascript -e 'display alert "SlackMod" message "Node.js was not found. Install it from nodejs.org, then try again."'
+  osascript -e 'display alert "BetterSlack" message "Node.js was not found. Install it from nodejs.org, then try again."'
   exit 1
 fi
 if [ ! -f "$REPO/dist/loader.mjs" ]; then
-  osascript -e 'display alert "SlackMod" message "SlackMod is not built. Run npm install && npm run build in the repository."'
+  osascript -e 'display alert "BetterSlack" message "BetterSlack is not built. Run pnpm install && pnpm build in the repository."'
   exit 1
 fi
 
-exec "$NODE" "$REPO/bin/slackmod.mjs" >>"$LOG" 2>&1
+exec "$NODE" "$REPO/bin/betterslack.mjs" >>"$LOG" 2>&1
 `;
 
 await fs.writeFile(path.join(app, 'Contents', 'Info.plist'), plist, 'utf8');
-await fs.writeFile(path.join(app, 'Contents', 'MacOS', 'slackmod'), launcher, { mode: 0o755 });
+await fs.writeFile(path.join(app, 'Contents', 'MacOS', 'betterslack'), launcher, { mode: 0o755 });
 await fs.copyFile(
   path.join(root, 'assets', 'icon.icns'),
   path.join(app, 'Contents', 'Resources', 'icon.icns'),
@@ -72,4 +72,4 @@ await fs.copyFile(
 
 console.log(`built ${app}`);
 console.log('Unsigned: the first launch needs right-click -> Open.');
-console.log('Logs: ~/Library/Logs/SlackMod.log');
+console.log('Logs: ~/Library/Logs/BetterSlack.log');

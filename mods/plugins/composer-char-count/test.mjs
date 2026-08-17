@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { assertPluginShape, createTestApi, installDom } from '../../../tests/harness.mjs';
 import plugin from './index.js';
 
-const NODE_ID = 'slackmod-char-count';
+const NODE_ID = 'betterslack-char-count';
 
 function typeInComposer(text) {
   const editor = document.querySelector('.ql-editor');

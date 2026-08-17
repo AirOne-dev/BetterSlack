@@ -28,6 +28,22 @@ function stripComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
 
+/**
+ * Every file the runtime would load from a mod folder, as folder-relative
+ * paths. Tests are excluded: they run in Node, import the shared harness, and
+ * never reach the app.
+ */
+async function modSources(dir, prefix = '') {
+  const found = [];
+  for (const item of await fs.readdir(dir, { withFileTypes: true })) {
+    if (item.name.startsWith('.') || item.name === 'node_modules') continue;
+    const rel = prefix ? `${prefix}/${item.name}` : item.name;
+    if (item.isDirectory()) found.push(...(await modSources(path.join(dir, item.name), rel)));
+    else if (/\.js$/.test(item.name) && !/\.test\.js$/.test(item.name)) found.push(rel);
+  }
+  return found;
+}
+
 for (const kind of ['themes', 'plugins']) {
   const type = kind === 'themes' ? 'theme' : 'plugin';
   const dir = path.join(modsRoot, kind);
@@ -56,7 +72,7 @@ for (const kind of ['themes', 'plugins']) {
     if (!ID_PATTERN.test(manifest.id ?? '')) fail(`"id" must match ${ID_PATTERN}`);
     if (manifest.id !== entry.name) fail(`"id" must equal the folder name ("${entry.name}")`);
     if (manifest.type !== type) fail(`"type" must be "${type}"`);
-    if (manifest.slackmodApi !== API_VERSION) fail(`"slackmodApi" must be ${API_VERSION}`);
+    if (manifest.betterslackApi !== API_VERSION) fail(`"betterslackApi" must be ${API_VERSION}`);
 
     const previous = seenIds.get(manifest.id);
     if (previous) fail(`id "${manifest.id}" is already used by ${previous}`);
@@ -72,15 +88,34 @@ for (const kind of ['themes', 'plugins']) {
       const source = await fs.readFile(path.join(modDir, entryFile), 'utf8').catch(() => null);
       if (source === null) {
         fail(`entry file "${entryFile}" does not exist`);
-      } else if (type === 'plugin') {
-        if (!/export\s+default/.test(source)) {
-          fail('a plugin must have a default export');
-        }
-        // eval/new Function cannot work anyway: Slack's CSP has no
-        // 'unsafe-eval'. Catching it here saves a confusing bug report.
-        // Comments are stripped first, or documenting the rule trips it.
-        if (/\beval\s*\(|new\s+Function\s*\(/.test(stripComments(source))) {
-          fail("uses eval()/new Function(), which Slack's CSP blocks at runtime");
+      } else if (type === 'plugin' && !/export\s+default/.test(source)) {
+        fail('a plugin must have a default export');
+      }
+    }
+
+    // A mod is a folder, so the source rules apply to every file in it, not
+    // only the entry -- eval() hidden in a helper module is still eval().
+    // Comments are stripped first, or documenting the rule trips it.
+    for (const file of await modSources(modDir)) {
+      const source = stripComments(await fs.readFile(path.join(modDir, file), 'utf8'));
+      if (/\beval\s*\(|new\s+Function\s*\(/.test(source)) {
+        fail(`${file} uses eval()/new Function(), which Slack's CSP blocks at runtime`);
+      }
+      // The runtime rewrites relative specifiers to blob URLs before loading,
+      // so anything reaching outside the folder cannot be resolved at all.
+      // Statement-level only, plus dynamic import(). A looser "anything after
+      // `from`" pattern reads the string in `{ base: 'Start from', x: '…' }`
+      // as a specifier, which is a confusing way to fail a pull request.
+      const specs = [
+        ...source.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"\n]*?\bfrom\s*['"]([^'"\n,\s]+)['"]/g),
+        ...source.matchAll(/(?:^|\n)\s*import\s*['"]([^'"\n,\s]+)['"]/g),
+        ...source.matchAll(/\bimport\s*\(\s*['"]([^'"\n,\s]+)['"]/g),
+      ];
+      for (const [, spec] of specs) {
+        if (!spec.startsWith('.')) {
+          fail(`${file} imports "${spec}" — a mod may only import its own files`);
+        } else if (path.relative(modDir, path.resolve(modDir, path.dirname(file), spec)).startsWith('..')) {
+          fail(`${file} imports "${spec}", which is outside the mod folder`);
         }
       }
     }
