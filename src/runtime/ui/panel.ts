@@ -20,6 +20,8 @@ import type { ModManager } from '../manager.js';
 import { contributeUrl, repoUrl } from '../registry.js';
 import { createCodeEditor } from './code.js';
 import { closeMenu, openMenu } from './menu.js';
+import { createI18n } from '../i18n.js';
+import { PANEL_STRINGS } from './strings.js';
 
 type TabId = 'themes' | 'plugins' | 'css' | 'about';
 type ShelfId = 'installed' | 'enabled' | 'browse';
@@ -36,6 +38,14 @@ const CLOSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" 
 const OVERFLOW_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px">
   <path fill="currentColor" d="M5 10a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm6.5 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm5 1.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
 </svg>`;
+
+/**
+ * The panel's own translator.
+ *
+ * Built once at module load, like a mod's: the language cannot change without
+ * Slack reloading, which takes this with it.
+ */
+const t = createI18n().strings(PANEL_STRINGS);
 
 export class Panel {
   private host: HTMLElement | null = null;
@@ -118,7 +128,7 @@ export class Panel {
       class:
         'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default betterslack-close',
       type: 'button',
-      'aria-label': 'Close',
+      'aria-label': t('close'),
     });
     close.innerHTML = CLOSE_ICON;
     close.addEventListener('click', () => this.close());
@@ -138,7 +148,7 @@ export class Panel {
       'aria-label': 'BetterSlack',
     }, [
       h('div', { class: 'c-dialog__header betterslack-header' }, [
-        h('h1', { class: 'c-dialog__title' }, ['BetterSlack']),
+        h('h1', { class: 'c-dialog__title' }, [t('title')]),
         close,
       ]),
       h('div', { class: 'betterslack-layout' }, [this.renderNav(), body]),
@@ -159,10 +169,10 @@ export class Panel {
       mods.filter((m) => m.type === type && this.manager.isInstalled(m.id)).length;
 
     const items: { id: TabId; label: string; count?: number }[] = [
-      { id: 'themes', label: 'Themes', count: count('theme') },
-      { id: 'plugins', label: 'Plugins', count: count('plugin') },
-      { id: 'css', label: 'Custom CSS' },
-      { id: 'about', label: 'About' },
+      { id: 'themes', label: t('themes'), count: count('theme') },
+      { id: 'plugins', label: t('plugins'), count: count('plugin') },
+      { id: 'css', label: t('css') },
+      { id: 'about', label: t('about') },
     ];
 
     const nav = h('nav', { class: 'betterslack-nav', role: 'tablist' });
@@ -221,9 +231,9 @@ export class Panel {
   private renderShelves(mods: ModRecord[], kind: 'theme' | 'plugin'): Node[] {
     const installed = mods.filter((m) => this.manager.isInstalled(m.id));
     const shelves: { id: ShelfId; label: string; list: ModRecord[] }[] = [
-      { id: 'installed', label: 'Installed', list: installed },
-      { id: 'enabled', label: 'Enabled', list: installed.filter((m) => this.manager.isEnabled(m.id)) },
-      { id: 'browse', label: 'Browse', list: mods.filter((m) => !this.manager.isInstalled(m.id)) },
+      { id: 'installed', label: t('installed'), list: installed },
+      { id: 'enabled', label: t('enabled'), list: installed.filter((m) => this.manager.isEnabled(m.id)) },
+      { id: 'browse', label: t('browse'), list: mods.filter((m) => !this.manager.isInstalled(m.id)) },
     ];
 
     const tabs = h('div', { class: 'betterslack-shelves', role: 'tablist' });
@@ -248,7 +258,7 @@ export class Panel {
     const search = h('input', {
       class: 'betterslack-search',
       type: 'text',
-      placeholder: `Search ${kind}s`,
+      placeholder: t('search'),
       spellcheck: 'false',
     }) as HTMLInputElement;
     search.value = this.search;
@@ -259,10 +269,39 @@ export class Panel {
       this.renderList(current.list, kind);
     });
 
+    /*
+     * Tags, as filters, from what is actually on the shelf.
+     *
+     * Not a fixed list: a tag nobody uses would be a filter that always returns
+     * nothing, and a mod introducing one would have to come back here. Hidden
+     * entirely when there is nothing to choose between.
+     */
+    const tags = [...new Set(current.list.flatMap((mod) => mod.tags ?? []))].sort();
+    const filters = h('div', { class: 'betterslack-filters' });
+    if (tags.length > 1) {
+      for (const tag of [null, ...tags]) {
+        const active = this.tag === tag;
+        const chip = h('button', {
+          class: 'c-button-unstyled betterslack-filter',
+          type: 'button',
+          'aria-pressed': String(active),
+        }, [tag ?? t('filterAll')]);
+        chip.addEventListener('click', () => {
+          this.tag = active ? null : tag;
+          this.renderList(current.list, kind);
+          for (const other of filters.querySelectorAll('.betterslack-filter')) {
+            other.setAttribute('aria-pressed', String(other === chip && !active));
+          }
+        });
+        filters.append(chip);
+      }
+    }
+
     queueMicrotask(() => this.renderList(current.list, kind));
 
     return [
       h('div', { class: 'betterslack-toolbar' }, [tabs, search]),
+      ...(tags.length > 1 ? [filters] : []),
       h('div', { class: 'betterslack-list' }),
     ];
   }
@@ -272,21 +311,22 @@ export class Panel {
     if (!host) return;
 
     const query = this.search.trim().toLowerCase();
-    const list = query
+    let list = query
       ? mods.filter((m) =>
           `${m.name} ${m.description} ${(m.tags ?? []).join(' ')}`.toLowerCase().includes(query))
       : mods;
+    if (this.tag) list = list.filter((mod) => (mod.tags ?? []).includes(this.tag!));
 
     host.replaceChildren();
 
     if (list.length === 0) {
       const messages: Record<ShelfId, string> = {
-        installed: `No ${kind} installed yet. Open Browse to add one.`,
-        enabled: `Nothing switched on. Installed ${kind}s can be enabled here.`,
-        browse: 'Everything in the catalogue is already installed.',
+        installed: t('nothingInstalled'),
+        enabled: t('nothingEnabled'),
+        browse: t('allInstalled'),
       };
       host.append(h('div', { class: 'betterslack-empty' }, [
-        query ? 'Nothing matches that search.' : messages[this.shelf],
+        query ? t('noMatch') : messages[this.shelf],
       ]));
       return;
     }
@@ -340,7 +380,7 @@ export class Panel {
       const install = h('button', {
         class: 'c-button c-button--outline c-button--medium',
         type: 'button',
-      }, ['Install']) as HTMLButtonElement;
+      }, [t('install')]) as HTMLButtonElement;
       install.disabled = busy;
       install.addEventListener('click', () => {
         void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, true));
@@ -356,14 +396,14 @@ export class Panel {
     const meta = h('div', { class: 'betterslack-row__meta' }, [
       title,
       h('div', { class: 'betterslack-row__desc' }, [mod.description]),
-      h('div', { class: 'betterslack-row__sub' }, [`v${mod.version} · by ${mod.author}`]),
+      h('div', { class: 'betterslack-row__sub' }, [t('byLine', { version: mod.version, author: mod.author })]),
     ]);
 
     // A mod that would not start says so where it is, rather than in a console
     // nobody has open.
     const failure = this.manager.errors.get(mod.id);
     if (failure) {
-      title.append(h('span', { class: 'betterslack-tag betterslack-tag--error' }, ['not running']));
+      title.append(h('span', { class: 'betterslack-tag betterslack-tag--error' }, [t('notRunning')]));
       meta.append(h('div', { class: 'betterslack-row__requires betterslack-row__requires--missing' }, [
         failure,
       ]));
@@ -377,7 +417,7 @@ export class Panel {
 
       const note = h('div', {
         class: `betterslack-row__requires${satisfied ? '' : ' betterslack-row__requires--missing'}`,
-      }, [satisfied ? `Uses ${names.join(', ')}` : `Needs ${names.join(', ')}`]);
+      }, [satisfied ? t('uses', { names: names.join(', ') }) : t('needs', { names: names.join(', ') })]);
 
       // Only offer the button once the theme is on: before that, switching it
       // on is what asks the question anyway.
@@ -385,7 +425,7 @@ export class Panel {
         const fix = h('button', {
           class: 'c-button-unstyled betterslack-row__review',
           type: 'button',
-        }, [found.length === 1 ? 'Enable it' : 'Enable them']);
+        }, [found.length === 1 ? t('enableIt') : t('enableThem')]);
         fix.addEventListener('click', () => {
           void this.withBusy(mod.id, () => this.enableWithRequirements(mod));
         });
@@ -395,7 +435,7 @@ export class Panel {
         // A theme naming a plugin nobody has. Say which, rather than leaving
         // the user to wonder why it looks wrong.
         note.append(h('div', { class: 'betterslack-row__sub' }, [
-          `Not in the catalogue: ${unknown.join(', ')}`,
+          t('notInCatalogue', { names: unknown.join(', ') }),
         ]));
       }
       meta.append(note);
@@ -412,7 +452,7 @@ export class Panel {
         class: 'c-button-unstyled betterslack-row__review',
         type: 'button',
         'aria-expanded': String(open),
-      }, [open ? 'Hide settings' : `Settings (${fields.length})`]);
+      }, [open ? t('settingsHide') : t('settingsCount', { count: fields.length })]);
       toggle.addEventListener('click', () => {
         if (open) this.openSettings.delete(mod.id);
         else this.openSettings.add(mod.id);
@@ -521,6 +561,9 @@ export class Panel {
     return box;
   }
 
+  /** The tag being filtered on, or null for everything. */
+  private tag: string | null = null;
+
   /** Mods whose settings are unfolded, so a render does not close them. */
   private openSettings = new Set<string>();
 
@@ -556,13 +599,13 @@ export class Panel {
       const cancel = h('button', {
         class: 'c-button c-button--outline c-button--medium',
         type: 'button',
-      }, ['Cancel']);
+      }, [t('cancel')]);
       cancel.addEventListener('click', () => finish(false));
 
       const accept = h('button', {
         class: 'c-button c-button--primary c-button--medium',
         type: 'button',
-      }, [missing.length === 1 ? 'Enable it' : `Enable all ${missing.length}`]);
+      }, [missing.length === 1 ? t('enableIt') : t('enableAll', { count: missing.length })]);
       accept.addEventListener('click', () => finish(true));
 
       const list = h('ul', { class: 'betterslack-requires' });
@@ -578,18 +621,14 @@ export class Panel {
           class: 'c-dialog__content betterslack-content betterslack-content--narrow',
           role: 'dialog',
           'aria-modal': 'true',
-          'aria-label': `Plugins required by ${mod.name}`,
+          'aria-label': t('requiresTitle', { name: mod.name, count: missing.length }),
         }, [
           h('div', { class: 'c-dialog__header betterslack-header' }, [
             h('h1', { class: 'c-dialog__title' }, [mod.name]),
           ]),
           h('div', { class: 'c-dialog__body betterslack-body' }, [
             h('p', { class: 'betterslack-hint' }, [
-              missing.length === 1
-                ? 'This theme needs a plugin to look the way it is meant to. Plugins run code in ' +
-                  'your Slack window, and this one stays on until you switch it off yourself.'
-                : 'This theme needs these plugins to look the way it is meant to. Plugins run code ' +
-                  'in your Slack window, and they stay on until you switch them off yourself.',
+              t('requiresBody'),
             ]),
             list,
           ]),
@@ -638,7 +677,7 @@ export class Panel {
   private openMenu(anchor: HTMLElement, mod: ModRecord): void {
     this.closeRowMenu = openMenu(anchor, [
       {
-        label: this.manager.isEnabled(mod.id) ? 'Disable' : 'Enable',
+        label: this.manager.isEnabled(mod.id) ? t('disable') : t('enable'),
         onSelect: () => {
           void this.withBusy(mod.id, () =>
             this.manager.isEnabled(mod.id)
@@ -647,7 +686,7 @@ export class Panel {
         },
       },
       {
-        label: 'Remove',
+        label: t('remove'),
         danger: true,
         onSelect: () => {
           void this.withBusy(mod.id, () => this.manager.setInstalled(mod.id, false));
@@ -678,13 +717,13 @@ export class Panel {
     const save = h('button', {
       class: 'c-button c-button--primary c-button--medium',
       type: 'button',
-    }, ['Save and apply']);
+    }, [t('cssSave')]);
     save.addEventListener('click', () => {
       void this.manager
         .setCustomCss(editor.value())
         .then(() => {
           status.className = 'betterslack-status';
-          status.textContent = 'Applied.';
+          status.textContent = t('cssApplied');
         })
         .catch((err: Error) => {
           status.className = 'betterslack-status betterslack-danger';
@@ -694,8 +733,7 @@ export class Panel {
 
     return [
       h('p', { class: 'betterslack-hint' }, [
-        'Applied after every theme, so it always wins. Slack exposes its palette as CSS custom ' +
-          'properties (--dt_color-*), which is a steadier target than its class names.',
+        t('cssHint'),
       ]),
       editor.node,
       h('div', { class: 'betterslack-actions' }, [save, status]),
@@ -718,16 +756,13 @@ export class Panel {
 
     return [
       h('p', { class: 'betterslack-hint' }, [
-        'BetterSlack injects into the Slack renderer over the Chrome DevTools Protocol, carried on a ' +
-          'private pipe rather than a debugging port — nothing listens on the network. It does not ' +
-          'modify Slack.app, so Slack updates cannot break your install, but mods stay loaded only ' +
-          'while the loader runs.',
+        t('aboutBody'),
       ]),
       h('div', { class: 'betterslack-row' }, [
         h('div', { class: 'betterslack-row__meta' }, [
-          h('div', { class: 'betterslack-row__name' }, ['Hot reload']),
+          h('div', { class: 'betterslack-row__name' }, [t('hotReload')]),
           h('div', { class: 'betterslack-row__desc' }, [
-            'Reapply a mod as soon as its file changes on disk.',
+            t('hotReloadHint'),
           ]),
         ]),
         h('div', { class: 'betterslack-row__actions' }, [
@@ -740,20 +775,20 @@ export class Panel {
         ]),
       ]),
       h('dl', { class: 'betterslack-info' }, [
-        h('dt', {}, ['Version']),
+        h('dt', {}, [t('version')]),
         h('dd', {}, [info.version]),
-        h('dt', {}, ['Catalogue']),
+        h('dt', {}, [t('catalogue')]),
         h('dd', {}, [info.modsRoot]),
-        h('dt', {}, ['Your mods']),
+        h('dt', {}, [t('yourMods')]),
         h('dd', {}, [info.userModsRoot]),
-        h('dt', {}, ['Transport']),
+        h('dt', {}, [t('transport')]),
         h('dd', {}, [info.transport]),
       ]),
       h('p', { class: 'betterslack-hint' }, [
-        h('a', { class: 'c-link', href: repoUrl, target: '_blank', rel: 'noreferrer' }, ['Repository']),
+        h('a', { class: 'c-link', href: repoUrl, target: '_blank', rel: 'noreferrer' }, [t('repository')]),
         ' · ',
         h('a', { class: 'c-link', href: contributeUrl, target: '_blank', rel: 'noreferrer' }, [
-          'Submit a mod',
+          t('contribute'),
         ]),
       ]),
     ];
@@ -775,10 +810,10 @@ export class Panel {
       const button = h('button', {
         class: 'c-button c-button--primary c-button--medium',
         type: 'button',
-      }, ['Update']);
+      }, [t('modUpdateGo')]);
       button.addEventListener('click', () => {
         button.setAttribute('disabled', 'disabled');
-        status.textContent = 'Downloading…';
+        status.textContent = t('modUpdateWorking');
         void this.manager.updateMod(update.id).then((result) => {
           if (!result.ok) {
             status.textContent = result.detail;
@@ -792,9 +827,9 @@ export class Panel {
 
       return h('div', { class: 'betterslack-row betterslack-row--notice' }, [
         h('div', { class: 'betterslack-row__meta' }, [
-          h('div', { class: 'betterslack-row__name' }, [`${update.name} ${update.to} is out`]),
+          h('div', { class: 'betterslack-row__name' }, [t('modUpdateTitle', { name: update.name, version: update.to })]),
           h('div', { class: 'betterslack-row__desc' }, [
-            `You have ${update.from}. Updating replaces this mod alone, and reapplies it if it is on.`,
+            t('modUpdateBody', { current: update.from }),
           ]),
         ]),
         h('div', { class: 'betterslack-row__actions' }, [button, status]),
@@ -819,11 +854,11 @@ export class Panel {
     return [
       h('div', { class: 'betterslack-row betterslack-row--notice' }, [
         h('div', { class: 'betterslack-row__meta' }, [
-          h('div', { class: 'betterslack-row__name' }, ['Safe mode — nothing is loaded']),
+          h('div', { class: 'betterslack-row__name' }, [t('safeTitle')]),
           h('div', { class: 'betterslack-row__desc' }, [
             info.safeModeReason
-              ? `${info.safeModeReason}. Switch off whatever you suspect, then start BetterSlack again.`
-              : 'Started with --safe. Your mods are untouched; start again without it to load them.',
+              ? t('safeCrashed', { reason: info.safeModeReason })
+              : t('safeAsked'),
           ]),
         ]),
       ]),
@@ -846,11 +881,11 @@ export class Panel {
     // checkout is pulled, a downloaded copy is replaced from GitHub. Someone
     // about to press this should know which.
     const detail = status.kind === 'git'
-      ? `${status.commits} commit${status.commits === 1 ? '' : 's'} behind${
-        status.headline ? ` — latest: ${status.headline}` : ''}. Updating pulls and rebuilds.`
-      : `Version ${status.latest} is out; this is ${this.manager.info.version}. `
-        + 'Updating downloads it from GitHub and replaces this copy — your mods and settings are '
-        + 'kept, they live outside it.';
+      ? t('updateGit', {
+        count: status.commits ?? 0,
+        headline: status.headline ? t('updateHeadline', { subject: status.headline }) : '',
+      })
+      : t('updatePackage', { latest: status.latest ?? '?', current: this.manager.info.version });
 
     const status_line = h('span', { class: 'betterslack-status' });
     const actions: Node[] = [];
@@ -859,16 +894,16 @@ export class Panel {
       const update = h('button', {
         class: 'c-button c-button--primary c-button--medium',
         type: 'button',
-      }, ['Update and restart']);
+      }, [t('updateGo')]);
       update.addEventListener('click', () => {
         update.setAttribute('disabled', 'disabled');
-        status_line.textContent = 'Pulling and rebuilding…';
+        status_line.textContent = status.kind === 'git' ? t('updatePulling') : t('updateDownloading');
         void this.manager
           .updateApp()
           .then((result) => {
             status_line.textContent = result.ok
-              ? 'Updated. Slack is restarting…'
-              : `Could not update: ${result.detail}`;
+              ? t('updateDone')
+              : t('updateFailed', { reason: result.detail });
             if (!result.ok) update.removeAttribute('disabled');
           })
           .catch((err: Error) => {
@@ -883,14 +918,14 @@ export class Panel {
         href: repoUrl,
         target: '_blank',
         rel: 'noreferrer',
-      }, ['Open GitHub']));
+      }, [t('updateGitHub')]));
     }
     actions.push(status_line);
 
     return [
       h('div', { class: 'betterslack-row betterslack-row--notice' }, [
         h('div', { class: 'betterslack-row__meta' }, [
-          h('div', { class: 'betterslack-row__name' }, ['An update is available']),
+          h('div', { class: 'betterslack-row__name' }, [t('updateTitle')]),
           h('div', { class: 'betterslack-row__desc' }, [
             status.note ? `${detail} — ${status.note}` : detail,
           ]),

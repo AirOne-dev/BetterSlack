@@ -6,7 +6,10 @@
 import { ModManager, type BootPayload } from './manager.js';
 import { Bridge } from './rpc.js';
 import { installLauncher } from './ui/launcher.js';
+import { openPalette, closePalette, isPaletteOpen, type Command } from './ui/palette.js';
 import { PANEL_CSS } from './ui/styles.js';
+import { PANEL_STRINGS } from './ui/strings.js';
+import { createI18n } from './i18n.js';
 import { Panel } from './ui/panel.js';
 
 declare global {
@@ -92,6 +95,7 @@ async function boot(): Promise<void> {
     delete window.__betterslack;
   }
 
+  const t = createI18n().strings(PANEL_STRINGS);
   const bridge = new Bridge();
   const manager = new ModManager(bridge, payload);
 
@@ -104,6 +108,33 @@ async function boot(): Promise<void> {
   manager.styles.set('plugin', '__panel', PANEL_CSS);
   const panel = new Panel(manager);
 
+  /**
+   * Everything the palette can offer: the panel's own actions, every installed
+   * mod as a switch, and whatever the mods registered themselves.
+   */
+  const commands = (): Command[] => {
+    const settings = manager.getSettings();
+    const builtin: Command[] = [
+      { id: 'panel:open', title: t('paletteOpenPanel'), source: 'BetterSlack', run: () => panel.open() },
+    ];
+    for (const mod of manager.list()) {
+      if (!settings.installed.includes(mod.id)) continue;
+      const on = manager.isEnabled(mod.id);
+      builtin.push({
+        id: `mod:${mod.id}`,
+        title: `${on ? t('paletteDisable') : t('paletteEnable')} ${mod.name}`,
+        source: mod.type === 'theme' ? t('themes') : t('plugins'),
+        run: () => void manager.setEnabled(mod.id, !on),
+      });
+    }
+    return [...manager.commands.values(), ...builtin];
+  };
+
+  const togglePalette = () => {
+    if (isPaletteOpen()) closePalette();
+    else openPalette(commands(), { placeholder: t('paletteSearch'), empty: t('paletteEmpty') });
+  };
+
   let unmountUi: (() => void) | undefined;
   const mountUi = () => {
     unmountUi = installLauncher({
@@ -114,6 +145,7 @@ async function boot(): Promise<void> {
       // rebuilt when it does.
       badge: () => (manager.update?.behind ? 1 : 0),
       onBadgeChange: (repaint) => manager.onChange(repaint),
+      onPalette: togglePalette,
     });
   };
   if (document.readyState === 'loading') {

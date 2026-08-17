@@ -475,6 +475,10 @@ export default {
       });
     };
 
+    // Findable by typing, as well as by looking: the rail is Slack's and there
+    // is no room in it for every idea.
+    api.commands.add({ id: 'open', title: t('open'), subtitle: t('openHint'), run: open });
+
     api.slack.addToolbarButton('controlStrip', {
       id: 'theme-builder',
       label: t('open'),

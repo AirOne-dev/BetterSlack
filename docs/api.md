@@ -363,6 +363,23 @@ api.dom.onShortcut((e) => e.key === 'F1', handler);          // prefer helpers.h
 
 ---
 
+## `api.commands`
+
+Things your mod can do, findable by typing — ⌘⇧K opens the palette.
+
+```js
+api.commands.add({
+  id: 'open',                       // unique within your mod
+  title: 'Theme builder',
+  subtitle: 'Design a theme with the app as the preview',
+  run: () => open(),
+});
+```
+
+Every idea so far has meant another button in Slack's rail, which is Slack's and
+has room for about three. A command costs no chrome: it is attributed to your
+mod automatically, and it goes when your mod is switched off.
+
 ## `api.settings`
 
 Persisted per plugin, in `~/.betterslack/settings.json`.
@@ -490,6 +507,23 @@ editor.set(text);        // replace it
 
 Tab indents instead of moving focus. `readOnly: true` gives a highlighted,
 non-editable view — a generated stylesheet, for instance.
+
+## `api.commands`
+
+Things your mod can do, findable by typing — ⌘⇧K opens the palette.
+
+```js
+api.commands.add({
+  id: 'open',                       // unique within your mod
+  title: 'Theme builder',
+  subtitle: 'Design a theme with the app as the preview',
+  run: () => open(),
+});
+```
+
+Every idea so far has meant another button in Slack's rail, which is Slack's and
+has room for about three. A command costs no chrome: it is attributed to your
+mod automatically, and it goes when your mod is switched off.
 
 ## `api.settings`
 

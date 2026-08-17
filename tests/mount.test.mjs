@@ -200,3 +200,40 @@ test('a disabled entry is shown and does nothing', () => {
     dom.cleanup();
   }
 });
+
+// The command palette: how a mod offers something without taking a button in
+// Slack's rail, which is Slack's and has room for about three.
+
+test('the palette ranks a title match above a source match', async () => {
+  const { rank } = await import('../dist/ui/palette.mjs');
+  const commands = [
+    { id: 'a', title: 'Open BetterSlack', source: 'BetterSlack', run() {} },
+    { id: 'b', title: 'Theme builder', source: 'Theme Builder', run() {} },
+    { id: 'c', title: 'Enable Midnight', source: 'Themes', run() {} },
+  ];
+
+  assert.deepEqual(rank(commands, '').length, 3, 'no query means everything');
+  assert.equal(rank(commands, 'theme')[0].id, 'b', 'the one whose title starts with it');
+  // Every word has to appear somewhere, in any order.
+  assert.deepEqual(rank(commands, 'midnight enable').map((c) => c.id), ['c']);
+  assert.deepEqual(rank(commands, 'nothing here').map((c) => c.id), []);
+});
+
+test('a command is attributed to the mod it came from', async () => {
+  const { createTestApi, installDom } = await import('./harness.mjs');
+  const dom = installDom();
+  try {
+    const { api, recorded } = createTestApi();
+    let ran = false;
+    const remove = api.commands.add({ id: 'go', title: 'Do the thing', run: () => { ran = true; } });
+
+    assert.equal(recorded.commands.length, 1);
+    recorded.commands[0].run();
+    assert.equal(ran, true);
+
+    remove();
+    assert.equal(recorded.commands.length, 0, 'and it goes when the mod does');
+  } finally {
+    dom.cleanup();
+  }
+});

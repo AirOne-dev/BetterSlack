@@ -56,9 +56,13 @@ export interface LauncherOptions {
   badge?: () => number;
   /** Called with a repaint function, so the badge can follow a later answer. */
   onBadgeChange?: (repaint: () => void) => void;
+  /** Opened with the palette shortcut. */
+  onPalette?: () => void;
 }
 
-export function installLauncher({ onActivate, styles, badge, onBadgeChange }: LauncherOptions): Cleanup {
+export function installLauncher(
+  { onActivate, styles, badge, onBadgeChange, onPalette }: LauncherOptions,
+): Cleanup {
   styles.set('plugin', '__launcher', LAUNCHER_CSS);
 
   const shortcut = navigator.platform.startsWith('Mac') ? '⌘⇧M' : 'Ctrl+Shift+M';
@@ -150,10 +154,26 @@ export function installLauncher({ onActivate, styles, badge, onBadgeChange }: La
     onActivate,
   );
 
+  /*
+   * Cmd+K for the palette -- which Slack also uses, for its own switcher.
+   *
+   * Taken deliberately, and only with Shift held... no: measured first. Slack
+   * binds plain Cmd+K to the quick switcher, so plain Cmd+K here would replace
+   * a thing people use every day. Cmd+Shift+K is free and is what this takes.
+   */
+  const unbindPalette = onPalette
+    ? onShortcut(
+      (event) =>
+        event.shiftKey && (event.metaKey || event.ctrlKey) && !event.altKey && event.code === 'KeyK',
+      onPalette,
+    )
+    : () => {};
+
   return () => {
     unmountStrip();
     unmountRail();
     unbindShortcut();
+    unbindPalette();
     styles.remove('plugin', '__launcher');
   };
 }
