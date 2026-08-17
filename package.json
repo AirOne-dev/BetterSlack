@@ -22,7 +22,8 @@
     "test:core": "node --test tests/download.test.mjs tests/requires.test.mjs tests/i18n.test.mjs tests/mod-files.test.mjs tests/mount.test.mjs tests/update.test.mjs",
     "new-mod": "node scripts/new-mod.mjs",
     "release": "node scripts/release.mjs",
-    "test:live": "node scripts/test-live.mjs"
+    "test:live": "node scripts/test-live.mjs",
+    "site": "node scripts/build-site.mjs"
   },
   "engines": {
     "node": ">=18",

@@ -47,7 +47,17 @@ pnpm check-structure   # is every mod loadable
 pnpm validate-mods     # manifests
 pnpm registry          # regenerate mods/registry.json (commit it)
 pnpm typecheck
+pnpm site              # regenerate site/data.js from the registry (commit it)
 ```
+
+`site/` is the presentation page published to GitHub Pages by
+`.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script
+-- nothing fetched from a CDN, so it renders the same whatever else the network
+is doing. Its catalogue is generated from `mods/registry.json`, and the workflow
+fails if the committed `site/data.js` has drifted from it. The screenshots in
+`site/shots/` were taken through CDP against a real client (`Page.captureScreenshot`,
+with the client's own content blurred first); `screencapture` photographs the
+desktop and misses a window on another Space.
 
 Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 `test:core`, `test`, `check-structure`.
