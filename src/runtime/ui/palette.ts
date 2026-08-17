@@ -1,12 +1,20 @@
-// One keystroke for everything a mod can do.
+// One keystroke for everything, in the shape Raycast made obvious.
 //
-// Every idea so far has meant another button in Slack's rail, and the rail is
-// Slack's, not ours: three of them is already a lot and there is no room for
-// twenty. A command palette is the answer every editor arrived at -- mods
-// register what they can do, and ⌘K finds it by typing.
+// The first version was a flat list of identical rows, and it read as a wall:
+// nothing said what kind of thing each line was, so scanning it took as long as
+// reading it. What makes Raycast legible is not decoration -- it is that every
+// row carries a picture of what it is, that rows are grouped under headings,
+// that the right-hand side says the category so the left can stay short, and
+// that a footer keeps telling you which key does what.
 //
-// It borrows Slack's own quick-switcher shape rather than inventing one, and
-// renders in the light DOM with Slack's classes, so it follows every theme.
+// Two things learned the hard way here:
+//
+//   * Slack binds keydown on `window` in the capture phase, which runs before
+//     anything on `document`. Arrow keys were being eaten before they arrived.
+//     This listens on `window`, in capture, like every other shortcut we bind.
+//   * Moving the selection must not rebuild the list. Rebuilding two hundred
+//     rows per keypress is slow enough to feel broken, and it drops the node
+//     the pointer is over.
 
 import { h, type Cleanup } from '../dom.js';
 
@@ -16,10 +24,25 @@ export interface Command {
   /** Unique per mod; the runtime prefixes it with the mod id. */
   id: string;
   title: string;
-  /** Where it comes from, shown beside the title. */
+  /** Where it comes from, shown on the right. */
   source?: string;
   subtitle?: string;
+  /**
+   * A picture of what this is: an image URL (an avatar), a single emoji, or a
+   * short string like `#`. Anything else falls back to the first letter.
+   */
+  icon?: string;
+  /** Heading to group it under. Entries with no section come first, ungrouped. */
+  section?: string;
   run: () => void | Promise<void>;
+}
+
+export interface PaletteLabels {
+  placeholder: string;
+  empty: string;
+  /** Footer hints, e.g. "open" and "close". */
+  openHint?: string;
+  closeHint?: string;
 }
 
 /**
@@ -36,11 +59,12 @@ export function rank(commands: Command[], query: string): Command[] {
   const scored: Array<{ command: Command; score: number }> = [];
   for (const command of commands) {
     const title = command.title.toLowerCase();
-    const rest = `${command.source ?? ''} ${command.subtitle ?? ''}`.toLowerCase();
+    const rest = `${command.source ?? ''} ${command.subtitle ?? ''} ${command.section ?? ''}`.toLowerCase();
     let score = 0;
     let matched = true;
     for (const word of words) {
-      if (title.startsWith(word)) score += 3;
+      if (title.startsWith(word)) score += 4;
+      else if (new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(title)) score += 3;
       else if (title.includes(word)) score += 2;
       else if (rest.includes(word)) score += 1;
       else {
@@ -61,18 +85,30 @@ export function isPaletteOpen(): boolean {
   return Boolean(document.getElementById(HOST_ID));
 }
 
+/** An avatar, an emoji, a glyph, or the first letter -- in that order. */
+function iconFor(command: Command): HTMLElement {
+  const icon = command.icon?.trim();
+  if (icon && /^https?:\/\//.test(icon)) {
+    const image = h('img', { class: 'betterslack-palette__icon', src: icon, alt: '', loading: 'lazy' });
+    return image;
+  }
+  const box = h('span', { class: 'betterslack-palette__icon betterslack-palette__icon--glyph' });
+  box.textContent = icon && icon.length <= 2 ? icon : command.title.slice(0, 1).toUpperCase();
+  return box;
+}
+
 /**
  * Open the palette over Slack.
  *
- * Arrow keys move, Enter runs, Escape closes -- and the list is rebuilt rather
- * than filtered in place, because the ordering changes with every keystroke and
- * a moving selection that stays on the same node is worse than none.
+ * Returns a cleanup, so a plugin being switched off takes its palette with it.
  */
-export function openPalette(commands: Command[], labels: { placeholder: string; empty: string }): Cleanup {
+export function openPalette(entries: Command[], labels: PaletteLabels): Cleanup {
   closePalette();
 
-  let shown = rank(commands, '');
+  let shown = rank(entries, '');
   let index = 0;
+  /** The row for each visible entry, so selection can move without rebuilding. */
+  let rows: HTMLElement[] = [];
 
   const input = h('input', {
     class: 'betterslack-palette__input',
@@ -83,9 +119,11 @@ export function openPalette(commands: Command[], labels: { placeholder: string; 
   }) as HTMLInputElement;
 
   const list = h('div', { class: 'betterslack-palette__list', role: 'listbox' });
+  const footerAction = h('span', { class: 'betterslack-palette__hint' });
+  const footerCount = h('span', { class: 'betterslack-palette__count' });
 
   const close = () => {
-    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('keydown', onKey, true);
     document.getElementById(HOST_ID)?.remove();
   };
 
@@ -97,77 +135,133 @@ export function openPalette(commands: Command[], labels: { placeholder: string; 
     });
   };
 
+  /** Move the highlight, and nothing else. */
+  const select = (next: number) => {
+    if (rows.length === 0) return;
+    index = (next + rows.length) % rows.length;
+    rows.forEach((row, position) => row.setAttribute('aria-selected', String(position === index)));
+    rows[index]?.scrollIntoView({ block: 'nearest' });
+    const command = shown[index];
+    footerAction.textContent = command
+      ? `↵ ${labels.openHint ?? 'open'} · esc ${labels.closeHint ?? 'close'}`
+      : '';
+  };
+
   const paint = () => {
     list.replaceChildren();
+    rows = [];
+
     if (shown.length === 0) {
       list.append(h('div', { class: 'betterslack-empty' }, [labels.empty]));
+      footerCount.textContent = '';
+      footerAction.textContent = '';
       return;
     }
-    shown.forEach((command, position) => {
-      const row = h('button', {
-        class: 'c-button-unstyled betterslack-palette__row',
-        type: 'button',
-        role: 'option',
-        'aria-selected': String(position === index),
-      }, [
-        h('span', { class: 'betterslack-palette__title' }, [command.title]),
-        command.source ? h('span', { class: 'betterslack-palette__source' }, [command.source]) : null,
-      ].filter(Boolean) as Node[]);
-      if (command.subtitle) {
-        row.append(h('span', { class: 'betterslack-palette__sub' }, [command.subtitle]));
+
+    /*
+     * Grouped under headings, each heading once.
+     *
+     * Emitting one whenever the section changed looked right until the list
+     * interleaved -- installed mods and catalogue mods alternate, and the
+     * headings alternated with them. Sections keep the order they first appear
+     * in, so whoever built the list still decides what comes first.
+     */
+    const grouped = new Map<string, Command[]>();
+    for (const command of shown) {
+      const key = command.section ?? '';
+      const bucket = grouped.get(key);
+      if (bucket) bucket.push(command);
+      else grouped.set(key, [command]);
+    }
+
+    for (const [heading, commands] of grouped) {
+      if (heading) list.append(h('div', { class: 'betterslack-palette__section' }, [heading]));
+      for (const command of commands) {
+
+        const row = h('button', {
+          class: 'betterslack-palette__row',
+          type: 'button',
+          role: 'option',
+        }, [
+          iconFor(command),
+          h('span', { class: 'betterslack-palette__text' }, [
+            h('span', { class: 'betterslack-palette__title' }, [command.title]),
+            command.subtitle
+              ? h('span', { class: 'betterslack-palette__sub' }, [command.subtitle])
+              : null,
+          ].filter(Boolean) as Node[]),
+          command.source ? h('span', { class: 'betterslack-palette__source' }, [command.source]) : null,
+        ].filter(Boolean) as Node[]);
+
+        const position = rows.length;
+        row.addEventListener('click', () => run(command));
+        // Hovering moves the selection, so the mouse and the keyboard never
+        // disagree about what Enter would do.
+        row.addEventListener('mouseenter', () => select(position));
+        rows.push(row);
+        list.append(row);
       }
-      row.addEventListener('click', () => run(command));
-      // Hovering moves the selection, so the mouse and the keyboard never
-      // disagree about what Enter would do.
-      row.addEventListener('mouseenter', () => {
-        index = position;
-        for (const other of list.children) {
-          other.setAttribute?.('aria-selected', String(other === row));
-        }
-      });
-      list.append(row);
-    });
+    }
+
+    // The order rows were painted in is the order the keyboard walks, which is
+    // only true because the grouping above rewrote it.
+    shown = [...grouped.values()].flat();
+
+    footerCount.textContent = `${shown.length}`;
+    select(0);
   };
 
   const onKey = (event: KeyboardEvent) => {
     if (!isPaletteOpen()) return;
+
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
       close();
       return;
     }
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    if (event.key === 'ArrowDown' || (event.ctrlKey && event.key === 'n')) {
       event.preventDefault();
-      if (shown.length === 0) return;
-      index = event.key === 'ArrowDown'
-        ? (index + 1) % shown.length
-        : (index - 1 + shown.length) % shown.length;
-      paint();
-      list.children[index]?.scrollIntoView({ block: 'nearest' });
+      event.stopPropagation();
+      select(index + 1);
+      return;
+    }
+    if (event.key === 'ArrowUp' || (event.ctrlKey && event.key === 'p')) {
+      event.preventDefault();
+      event.stopPropagation();
+      select(index - 1);
       return;
     }
     if (event.key === 'Enter') {
       event.preventDefault();
+      event.stopPropagation();
       run(shown[index]);
     }
   };
 
   input.addEventListener('input', () => {
-    shown = rank(commands, input.value);
-    index = 0;
+    shown = rank(entries, input.value);
     paint();
   });
 
   const host = h('div', { id: HOST_ID, class: 'betterslack-palette', role: 'dialog', 'aria-modal': 'true' }, [
-    h('div', { class: 'betterslack-palette__box' }, [input, list]),
+    h('div', { class: 'betterslack-palette__box' }, [
+      h('div', { class: 'betterslack-palette__search' }, [
+        h('span', { class: 'betterslack-palette__search_icon' }, ['⌘']),
+        input,
+      ]),
+      list,
+      h('div', { class: 'betterslack-palette__footer' }, [footerAction, footerCount]),
+    ]),
   ]);
   host.addEventListener('mousedown', (event) => {
     if (event.target === host) close();
   });
 
   document.body.append(host);
-  document.addEventListener('keydown', onKey, true);
+  // On `window`, in capture: Slack binds keydown there too, and anything on
+  // `document` sees arrow keys only if Slack decides to pass them on.
+  window.addEventListener('keydown', onKey, true);
   paint();
   queueMicrotask(() => input.focus());
 

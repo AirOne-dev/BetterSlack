@@ -169,8 +169,13 @@ export const PANEL_CSS = CODE_CSS + `
 
 /* A mod and its settings read as one block, with the settings indented under
  * the row they belong to rather than floating beside it. */
-/* The palette. Slack's quick switcher is the shape people already know here,
- * so this borrows its proportions rather than inventing any. */
+/* The palette, in Raycast's shape.
+ *
+ * What makes that shape legible is not decoration: every row carries a picture
+ * of what it is, rows are grouped under headings, the category sits on the
+ * right so the left can stay short, and a footer keeps saying which key does
+ * what. A flat list of identical rows reads as a wall, which is what this was.
+ */
 .betterslack-palette {
   position: fixed;
   inset: 0;
@@ -179,86 +184,122 @@ export const PANEL_CSS = CODE_CSS + `
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
 }
-/* Centred both ways, and tall enough to be a list rather than a peek: this is
- * the thing being searched, not a hint above the app. */
 .betterslack-palette__box {
-  width: min(640px, calc(100vw - 48px));
+  width: min(680px, calc(100vw - 48px));
   max-height: min(560px, 70vh);
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.betterslack-palette__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.16);
+}
+.betterslack-palette__search_icon {
+  font-size: 15px;
+  opacity: 0.45;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
 }
 .betterslack-palette__input {
+  flex: 1 1 auto;
   border: 0;
-  border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
-  padding: 14px 16px;
+  padding: 16px 0;
   font-size: 17px;
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
   background: transparent;
   outline: none;
 }
-.betterslack-palette__list { overflow-y: auto; padding: 6px; min-height: 120px; }
+
+.betterslack-palette__list { overflow-y: auto; padding: 6px; flex: 1 1 auto; min-height: 140px; }
+.betterslack-palette__section {
+  padding: 10px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.45);
+}
+
 .betterslack-palette__row {
   display: flex;
-  align-items: baseline;
-  /* Wrapping is what puts the subtitle on its own line. Without it the title
-     is squeezed into a narrow column while a description takes the rest, which
-     is what this looked like before anyone saw it. */
-  flex-wrap: wrap;
-  gap: 2px 8px;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   text-align: left;
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
   cursor: pointer;
 }
-.betterslack-palette__title {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .betterslack-palette__row[aria-selected="true"] {
-  background: rgba(var(--sk_highlight, 18, 100, 163), 1);
-  color: #fff;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.14);
 }
-.betterslack-palette__source { flex: 0 0 auto; font-size: 12px; opacity: 0.6; }
-/* One line: a mod's description is a sentence, and three of them stacked turn
-   a list into a wall. */
-.betterslack-palette__sub {
-  flex-basis: 100%;
-  font-size: 12px;
-  opacity: 0.7;
+
+/* One size for every kind of icon -- an avatar, an emoji, a glyph or a letter
+   -- so the titles line up whatever the row happens to be. */
+.betterslack-palette__icon {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.14);
+}
+.betterslack-palette__icon--glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.75);
+}
+
+.betterslack-palette__text { flex: 1 1 auto; min-width: 0; display: block; }
+.betterslack-palette__title {
+  display: block;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.betterslack-remote { padding: 0 20px 10px; }
-.betterslack-remote__row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
-.betterslack-tag--warn {
-  background: rgba(242, 163, 94, 0.18);
-  color: rgba(180, 95, 6, 1);
+.betterslack-palette__sub {
+  display: block;
+  font-size: 12px;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.betterslack-dialog--small { max-width: 520px; }
+.betterslack-palette__source {
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.6);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
+}
 
-.betterslack-diag { padding: 12px 20px; }
-.betterslack-diag__row {
+.betterslack-palette__footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 3px 0;
-  font-size: 13px;
-  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.85);
+  padding: 8px 14px;
+  border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.16);
+  font-size: 12px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.55);
 }
-.betterslack-diag__num { font-variant-numeric: tabular-nums; opacity: 0.7; }
 
 .betterslack-filters {
   display: flex;

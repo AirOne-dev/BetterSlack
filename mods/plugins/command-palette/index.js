@@ -61,13 +61,21 @@ export default {
             const user = people.get(channel.user);
             const profile = user?.profile ?? {};
             const name = profile.display_name || profile.real_name || user?.name || channel.user;
-            return { id: channel.id, title: name, kind: 'dm', hint: t('directMessage') };
+            return {
+              id: channel.id,
+              title: name,
+              kind: 'dm',
+              // Their face, which is the whole reason a list of people is
+              // scannable at all. 48 is what Slack itself serves the sidebar.
+              icon: profile.image_48 || profile.image_72 || profile.image_192 || '',
+              hint: profile.title || profile.status_text || '',
+            };
           }
-          const prefix = channel.is_private ? '🔒' : '#';
           return {
             id: channel.id,
-            title: `${prefix} ${channel.name}`,
+            title: channel.name,
             kind: 'channel',
+            icon: channel.is_private ? '🔒' : '#',
             hint: channel.purpose?.value || channel.topic?.value || '',
           };
         });
@@ -86,21 +94,23 @@ export default {
         list.push({
           id: `slack:${conversation.id}`,
           title: conversation.title,
-          source: conversation.hint ? '' : t(conversation.kind === 'dm' ? 'directMessage' : 'channel'),
+          section: t('sectionSlack'),
+          icon: conversation.icon,
+          source: t(conversation.kind === 'dm' ? 'directMessage' : 'channel'),
           subtitle: conversation.hint || undefined,
           run: () => api.slack.openConversation(conversation.id),
         });
       }
 
-      // Then what mods offered themselves.
-      for (const command of api.app.commands()) list.push(command);
-
-      // Then BetterSlack's own doors.
+      // Then what mods offered themselves, and BetterSlack's own doors.
+      for (const command of api.app.commands()) {
+        list.push({ ...command, section: t('sectionCommands'), icon: command.icon ?? '⌘' });
+      }
       list.push(
-        { id: 'panel', title: t('openPanel'), source: 'BetterSlack', run: () => api.app.openPanel() },
-        { id: 'themes', title: t('browseThemes'), source: 'BetterSlack', run: () => api.app.openPanel('themes') },
-        { id: 'plugins', title: t('browsePlugins'), source: 'BetterSlack', run: () => api.app.openPanel('plugins') },
-        { id: 'css', title: t('customCss'), source: 'BetterSlack', run: () => api.app.openPanel('css') },
+        { id: 'panel', title: t('openPanel'), section: t('sectionCommands'), icon: '⌘', source: 'BetterSlack', run: () => api.app.openPanel() },
+        { id: 'themes', title: t('browseThemes'), section: t('sectionCommands'), icon: '🎨', source: 'BetterSlack', run: () => api.app.openPanel('themes') },
+        { id: 'plugins', title: t('browsePlugins'), section: t('sectionCommands'), icon: '🧩', source: 'BetterSlack', run: () => api.app.openPanel('plugins') },
+        { id: 'css', title: t('customCss'), section: t('sectionCommands'), icon: '{}', source: 'BetterSlack', run: () => api.app.openPanel('css') },
       );
 
       // And every mod: a switch for the installed, an install for the rest.
@@ -109,10 +119,13 @@ export default {
       // people stop opening a palette.
       for (const mod of api.app.mods()) {
         const kind = mod.type === 'theme' ? t('theme') : t('plugin');
+        const icon = mod.type === 'theme' ? '🎨' : '🧩';
         list.push(mod.installed
           ? {
             id: `mod:${mod.id}`,
             title: `${mod.enabled ? t('disable') : t('enable')} ${mod.name}`,
+            section: t('sectionMods'),
+            icon,
             source: kind,
             subtitle: mod.description,
             run: () => void api.app.setEnabled(mod.id, !mod.enabled),
@@ -120,6 +133,8 @@ export default {
           : {
             id: `install:${mod.id}`,
             title: `${t('install')} ${mod.name}`,
+            section: t('sectionCatalogue'),
+            icon,
             source: kind,
             subtitle: mod.description,
             run: () => void api.app
@@ -132,7 +147,12 @@ export default {
     };
 
     const open = () => {
-      api.ui.palette(entries(), { placeholder: t('placeholder'), empty: t('empty') });
+      api.ui.palette(entries(), {
+        placeholder: t('placeholder'),
+        empty: t('empty'),
+        openHint: t('hintOpen'),
+        closeHint: t('hintClose'),
+      });
       // Refreshed behind the open palette rather than before it: a switcher
       // that waits on the network before drawing is a switcher people stop
       // using. The next ⌘K gets the newer list.

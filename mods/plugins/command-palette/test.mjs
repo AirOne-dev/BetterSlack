@@ -23,7 +23,10 @@ function mount({ conversations = [], mods = [], commands = [] } = {}) {
   const { api, recorded } = createTestApi({
     web: {
       call: async (method) => (method === 'users.conversations' ? { channels: conversations } : { ok: true }),
-      users: async (ids) => new Map(ids.map((id) => [id, { id, profile: { display_name: `Person ${id}` } }])),
+      users: async (ids) => new Map(ids.map((id) => [id, {
+        id,
+        profile: { display_name: `Person ${id}`, image_48: `https://ca.slack-edge.com/${id}-48` },
+      }])),
     },
   });
 
@@ -64,9 +67,12 @@ test('⌘K opens it, and Slack’s conversations are what it opens on', async ()
     const { entries } = recorded.palettes[0];
 
     // Slack's own job comes first, because this replaced Slack's own switcher.
-    assert.equal(entries[0].title, '# general');
-    assert.equal(entries[1].title, '🔒 secrets', 'a private channel says so');
+    assert.equal(entries[0].title, 'general');
+    assert.equal(entries[0].icon, '#', 'with a glyph rather than a prefix in the name');
+    assert.equal(entries[1].icon, '🔒', 'a private channel says so');
     assert.equal(entries[2].title, 'Person U9', 'and a DM is a person, not an id');
+    assert.match(entries[2].icon, /^https?:/, 'shown as their face, which is what makes a list of people scannable');
+    assert.equal(entries[0].section, entries[2].section, 'all of Slack’s own under one heading');
 
     entries[0].run();
     assert.deepEqual(recorded.navigations.at(-1), { kind: 'channel', id: 'C1' },
