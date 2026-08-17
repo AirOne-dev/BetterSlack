@@ -1,0 +1,35 @@
+{
+  "id": "command-palette",
+  "name": "Command Palette",
+  "type": "plugin",
+  "version": "1.1.0",
+  "author": "AirOne-dev",
+  "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods — all from one keystroke, with / @ # to narrow it down.",
+  "entry": "index.js",
+  "settings": [
+    {
+      "key": "shortcut",
+      "type": "choice",
+      "label": "Shortcut",
+      "hint": "⌘K is the one everyone reaches for, and it is also Slack's own quick switcher — which stays reachable from the search field. Pick ⌘⇧K to leave it alone.",
+      "default": "mod+k",
+      "options": [
+        {
+          "value": "mod+k",
+          "label": "⌘K — replaces Slack's switcher"
+        },
+        {
+          "value": "mod+shift+k",
+          "label": "⌘⇧K — leaves Slack's alone"
+        }
+      ]
+    }
+  ],
+  "betterslackApi": 1,
+  "slackVersion": "4.51",
+  "tags": [
+    "navigation",
+    "keyboard",
+    "tools"
+  ]
+}

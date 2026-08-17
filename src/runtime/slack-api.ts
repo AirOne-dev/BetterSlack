@@ -33,7 +33,17 @@ const TOOLBARS = {
   controlStrip: {
     container: '.p-control_strip',
     buttonClass: 'c-button-unstyled p-control_strip__circle_button',
-    before: '.c-coachmark-anchor:has([data-qa="user-button"])',
+    /*
+     * Anchored on BetterSlack's own launcher, not on Slack's coachmark wrapper.
+     *
+     * Inserting next to `.c-coachmark-anchor:has([data-qa="user-button"])`
+     * freezes the renderer solid -- grey window, no error, no console, Slack
+     * has to be killed. Slack's coachmark code evidently reacts to changes
+     * around that node and ends up in a loop with whatever put them there.
+     * Bisected against a running client: the same button anchored here is fine,
+     * anchored there hangs every time.
+     */
+    before: '#betterslack-control-button',
     placement: 'right' as Placement,
   },
   /**
@@ -132,7 +142,7 @@ export function describeMessage(element: HTMLElement): MessageRef {
  * watches for each new one rather than trying to hold a reference.
  */
 export function addMessageAction(pluginId: string, action: MessageAction): Cleanup {
-  const nodeId = `slackmod-action-${pluginId}-${action.id}`;
+  const nodeId = `betterslack-action-${pluginId}-${action.id}`;
 
   const cleanup = onEach<HTMLElement>(ACTIONS_GROUP, (group) => {
     if (group.querySelector(`#${CSS.escape(nodeId)}`)) return;
@@ -145,10 +155,10 @@ export function addMessageAction(pluginId: string, action: MessageAction): Clean
     if (!message) return;
 
     const button = h('button', {
-      class: 'c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button slackmod-action',
+      class: 'c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button betterslack-action',
       type: 'button',
       'aria-label': action.label,
-      'data-qa': `slackmod_${pluginId}_${action.id}`,
+      'data-qa': `betterslack_${pluginId}_${action.id}`,
     });
     button.innerHTML = action.icon;
     button.addEventListener('click', (event) => {
@@ -209,16 +219,16 @@ export interface ProfileButton {
  * outline button so it sits with the pane's own controls.
  */
 export function addProfileButton(pluginId: string, button: ProfileButton): Cleanup {
-  const nodeId = `slackmod-profile-${pluginId}-${button.id}`;
+  const nodeId = `betterslack-profile-${pluginId}-${button.id}`;
 
   const cleanup = onEach<HTMLElement>(PROFILE_PANE, (pane) => {
     if (pane.querySelector(`#${CSS.escape(nodeId)}`)) return;
 
     const element = h('button', {
-      class: 'c-button c-button--outline c-button--medium slackmod-profile-button',
+      class: 'c-button c-button--outline c-button--medium betterslack-profile-button',
       type: 'button',
       id: nodeId,
-      'data-qa': `slackmod_${pluginId}_${button.id}`,
+      'data-qa': `betterslack_${pluginId}_${button.id}`,
     });
     if (button.icon) element.innerHTML = button.icon;
     element.append(h('span', {}, [button.label]));
@@ -230,13 +240,13 @@ export function addProfileButton(pluginId: string, button: ProfileButton): Clean
     });
 
     const container = pane.querySelector('.p-r_member_profile__container') ?? pane;
-    container.append(h('div', { class: 'slackmod-profile-row' }, [element]));
+    container.append(h('div', { class: 'betterslack-profile-row' }, [element]));
   });
 
   return () => {
     cleanup();
     for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) {
-      node.closest('.slackmod-profile-row')?.remove();
+      node.closest('.betterslack-profile-row')?.remove();
       node.remove();
     }
   };
@@ -272,17 +282,17 @@ export function addToolbarButton(
   button: ToolbarButton,
 ): Cleanup {
   const spec = TOOLBARS[toolbar];
-  const nodeId = `slackmod-tb-${pluginId}-${button.id}`;
+  const nodeId = `betterslack-tb-${pluginId}-${button.id}`;
 
   const unmount = keepMounted(
     spec.container,
     nodeId,
     () => {
       const element = h('button', {
-        class: `${spec.buttonClass} slackmod-toolbar-button`,
+        class: `${spec.buttonClass} betterslack-toolbar-button`,
         type: 'button',
         'aria-label': button.label,
-        'data-qa': `slackmod_${pluginId}_${button.id}`,
+        'data-qa': `betterslack_${pluginId}_${button.id}`,
       });
       element.innerHTML = button.icon;
       element.addEventListener('click', (event) => {
@@ -297,7 +307,9 @@ export function addToolbarButton(
       });
       return element;
     },
-    button.before ?? spec.before ? { before: button.before ?? spec.before } : {},
+    // Prepend rather than append when the anchor is missing: the end of a
+    // container is where the app's own re-renders land.
+    { before: button.before ?? spec.before, position: 'prepend' },
   );
 
   return () => {
@@ -471,6 +483,17 @@ export interface SlackApi {
   currentChannelId(): string | null;
   /** The author of a message, read from their avatar URL. */
   userIdFromMessage(message: MessageRef): string | null;
+
+  /**
+   * The same avatar at another size.
+   *
+   * Slack serves them as `<base>-<size>`, so asking for a bigger one is a
+   * string edit rather than another request -- the rail renders a 48 and a
+   * profile wants a 72, and every mod that shows a face was doing this by hand.
+   * Returns null for anything that is not one of Slack's avatar URLs, which is
+   * what a custom image or a data URI will be.
+   */
+  avatarUrl(url: string | null | undefined, size: number): string | null;
   /** Stable selectors, for mods that need to go beyond these helpers. */
   selectors: Readonly<Record<string, string>>;
 }
@@ -548,6 +571,8 @@ export function createSlackApi(pluginId: string): SlackApi {
     },
     describeMessage,
     composer,
+    avatarUrl: (url, size) =>
+      typeof url === 'string' && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
     userIdFromMessage: (message) =>
       userIdFromAvatarUrl(
         message.element.querySelector<HTMLImageElement>('.c-message_kit__avatar img, .c-avatar img')?.src,

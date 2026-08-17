@@ -89,10 +89,10 @@ test('every dialog we build overrides Slack’s opacity: 0', () => {
   const widgets = read('src/runtime/ui/widgets.ts');
   const styles = read('src/runtime/ui/styles.ts');
 
-  const hosts = new Set(['slackmod-panel']);
+  const hosts = new Set(['betterslack-panel']);
   for (const [, classes] of widgets.matchAll(/class:\s*'([^']*\bc-dialog\b[^']*)'/g)) {
     for (const name of classes.split(/\s+/)) {
-      if (name.startsWith('slackmod-') && name !== 'slackmod-dialog') hosts.add(name);
+      if (name.startsWith('betterslack-') && name !== 'betterslack-dialog') hosts.add(name);
     }
   }
   assert.ok(hosts.size > 1, 'the modal host class must be discoverable');
@@ -109,11 +109,33 @@ test('every dialog we build overrides Slack’s opacity: 0', () => {
  * cleanly and throws `ReferenceError: dialog is not defined` at boot — no
  * styling, no panel, no mods, and nothing pointing at a comment. Twice now.
  */
-test('no backtick can sneak into the panel stylesheet', () => {
-  const styles = read('src/runtime/ui/styles.ts');
-  const body = styles.split('export const PANEL_CSS = `')[1]?.split('`;')[0];
-  assert.ok(body, 'PANEL_CSS must be a template literal');
-  assert.doesNotMatch(body, /`/, 'a backtick inside PANEL_CSS ends the string early');
+test('no backtick can sneak into a stylesheet that ships as a string', () => {
+  // Every one of them, not only the panel's: the kit's stylesheet and the code
+  // editor's are template literals for the same reason and would fail the same
+  // way, in a window with no DevTools to open.
+  //
+  // The check is not "is there a backtick in the CSS" -- the first one closes
+  // the literal, so by then it is code. It is: does the literal end where the
+  // declaration does. Anything between the closing backtick and the semicolon
+  // must be a plain concatenation, which is what CSS-turned-JavaScript is not.
+  for (const [file, name] of [
+    ['src/runtime/ui/styles.ts', 'PANEL_CSS'],
+    ['src/runtime/ui/kit-css.ts', 'KIT_CSS'],
+    ['src/runtime/ui/code.ts', 'CODE_CSS'],
+  ]) {
+    const declaration = read(file).split(`export const ${name} = `)[1];
+    assert.ok(declaration, `${name} must exist`);
+    const opened = declaration.indexOf('`');
+    assert.notEqual(opened, -1, `${name} must be a template literal`);
+    const closed = declaration.indexOf('`', opened + 1);
+    assert.notEqual(closed, -1, `${name} never closes its literal`);
+    const after = declaration.slice(closed + 1).split('\n')[0];
+    assert.match(
+      after,
+      /^\s*(\+\s*[A-Za-z_$][\w$]*\s*)?;/,
+      `${name} carries a backtick: the literal closed early and the CSS after it is code`,
+    );
+  }
 });
 
 /**
@@ -128,4 +150,52 @@ test('the session token is cached per workspace, not once', () => {
   assert.ok(fn, 'createWebApi must exist');
   assert.match(fn[0], /currentTeamId\(\)/, 'the cache has to be keyed by the team in the URL');
   assert.match(fn[0], /team !== cachedTeam/, 'and re-read when it changes');
+});
+
+/**
+ * Settings a mod declares, and the two rules that make them worth declaring:
+ * the panel draws them, and the mod reads the same keys with the same defaults
+ * whether or not anyone has ever opened the panel.
+ */
+test('a declared setting is validated, and rubbish is refused loudly', async () => {
+  const { parseManifest } = await import('../dist/catalog.mjs');
+  const base = {
+    id: 'example-mod', name: 'X', type: 'plugin', version: '1.0.0', author: 'a',
+    description: 'A mod long enough to describe itself properly.',
+    entry: 'index.js', betterslackApi: 1,
+  };
+  const parse = (settings) => parseManifest(JSON.stringify({ ...base, settings }), 'example-mod/mod.json', 'plugin');
+
+  const ok = parse([
+    { key: 'limit', type: 'number', label: 'Limit', default: 10 },
+    { key: 'mode', type: 'choice', label: 'Mode', options: [{ value: 'a', label: 'A' }] },
+  ]);
+  assert.equal(ok.settings.length, 2);
+
+  assert.throws(() => parse([{ key: 'a', type: 'slider', label: 'A' }]), /not a settings type/);
+  assert.throws(() => parse([{ key: 'a', type: 'choice', label: 'A' }]), /needs options/);
+  assert.throws(() => parse([{ key: 'a b', type: 'text', label: 'A' }]), /not a usable settings key/);
+  assert.throws(() => parse([
+    { key: 'a', type: 'text', label: 'A' },
+    { key: 'a', type: 'text', label: 'Again' },
+  ]), /twice/);
+  assert.throws(() => parse({ nope: true }), /must be an array/);
+});
+
+test('the mods that declare settings really read them', () => {
+  // A declaration nothing reads is a control that does nothing, which is worse
+  // than no control at all.
+  for (const [id, keys] of [
+    ['member-sidebar', ['memberLimit', 'presenceLimit']],
+    ['avatar-downloader', ['quality']],
+    ['composer-char-count', ['warnAt', 'alwaysShow']],
+  ]) {
+    const manifest = JSON.parse(read(`mods/plugins/${id}/mod.json`));
+    const source = read(`mods/plugins/${id}/index.js`);
+    assert.deepEqual(manifest.settings.map((f) => f.key).sort(), [...keys].sort(),
+      `${id} declares exactly what it reads`);
+    for (const key of keys) {
+      assert.ok(source.includes(`settings.get('${key}'`), `${id} reads ${key}`);
+    }
+  }
 });

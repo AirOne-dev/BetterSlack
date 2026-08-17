@@ -14,7 +14,7 @@ test('mounts at the foot of the sidebar and fills in the looked-up name', async 
   try {
     await plugin.start(api);
 
-    const strip = document.getElementById('slackmod-account-strip');
+    const strip = document.getElementById('betterslack-account-strip');
     assert.ok(strip, 'the strip is mounted');
     assert.ok(
       recorded.mounted.some((m) => m.container === '.p-channel_sidebar'),
@@ -22,10 +22,10 @@ test('mounts at the foot of the sidebar and fills in the looked-up name', async 
     );
 
     // Availability comes straight off the page, so it is right immediately.
-    assert.equal(strip.querySelector('.slackmod-me__status').textContent, 'Active');
+    assert.equal(strip.querySelector('.betterslack-me__status').textContent, 'Active');
 
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.equal(strip.querySelector('.slackmod-me__name').textContent, 'Erwan');
+    assert.equal(strip.querySelector('.betterslack-me__name').textContent, 'Erwan');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -57,10 +57,10 @@ test('the gear opens Slack’s account menu; the strip itself is inert', async (
     document.querySelector('[data-qa="user-button"]').addEventListener('click', () => { clicked++; });
 
     // The strip shows who you are; it promises no click, so it performs none.
-    document.querySelector('#slackmod-account-strip .slackmod-me').click();
+    document.querySelector('#betterslack-account-strip .betterslack-me').click();
     assert.equal(clicked, 0);
 
-    document.querySelector('#slackmod-account-strip .slackmod-me__settings').click();
+    document.querySelector('#betterslack-account-strip .betterslack-me__settings').click();
     assert.equal(clicked, 1, 'Slack opens its own menu rather than one we reimplemented');
   } finally {
     for (const dispose of recorded.disposers) dispose();
@@ -68,7 +68,45 @@ test('the gear opens Slack’s account menu; the strip itself is inert', async (
   }
 });
 
-test('shows availability as a dot, coloured from Slack’s answer', async () => {
+test('follows the indicator Slack draws on its own avatar', async () => {
+  // The bug this replaced: users.getPresence lags the client, worst of all just
+  // after the window comes back, so the dot said away while the app said
+  // available -- and stayed wrong until the next poll a minute later. Slack
+  // puts the answer in the DOM; copying it is instant and always agrees.
+  const dom = installDom();
+  try {
+    // The node Slack itself renders, which the fixture now carries.
+    const mine = document.querySelector('[data-qa="user-button"] .c-presence');
+
+    const { api, recorded } = createTestApi({
+      // Slack's API insisting otherwise: the node wins.
+      web: { presence: async () => ({ presence: 'away' }) },
+    });
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const dot = document.querySelector('#betterslack-account-strip .betterslack-me__dot');
+    assert.ok(dot.classList.contains('betterslack-me__dot--active'), 'active, as the rail shows');
+
+    // And it follows, rather than waiting for a poll.
+    mine.classList.remove('c-presence--active');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.ok(!dot.classList.contains('betterslack-me__dot--active'), 'away the moment Slack says so');
+    assert.equal(document.querySelector('.betterslack-me__status').textContent, 'Away',
+      'and the word beside it says the same thing');
+
+    mine.classList.add('c-presence--active');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.ok(dot.classList.contains('betterslack-me__dot--active'), 'and back again');
+    assert.equal(document.querySelector('.betterslack-me__status').textContent, 'Active');
+
+    for (const dispose of recorded.disposers) dispose();
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('falls back to the API when Slack draws no indicator', async () => {
   const dom = installDom();
   const { api, recorded } = createTestApi({
     web: {
@@ -79,29 +117,33 @@ test('shows availability as a dot, coloured from Slack’s answer', async () => 
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    const dot = document.querySelector('#slackmod-account-strip .slackmod-me__dot');
+    const dot = document.querySelector('#betterslack-account-strip .betterslack-me__dot');
     assert.ok(dot, 'the dot sits on the avatar, the way every chat app does it');
-    assert.ok(dot.classList.contains('slackmod-me__dot--active'));
+    assert.ok(dot.classList.contains('betterslack-me__dot--active'));
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
   }
 });
 
-test('do not disturb outranks being active', async () => {
+test('do not disturb outranks being active, while it is actually on', async () => {
   const dom = installDom();
+  const now = Date.now() / 1000;
   const { api, recorded } = createTestApi({
     web: {
       presence: async () => ({ presence: 'active' }),
-      dndInfo: async () => ({ dnd_enabled: true }),
+      // A window covering right now. `dnd_enabled` on its own is a schedule,
+      // not a state -- someone with quiet hours every night is not away all
+      // day, which is what treating the flag as the answer would show.
+      dndInfo: async () => ({ dnd_enabled: true, next_dnd_start_ts: now - 60, next_dnd_end_ts: now + 60 }),
     },
   });
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    const dot = document.querySelector('#slackmod-account-strip .slackmod-me__dot');
-    assert.ok(dot.classList.contains('slackmod-me__dot--dnd'));
-    assert.ok(!dot.classList.contains('slackmod-me__dot--active'));
+    const dot = document.querySelector('#betterslack-account-strip .betterslack-me__dot');
+    assert.ok(dot.classList.contains('betterslack-me__dot--dnd'));
+    assert.ok(!dot.classList.contains('betterslack-me__dot--active'));
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -119,9 +161,9 @@ test('survives having no session token', async () => {
   const { api, recorded } = createTestApi({ web: { available: false } });
   try {
     await plugin.start(api);
-    const strip = document.getElementById('slackmod-account-strip');
+    const strip = document.getElementById('betterslack-account-strip');
     assert.ok(strip, 'the avatar and availability still render');
-    assert.equal(strip.querySelector('.slackmod-me__name').textContent, '');
+    assert.equal(strip.querySelector('.betterslack-me__name').textContent, '');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
@@ -189,7 +231,7 @@ test('moves Slack’s account menu next to the gear that opened it', async () =>
       document.body.append(panel);
     });
 
-    document.querySelector('#slackmod-account-strip .slackmod-me__settings').click();
+    document.querySelector('#betterslack-account-strip .betterslack-me__settings').click();
     await new Promise((resolve) => setTimeout(resolve, 250));
 
     assert.notEqual(panel.style.top, '946px', 'it was moved off Slack’s anchor');

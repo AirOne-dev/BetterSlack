@@ -6,7 +6,7 @@
   "author": "AirOne-dev",
   "description": "Thicker, higher-contrast keyboard focus outlines everywhere in Slack. Useful if you drive Slack from the keyboard or lose the cursor on a large screen.",
   "entry": "theme.css",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": ["accessibility"]
 }

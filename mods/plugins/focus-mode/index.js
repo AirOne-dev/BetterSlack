@@ -5,20 +5,33 @@
  * on <html>, so the behaviour is pure CSS and the state survives a restart.
  */
 
-const INDICATOR_ID = 'slackmod-focus-indicator';
+const INDICATOR_ID = 'betterslack-focus-indicator';
 
 export default {
   /**
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    // This mod showed one sentence, in English, in a repository where every
+    // other mod is bilingual. Adding the command was the moment to fix that.
+    const t = api.i18n.strings({
+      en: {
+        command: 'Focus mode',
+        indicator: 'Focus mode · {shortcut} to exit',
+      },
+      fr: {
+        command: 'Mode concentration',
+        indicator: 'Mode concentration · {shortcut} pour sortir',
+      },
+    });
+
     const maxWidth = api.settings.get('maxWidth', 920);
     const combo = 'mod+shift+f';
     const shortcut = api.helpers.describeHotkey(combo);
 
     const focus = api.helpers.toggle({
       key: 'on',
-      className: 'slackmod-focus-mode',
+      className: 'betterslack-focus-mode',
       // `&` is the flag class; this CSS only applies while the toggle is on.
       whenOn: `
         & [data-qa="channel-sidebar"],
@@ -64,12 +77,18 @@ export default {
     `);
 
     const indicator = api.dom.h('div', { id: INDICATOR_ID, role: 'status' }, [
-      `Focus mode · ${shortcut} to exit`,
+      t('indicator', { shortcut }),
     ]);
     document.body.append(indicator);
     api.onDispose(() => indicator.remove());
 
     api.helpers.hotkey(combo, () => void focus.toggle());
+    api.commands.add({
+      id: 'toggle',
+      title: t('command'),
+      subtitle: shortcut,
+      run: () => void focus.toggle(),
+    });
 
     // Escape is the reflex for "get me out of this", but only when nothing
     // else is claiming it. The guard goes in `when` so an Escape that does not

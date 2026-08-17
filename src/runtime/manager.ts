@@ -4,20 +4,57 @@ import {
   missingRequirements,
   type Event as PushEvent,
   type LoaderInfo,
+  type ModFiles,
   type ModRecord,
+  type RemoteMod,
   type Settings,
+  type UpdateStatus,
 } from '../shared/protocol.js';
 import { createPluginApi } from './api.js';
 import { PluginHost } from './plugins.js';
 import type { Bridge } from './rpc.js';
-import { StyleManager } from './themes.js';
+import { inlineCssImports, StyleManager } from './themes.js';
+import type { Command as PaletteCommand } from './ui/palette.js';
+
+/** Slack's client shell. Present once the app has rendered, absent while it boots. */
+const CLIENT_SELECTOR = '.p-client_container';
+const CLIENT_TIMEOUT_MS = 20_000;
+
+/**
+ * Resolve once Slack has built its client, or after CLIENT_TIMEOUT_MS -- never
+ * later. Written with one observer and one timer rather than polling, so it
+ * costs nothing while it waits.
+ */
+function waitForClient(): Promise<void> {
+  if (document.querySelector(CLIENT_SELECTOR)) return Promise.resolve();
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      observer.disconnect();
+      clearTimeout(timer);
+      resolve();
+    };
+    const observer = new MutationObserver(() => {
+      if (document.querySelector(CLIENT_SELECTOR)) finish();
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    const timer = setTimeout(() => {
+      console.warn('[betterslack] Slack’s client never appeared; starting plugins anyway');
+      finish();
+    }, CLIENT_TIMEOUT_MS);
+  });
+}
 
 export interface BootPayload {
   version: string;
   settings: Settings;
   mods: ModRecord[];
-  sources: Record<string, string>;
+  sources: Record<string, ModFiles>;
   info: LoaderInfo;
+  /** Absent when the loader's version check has not answered yet. */
+  update?: UpdateStatus;
 }
 
 export class ModManager {
@@ -25,8 +62,36 @@ export class ModManager {
   private readonly plugins = new PluginHost();
   private settings: Settings;
   private mods: ModRecord[];
-  private sources: Record<string, string>;
+  private sources: Record<string, ModFiles>;
   private listeners = new Set<() => void>();
+  /** What the loader last said about this copy being current. */
+  update: UpdateStatus | undefined;
+  /** Why a mod is not running, keyed by id. Cleared when it applies cleanly. */
+  readonly errors = new Map<string, string>();
+
+  /**
+   * What each mod cost to start, in milliseconds.
+   *
+   * Not profiling for its own sake: "Slack feels slow since I turned things on"
+   * is unanswerable without it, and the answer is usually one mod.
+   */
+  readonly timings = new Map<string, number>();
+
+  /**
+   * Set by the runtime once the panel exists.
+   *
+   * The manager is built before the panel is, and a mod asking to open it
+   * should not have to know that.
+   */
+  openPanel?: (tab?: 'themes' | 'plugins' | 'css' | 'about') => void;
+  /** Set by the runtime: open the panel on one mod, settings unfolded. */
+  openMod?: (id: string) => void;
+
+  /** Everything a mod said it can do, for the palette. */
+  readonly commands = new Map<string, PaletteCommand>();
+
+  /** Plugins that asked to hear about their own settings changing. */
+  private settingsListeners = new Map<string, Set<(values: Record<string, unknown>) => void>>();
   private headObserver?: MutationObserver;
 
   constructor(
@@ -36,6 +101,7 @@ export class ModManager {
     this.settings = boot.settings;
     this.mods = boot.mods;
     this.sources = { ...boot.sources };
+    this.update = boot.update;
     bridge.onEvent((event) => void this.onLoaderEvent(event));
   }
 
@@ -56,6 +122,110 @@ export class ModManager {
   }
   isInstalled(id: string): boolean {
     return this.settings.installed.includes(id);
+  }
+
+  /**
+   * Write a mod's settings and let it know.
+   *
+   * A plugin that registered `settings.onChange` is told and left running --
+   * for the ones where reloading would be visible. Everything else is reloaded,
+   * so `start` simply runs again with the new values and no mod has to do
+   * anything to respect a setting.
+   */
+  async setModSetting(id: string, key: string, value: unknown): Promise<void> {
+    const bag = { ...(this.settings.modSettings[id] ?? {}), [key]: value };
+    await this.patchSettings({ modSettings: { ...this.settings.modSettings, [id]: bag } });
+
+    const listeners = this.settingsListeners.get(id);
+    if (listeners?.size) {
+      for (const listener of [...listeners]) {
+        try {
+          listener(bag);
+        } catch (err) {
+          console.error(`[betterslack] "${id}" threw handling a settings change`, err);
+        }
+      }
+      this.notify();
+      return;
+    }
+
+    const record = this.mods.find((m) => m.id === id);
+    if (!record || record.type !== 'plugin' || !this.isEnabled(id)) {
+      this.notify();
+      return;
+    }
+    const files = this.sources[id] ?? (await this.fetchSource(id));
+    await this.unapply(record);
+    await this.apply(record, files).catch((err) => {
+      console.error(`[betterslack] could not reapply "${id}":`, err);
+    });
+    this.notify();
+  }
+
+  /** Read a mod from a URL without installing it, so the user can be asked. */
+  inspectRemote(url: string): Promise<RemoteMod | { error: string }> {
+    return this.bridge.request<RemoteMod | { error: string }>({ type: 'mods.inspectRemote', url });
+  }
+
+  /** Install one that was inspected and consented to. */
+  async installRemote(remote: RemoteMod): Promise<void> {
+    this.mods = await this.bridge.request<ModRecord[]>({
+      type: 'mod.install',
+      id: remote.manifest.id,
+      manifest: remote.manifest,
+      files: remote.files,
+      source: `${remote.repo}${remote.folder ? `/${remote.folder}` : ''}`,
+    });
+    await this.setInstalled(remote.manifest.id, true);
+    this.notify();
+  }
+
+  /** Everything in ~/.betterslack worth keeping, as one JSON document. */
+  exportBackup(): Promise<string> {
+    return this.bridge.request<string>({ type: 'backup.export' });
+  }
+
+  /** Put one back, then adopt whatever the loader says the state is now. */
+  importBackup(archive: string): Promise<{ ok: boolean; detail: string }> {
+    return this.bridge.request<{ ok: boolean; detail: string }>({ type: 'backup.import', archive });
+  }
+
+  /** Installed mods with a newer version published, or an empty list. */
+  checkModUpdates(): Promise<Array<{ id: string; name: string; from: string; to: string }>> {
+    return this.bridge
+      .request<Array<{ id: string; name: string; from: string; to: string }>>({
+        type: 'mods.checkUpdates',
+      })
+      .catch(() => []);
+  }
+
+  /**
+   * Replace one mod with the published version.
+   *
+   * Reapplied straight away when it is on, so an update is visible without a
+   * restart -- which is the point of updating a mod on its own.
+   */
+  async updateMod(id: string): Promise<{ ok: boolean; detail: string }> {
+    const result = await this.bridge.request<{ ok: boolean; detail: string }>({
+      type: 'mods.update',
+      id,
+    });
+    if (!result.ok) return result;
+
+    delete this.sources[id];
+    const record = this.mods.find((mod) => mod.id === id);
+    if (record && this.isEnabled(id)) {
+      const files = await this.fetchSource(id);
+      await this.unapply(record);
+      await this.applyWatched(record, files);
+    }
+    this.notify();
+    return result;
+  }
+
+  /** Pull, rebuild and restart. The window goes away with the loader. */
+  updateApp(): Promise<{ ok: boolean; detail: string }> {
+    return this.bridge.request<{ ok: boolean; detail: string }>({ type: 'app.update' });
   }
 
   /** Plugin ids a theme needs to look right; empty for almost every mod. */
@@ -92,23 +262,67 @@ export class ModManager {
       try {
         listener();
       } catch (err) {
-        console.error('[slackmod] change listener threw', err);
+        console.error('[betterslack] change listener threw', err);
       }
     }
   }
 
+  /** Plugin ids the host has actually loaded. */
+  loadedPluginIds(): string[] {
+    return this.plugins.loadedIds();
+  }
+
+  get safeMode(): boolean {
+    return this.boot.info.safeMode === true;
+  }
+
   /** Apply everything that was already on when Slack started. */
   async applyInitial(): Promise<void> {
-    for (const id of this.settings.enabled) {
-      const record = this.mods.find((m) => m.id === id);
-      const source = this.sources[id];
-      if (!record || source === undefined) {
-        console.warn(`[slackmod] "${id}" is enabled but was not delivered by the loader`);
+    if (this.safeMode) {
+      // Nothing is applied, and nothing is written: safe mode is a way to get
+      // to the panel, not a decision about what should be on.
+      console.warn('[betterslack] safe mode — no mods applied');
+      return;
+    }
+
+    const enabled = this.settings.enabled
+      .map((id) => ({ record: this.mods.find((m) => m.id === id), files: this.sources[id], id }));
+
+    // Themes first, and without waiting for anything: they are CSS, and the
+    // whole point of injecting at document-start is that Slack never flashes
+    // its own colours before ours land.
+    for (const { record, files, id } of enabled) {
+      if (!record || files === undefined) {
+        console.warn(`[betterslack] "${id}" is enabled but was not delivered by the loader`);
         continue;
       }
-      await this.apply(record, source).catch((err) => {
-        console.error(`[slackmod] could not apply "${id}":`, err);
-      });
+      if (record.type !== 'theme') continue;
+      await this.applyWatched(record, files);
+    }
+
+    /*
+     * Plugins wait for Slack to have built its client.
+     *
+     * The runtime can be injected at any moment -- at document-start on a fresh
+     * navigation, or straight into a page the loader found mid-boot. In that
+     * second case the mods used to start against a half-built DOM: their mount
+     * observers fire on every node Slack adds while it renders the client, and
+     * a mount that reacts to Slack's own re-render can keep the microtask queue
+     * from ever draining. The renderer then blocks outright -- a grey window,
+     * no error, and Runtime.evaluate never returning, which is how this was
+     * finally caught.
+     *
+     * Themes do not wait, because CSS cannot loop. If the container never
+     * appears -- Slack renamed it, or this is not the client at all -- the
+     * plugins still start, since refusing to load them would be a worse failure
+     * than the one being avoided.
+     */
+    await waitForClient();
+
+    for (const { record, files, id } of enabled) {
+      if (!record || files === undefined || record.type === 'theme') continue;
+      void id;
+      await this.applyWatched(record, files);
     }
     this.applyCustomCss();
 
@@ -126,25 +340,137 @@ export class ModManager {
     this.styles.clear();
   }
 
-  private async apply(record: ModRecord, source: string): Promise<void> {
+  /**
+   * Apply a mod, and remember it if it will not.
+   *
+   * A mod that throws used to leave a line in the console and a row in the
+   * panel that still said it was on. Now the row says what happened, and the
+   * second consecutive failure at startup takes it out of the running: a broken
+   * mod should cost one bad start, not every start.
+   */
+  private async applyWatched(record: ModRecord, files: ModFiles): Promise<void> {
+    const failures = this.settings.modFailures ?? {};
+    const failed = failures[record.id] ?? 0;
+    if (failed >= 2) {
+      this.errors.set(
+        record.id,
+        `skipped after ${failed} failed starts — switch it off and on to try again`,
+      );
+      console.warn(`[betterslack] skipping "${record.id}": it failed ${failed} times`);
+      return;
+    }
+
+    // Counted before the attempt, cleared after it: a mod that takes the
+    // renderer down never gets to the line that would have recorded it.
+    await this.recordFailure(record.id, failed + 1);
+    const started = Date.now();
+    try {
+      await this.apply(record, files);
+      this.timings.set(record.id, Date.now() - started);
+      this.errors.delete(record.id);
+      await this.recordFailure(record.id, 0);
+    } catch (err) {
+      const message = (err as Error).message;
+      this.errors.set(record.id, message);
+      console.error(`[betterslack] could not apply "${record.id}":`, err);
+    }
+  }
+
+  private async recordFailure(id: string, count: number): Promise<void> {
+    const failures = { ...(this.settings.modFailures ?? {}) };
+    if (count === 0) {
+      if (!(id in failures)) return;
+      delete failures[id];
+    } else {
+      if (failures[id] === count) return;
+      failures[id] = count;
+    }
+    await this.patchSettings({ modFailures: failures });
+  }
+
+  private async apply(record: ModRecord, files: ModFiles): Promise<void> {
     if (record.type === 'theme') {
-      this.styles.set('theme', record.id, source);
+      // Relative @import has no base URL inside an injected <style>, so the
+      // folder is stitched together before it reaches the page.
+      this.styles.set('theme', record.id, inlineCssImports(files, record.entry));
       return;
     }
     const api = createPluginApi(record, {
       version: this.boot.version,
+      files,
       styles: this.styles,
       getSettings: () => this.settings,
       saveModSettings: (id, values) =>
         this.patchSettings({ modSettings: { ...this.settings.modSettings, [id]: values } }),
+      listCommands: () => [...this.commands.values()],
+      listMods: () => this.mods.map((mod) => ({
+        id: mod.id,
+        name: mod.name,
+        description: mod.description,
+        type: mod.type,
+        installed: this.isInstalled(mod.id),
+        enabled: this.isEnabled(mod.id),
+        settings: mod.settings?.length ?? 0,
+      })),
+      setModEnabled: (id, enabled) => this.setEnabled(id, enabled),
+      setModInstalled: (id, installed) => this.setInstalled(id, installed),
+      openPanel: (tab) => this.openPanel?.(tab),
+      openMod: (id) => this.openMod?.(id),
+      addCommand: (command) => {
+        this.commands.set(command.id, command);
+        return () => this.commands.delete(command.id);
+      },
+      onSettingsChanged: (id, handler) => {
+        let set = this.settingsListeners.get(id);
+        if (!set) this.settingsListeners.set(id, (set = new Set()));
+        set.add(handler);
+        return () => set!.delete(handler);
+      },
       download: (url, filename) =>
         this.bridge.request<{ path: string; bytes: number }>({
           type: 'file.download',
           url,
           filename,
         }),
+      listThemes: () =>
+        this.mods
+          .filter((m) => m.type === 'theme')
+          .map((m) => ({
+            id: m.id,
+            name: m.name,
+            description: m.description,
+            enabled: this.isEnabled(m.id),
+          })),
+      themeSource: async (id) => {
+        // One stylesheet, not a folder: a tool reading a theme wants what the
+        // page would get, with its @imports already pasted in.
+        const record = this.mods.find((m) => m.id === id);
+        const files = this.sources[id] ?? (await this.fetchSource(id));
+        return inlineCssImports(files, record?.entry ?? 'theme.css');
+      },
+      saveTheme: async ({ id, name, description, css }) => {
+        // Through the same route the Browse shelf uses, so the loader validates
+        // the manifest it writes exactly as it would for anything installed.
+        const manifest = {
+          id,
+          name,
+          type: 'theme' as const,
+          version: '1.0.0',
+          author: 'you',
+          description,
+          entry: 'theme.css',
+          betterslackApi: 1,
+        };
+        this.mods = await this.bridge.request<ModRecord[]>({
+          type: 'mod.install',
+          id,
+          manifest,
+          files: { 'theme.css': css },
+        });
+        this.notify();
+      },
     });
-    await this.plugins.load(record, source, api);
+    await this.plugins.load(record, files, api);
   }
 
   private async unapply(record: ModRecord): Promise<void> {
@@ -157,9 +483,20 @@ export class ModManager {
     if (!record) throw new Error(`unknown mod "${id}"`);
 
     if (enabled) {
-      const source = this.sources[id] ?? (await this.fetchSource(id));
-      await this.apply(record, source);
+      const files = this.sources[id] ?? (await this.fetchSource(id));
+      // Switching a mod on by hand is the retry the panel offers a skipped one,
+      // so the count goes back to zero first -- otherwise "switch it off and on
+      // to try again" would be advice that does not work.
+      await this.recordFailure(id, 0);
+      this.errors.delete(id);
+      await this.applyWatched(record, files);
+      const failure = this.errors.get(id);
+      // Thrown rather than swallowed: this one was asked for, so the panel
+      // should say it did not work rather than quietly showing it as on.
+      if (failure) throw new Error(failure);
     } else {
+      this.errors.delete(id);
+      await this.recordFailure(id, 0);
       await this.unapply(record);
     }
 
@@ -178,18 +515,18 @@ export class ModManager {
     for (const id of next.filter((x) => !previous.includes(x))) {
       const record = this.mods.find((m) => m.id === id);
       if (!record) continue;
-      const source = this.sources[id] ?? (await this.fetchSource(id).catch(() => null));
-      if (source === null) continue;
-      await this.apply(record, source).catch((err) => {
-        console.error(`[slackmod] could not apply "${id}":`, err);
+      const files = this.sources[id] ?? (await this.fetchSource(id).catch(() => null));
+      if (files === null) continue;
+      await this.apply(record, files).catch((err) => {
+        console.error(`[betterslack] could not apply "${id}":`, err);
       });
     }
   }
 
-  private async fetchSource(id: string): Promise<string> {
-    const source = await this.bridge.request<string>({ type: 'mod.source', id });
-    this.sources[id] = source;
-    return source;
+  private async fetchSource(id: string): Promise<ModFiles> {
+    const files = await this.bridge.request<ModFiles>({ type: 'mod.source', id });
+    this.sources[id] = files;
+    return files;
   }
 
   async patchSettings(patch: Partial<Settings>): Promise<void> {
@@ -211,14 +548,14 @@ export class ModManager {
     this.applyCustomCss();
   }
 
-  async install(record: ModRecord, source: string): Promise<void> {
+  async install(record: ModRecord, files: ModFiles): Promise<void> {
     const mods = await this.bridge.request<ModRecord[]>({
       type: 'mod.install',
       id: record.id,
       manifest: record,
-      source,
+      files,
     });
-    this.sources[record.id] = source;
+    this.sources[record.id] = files;
     this.mods = mods;
     this.notify();
   }
@@ -231,6 +568,13 @@ export class ModManager {
   }
 
   private async onLoaderEvent(event: PushEvent): Promise<void> {
+    if (event.type === 'update.status') {
+      // It arrives after boot, because it went out on the network. Notifying
+      // is what puts the badge on the button without anything polling for it.
+      this.update = event.status;
+      this.notify();
+      return;
+    }
     if (event.type === 'catalog.changed') {
       this.mods = event.mods;
       this.notify();
@@ -246,15 +590,15 @@ export class ModManager {
       return;
     }
     if (event.type === 'mod.changed') {
-      this.sources[event.id] = event.source;
+      this.sources[event.id] = event.files;
       if (!this.isEnabled(event.id)) return;
       const record = this.mods.find((m) => m.id === event.id);
       if (!record) return;
       // Hot reload: tear the old one down before the new one goes in, or two
       // copies of the plugin end up fighting over the same DOM.
       await this.unapply(record);
-      await this.apply(record, event.source).catch((err) => {
-        console.error(`[slackmod] hot reload of "${event.id}" failed:`, err);
+      await this.apply(record, event.files).catch((err) => {
+        console.error(`[betterslack] hot reload of "${event.id}" failed:`, err);
       });
       this.notify();
     }

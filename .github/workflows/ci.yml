@@ -18,29 +18,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # pnpm before setup-node, so its cache key can be the pnpm lockfile.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
 
       # Manifest-level checks across every mod. Cheap, and it keeps the
       # catalogue coherent even when a pull request touches no mod at all.
-      - run: npm run validate-mods
+      - run: pnpm validate-mods
 
-      - name: Loader unit tests
-        run: node --test tests/download.test.mjs
+      - name: Loader and runtime unit tests
+        run: pnpm test:core
 
       # The registry is generated, so a pull request that adds a mod without
       # regenerating it would ship a catalogue nobody can install from.
       - name: registry.json is up to date
         run: |
-          npm run registry
+          pnpm registry
           if ! git diff --quiet -- mods/registry.json; then
-            echo "::error::mods/registry.json is stale. Run 'npm run registry' and commit the result."
+            echo "::error::mods/registry.json is stale. Run 'pnpm registry' and commit the result."
             git --no-pager diff -- mods/registry.json
             exit 1
           fi

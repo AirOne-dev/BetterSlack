@@ -4,8 +4,8 @@
 // through Runtime.evaluate. Both directions are plain JSON strings, so nothing
 // here may reference Node or DOM types.
 
-export const BINDING_NAME = '__slackmodSend';
-export const RECEIVER_NAME = '__slackmodRecv';
+export const BINDING_NAME = '__betterslackSend';
+export const RECEIVER_NAME = '__betterslackRecv';
 export const MOD_API_VERSION = 1;
 
 export type ModType = 'theme' | 'plugin';
@@ -32,16 +32,90 @@ export interface ModManifest {
    * build a cycle.
    */
   requires?: string[];
+  /**
+   * Settings the panel should offer, and their defaults.
+   *
+   * A mod reads the same keys through `api.settings`; this only says what the
+   * panel should draw and what the value is when nobody has chosen one. Before
+   * this, every adjustable thing was either a constant in the source or a
+   * control the mod had to build for itself, which is why almost none of them
+   * were adjustable at all.
+   */
+  settings?: ModSettingField[];
+
   /** Manifest schema version. Mods declaring a newer version are refused. */
-  slackmodApi: number;
+  betterslackApi: number;
   /** Optional: minimum tested Slack version, informational only. */
   slackVersion?: string;
   tags?: string[];
 }
 
+/**
+ * A mod's files, keyed by path relative to its folder.
+ *
+ * Mods are folders, not files: `index.js` may import `./colour.js`, and a theme
+ * may `@import './rail.css'`. The loader reads the whole folder and the runtime
+ * stitches it back together, because the alternative -- one file per mod -- is
+ * what made the theme builder a two-thousand-line wall.
+ */
+export type ModFiles = Record<string, string>;
+
+/**
+ * One setting, as the panel will draw it.
+ *
+ * Deliberately few types. Anything a mod can express with a checkbox, a number,
+ * a word, a colour or a choice belongs here; anything more belongs in the mod's
+ * own window, where it can be explained properly.
+ */
+export type ModSettingField =
+  | { key: string; type: 'boolean'; label: string; hint?: string; default?: boolean }
+  | {
+    key: string;
+    type: 'number';
+    label: string;
+    hint?: string;
+    default?: number;
+    min?: number;
+    max?: number;
+    step?: number;
+  }
+  | { key: string; type: 'text'; label: string; hint?: string; default?: string; placeholder?: string }
+  | { key: string; type: 'colour'; label: string; hint?: string; default?: string }
+  | {
+    key: string;
+    type: 'choice';
+    label: string;
+    hint?: string;
+    default?: string;
+    options: Array<{ value: string; label: string }>;
+  };
+
+/** What a mod from outside this repository looks like before it is installed. */
+export interface RemoteMod {
+  manifest: ModManifest;
+  files: ModFiles;
+  /** owner/name, for the record and for the warning. */
+  repo: string;
+  /** Where in it the mod was found. */
+  folder: string;
+  /** Files that will be executed, so the number is not a surprise. */
+  scripts: string[];
+  /** Total size, because "one small mod" and 400kB are different things. */
+  bytes: number;
+}
+
 export interface ModRecord extends ModManifest {
-  /** Where the mod came from. `builtin` = shipped in this repo's mods/ folder. */
-  origin: 'builtin' | 'installed';
+  /**
+   * Where the mod came from.
+   *
+   * `builtin` = shipped in this repository, so it went through review.
+   * `installed` = written by the user or installed from the catalogue.
+   * `third-party` = fetched from somebody else's repository, which nobody here
+   * has read. The panel says so, permanently, on the row.
+   */
+  origin: 'builtin' | 'installed' | 'third-party';
+  /** For a third-party mod: where it came from, shown wherever it is listed. */
+  source?: string;
   /** Path relative to the mods root, e.g. "themes/midnight". */
   path: string;
 }
@@ -61,6 +135,14 @@ export interface Settings {
   customCss: string;
   /** Reapply mods automatically when their file changes on disk. */
   hotReload: boolean;
+  /**
+   * Consecutive failures per mod, cleared as soon as one applies cleanly.
+   *
+   * A mod that throws on start is skipped after the second time rather than
+   * being retried at every launch: a broken mod should cost you one bad start,
+   * not every start.
+   */
+  modFailures?: Record<string, number>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -69,6 +151,7 @@ export const DEFAULT_SETTINGS: Settings = {
   modSettings: {},
   customCss: '',
   hotReload: true,
+  modFailures: {},
 };
 
 /** Requirements of `manifest` that are not currently enabled. */
@@ -89,8 +172,10 @@ export type Request =
   | { type: 'mod.enable'; id: string; enabled: boolean }
   /** Add or remove a catalogue mod from the installed set. */
   | { type: 'mod.setInstalled'; id: string; installed: boolean }
+  /** Every file of a mod, keyed by relative path. */
   | { type: 'mod.source'; id: string }
-  | { type: 'mod.install'; id: string; manifest: ModManifest; source: string }
+  /** `source` marks it as coming from outside this repository, for good. */
+  | { type: 'mod.install'; id: string; manifest: ModManifest; files: ModFiles; source?: string }
   | { type: 'mod.uninstall'; id: string }
   | { type: 'loader.info' }
   /**
@@ -99,18 +184,58 @@ export type Request =
    * though an <img> loads fine. The loader has no such restriction.
    */
   | { type: 'file.download'; url: string; filename: string }
+  /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
+  | { type: 'app.update' }
+  /** Everything in ~/.betterslack worth keeping, as one JSON document. */
+  | { type: 'backup.export' }
+  /** Put one back. Replaces settings and user mods; never touches the install. */
+  | { type: 'backup.import'; archive: string }
+  /**
+   * Read a mod from a GitHub URL, without installing it.
+   *
+   * Two steps on purpose: this fetches and describes, the panel asks, and only
+   * then does `mod.install` write anything. Consent has to come between reading
+   * and installing, or it is not consent.
+   */
+  | { type: 'mods.inspectRemote'; url: string }
+  /** Which installed mods have a newer version published. */
+  | { type: 'mods.checkUpdates' }
+  /** Fetch one mod's folder from the branch and install it over the old one. */
+  | { type: 'mods.update'; id: string }
+  /** The renderer saying it got all the way up, which clears the crash marker. */
+  | { type: 'app.ready' }
   | { type: 'log'; level: 'log' | 'warn' | 'error'; message: string };
 
 /** Push notifications the loader sends to the renderer unprompted. */
 export type Event =
-  | { type: 'mod.changed'; id: string; source: string }
+  | { type: 'mod.changed'; id: string; files: ModFiles }
   | { type: 'catalog.changed'; mods: ModRecord[] }
-  | { type: 'settings.changed'; settings: Settings };
+  | { type: 'settings.changed'; settings: Settings }
+  /** Sent once the version check finishes, which is after boot: it goes out on
+   *  the network and nothing should wait for it. */
+  | { type: 'update.status'; status: UpdateStatus };
 
 export interface Envelope {
   /** Correlation id; absent on pushed events. */
   rid?: number;
   payload: unknown;
+}
+
+/**
+ * What the loader knows about this copy being current.
+ *
+ * `behind` is only ever true when the check is certain. Offline, on a fork, on
+ * a branch that tracks nothing: all of those answer "do not know", and the
+ * panel shows nothing rather than a badge nobody can act on.
+ */
+export interface UpdateStatus {
+  kind: 'git' | 'package' | 'unknown';
+  behind: boolean;
+  commits?: number;
+  latest?: string;
+  headline?: string;
+  note?: string;
+  updatable: boolean;
 }
 
 export interface LoaderInfo {
@@ -126,4 +251,18 @@ export interface LoaderInfo {
   slackPath: string;
   /** How the loader talks to Slack, shown in the About tab. */
   transport: string;
+  /**
+   * Nothing was applied this run.
+   *
+   * Either asked for (`--safe`) or decided: a run that never reported itself
+   * healthy is assumed to have been taken down by a mod, and the next one comes
+   * up bare so there is something to click. Twice now a mod has frozen the
+   * renderer outright, and the only way out was killing Slack and editing the
+   * settings file by hand.
+   */
+  safeMode: boolean;
+  /** Why, when it was not asked for. */
+  safeModeReason?: string;
+  /** Where this copy lives, so the panel can say what it would update. */
+  root: string;
 }

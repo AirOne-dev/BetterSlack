@@ -1,6 +1,6 @@
 // Settings and installed mods on disk.
 //
-// Settings live outside the repo (~/.slackmod) so that pulling the repo never
+// Settings live outside the repo (~/.betterslack) so that pulling the repo never
 // clobbers what the user has enabled, and so a mod author's working copy and
 // their real config stay separate.
 
@@ -9,11 +9,31 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { DEFAULT_SETTINGS, type Settings } from '../shared/protocol.js';
 
-export const USER_ROOT = process.env.SLACKMOD_HOME ?? path.join(homedir(), '.slackmod');
+export const USER_ROOT = process.env.BETTERSLACK_HOME ?? path.join(homedir(), '.betterslack');
 export const USER_MODS_ROOT = path.join(USER_ROOT, 'mods');
 const SETTINGS_FILE = path.join(USER_ROOT, 'settings.json');
 
+/** Where this lived when the project was called SlackMod. */
+const LEGACY_ROOT = path.join(homedir(), '.slackmod');
+
 export async function ensureUserRoot(): Promise<void> {
+  /*
+   * Carry the old home over rather than starting empty.
+   *
+   * The rename moved this directory, and everything a person has -- which mods
+   * they installed, which are on, their custom CSS, their own themes -- lives
+   * in it. Coming back to an empty catalogue after an update would read as the
+   * update having wiped them. Moved only when there is nothing at the new
+   * place, so a second run cannot clobber real state with a stale copy.
+   */
+  if (!process.env.BETTERSLACK_HOME) {
+    const arrived = await fs.stat(USER_ROOT).then(() => true).catch(() => false);
+    const legacy = await fs.stat(LEGACY_ROOT).then(() => true).catch(() => false);
+    if (!arrived && legacy) {
+      await fs.rename(LEGACY_ROOT, USER_ROOT).catch(() => undefined);
+      console.log(`[betterslack] moved ${LEGACY_ROOT} to ${USER_ROOT}`);
+    }
+  }
   await fs.mkdir(USER_MODS_ROOT, { recursive: true });
 }
 
@@ -35,13 +55,120 @@ export async function readSettings(): Promise<Settings> {
         parsed.modSettings && typeof parsed.modSettings === 'object' ? parsed.modSettings : {},
       customCss: typeof parsed.customCss === 'string' ? parsed.customCss : '',
       hotReload: typeof parsed.hotReload === 'boolean' ? parsed.hotReload : true,
+      modFailures:
+        parsed.modFailures && typeof parsed.modFailures === 'object' ? parsed.modFailures : {},
     };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.warn(`[slackmod] settings unreadable, falling back to defaults: ${err}`);
+      console.warn(`[betterslack] settings unreadable, falling back to defaults: ${err}`);
     }
     return { ...DEFAULT_SETTINGS };
   }
+}
+
+/**
+ * The marker that says a run started and never reported itself healthy.
+ *
+ * Written before Slack is launched and removed when the renderer says it got
+ * all the way up. Finding one at startup means the last run did not -- most
+ * likely a mod took the renderer down, since that is the failure this project
+ * has actually had, twice.
+ */
+const BOOT_MARKER = path.join(USER_ROOT, 'booting');
+
+export async function markBootStarted(): Promise<void> {
+  await ensureUserRoot();
+  await fs.writeFile(BOOT_MARKER, new Date().toISOString(), 'utf8').catch(() => undefined);
+}
+
+export async function markBootHealthy(): Promise<void> {
+  await fs.rm(BOOT_MARKER, { force: true }).catch(() => undefined);
+}
+
+/** True when the previous run never got as far as saying it was up. */
+export async function lastBootFailed(): Promise<boolean> {
+  return fs.stat(BOOT_MARKER).then(() => true).catch(() => false);
+}
+
+/**
+ * Everything a person has, as one document.
+ *
+ * Settings and the mods they wrote or installed themselves -- which is the part
+ * that cannot be downloaded again. Deliberately not the catalogue: those come
+ * back with the project, and a backup that carries them would restore stale
+ * copies over newer ones.
+ */
+export async function exportBackup(): Promise<string> {
+  const settings = await readSettings();
+  const mods: Record<string, Record<string, string>> = {};
+
+  const walk = async (dir: string, prefix: string, into: Record<string, string>) => {
+    for (const entry of await fs.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+      if (entry.name.startsWith('.')) continue;
+      const full = path.join(dir, entry.name);
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) await walk(full, rel, into);
+      else if (/\.(js|mjs|css|json)$/.test(entry.name)) {
+        into[rel] = await fs.readFile(full, 'utf8');
+      }
+    }
+  };
+
+  for (const entry of await fs.readdir(USER_MODS_ROOT, { withFileTypes: true }).catch(() => [])) {
+    if (!entry.isDirectory()) continue;
+    const files: Record<string, string> = {};
+    await walk(path.join(USER_MODS_ROOT, entry.name), '', files);
+    if (Object.keys(files).length > 0) mods[entry.name] = files;
+  }
+
+  return JSON.stringify(
+    { kind: 'betterslack-backup', version: 1, exportedAt: new Date().toISOString(), settings, mods },
+    null,
+    2,
+  );
+}
+
+export interface RestoreResult {
+  ok: boolean;
+  detail: string;
+}
+
+/**
+ * Put a backup back.
+ *
+ * Refuses anything that is not one rather than guessing, and writes mods before
+ * settings so a restored `enabled` list never names something that is not there
+ * yet. Nothing outside ~/.betterslack is touched: the install is not part of
+ * what a person owns.
+ */
+export async function importBackup(archive: string): Promise<RestoreResult> {
+  let parsed: { kind?: string; settings?: Partial<Settings>; mods?: Record<string, Record<string, string>> };
+  try {
+    parsed = JSON.parse(archive);
+  } catch {
+    return { ok: false, detail: 'that is not a backup file' };
+  }
+  if (parsed.kind !== 'betterslack-backup' || !parsed.settings) {
+    return { ok: false, detail: 'that is not a BetterSlack backup' };
+  }
+
+  await ensureUserRoot();
+  let restored = 0;
+  for (const [id, files] of Object.entries(parsed.mods ?? {})) {
+    if (!/^[a-z0-9][a-z0-9-]{1,48}$/.test(id)) continue;
+    for (const [name, contents] of Object.entries(files)) {
+      // A path that climbs out of the mod folder is the one thing an archive
+      // must never be able to do.
+      const target = path.join(USER_MODS_ROOT, id, name);
+      if (!target.startsWith(path.join(USER_MODS_ROOT, id) + path.sep)) continue;
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, contents, 'utf8');
+    }
+    restored++;
+  }
+
+  await writeSettings({ ...DEFAULT_SETTINGS, ...parsed.settings } as Settings);
+  return { ok: true, detail: `${restored} mod(s) and your settings` };
 }
 
 export async function writeSettings(settings: Settings): Promise<void> {

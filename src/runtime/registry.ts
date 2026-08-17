@@ -8,6 +8,8 @@
 
 import type { ModManifest, ModRecord } from '../shared/protocol.js';
 
+// The project is BetterSlack; the GitHub repository is still SlackMod.
+// A renamed repository redirects, so this is right either way.
 const REPO = 'AirOne-dev/SlackMod';
 const BRANCH = 'master';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${BRANCH}`;

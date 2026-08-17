@@ -55,6 +55,30 @@ export interface MountOptions {
   before?: string;
 }
 
+/**
+ * How hard to try before concluding that something else owns this spot.
+ *
+ * Slack's tree is React's, and it re-renders constantly. If it removes our node
+ * as fast as we add it -- which is what happens when a mod appends to the end of
+ * a container React manages -- then remounting on every mutation is an infinite
+ * loop, and it freezes the renderer solid: no error, no console, a grey window
+ * and a Slack that has to be killed. That cost an afternoon.
+ *
+ * So a mount that repeats this many times inside the window below gives up and
+ * says so, loudly. A missing button is a bug report; a frozen Slack is not.
+ */
+const REMOUNT_LIMIT = 25;
+const REMOUNT_WINDOW_MS = 2000;
+
+/**
+ * How many times each node has had to be put back, for the whole session.
+ *
+ * A mount that keeps being undone is Slack re-rendering over it, and it is the
+ * cheapest signal there is that a mod is fighting the app rather than sitting
+ * in it. Kept per node id, which is prefixed with the mod's own id.
+ */
+export const mountCounts = new Map<string, number>();
+
 export function keepMounted(
   containerSelector: string,
   nodeId: string,
@@ -64,6 +88,31 @@ export function keepMounted(
   const { position = 'append', before } =
     typeof options === 'string' ? { position: options, before: undefined } : options;
   let disposed = false;
+  let attempts: number[] = [];
+
+  /**
+   * True while this mount is still allowed to touch the DOM.
+   *
+   * Every insertion and every move is counted, because both are mutations and
+   * either can be answered by whatever else owns the container. Past the limit
+   * the mount gives up and says which node and which container, rather than
+   * spinning: a missing button is a bug report, a frozen Slack is not.
+   */
+  const countAttempt = (): boolean => {
+    const now = Date.now();
+    attempts = attempts.filter((t) => now - t < REMOUNT_WINDOW_MS);
+    attempts.push(now);
+    if (attempts.length <= REMOUNT_LIMIT) return true;
+    disposed = true;
+    observer.disconnect();
+    console.error(
+      `[betterslack] giving up on "${nodeId}": it moved or was re-added ` +
+        `${attempts.length} times in ${REMOUNT_WINDOW_MS}ms, so something else owns ` +
+        `"${containerSelector}". Anchor it with \`before\` or pick another container.`,
+    );
+    document.getElementById(nodeId)?.remove();
+    return false;
+  };
 
   const mount = () => {
     if (disposed) return;
@@ -73,14 +122,28 @@ export function keepMounted(
 
     const current = document.getElementById(nodeId);
     if (current && container.contains(current)) {
-      // Already mounted, but possibly in the wrong place: when two mods both
-      // anchor on the same neighbour, whichever mounted first was placed before
-      // the other one existed. Correct the position rather than leaving it.
-      if (anchor && anchor !== current && current.nextElementSibling !== anchor) {
-        anchor.before(current);
-      }
+      /*
+       * Already mounted, but possibly on the wrong side of its anchor.
+       *
+       * "Wrong" means *after* the anchor, and nothing else. Asking to be its
+       * immediate previous sibling looks equivalent and is not: two mods
+       * anchored on the same neighbour then each keep shoving the other aside,
+       * every shove is a mutation, every mutation runs this again, and the
+       * renderer never gets the thread back -- a grey window with no error,
+       * which is exactly how this was found. Both being somewhere before the
+       * anchor satisfies both, so they settle.
+       */
+      const misplaced =
+        anchor !== null &&
+        anchor !== current &&
+        (current.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING) === 0;
+      if (misplaced && countAttempt()) anchor!.before(current);
       return;
     }
+
+    // Everything below is a real remount, so count it before doing it.
+    if (!countAttempt()) return;
+    mountCounts.set(nodeId, (mountCounts.get(nodeId) ?? 0) + 1);
 
     current?.remove();
     const node = factory();
@@ -116,7 +179,7 @@ export function onEach<T extends Element = Element>(
       try {
         handler(element);
       } catch (err) {
-        console.error('[slackmod] onEach handler threw', err);
+        console.error('[betterslack] onEach handler threw', err);
       }
     }
   };

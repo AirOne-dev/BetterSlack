@@ -13,11 +13,11 @@ export class SlackNotFoundError extends Error {}
 
 /**
  * Candidate install locations per platform, most likely first.
- * SLACKMOD_SLACK_PATH overrides everything, which is also how users on exotic
+ * BETTERSLACK_SLACK_PATH overrides everything, which is also how users on exotic
  * installs (Nix, portable builds) get unblocked without patching this list.
  */
 function candidatePaths(): string[] {
-  const override = process.env.SLACKMOD_SLACK_PATH;
+  const override = process.env.BETTERSLACK_SLACK_PATH;
   if (override) return [override];
 
   const home = homedir();
@@ -56,7 +56,7 @@ export function findSlack(): string {
       candidatePaths()
         .map((p) => `  - ${p}`)
         .join('\n') +
-      `\n\nSet SLACKMOD_SLACK_PATH to the executable if Slack lives elsewhere.`,
+      `\n\nSet BETTERSLACK_SLACK_PATH to the executable if Slack lives elsewhere.`,
   );
 }
 
@@ -121,7 +121,7 @@ export function launchSlack({ slackPath, extraArgs = [] }: LaunchOptions): Child
     env: { ...process.env },
   });
   child.on('error', (err) => {
-    console.error(`[slackmod] failed to start Slack: ${err.message}`);
+    console.error(`[betterslack] failed to start Slack: ${err.message}`);
   });
   return child;
 }

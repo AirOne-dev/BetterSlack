@@ -34,9 +34,21 @@ export const QUALITY_ORDER = [
   'image_24',
 ];
 
-/** Pick the highest-quality avatar URL from a Slack profile object. */
-export function pickBestAvatar(profile) {
+/**
+ * Pick an avatar URL from a Slack profile.
+ *
+ * `wanted` is a specific key from the ladder above; anything else -- including
+ * nothing -- means the largest that exists. A profile that does not have the
+ * requested one falls back rather than failing: not every account has an
+ * original upload, and refusing to save anything would be a strange way to
+ * honour a preference.
+ */
+export function pickBestAvatar(profile, wanted = 'best') {
   if (!profile || typeof profile !== 'object') return null;
+  if (wanted !== 'best') {
+    const chosen = profile[wanted];
+    if (typeof chosen === 'string' && chosen.length > 0) return { key: wanted, url: chosen };
+  }
   for (const key of QUALITY_ORDER) {
     const value = profile[key];
     if (typeof value === 'string' && value.length > 0) return { key, url: value };
@@ -92,8 +104,8 @@ export default {
   start(api) {
     const t = api.i18n.strings(STRINGS);
     api.css(`
-      .slackmod-profile-row { padding: 8px 20px 12px; }
-      .slackmod-profile-row .c-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
+      .betterslack-profile-row { padding: 8px 20px 12px; }
+      .betterslack-profile-row .c-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
     `);
 
     const download = async (userId) => {
@@ -109,7 +121,7 @@ export default {
       const pending = api.ui.toast(t('fetching'), { duration: 0 });
       try {
         const user = await api.slack.web.userInfo(userId);
-        const best = pickBestAvatar(user.profile);
+        const best = pickBestAvatar(user.profile, api.settings.get('quality', 'best'));
         if (!best) {
           pending.dismiss();
           api.ui.toast(t('noAvatar'), { variant: 'warning' });

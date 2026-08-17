@@ -6,7 +6,7 @@
   "author": "AirOne-dev",
   "description": "A warm, low-contrast light theme: cream paper, cocoa text, generous 18px corners and soft shadows instead of borders. Easy on the eyes for a long day of reading.",
   "entry": "theme.css",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": ["light", "warm", "soft"]
 }

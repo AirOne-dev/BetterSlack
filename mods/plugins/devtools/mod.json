@@ -4,9 +4,9 @@
   "type": "plugin",
   "version": "1.0.0",
   "author": "AirOne-dev",
-  "description": "Opens and closes Slack's real Chrome DevTools — console, elements, network, the lot — from a button above the SlackMod one. Same action as Slack's own hidden ⌘⌥I menu item.",
+  "description": "Opens and closes Slack's real Chrome DevTools — console, elements, network, the lot — from a button above the BetterSlack one. Same action as Slack's own hidden ⌘⌥I menu item.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": ["developer", "tools"]
 }

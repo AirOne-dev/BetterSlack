@@ -2,11 +2,41 @@
   "id": "avatar-downloader",
   "name": "Avatar Downloader",
   "type": "plugin",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "AirOne-dev",
   "description": "Download a member's profile picture at the highest quality Slack stores — the original upload when there is one, otherwise the largest rendition. Adds a button to the profile pane and to the hover actions on a message.",
   "entry": "index.js",
-  "slackmodApi": 1,
+  "settings": [
+    {
+      "key": "quality",
+      "type": "choice",
+      "label": "Size to save",
+      "hint": "Slack keeps a few. Original is whatever was uploaded, which is not always the biggest.",
+      "default": "best",
+      "options": [
+        {
+          "value": "best",
+          "label": "The largest available"
+        },
+        {
+          "value": "image_original",
+          "label": "Original upload"
+        },
+        {
+          "value": "image_512",
+          "label": "512 px"
+        },
+        {
+          "value": "image_192",
+          "label": "192 px"
+        }
+      ]
+    }
+  ],
+  "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["profile", "files"]
+  "tags": [
+    "profile",
+    "files"
+  ]
 }
