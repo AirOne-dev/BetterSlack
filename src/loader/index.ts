@@ -7,7 +7,7 @@
 
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo } from './cdp.js';
 import { Catalog, parseManifest } from './catalog.js';
@@ -302,6 +302,46 @@ class Loader {
   }
 
   /**
+   * Hand the client to a script, so a set of screenshots is one launch.
+   *
+   * Restarting Slack between frames is what the first version of this did, and
+   * it took minutes for pictures that differ by which mod is switched on --
+   * something the runtime can do in place through `window.__betterslack`. The
+   * recipe lives with what it is photographing (`scripts/shoot-site.mjs`) and
+   * this stays a way in: evaluate, shoot, wait.
+   */
+  private async runShotScript(session: CdpSession): Promise<void> {
+    // The runtime assigns `window.__betterslack` on the last line of boot, so
+    // there is nothing to drive until it answers.
+    for (let i = 0; i < 60; i += 1) {
+      const ready = await session.evaluate<boolean>('Boolean(window.__betterslack)').catch(() => false);
+      if (ready) break;
+      await sleep(500);
+    }
+
+    const file = path.resolve(process.env.BETTERSLACK_SHOT_SCRIPT!);
+    try {
+      const recipe = (await import(pathToFileURL(file).href)) as {
+        default: (page: {
+          evaluate: <T>(expression: string) => Promise<T>;
+          shoot: (name: string, size?: string, delayMs?: number) => Promise<void>;
+          sleep: (ms: number) => Promise<void>;
+        }) => Promise<void>;
+      };
+      await recipe.default({
+        evaluate: (expression) => session.evaluate(expression),
+        shoot: (name, size, delayMs) => this.shoot(session, name, size, delayMs ?? 0),
+        sleep,
+      });
+      console.log('[betterslack] the shot script finished');
+    } catch (err) {
+      console.error(`[betterslack] shot script failed: ${(err as Error).message}`);
+      process.exitCode = 1;
+    }
+    process.exit(process.exitCode ?? 0);
+  }
+
+  /**
    * Write a PNG of one renderer, for the screenshots the site is built from.
    *
    * The viewport is forced to a fixed size first. Without it every picture
@@ -309,12 +349,12 @@ class Loader {
    * catalogue ends up with thumbnails that do not match each other -- which is
    * exactly what the first attempt at refreshing them produced.
    */
-  private async shoot(session: CdpSession, name: string): Promise<void> {
+  private async shoot(session: CdpSession, name: string, size?: string, delayMs?: number): Promise<void> {
     const dir = process.env.BETTERSLACK_SHOT;
     if (!dir) return;
-    const [width, height] = (process.env.BETTERSLACK_SHOT_SIZE ?? '1800x1128')
+    const [width, height] = (size ?? process.env.BETTERSLACK_SHOT_SIZE ?? '1800x1128')
       .split('x').map((n) => Number(n) || 0);
-    const delay = Number(process.env.BETTERSLACK_SHOT_DELAY ?? 6000);
+    const delay = delayMs ?? Number(process.env.BETTERSLACK_SHOT_DELAY ?? 6000);
 
     await sleep(delay);
     try {
@@ -399,7 +439,12 @@ class Loader {
     console.log(`[betterslack] injected into ${target.title || target.url}`);
 
     if (this.healthcheck) void this.reportHealth(session);
-    if (process.env.BETTERSLACK_SHOT) void this.shoot(session, process.env.BETTERSLACK_SHOT_NAME ?? 'client');
+    if (process.env.BETTERSLACK_SHOT_SCRIPT) void this.runShotScript(session);
+    // Not when a recipe is running: it says what to photograph and when, and a
+    // stray frame of the client lands in the folder it is filling.
+    if (process.env.BETTERSLACK_SHOT && !process.env.BETTERSLACK_SHOT_SCRIPT) {
+      void this.shoot(session, process.env.BETTERSLACK_SHOT_NAME ?? 'client');
+    }
     else this.watch(session);
 
     if (process.env.BETTERSLACK_DIAGNOSE === '1') {

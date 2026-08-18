@@ -69,14 +69,33 @@ pnpm site              # regenerate site/data.js from the registry (commit it)
 pnpm site:dev          # serve site/ with live reload (--port, --open)
 ```
 
+`pnpm shoot` retakes every screenshot the site and the README use, in **one**
+Slack launch. It starts the loader with a scratch home -- your own installed and
+enabled mods are untouched -- and hands the client to `scripts/shoot-site.mjs`,
+which switches mods on and off through `window.__betterslack` between frames
+rather than restarting anything. Three rules are baked into that recipe and are
+the reason it exists:
+
+- **Shoot at the size the picture is published at.** Cropping a taller frame
+  afterwards takes the crop from the middle, which is how the top bar and the
+  composer went missing from every panel shot on the site.
+- **Force the viewport.** Otherwise every picture depends on how wide whoever
+  took it happened to have Slack open, and the catalogue ends up with
+  thumbnails that do not match each other.
+- **Only the empty BetterSlack workspace.** These end up in a public README;
+  the recipe refuses to photograph anything else, by team id.
+
+`BETTERSLACK_SHOT=<dir>` alone still writes a PNG per attached window, which is
+how a window a mod opened -- the theme builder -- gets looked at.
+
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script
 -- nothing fetched from a CDN, so it renders the same whatever else the network
 is doing. Its catalogue is generated from `mods/registry.json`, and the workflow
 fails if the committed `site/data.js` has drifted from it. The screenshots in
 `site/shots/` were taken through CDP against a real client (`Page.captureScreenshot`,
-with the client's own content blurred first); `screencapture` photographs the
-desktop and misses a window on another Space.
+on the empty demo workspace); `screencapture` photographs the desktop and
+misses a window on another Space.
 
 Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 `test:core`, `test`, `check-structure`.
