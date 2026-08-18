@@ -30,11 +30,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      # Node only, and no dependency cache: this job installs nothing —
+      # build-site.mjs reads the repository and writes one file. Asking
+      # setup-node to cache pnpm's store made the post-job step fail on a store
+      # that was never created.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: site/data.js is up to date
         run: |
