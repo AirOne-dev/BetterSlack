@@ -23,7 +23,8 @@
     "new-mod": "node scripts/new-mod.mjs",
     "release": "node scripts/release.mjs",
     "test:live": "node scripts/test-live.mjs",
-    "site": "node scripts/build-site.mjs"
+    "site": "node scripts/build-site.mjs",
+    "site:dev": "node scripts/site-dev.mjs"
   },
   "engines": {
     "node": ">=18",
