@@ -1,0 +1,66 @@
+/*
+ * The colours, from Slack's own tokens wherever one fits.
+ *
+ * A code block sits inside a message, in whatever theme is on, so naming
+ * colours outright would make this the one rectangle that ignores the theme.
+ * Where Slack has no token for what a highlighter needs -- it has no idea what
+ * a string literal is -- the fallback is a hue that reads on both a light and a
+ * dark surface, checked against the shipped themes rather than picked.
+ */
+
+/*
+ * The original stays in the DOM and is hidden, never removed.
+ *
+ * Those children belong to React. Taking them out and putting our own in their
+ * place is how a mod gets a "removeChild on a node that is not a child" the
+ * next time Slack re-renders that message. Hiding them costs a line of CSS and
+ * cannot throw.
+ */
+pre.c-mrkdwn__pre[data-betterslack-lang] > *:not(.betterslack-hl) {
+  display: none !important;
+}
+
+.betterslack-hl {
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: Monaco, Menlo, Consolas, 'Courier New', monospace;
+  tab-size: 2;
+}
+
+/* The language, in the corner, faint. It is also the only way to tell a block
+   the mod understood from one it left alone. */
+pre.c-mrkdwn__pre[data-betterslack-lang] {
+  position: relative;
+}
+pre.c-mrkdwn__pre[data-betterslack-lang]::after {
+  content: attr(data-betterslack-lang);
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+
+.bshl-comment { color: var(--dt_color-content-sec, #9a9b9d); font-style: italic; }
+.bshl-string { color: #6cc06c; }
+.bshl-number { color: #d19a66; }
+.bshl-keyword { color: #c678dd; font-weight: 700; }
+.bshl-builtin { color: #56b6c2; }
+.bshl-fn { color: var(--dt_color-content-hgl-1, #4a9eff); }
+.bshl-variable { color: #e06c75; }
+.bshl-property { color: #61afef; }
+.bshl-selector { color: #e5c07b; }
+.bshl-tag { color: #e06c75; }
+.bshl-attr { color: #d19a66; }
+.bshl-punct { color: var(--dt_color-content-sec, #9a9b9d); }
+
+/* A diff is the one place where the colour carries meaning rather than
+   grammar, so it gets a background as well as a foreground. */
+.bshl-added { color: #7ec699; background: rgba(126, 198, 153, 0.10); display: inline-block; width: 100%; }
+.bshl-removed { color: #e88; background: rgba(238, 136, 136, 0.10); display: inline-block; width: 100%; }
+.bshl-meta { color: #61afef; }

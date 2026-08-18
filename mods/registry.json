@@ -95,6 +95,22 @@
       "path": "themes/cocoa"
     },
     {
+      "id": "code-highlight",
+      "name": "Code Highlight",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Colours the code blocks in messages, and works out which language they are on its own -- Slack sends them as plain grey text with no way to say what they contain. Twenty-one languages, from JSON and SQL to GraphQL, Dockerfiles and diffs, and it leaves a block alone when it is not sure.",
+      "entry": "index.js",
+      "betterslackApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "appearance",
+        "productivity"
+      ],
+      "path": "plugins/code-highlight"
+    },
+    {
       "id": "command-palette",
       "name": "Command Palette",
       "type": "plugin",
@@ -199,7 +215,7 @@
       "id": "discord-dark",
       "name": "Discord Dark",
       "type": "theme",
-      "version": "4.0.0",
+      "version": "4.0.1",
       "author": "AirOne-dev",
       "description": "Slack rebuilt as Discord: colours sampled from the real client, round server icons with the sliding pill, and Discord's sidebar. Brings in the member column and account strip as plugins.",
       "entry": "theme.css",
@@ -263,6 +279,22 @@
       "path": "themes/focus-rings"
     },
     {
+      "id": "full-links",
+      "name": "Full Links",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Keeps long links whole. Slack shortens a long URL to its host and an ellipsis -- in the messages you read, and in the ones you send, since the short label is stored in the message itself. This puts both back: it restores what is on screen, and stops the label being made when you paste.",
+      "entry": "index.js",
+      "betterslackApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "messages",
+        "productivity"
+      ],
+      "path": "plugins/full-links"
+    },
+    {
       "id": "member-sidebar",
       "name": "Member Sidebar",
       "type": "plugin",
@@ -315,6 +347,80 @@
         "dark"
       ],
       "path": "themes/midnight"
+    },
+    {
+      "id": "motion",
+      "name": "Motion",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Slack, with the frames in between: conversations that fade in instead of snapping, dialogs and menus that arrive on a spring, reactions that pop, and hover and press feedback on everything you point at. It covers the components the plugin API hands out too, so every mod's own interface moves with the app. Five families you can switch off one by one, and speed and amplitude on dials.",
+      "entry": "index.js",
+      "settings": [
+        {
+          "key": "speed",
+          "type": "number",
+          "label": "Speed",
+          "hint": "Percent. 100 is the tuned default, 200 twice as quick, 50 half. Everything scales together, so the app keeps one tempo.",
+          "default": 100,
+          "min": 25,
+          "max": 300,
+          "step": 5
+        },
+        {
+          "key": "amplitude",
+          "type": "number",
+          "label": "Amplitude",
+          "hint": "Percent. How far things travel and how much they scale. 0 keeps every fade and removes every movement; 150 is noticeably theatrical and still readable.",
+          "default": 100,
+          "min": 0,
+          "max": 200,
+          "step": 10
+        },
+        {
+          "key": "views",
+          "type": "boolean",
+          "label": "Views",
+          "hint": "Switching conversation brings the message pane in from below, changing section inside a dialog brings its panel in, and the rail's active tab settles into place.",
+          "default": true
+        },
+        {
+          "key": "panels",
+          "type": "boolean",
+          "label": "Dialogs and menus",
+          "hint": "Dialogs, menus and the command palette arrive on a spring from the corner they belong to; the thread pane slides in from the edge.",
+          "default": true
+        },
+        {
+          "key": "hover",
+          "type": "boolean",
+          "label": "Hover",
+          "hint": "Colours ease instead of snapping, sidebar rows lean towards the pointer, avatars and reactions answer it, a message's hover actions fade in, and the sidebar's selection cross-fades from row to row.",
+          "default": true
+        },
+        {
+          "key": "press",
+          "type": "boolean",
+          "label": "Press",
+          "hint": "Buttons acknowledge being pressed. Short and shallow: this is meant to be felt rather than watched.",
+          "default": true
+        },
+        {
+          "key": "arrivals",
+          "type": "boolean",
+          "label": "Arrivals",
+          "hint": "Small things that appear in place pop into it instead of blinking: a reaction someone just added, the jump-to-unread pill, a tooltip.",
+          "default": true
+        }
+      ],
+      "betterslackApi": 1,
+      "slackVersion": "4.51",
+      "tags": [
+        "appearance",
+        "layout",
+        "tools"
+      ],
+      "path": "plugins/motion"
     },
     {
       "id": "quote-reply",

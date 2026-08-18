@@ -1,0 +1,13 @@
+/*
+ * One rule, and only because a restored link is long by definition.
+ *
+ * There is deliberately nothing here about clipping. The obvious guess is that
+ * Slack shortens a URL with `text-overflow`, and it was measured on the real
+ * thing before any of it was written: on a truncated link `text-overflow` is
+ * `clip`, `overflow` is `visible` and `max-width` is `none`. The label is a
+ * different string, not a clipped one, so a stylesheet full of overrides for
+ * the other case would have been a file of rules that never fire.
+ */
+a[data-truncated-link="true"] {
+  word-break: break-all;
+}

@@ -46,7 +46,7 @@ window.CATALOGUE = {
       "id": "discord-dark",
       "name": "Discord Dark",
       "description": "Slack rebuilt as Discord: colours sampled from the real client, round server icons with the sliding pill, and Discord's sidebar. Brings in the member column and account strip as plugins.",
-      "version": "4.0.0",
+      "version": "4.0.1",
       "tags": [
         "dark",
         "discord"
@@ -162,6 +162,18 @@ window.CATALOGUE = {
       "settings": 0
     },
     {
+      "id": "code-highlight",
+      "name": "Code Highlight",
+      "description": "Colours the code blocks in messages, and works out which language they are on its own -- Slack sends them as plain grey text with no way to say what they contain. Twenty-one languages, from JSON and SQL to GraphQL, Dockerfiles and diffs, and it leaves a block alone when it is not sure.",
+      "version": "1.0.0",
+      "tags": [
+        "appearance",
+        "productivity"
+      ],
+      "requires": [],
+      "settings": 0
+    },
+    {
       "id": "command-palette",
       "name": "Command Palette",
       "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods — all from one keystroke, with / @ # to narrow it down.",
@@ -221,6 +233,18 @@ window.CATALOGUE = {
       "settings": 0
     },
     {
+      "id": "full-links",
+      "name": "Full Links",
+      "description": "Keeps long links whole. Slack shortens a long URL to its host and an ellipsis -- in the messages you read, and in the ones you send, since the short label is stored in the message itself. This puts both back: it restores what is on screen, and stops the label being made when you paste.",
+      "version": "1.0.0",
+      "tags": [
+        "messages",
+        "productivity"
+      ],
+      "requires": [],
+      "settings": 0
+    },
+    {
       "id": "member-sidebar",
       "name": "Member Sidebar",
       "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
@@ -232,6 +256,19 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "settings": 2
+    },
+    {
+      "id": "motion",
+      "name": "Motion",
+      "description": "Slack, with the frames in between: conversations that fade in instead of snapping, dialogs and menus that arrive on a spring, reactions that pop, and hover and press feedback on everything you point at. It covers the components the plugin API hands out too, so every mod's own interface moves with the app. Five families you can switch off one by one, and speed and amplitude on dials.",
+      "version": "1.0.0",
+      "tags": [
+        "appearance",
+        "layout",
+        "tools"
+      ],
+      "requires": [],
+      "settings": 7
     },
     {
       "id": "quote-reply",

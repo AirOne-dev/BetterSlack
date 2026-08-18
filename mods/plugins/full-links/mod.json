@@ -1,0 +1,15 @@
+{
+  "id": "full-links",
+  "name": "Full Links",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Keeps long links whole. Slack shortens a long URL to its host and an ellipsis -- in the messages you read, and in the ones you send, since the short label is stored in the message itself. This puts both back: it restores what is on screen, and stops the label being made when you paste.",
+  "entry": "index.js",
+  "betterslackApi": 1,
+  "slackVersion": "4.51",
+  "tags": [
+    "messages",
+    "productivity"
+  ]
+}

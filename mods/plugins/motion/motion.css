@@ -1,0 +1,531 @@
+/*
+ * Motion — the whole look of the mod, in one stylesheet.
+ *
+ * Two rules govern everything below, and they are what make a mod that touches
+ * every corner of Slack safe to ship:
+ *
+ * 1. Every rule is *additive*. It sets `transition`, `animation`, `transform`
+ *    or `opacity` and nothing else -- no layout, no colour, no display. Slack's
+ *    class names churn between builds (`.circleButton__cMiUK` is compiler
+ *    output), so a selector that stops matching has to fail by going still,
+ *    never by breaking a screen.
+ * 2. Nothing is scoped to a colour. Every value is a duration or a distance
+ *    derived from the two custom properties `index.js` writes, so the mod
+ *    follows whatever theme is on without knowing anything about it.
+ *
+ * The class prefixes are the switchboard: `html.betterslack-motion` is the
+ * master, and each group hangs off its own class so the panel's checkboxes
+ * turn a family of animations off without a reload.
+ *
+ * `--bsm-scale` and `--bsm-amp` come from index.js -- see the block it writes
+ * above this file. Durations multiply by the first, distances by the second,
+ * so "amplitude 0" leaves a mod that still cross-fades but never moves, which
+ * is what a system asking for reduced motion gets.
+ *
+ * Every selector here was counted against a live client rather than guessed;
+ * the ones that were not on screen to confirm say so where they are used.
+ */
+
+html.betterslack-motion {
+  /* Named for what they are used for, not for how long they last: the numbers
+     move with the speed setting and the names do not. */
+  --bsm-quick: calc(120ms * var(--bsm-scale, 1));
+  --bsm-base: calc(200ms * var(--bsm-scale, 1));
+  --bsm-slow: calc(300ms * var(--bsm-scale, 1));
+  /* Longer than the rest: it is a whole column arriving, and it starts on the
+     frame Slack unblocks the main thread rather than on the click. */
+  --bsm-view: calc(280ms * var(--bsm-scale, 1));
+
+  --bsm-shift: calc(18px * var(--bsm-amp, 1));
+  --bsm-nudge: calc(5px * var(--bsm-amp, 1));
+
+  /*
+   * Scale deltas, as numbers rather than as `scale()` calls, so every rule
+   * that shrinks something is visibly reading from the same two dials. They
+   * are deliberately large enough to be *seen*: the first pass used 0.025 for
+   * an arriving dialog and 0.05 for a pressed button, and the honest report
+   * that came back was that the animations were barely there.
+   */
+  --bsm-pop: calc(0.07 * var(--bsm-amp, 1));
+  --bsm-press: calc(0.08 * var(--bsm-amp, 1));
+
+  /* Decelerating: fast out of the gate, settling at the end. What almost
+     everything uses. */
+  --bsm-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
+  /* Overshoots by a few percent and comes back. Only for things that *arrive*
+     -- dialogs, menus, reactions -- because an overshoot on something you are
+     pointing at reads as a wobble rather than as a spring. */
+  --bsm-spring: cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+/* ---------------------------------------------------------------- views --
+ *
+ * Switching channel changes the URL and repaints the message pane, and
+ * remounts nothing a CSS animation could hang off. index.js stamps the pane
+ * with the class below; this is the animation it stamps.
+ */
+
+/*
+ * A plain fade-in, and it is plain for a measured reason worth writing down,
+ * because the obvious alternative was tried and was wrong.
+ *
+ * Sampling the column's opacity through a real channel switch shows that
+ * Slack blocks the main thread for about 100ms after the click. Nothing is
+ * painted in that window -- not the old conversation, not the new one -- so
+ * the first frame anyone actually sees is the new content, at the animation's
+ * time zero. That single fact decides the shape of this keyframe:
+ *
+ *   - starting at 0 means the new conversation is never shown at full
+ *     opacity before being animated, so there is nothing to blink;
+ *   - starting at 1 -- the "dip over the swap" that seems more sophisticated
+ *     -- paints the new content solid on that first frame and then takes it
+ *     away, which is the very flicker this replaced.
+ *
+ * And it only works because the trigger is early. Fired late, from a poll,
+ * this same keyframe is the original bug: content up, then faded in from
+ * nothing. Timing and shape are one decision, not two.
+ */
+@keyframes betterslack-motion-view {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--bsm-shift), 0) scale(calc(1 - var(--bsm-pop) * 0.35));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+html.betterslack-motion-views .betterslack-motion-enter {
+  animation: betterslack-motion-view var(--bsm-view) var(--bsm-ease);
+}
+
+/*
+ * The sidebar's selected row is deliberately not animated here. Slack paints
+ * the selection as the row's own background colour -- measured, 4.51, the row
+ * carries `--selected` and nothing else -- so the transition in the hover
+ * group below already makes the highlight cross-fade from row to row as the
+ * class moves. A second rule would be a second animation on the same pixels.
+ */
+
+/*
+ * Switching section inside a dialog -- Preferences, and anything else Slack
+ * builds with a vertical tab rail.
+ *
+ * Free, because the content really is remounted: clicking a section in
+ * Preferences adds a fresh <section> into `.p-prefs_dialog__panel`, measured by
+ * watching the dialog for mutations. So the animation fires on exactly the
+ * right frame with no trigger of any kind.
+ *
+ * Scoped inside `.ReactModal__Content` deliberately. `.c-tabs__tab_panel--active`
+ * is also what Slack's *main* workspace area wears, and animating that here
+ * would fight the view group over the whole conversation column.
+ */
+html.betterslack-motion-views .ReactModal__Content .c-tabs__tab_panel--active > * {
+  animation: betterslack-motion-pop var(--bsm-base) var(--bsm-ease);
+}
+
+/* BetterSlack's own panel does the same thing, from its own stylesheet: it
+   rebuilds itself on every change, so it stamps the body only when the tab
+   actually changed and CSS alone could not tell the difference. It reads the
+   --sm-motion-* tokens this mod sets, so both move together. */
+
+/* The rail's active tab, same idea, no travel: it is an icon, and an icon that
+   slides reads as a misplaced icon. */
+html.betterslack-motion-views .p-tab_rail__button__icon {
+  transition: transform var(--bsm-base) var(--bsm-spring);
+}
+html.betterslack-motion-views .p-tab_rail__button--active .p-tab_rail__button__icon {
+  transform: scale(calc(1 + var(--bsm-pop) * 1.6));
+}
+
+/* --------------------------------------------------------------- panels --
+ *
+ * Dialogs, menus and the right-hand pane are mounted when they open and
+ * unmounted when they close, so a plain `animation` on them runs at exactly
+ * the right moment with no JavaScript at all. That is why this group is the
+ * cheapest and the most reliable of the five.
+ */
+
+@keyframes betterslack-motion-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes betterslack-motion-pop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, calc(var(--bsm-shift) * 0.7), 0) scale(calc(1 - var(--bsm-pop)));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes betterslack-motion-slide-right {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--bsm-shift) * 2.2), 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * `:not(.c-popover)` is the whole reason this group works, and it was found by
+ * opening a menu and looking. In Slack 4.51 a *menu* is a ReactModal too:
+ *
+ *   .ReactModalPortal
+ *     .ReactModal__Overlay.c-popover
+ *       .ReactModal__Content.c-popover__content
+ *         .c-menu  >  .c-menu_item__button x6
+ *
+ * so the obvious pair of rules -- one for `.ReactModal__Content`, one for
+ * `.c-menu` -- runs both animations on the same menu, nested, and it arrives
+ * scaled and offset twice. Dialogs and popovers are told apart by the popover
+ * classes, and each is animated exactly once.
+ */
+html.betterslack-motion-panels .ReactModal__Overlay:not(.c-popover) {
+  animation: betterslack-motion-fade var(--bsm-base) var(--bsm-ease);
+}
+
+html.betterslack-motion-panels .ReactModal__Content:not(.c-popover__content),
+html.betterslack-motion-panels .c-dialog {
+  animation: betterslack-motion-pop var(--bsm-slow) var(--bsm-spring);
+}
+
+/*
+ * Menus and popovers grow from the corner they are anchored to rather than
+ * from their middle, which is what makes one look attached to the button that
+ * opened it. Slack's own arrive as the popover above; `api.ui.menu` appends a
+ * bare `.c-menu` to the document, so both are covered and the mods' menus move
+ * exactly like the app's.
+ */
+html.betterslack-motion-panels .ReactModal__Content.c-popover__content,
+html.betterslack-motion-panels .c-menu:not(.c-popover__content *) {
+  transform-origin: top left;
+  animation: betterslack-motion-pop var(--bsm-base) var(--bsm-spring);
+}
+
+/* The thread / details pane comes in from the edge it lives on. */
+html.betterslack-motion-panels .p-flexpane {
+  animation: betterslack-motion-slide-right var(--bsm-slow) var(--bsm-ease);
+}
+
+/* BetterSlack's own command palette, which is our markup in the light DOM. */
+html.betterslack-motion-panels .betterslack-palette {
+  animation: betterslack-motion-pop var(--bsm-base) var(--bsm-spring);
+}
+
+/*
+ * BetterSlack's own dialogs need no rule of their own: the Mods panel and
+ * `api.ui.modal` render into the light DOM wearing Slack's `.c-dialog`, which
+ * is the whole reason they follow every theme. Toasts are the exception and
+ * are deliberately left alone -- they live in a shadow root, which a
+ * stylesheet in the document cannot reach.
+ */
+
+/* ------------------------------------------------------------- arrivals --
+ *
+ * Small things that appear in place: a reaction someone just added, the pill
+ * offering to jump to unread messages, a tooltip. None of them are worth a
+ * whole view transition and all of them currently blink into existence.
+ */
+
+@keyframes betterslack-motion-arrive {
+  from {
+    opacity: 0;
+    transform: scale(calc(1 - var(--bsm-pop) * 2));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Reactions. These mount when someone reacts -- and also when the virtual list
+ * renders a message on the way past, so a fast scroll through a busy channel
+ * pops them in as it goes. That is deliberate: it is the same event as far as
+ * the DOM is concerned, and it reads as the list coming to life rather than as
+ * a glitch. Anyone who disagrees switches this group off.
+ */
+html.betterslack-motion-arrivals .c-reaction {
+  animation: betterslack-motion-arrive var(--bsm-base) var(--bsm-spring);
+}
+
+/*
+ * The jump-to-unread pill. Slack has two of these and they share every class
+ * except a hashed one that changes per build, so this scales and fades rather
+ * than travelling: a directional slide would be right for one of them and
+ * backwards for the other.
+ */
+html.betterslack-motion-arrivals .p-channel_sidebar__banner {
+  animation: betterslack-motion-arrive var(--bsm-base) var(--bsm-spring);
+}
+
+/* BetterSlack's own tooltips, which are our markup. Slack's were not on
+   screen to confirm a class for; the rule is additive, so naming it costs
+   nothing and does nothing if the name is wrong. */
+html.betterslack-motion-arrivals .betterslack-tooltip,
+html.betterslack-motion-arrivals .c-tooltip {
+  animation: betterslack-motion-fade var(--bsm-quick) var(--bsm-ease);
+}
+
+/* ---------------------------------------------------------------- hover --
+ *
+ * Slack already changes colour under the pointer; it just does it instantly.
+ * Measured on a live client: a sidebar row goes from transparent to
+ * rgba(248, 248, 248, 0.08) on hover, on the row element itself -- which is
+ * exactly the property and the element this transition covers.
+ */
+
+html.betterslack-motion-hover .p-channel_sidebar__channel,
+html.betterslack-motion-hover .p-channel_sidebar__static_list__item,
+html.betterslack-motion-hover .p-channel_sidebar__section_heading,
+html.betterslack-motion-hover .c-menu_item__button,
+html.betterslack-motion-hover .c-tabs__tab,
+html.betterslack-motion-hover .c-button,
+html.betterslack-motion-hover .c-button--outline,
+html.betterslack-motion-hover .c-icon_button,
+html.betterslack-motion-hover .c-link,
+html.betterslack-motion-hover .c-reaction,
+html.betterslack-motion-hover .c-reaction_add,
+html.betterslack-motion-hover .c-message_kit__thread_replies {
+  transition:
+    background-color var(--bsm-quick) var(--bsm-ease),
+    border-color var(--bsm-quick) var(--bsm-ease),
+    color var(--bsm-quick) var(--bsm-ease),
+    box-shadow var(--bsm-quick) var(--bsm-ease),
+    opacity var(--bsm-quick) var(--bsm-ease),
+    transform var(--bsm-quick) var(--bsm-ease);
+}
+
+/* The row transition above is also what makes the *selection* move: Slack
+   swaps `--selected` between rows and the background colour changes on both,
+   so one property eases two different things. */
+
+/* A sidebar row leans towards the pointer. Deliberately smaller than the rest
+   of the mod: the sidebar is a list of names, and a list of names that swings
+   is a list you cannot read. */
+html.betterslack-motion-hover .p-channel_sidebar__channel:hover {
+  transform: translate3d(var(--bsm-nudge), 0, 0);
+}
+
+/* Reactions and the thread bar lift instead of leaning -- they are objects,
+   not lines of text. */
+html.betterslack-motion-hover .c-reaction:hover,
+html.betterslack-motion-hover .c-reaction_add:hover {
+  transform: translate3d(0, calc(var(--bsm-nudge) * -1), 0) scale(calc(1 + var(--bsm-pop) * 0.6));
+}
+html.betterslack-motion-hover .c-message_kit__thread_replies:hover {
+  transform: translate3d(var(--bsm-nudge), 0, 0);
+}
+
+/*
+ * The hover actions on a message. A transition and not an animation, which is
+ * the difference between a rule that works and a rule that looks like it does:
+ * `.c-message_actions__container` is not mounted on hover, it is always there
+ * at `opacity: 0` and `display: flex` (measured against 4.51). An `animation`
+ * would therefore fire once, when the message first rendered and the toolbar
+ * was invisible, and never again.
+ */
+html.betterslack-motion-hover .c-message_actions__container {
+  transition:
+    opacity var(--bsm-quick) var(--bsm-ease),
+    transform var(--bsm-quick) var(--bsm-ease);
+}
+
+/* The message row itself, so the background arrives with the buttons instead
+   of a frame before them. */
+html.betterslack-motion-hover .c-message_kit__background,
+html.betterslack-motion-hover .c-message_kit__hover {
+  transition: background-color var(--bsm-quick) var(--bsm-ease);
+}
+
+/* An author's avatar answers the pointer, which is also the hint that it is
+   something you can click. */
+html.betterslack-motion-hover .c-message_kit__avatar {
+  transition: transform var(--bsm-base) var(--bsm-spring);
+}
+html.betterslack-motion-hover .c-message_kit__avatar:hover {
+  transform: scale(calc(1 + var(--bsm-pop) * 1.4));
+}
+
+/* Avatars in the rail and the workspace switcher. */
+html.betterslack-motion-hover .p-team_sidebar__item,
+html.betterslack-motion-hover .p-tab_rail__button {
+  transition: transform var(--bsm-base) var(--bsm-spring);
+}
+html.betterslack-motion-hover .p-team_sidebar__item:hover,
+html.betterslack-motion-hover .p-tab_rail__button:hover {
+  transform: scale(calc(1 + var(--bsm-pop) * 1.3));
+}
+
+/* The composer, which changes its border when it takes focus. */
+html.betterslack-motion-hover .c-wysiwyg_container,
+html.betterslack-motion-hover .c-texty_input_unstyled {
+  transition:
+    border-color var(--bsm-base) var(--bsm-ease),
+    box-shadow var(--bsm-base) var(--bsm-ease),
+    background-color var(--bsm-base) var(--bsm-ease);
+}
+
+/* Scrollbars fade rather than appear. */
+html.betterslack-motion-hover .c-scrollbar__bar {
+  transition: opacity var(--bsm-base) var(--bsm-ease);
+}
+
+/* ---------------------------------------------------------------- press --
+ *
+ * The one thing Slack's chrome has none of: a control that acknowledges being
+ * pressed. Short on purpose -- this should be felt rather than watched, so it
+ * is faster than everything else in the mod even though it now goes deeper.
+ */
+
+html.betterslack-motion-press .c-button:active,
+html.betterslack-motion-press .c-button--outline:active,
+html.betterslack-motion-press .c-icon_button:active,
+html.betterslack-motion-press .c-menu_item__button:active,
+html.betterslack-motion-press .p-tab_rail__button:active,
+html.betterslack-motion-press .p-team_sidebar__item:active,
+html.betterslack-motion-press .p-channel_sidebar__channel:active,
+html.betterslack-motion-press .c-reaction:active,
+html.betterslack-motion-press .c-reaction_add:active {
+  transform: scale(calc(1 - var(--bsm-press)));
+  transition-duration: 60ms;
+}
+
+/* ------------------------------------------------ BetterSlack's own kit --
+ *
+ * Everything above styles Slack. This section styles the components mods are
+ * given, so a plugin's own interface moves like the app it lives in without
+ * its author writing a single transition.
+ *
+ * The surfaces, and where each one already was:
+ *
+ *   api.ui.modal / confirm   .c-dialog          -- covered by the panels group
+ *   api.ui.menu              .c-menu            -- covered by the panels group
+ *   api.ui.palette           .betterslack-palette
+ *   api.ui.tooltip           .betterslack-tooltip
+ *   api.helpers.iconButton   .betterslack-icon-button
+ *   api.helpers.badge        #betterslack-badge-<plugin>-<id>
+ *   api.ui.kit               its own --sm-motion-* tokens, set below
+ *   api.ui.toast             a shadow root -- reached from index.js, not here
+ *
+ * `api.ui.kit` had no transition of any kind, which is why a window a mod
+ * opened felt like a different application from the one beside it. That is
+ * fixed in the kit itself rather than here, because this stylesheet only ever
+ * reaches Slack's own document and the windows are the case that needed it
+ * most.
+ *
+ * The rest is grouped by what the animation *is* rather than by whose
+ * component it is: a button answering the pointer belongs to the hover family,
+ * so switching hover off switches it off too. A separate "mods" family would
+ * have made the five switches mean two different things at once.
+ */
+
+/*
+ * The kit is not restyled here, it is *tuned*.
+ *
+ * `api.ui.kit` carries its own motion now, expressed as six tokens with
+ * sensible defaults, so a window a mod opens moves whether or not this mod is
+ * installed -- which matters, because that window is a separate document and
+ * this stylesheet never reaches it. All that is left to do from inside Slack
+ * is hand those tokens the same numbers everything else is using, and every
+ * kit control in the client falls into step.
+ *
+ * This replaced a copy of the kit's rules written here. Two descriptions of
+ * one design system is how they drift.
+ */
+html.betterslack-motion {
+  --sm-motion-quick: var(--bsm-quick);
+  --sm-motion-base: var(--bsm-base);
+  --sm-motion-ease: var(--bsm-ease);
+  --sm-motion-spring: var(--bsm-spring);
+  --sm-motion-shift: var(--bsm-shift);
+  --sm-motion-pop: var(--bsm-pop);
+}
+
+/* What the kit does not cover: the panel's own rows and controls, and the
+   handful of things `api.helpers` builds out of Slack's classes. */
+html.betterslack-motion-hover .betterslack-icon-button,
+html.betterslack-motion-hover .betterslack-row,
+html.betterslack-motion-hover .betterslack-nav__item,
+html.betterslack-motion-hover .betterslack-palette__row,
+html.betterslack-motion-hover .betterslack-tag {
+  transition:
+    background-color var(--bsm-quick) var(--bsm-ease),
+    border-color var(--bsm-quick) var(--bsm-ease),
+    color var(--bsm-quick) var(--bsm-ease),
+    box-shadow var(--bsm-quick) var(--bsm-ease),
+    opacity var(--bsm-quick) var(--bsm-ease),
+    transform var(--bsm-quick) var(--bsm-ease);
+}
+
+/* The palette's rows lean the way Slack's sidebar rows do, so keyboard
+   selection and pointer selection feel like the same list. */
+html.betterslack-motion-hover .betterslack-palette__row:hover {
+  transform: translate3d(var(--bsm-nudge), 0, 0);
+}
+
+/*
+ * The panel's own switches. They already had a 120ms transition of their own,
+ * written before this mod existed; these override the timing so the whole app
+ * keeps one tempo, and add the spring, which is what makes a toggle feel like
+ * a physical switch rather than a checkbox.
+ */
+html.betterslack-motion-hover .betterslack-switch__track {
+  transition: background-color var(--bsm-base) var(--bsm-ease);
+}
+html.betterslack-motion-hover .betterslack-switch__thumb {
+  transition: transform var(--bsm-base) var(--bsm-spring);
+}
+
+html.betterslack-motion-press .betterslack-icon-button:active,
+html.betterslack-motion-press .betterslack-palette__row:active {
+  transform: scale(calc(1 - var(--bsm-press)));
+  transition-duration: 60ms;
+}
+
+/*
+ * Badges. `api.helpers.badge` gives each one an id and no shared class, so the
+ * prefix is the only handle -- and it is a stable one, since the runtime
+ * builds the id as `betterslack-badge-<plugin>-<name>`.
+ */
+html.betterslack-motion-arrivals [id^="betterslack-badge-"] {
+  animation: betterslack-motion-arrive var(--bsm-base) var(--bsm-spring);
+}
+
+/*
+ * The toasts, which are the one component from `api.ui` that a stylesheet in
+ * this document cannot reach: they live in a shadow root on purpose, because
+ * Slack has no toast to borrow classes from.
+ *
+ * `toasts.js` puts a small sheet inside that root. What it cannot do is ask
+ * about the classes above -- measured in the client rather than assumed, and
+ * the assumption was wrong:
+ *
+ *   :host-context(html.some-class) .box   never matched. Chromium has dropped
+ *                                         it; the rule silently did nothing.
+ *   var(--anything) from <html>            inherits straight through, exactly
+ *                                         as it does anywhere else.
+ *
+ * So the switch is expressed as the *definition* of a property rather than as
+ * a selector: the variables below only exist while their group is on, and the
+ * shadow sheet reads them with the runtime's own values as fallbacks. Arrivals
+ * off means the property is undefined and toasts keep the timing they shipped
+ * with.
+ */
+html.betterslack-motion-arrivals {
+  --bsm-toast-duration: var(--bsm-base);
+  --bsm-toast-ease: var(--bsm-spring);
+  --bsm-toast-shift: var(--bsm-shift);
+}
+html.betterslack-motion-hover {
+  --bsm-toast-action-duration: var(--bsm-quick);
+  --bsm-toast-action-hover: 0.72;
+}

@@ -1,0 +1,73 @@
+{
+  "id": "motion",
+  "name": "Motion",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Slack, with the frames in between: conversations that fade in instead of snapping, dialogs and menus that arrive on a spring, reactions that pop, and hover and press feedback on everything you point at. It covers the components the plugin API hands out too, so every mod's own interface moves with the app. Five families you can switch off one by one, and speed and amplitude on dials.",
+  "entry": "index.js",
+  "settings": [
+    {
+      "key": "speed",
+      "type": "number",
+      "label": "Speed",
+      "hint": "Percent. 100 is the tuned default, 200 twice as quick, 50 half. Everything scales together, so the app keeps one tempo.",
+      "default": 100,
+      "min": 25,
+      "max": 300,
+      "step": 5
+    },
+    {
+      "key": "amplitude",
+      "type": "number",
+      "label": "Amplitude",
+      "hint": "Percent. How far things travel and how much they scale. 0 keeps every fade and removes every movement; 150 is noticeably theatrical and still readable.",
+      "default": 100,
+      "min": 0,
+      "max": 200,
+      "step": 10
+    },
+    {
+      "key": "views",
+      "type": "boolean",
+      "label": "Views",
+      "hint": "Switching conversation brings the message pane in from below, changing section inside a dialog brings its panel in, and the rail's active tab settles into place.",
+      "default": true
+    },
+    {
+      "key": "panels",
+      "type": "boolean",
+      "label": "Dialogs and menus",
+      "hint": "Dialogs, menus and the command palette arrive on a spring from the corner they belong to; the thread pane slides in from the edge.",
+      "default": true
+    },
+    {
+      "key": "hover",
+      "type": "boolean",
+      "label": "Hover",
+      "hint": "Colours ease instead of snapping, sidebar rows lean towards the pointer, avatars and reactions answer it, a message's hover actions fade in, and the sidebar's selection cross-fades from row to row.",
+      "default": true
+    },
+    {
+      "key": "press",
+      "type": "boolean",
+      "label": "Press",
+      "hint": "Buttons acknowledge being pressed. Short and shallow: this is meant to be felt rather than watched.",
+      "default": true
+    },
+    {
+      "key": "arrivals",
+      "type": "boolean",
+      "label": "Arrivals",
+      "hint": "Small things that appear in place pop into it instead of blinking: a reaction someone just added, the jump-to-unread pill, a tooltip.",
+      "default": true
+    }
+  ],
+  "betterslackApi": 1,
+  "slackVersion": "4.51",
+  "tags": [
+    "appearance",
+    "layout",
+    "tools"
+  ]
+}
