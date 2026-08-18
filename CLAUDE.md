@@ -27,15 +27,32 @@ stopped matching, a renderer that has quietly stopped answering. The loader
 prints the page's own errors to that terminal, so a mod that threw at boot says
 so there instead of hiding in a DevTools window you have to go and open.
 
+**And leave it running.** Somebody is using Slack while you work -- it is their
+messaging app before it is your test fixture. Stopping it is a last resort, not
+a step in a loop, and the mistake that makes it a loop is easy to fall into:
+Slack is launched with `--remote-debugging-pipe` and the loader holds the
+descriptors, so a CDP probe of your own cannot attach while it runs. One
+question, one stop, one restart -- do that per question and the app is down
+more than it is up, which is what happened over one long session here.
+
+So: write the code first, and let the questions pile up. Answer the ones that
+need no client at all -- unit tests, jsdom, reading Slack's own bundle, reading
+the source -- and batch what genuinely needs a live renderer into a single
+probe that asks everything at once. `pnpm shoot` is the shape to copy: eleven
+screenshots across seven themes and four views, one launch, because the runtime
+can be driven in place through `window.__betterslack` instead of being
+restarted between frames.
+
 Mods hot-reload into the running client -- edit anything under `mods/` and the
-loader broadcasts it, no restart. A mod asking for `api.slack.restart()` does
-not cost you the session either: the loader stops Slack, applies whatever
+loader broadcasts it, no restart at all. A mod asking for `api.slack.restart()`
+does not cost the session either: the loader stops Slack, applies whatever
 preferences were wanted, launches it again and rebuilds its CDP connection in
-place, so the same process and the same terminal carry on. Changing `src/` needs `pnpm build` and a
-restart, and `pnpm dev` (esbuild watch) makes that one keystroke. The one thing
-that does need it stopped is a CDP probe of your own: Slack is launched with
-`--remote-debugging-pipe` and the loader holds the descriptors, so a second
-process cannot attach. Stop it, probe, start it again.
+place, so the same process and the same terminal carry on. Only a change under
+`src/` needs `pnpm build` and a restart, and `pnpm dev` (esbuild watch) makes
+that one keystroke -- so batch those too rather than restarting per edit.
+
+`pnpm test:live` and `pnpm shoot` both take the client for themselves as well.
+Run them when the work is done, not while it is in progress.
 
 `pnpm test:live` boots the real Slack, asks the runtime what loaded and turns
 the answer into an exit code. Every failure that has mattered here -- a wedged
