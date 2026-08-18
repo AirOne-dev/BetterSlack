@@ -43,10 +43,19 @@ const OVERFLOW_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 2
 /**
  * The panel's own translator.
  *
- * Built once at module load, like a mod's: the language cannot change without
- * Slack reloading, which takes this with it.
+ * Built on first use and then kept, rather than at module load. The language
+ * cannot change without Slack reloading, so caching it is right -- but this
+ * module is evaluated the instant the runtime is injected, which at
+ * document-start is before `<html lang>` exists. Building it there read the
+ * language off a document that had none, and cached the wrong answer for the
+ * whole session even once the crash it also caused was fixed.
  */
-const t = createI18n().strings(PANEL_STRINGS);
+type Translate = ReturnType<ReturnType<typeof createI18n>['strings']>;
+let translator: Translate | null = null;
+const t: Translate = (key, vars) => {
+  translator ??= createI18n().strings(PANEL_STRINGS);
+  return translator(key, vars);
+};
 
 export class Panel {
   private host: HTMLElement | null = null;
@@ -71,6 +80,7 @@ export class Panel {
 
   open(): void {
     if (this.isOpen) return;
+    this.renderedTab = null;
     this.host = h('div', { id: HOST_ID, class: 'c-dialog betterslack-dialog', role: 'presentation' });
     document.body.append(this.host);
     document.addEventListener('keydown', this.onKeyDown, true);
@@ -157,11 +167,26 @@ export class Panel {
     }
   }
 
+  /**
+   * The tab the last render drew, so a render can tell a tab *change* from the
+   * several renders a single toggle causes.
+   *
+   * The panel rebuilds itself wholesale every time anything changes, so an
+   * animation on the body would otherwise fire on every click in the list --
+   * three or four times in a frame, which reads as a flicker rather than as a
+   * transition. Null until the first render, so opening the panel does not
+   * animate the body on top of the dialog's own arrival.
+   */
+  private renderedTab: TabId | null = null;
+
   private render(): void {
     const host = this.host;
     if (!host) return;
     this.closeMenu();
     host.replaceChildren();
+
+    const tabChanged = this.renderedTab !== null && this.renderedTab !== this.tab;
+    this.renderedTab = this.tab;
 
     const close = h('button', {
       class:
@@ -172,7 +197,12 @@ export class Panel {
     close.innerHTML = CLOSE_ICON;
     close.addEventListener('click', () => this.close());
 
-    const body = h('div', { class: 'c-dialog__body betterslack-body' });
+    const body = h('div', {
+      // The class is put on at build time rather than added afterwards: this is
+      // a brand new node every render, so the animation runs when it mounts and
+      // there is no reflow to force and nothing to clean up.
+      class: `c-dialog__body betterslack-body${tabChanged ? ' betterslack-body--enter' : ''}`,
+    });
     // The panel re-renders wholesale on every change, and one toggle triggers
     // several renders in a frame; the user's own scrolling is the only
     // reliable source of position.

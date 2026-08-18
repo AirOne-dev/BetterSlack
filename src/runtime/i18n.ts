@@ -49,7 +49,16 @@ export interface I18n {
 
 /** Slack's interface language, as a BCP 47 tag. */
 export function detectLocale(): string {
-  const declared = document.documentElement.getAttribute('lang');
+  /*
+   * `documentElement` can genuinely be null here. The runtime is injected at
+   * document-start, before Slack's own markup exists, and reading `lang` off
+   * nothing threw -- which took the whole bundle down at evaluation, so the
+   * document-start injection failed every single boot and the mods only ever
+   * arrived through the loader's re-injection fallback. That is the "runtime
+   * went missing after a navigation, re-injecting" line in the terminal, and
+   * it is also the half-built DOM the two renderer freezes came from.
+   */
+  const declared = document.documentElement?.getAttribute('lang');
   if (declared && declared.trim()) return declared.trim();
   return navigator.language || 'en';
 }

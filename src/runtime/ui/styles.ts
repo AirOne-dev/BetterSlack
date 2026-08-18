@@ -98,17 +98,65 @@ export const PANEL_CSS = CODE_CSS + `
 
 .betterslack-body { flex: 1; min-width: 0; padding-bottom: 20px; }
 
+/* How BetterSlack's own interface moves, inside the client.
+ *
+ * The same six tokens api.ui.kit declares for the documents a mod opens, with
+ * the same defaults, so the app and the components it hands out share one
+ * tempo. Declared on :root and not on the elements that read them, which is
+ * what lets a mod override them from html.<its-class> -- a rule on the element
+ * itself would outrank anything inherited and the dials would do nothing.
+ */
+:root {
+  --sm-motion-base: 200ms;
+  --sm-motion-ease: cubic-bezier(.2, .9, .25, 1);
+  --sm-motion-shift: 8px;
+}
+
+/* Reduced motion drops the travel and keeps the fade, which is what it asks
+ * for. Also on :root, and for the same reason: someone who installs a motion
+ * mod and tells it to animate anyway has said what they want, and that has to
+ * be able to win.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root { --sm-motion-shift: 0px; }
+}
+
+/* Switching tab.
+ *
+ * Stamped by panel.ts, and only when the tab really changed: the panel rebuilds
+ * itself on every change and one toggle causes several renders in a frame, so a
+ * rule that fired on mount alone would flicker instead of transition.
+ */
+@keyframes betterslack-tab-enter {
+  from { opacity: 0; transform: translateX(var(--sm-motion-shift)); }
+  to { opacity: 1; transform: none; }
+}
+.betterslack-body--enter {
+  animation: betterslack-tab-enter var(--sm-motion-base) var(--sm-motion-ease);
+}
+
 .betterslack-toolbar {
   position: sticky;
   top: 0;
   z-index: 1;
+  /* A column, not a row.
+   *
+   * The shelves and the search field shared a line, the field taking whatever
+   * the three shelf pills left over. On a narrow dialog that is a stub of an
+   * input pinned to the right edge with the tabs crowding it, and on a wide one
+   * it is a field stretched across half the dialog for no reason. Measured at
+   * 316px against 330px of shelves. Its own line is the same width every time,
+   * lines up with the rows underneath, and reads as what it is: a filter on the
+   * shelf above it.
+   */
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 0 14px;
   background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
 }
-.betterslack-shelves { display: flex; gap: 2px; }
+.betterslack-shelves { display: flex; gap: 2px; flex-wrap: wrap; }
 .betterslack-shelf {
   display: flex;
   align-items: center;
@@ -127,7 +175,9 @@ export const PANEL_CSS = CODE_CSS + `
 }
 
 .betterslack-search {
-  flex: 1;
+  /* Fills its line rather than fighting for the remainder of one. */
+  display: block;
+  width: 100%;
   min-width: 0;
   padding: 8px 12px;
   border-radius: 4px;
@@ -344,11 +394,14 @@ export const PANEL_CSS = CODE_CSS + `
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.55);
 }
 
+/* Aligned with everything else. These chips carried 20px of padding of their
+ * own on top of the dialog body's 24px, so the one row of the panel that is a
+ * filter started further right than the rows it filters. */
 .betterslack-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 0 20px 8px;
+  padding: 0 0 12px;
 }
 .betterslack-filter {
   padding: 3px 10px;
@@ -526,6 +579,33 @@ export const PANEL_CSS = CODE_CSS + `
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
 }
 .betterslack-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+
+/* Installing from a URL.
+ *
+ * This block had no rules of its own, which is not the same as having no
+ * design: the row stayed display:block, so the field fell back to the browser
+ * default of 174px -- a stub next to a full-height button -- and the whole
+ * thing sat flush against the toolbar above it with nothing to separate them.
+ */
+.betterslack-remote {
+  padding: 0 0 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.13);
+}
+.betterslack-remote__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.betterslack-remote__row .betterslack-search { flex: 1 1 auto; width: auto; }
+.betterslack-remote__row .c-button { flex: 0 0 auto; }
+.betterslack-status {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
 .betterslack-status { font-size: 13px; color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
 .betterslack-danger { color: var(--dt_color-content-imp, #c01343); }
 

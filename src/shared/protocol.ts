@@ -120,6 +120,49 @@ export interface ModRecord extends ModManifest {
   path: string;
 }
 
+/**
+ * A Slack desktop preference a mod is allowed to read and write.
+ *
+ * `restart` says the value is read when a window is created, so it cannot take
+ * effect in place; `defaults` says it must be mirrored into Slack's own
+ * defaults snapshot, which is what it falls back to.
+ */
+export interface SlackPref {
+  key: string;
+  type: 'boolean' | 'string' | 'number';
+  restart: boolean;
+  defaults: boolean;
+  note: string;
+}
+
+/**
+ * The preferences BetterSlack will touch, and nothing else.
+ *
+ * Slack's `root-state.json` is not a preferences file: it also holds the
+ * workspaces you are signed in to and how to reach them. A plugin runs
+ * unsandboxed in an authenticated Slack, so this is a named list rather than
+ * "the settings object" -- the loader refuses any other key by name, which is
+ * a better failure than a mod quietly writing somewhere it should not.
+ *
+ * Shared rather than duplicated: the loader enforces it, `api.slack.desktop`
+ * publishes it, and one list means a key cannot be offered and then refused.
+ */
+export const SLACK_PREFS: readonly SlackPref[] = [
+  { key: 'windowVibrancy', type: 'boolean', restart: true, defaults: true, note: 'A translucent window: macOS vibrancy, Windows 11 acrylic. Off by default.' },
+  { key: 'userTheme', type: 'string', restart: false, defaults: false, note: 'Slack\'s own light/dark choice.' },
+  { key: 'systemThemeSyncEnabled', type: 'boolean', restart: false, defaults: false, note: 'Follow the operating system\'s light/dark setting.' },
+  { key: 'launchOnStartup', type: 'boolean', restart: false, defaults: false, note: 'Start Slack when you sign in.' },
+  { key: 'runFromTray', type: 'boolean', restart: false, defaults: false, note: 'Keep Slack in the menu bar or tray when its window closes.' },
+  { key: 'hideOnStartup', type: 'boolean', restart: false, defaults: false, note: 'Start without showing the window.' },
+  { key: 'autoHideMenuBar', type: 'boolean', restart: false, defaults: false, note: 'Windows and Linux: hide the menu bar until Alt.' },
+  { key: 'useHwAcceleration', type: 'boolean', restart: true, defaults: true, note: 'GPU acceleration.' },
+  { key: 'shouldUseHighContrastColors', type: 'boolean', restart: false, defaults: false, note: 'Higher-contrast colours throughout.' },
+  { key: 'spellcheckerLanguage', type: 'string', restart: false, defaults: false, note: 'Language tag the spell checker uses.' },
+  { key: 'notificationMethod', type: 'string', restart: false, defaults: false, note: 'How desktop notifications are delivered.' },
+  { key: 'notificationPlayback', type: 'string', restart: false, defaults: false, note: 'Notification sound behaviour.' },
+  { key: 'zoomLevel', type: 'number', restart: true, defaults: false, note: 'Interface zoom, in Chromium steps.' },
+];
+
 export interface Settings {
   /**
    * Mod ids the user has installed. The repository is a catalogue, not a set of
@@ -143,6 +186,24 @@ export interface Settings {
    * not every start.
    */
   modFailures?: Record<string, number>;
+  /**
+   * Slack's own desktop preferences, as BetterSlack keeps them.
+   *
+   * Slack has this built in and switched off: on macOS its main process passes
+   * `vibrancy: "titlebar"` -- and drops the opaque `backgroundColor` -- when
+   * `settings.windowVibrancy` is true in its own root-state.json, and on
+   * Windows 11 the same flag turns on `backgroundMaterial: "acrylic"` with
+   * `transparent: true`. That file is plain JSON in Application Support, well
+   * outside the signed `app.asar`, so this changes a preference rather than
+   * patching anything.
+   *
+   * Only the keys a mod has actually set are in here, and only keys from the
+   * allow-list in `src/loader/slack-settings.ts` -- that file holds a great
+   * deal more than preferences, including the workspaces you are signed in to.
+   * The loader writes them through as they change and again before every
+   * launch, so "set" means "keep it this way" rather than "poke it once".
+   */
+  slackPrefs?: Record<string, unknown>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -152,6 +213,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customCss: '',
   hotReload: true,
   modFailures: {},
+  slackPrefs: {},
 };
 
 /** Requirements of `manifest` that are not currently enabled. */
@@ -162,6 +224,14 @@ export function missingRequirements(manifest: ModManifest, settings: Settings): 
 /** Requests the renderer sends to the loader. */
 export type Request =
   | { type: 'catalog' }
+  /**
+   * Stop Slack and start it again, keeping this loader.
+   *
+   * For the settings that are read when a window is created and can therefore
+   * never take effect in place. The renderer asking for this is about to be
+   * torn down with the page, so the answer goes out before anything happens.
+   */
+  | { type: 'slack.restart' }
   | { type: 'settings.get' }
   | { type: 'settings.set'; settings: Partial<Settings> }
   /**
@@ -265,4 +335,13 @@ export interface LoaderInfo {
   safeModeReason?: string;
   /** Where this copy lives, so the panel can say what it would update. */
   root: string;
+  /**
+   * Slack's desktop preferences as they were when this Slack was launched.
+   *
+   * Not the same as what is wanted now: several of them -- the window's
+   * material above all -- are read when a window is created, so the two
+   * disagree exactly when a restart would change something. That is the only
+   * honest moment to offer one.
+   */
+  slackPrefsAtLaunch: Record<string, unknown>;
 }

@@ -19,7 +19,7 @@
     "test:mod": "node scripts/test-mods.mjs",
     "check-structure": "node scripts/check-structure.mjs",
     "changed-mods": "node scripts/changed-mods.mjs",
-    "test:core": "node --test tests/download.test.mjs tests/requires.test.mjs tests/i18n.test.mjs tests/mod-files.test.mjs tests/mount.test.mjs tests/update.test.mjs",
+    "test:core": "node --test tests/download.test.mjs tests/requires.test.mjs tests/i18n.test.mjs tests/mod-files.test.mjs tests/mount.test.mjs tests/styles.test.mjs tests/update.test.mjs",
     "new-mod": "node scripts/new-mod.mjs",
     "release": "node scripts/release.mjs",
     "test:live": "node scripts/test-live.mjs",

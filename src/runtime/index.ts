@@ -7,8 +7,6 @@ import { ModManager, type BootPayload } from './manager.js';
 import { Bridge } from './rpc.js';
 import { installLauncher } from './ui/launcher.js';
 import { PANEL_CSS } from './ui/styles.js';
-import { PANEL_STRINGS } from './ui/strings.js';
-import { createI18n } from './i18n.js';
 import { Panel } from './ui/panel.js';
 
 declare global {
@@ -94,7 +92,6 @@ async function boot(): Promise<void> {
     delete window.__betterslack;
   }
 
-  const t = createI18n().strings(PANEL_STRINGS);
   const bridge = new Bridge();
   const manager = new ModManager(bridge, payload);
 

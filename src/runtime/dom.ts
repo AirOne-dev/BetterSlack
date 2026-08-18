@@ -30,7 +30,10 @@ export function waitFor<T extends Element = Element>(
       const found = root.querySelector<T>(selector);
       if (found) finish(found);
     });
-    observer.observe(root === document ? document.documentElement : (root as Node), {
+    // `?? document` for the same reason as in manager.ts: injected at
+    // document-start there is no documentElement to observe yet, and the
+    // Document node is what watches one appear.
+    observer.observe(root === document ? (document.documentElement ?? document) : (root as Node), {
       childList: true,
       subtree: true,
     });

@@ -252,6 +252,106 @@ api.slack.onProfilePane(({ element, userId }) => {
 });
 ```
 
+### `desktop` — Slack's own preferences, and `restart()`
+
+Slack keeps its desktop preferences in a plain JSON file — `root-state.json`,
+in Application Support — well outside the signed `app.asar`. The loader can read
+and write it; a mod asks through here.
+
+```js
+const { desktop } = api.slack;
+if (desktop.supported) {                       // false where there is no such file
+  desktop.get('windowVibrancy');               // what the file says now
+  desktop.launched('windowVibrancy');          // what this Slack was started with
+  desktop.needsRestart('windowVibrancy');      // true: read when a window opens
+
+  await desktop.set('windowVibrancy', true);   // and keep it there
+  await desktop.clear('windowVibrancy');       // stop keeping it
+  desktop.managed();                           // only what BetterSlack is keeping set
+}
+
+desktop.keys();  // every preference this API will touch, with a note on each
+```
+
+| | |
+| --- | --- |
+| `supported` | there is a Slack settings file to read — macOS and Windows |
+| `keys()` | `[{ key, type, restart, note }]`, the whole allow-list |
+| `get(key)` | the current value |
+| `launched(key)` | what the running Slack was started with |
+| `needsRestart(key)` | whether the value is only read when a window opens |
+| `set(key, value)` | write it, and keep writing it before every launch |
+| `clear(key)` | stop managing it and leave whatever is there |
+| `managed()` | the keys BetterSlack is keeping set |
+| `materials` | the window materials that can be worn, clearest first |
+| `setMaterial(name)` | put one on, now — no restart |
+
+**The material is live, and it is the one thing here that is.** Slack's main
+process runs an allow-listed set of `BrowserWindow` methods on behalf of the
+page, and its preload passes that through; `setVibrancy` is on the list. So a
+mod can change how frosted the window is without touching a preference or
+restarting anything:
+
+```js
+api.slack.desktop.materials;              // ['hud', 'fullscreen-ui', 'under-window', 'titlebar', 'none']
+await api.slack.desktop.setMaterial('hud');   // false where the bridge is absent
+```
+
+Measured against one wallpaper, with the page's own backgrounds cleared — the
+number is the first decile of the frame, which is the backdrop coming through,
+and the wallpaper alone reads 3:
+
+| | | |
+| --- | --- | --- |
+| `hud` | 22 | the clearest |
+| `fullscreen-ui` | 24 | |
+| `under-window` | 33 | |
+| `titlebar` | 43 | what Slack asks for, and the frostiest |
+| `none` | 29 | the material removed — still not clear |
+
+**It only shows on a window created translucent.** On an ordinary opaque window
+`setMaterial` succeeds and changes nothing: measured, 27.3 before and after. So
+`windowVibrancy` and its restart are still what makes any of this visible; the
+material only decides how much veil is left.
+
+**A named list, not the settings object.** That file also holds the workspaces
+you are signed in to and how to reach them, and a plugin runs unsandboxed in an
+authenticated Slack. The loader refuses any key outside
+[`SLACK_PREFS`](../src/shared/protocol.ts) by name, and refuses a value of the
+wrong type. The list is shared between the loader and this API, so a key cannot
+be offered here and rejected there.
+
+**`set` means "keep it this way".** The loader writes it through at once and
+again before every launch, because Slack owns that file too. `clear` hands the
+key back.
+
+**Some of them need a restart.** `windowVibrancy` is the reason this exists —
+Slack can draw a translucent window and ships with it off — and a window's
+material is fixed when the window opens. Compare `get` with `launched` to know
+whether a restart would actually change anything, then offer one:
+
+```js
+if (desktop.get(key) !== desktop.launched(key)) {
+  const yes = await api.ui.confirm({
+    title: 'Restart Slack?',
+    message: 'Slack needs to restart for this to take effect.',
+    confirm: 'Restart Slack',
+  });
+  if (yes) await api.slack.restart();
+}
+```
+
+### `restart()`
+
+Stops Slack and starts it again with the loader still driving, applying
+whatever `desktop.set` has been asked for. **It tears down the page that called
+it**, so do nothing afterwards, and never call it without asking first — the
+user is in the middle of a conversation.
+
+These were built for a translucency mod that has since been dropped; they are
+kept because they are the only way a mod can reach a Slack preference or ask for
+a restart, and because what they cost to find is written down beside them.
+
 ### `describeMessage(element)`, `userIdFromMessage(message)`, `currentChannelId()`
 
 ```js
@@ -463,6 +563,32 @@ client itself. Its palette is Slack's own dark one, fixed rather than read from
 the app's tokens — a tool that repaints itself with the theme being edited
 becomes unreadable exactly when the theme is wrong. Override the `--sm-*`
 variables if you want it to follow the theme instead.
+
+**The kit moves, and how much is yours to set.** Controls ease under the
+pointer, dip when pressed, and dialogs and popovers arrive on a spring. All of
+it is expressed as six tokens rather than as forty declarations, so a document
+can retune the whole system by redefining them — or stop it entirely by zeroing
+the last two, which are the only source of travel in there:
+
+```js
+// In a window your mod opened, next to api.ui.kitCss.
+child.document.documentElement.style.setProperty('--sm-motion-base', '90ms');
+child.document.documentElement.style.setProperty('--sm-motion-shift', '0px');
+```
+
+| | default | |
+| --- | --- | --- |
+| `--sm-motion-quick` | `120ms` | hover, focus, press |
+| `--sm-motion-base` | `200ms` | anything that arrives |
+| `--sm-motion-ease` | `cubic-bezier(.2,.9,.25,1)` | decelerating; almost everything |
+| `--sm-motion-spring` | `cubic-bezier(.22,1.4,.36,1)` | overshoots; only for arrivals |
+| `--sm-motion-shift` | `8px` | how far things travel |
+| `--sm-motion-pop` | `.06` | how much they scale |
+
+`prefers-reduced-motion` zeroes the last two on its own — fades stay, travel
+goes — because a window a mod opened has no other stylesheet to honour it. The
+[`motion`](../mods/plugins/motion) mod sets all six from its own dials, so kit
+components inside the client keep the same tempo as the rest of Slack.
 
 ### `kit.code(options)`
 

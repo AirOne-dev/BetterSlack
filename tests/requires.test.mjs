@@ -103,6 +103,42 @@ test('every dialog we build overrides Slack’s opacity: 0', () => {
   }
 });
 
+/*
+ * Switching tab in the panel.
+ *
+ * The panel rebuilds itself wholesale on every change, and one toggle causes
+ * several renders in a frame, so an animation that ran whenever the body
+ * mounted would flicker on every click in the list rather than mark the one
+ * thing it is for. The class therefore goes on only when the tab really
+ * changed -- which is a fact about panel.ts, not about the stylesheet, and is
+ * exactly the sort of thing that gets "simplified" away later.
+ */
+test('the panel animates a tab change, and only a tab change', () => {
+  const panel = read('src/runtime/ui/panel.ts');
+  assert.match(
+    panel,
+    /const tabChanged = this\.renderedTab !== null && this\.renderedTab !== this\.tab;/,
+    'a render knows whether the tab changed',
+  );
+  assert.match(panel, /tabChanged \? ' betterslack-body--enter' : ''/, 'and only then is the body stamped');
+  assert.match(panel, /this\.renderedTab = null;/, 'opening the panel starts a fresh sequence');
+
+  const css = read('src/runtime/ui/styles.ts');
+  assert.match(css, /\.betterslack-body--enter \{[\s\S]*?animation: betterslack-tab-enter/, 'the class animates');
+  assert.match(css, /:root \{[\s\S]*?--sm-motion-base: 200ms;/, 'with the design system tokens as defaults');
+
+  /*
+   * Both the defaults and the reduced-motion override are declared on :root
+   * rather than on the elements that read them. A rule on the element wins over
+   * anything inherited, so declaring them there would make a mod's dials --
+   * set on html.<its-class> -- silently do nothing, and would also overrule
+   * someone who installed a motion mod and told it to animate anyway.
+   */
+  const reduced = css.split('prefers-reduced-motion: reduce')[1].split('}')[0];
+  assert.match(reduced, /:root \{ --sm-motion-shift: 0px;/, 'reduced motion drops the travel, on :root');
+  assert.equal(css.includes('betterslack-tab-fade'), false, 'and does it by the token, not a second keyframe');
+});
+
 /**
  * PANEL_CSS is a template literal. A backticked `.c-dialog` inside one of its
  * comments closes the string, and the rest parses as JavaScript that builds

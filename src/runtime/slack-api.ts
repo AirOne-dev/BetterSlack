@@ -494,8 +494,110 @@ export interface SlackApi {
    * what a custom image or a data URI will be.
    */
   avatarUrl(url: string | null | undefined, size: number): string | null;
+  /**
+   * Slack's own translucent window, which it ships switched off.
+   *
+   * `set` takes effect the next time Slack starts: the window's material is
+   * chosen when the window is created, and nothing in the page can restart it.
+   * Tell the user so rather than leaving them to wonder why nothing happened.
+   */
+  desktop: {
+    /** False where there is no Slack settings file to read -- Linux, mostly. */
+    supported: boolean;
+    /** Every preference this API will touch, with a sentence about each. */
+    keys(): Array<{ key: string; type: string; restart: boolean; note: string }>;
+    /** What the file says now, whether BetterSlack set it or Slack did. */
+    get(key: string): unknown;
+    /** What the Slack now running was launched with. */
+    launched(key: string): unknown;
+    /** Whether a restart is needed for `key` to take effect. */
+    needsRestart(key: string): boolean;
+    /** Keep a preference at a value. Refuses anything off the list, by name. */
+    set(key: string, value: unknown): Promise<void>;
+    /** Stop keeping it, and leave whatever is there. */
+    clear(key: string): Promise<void>;
+    /** Only what BetterSlack is keeping set. */
+    managed(): Record<string, unknown>;
+
+    /**
+     * The translucent materials the window can wear, clearest first.
+     *
+     * macOS only, and live: unlike everything else here this is not a
+     * preference written for the next launch but a method called on the window
+     * that is already open.
+     */
+    materials: readonly string[];
+    /**
+     * Put one on, now. Answers false where the bridge does not exist.
+     *
+     * Slack's main process exposes a channel that runs an allow-listed set of
+     * BrowserWindow methods on behalf of the page, and its preload passes it
+     * through as `desktop.window.callBrowserWindowMethod`. `setVibrancy` is on
+     * that list. This is the only thing BetterSlack calls through it, and the
+     * names above are the only arguments it will pass.
+     */
+    setMaterial(name: string): Promise<boolean>;
+  };
+
+  /**
+   * Stop Slack and start it again, with the loader still driving.
+   *
+   * For settings that are read when a window is created, so they can never
+   * take effect in place. This tears down the page that called it: do nothing
+   * after it but let go, and never call it without asking first.
+   */
+  restart(): Promise<void>;
+
   /** Stable selectors, for mods that need to go beyond these helpers. */
   selectors: Readonly<Record<string, string>>;
+}
+
+/*
+ * The materials, measured rather than copied from Electron's documentation.
+ *
+ * Each was applied to a live window with the page's own backgrounds cleared and
+ * photographed against the same wallpaper; the number is the first decile of
+ * the frame, which is the level of the backdrop showing through. The wallpaper
+ * alone reads 3, so lower is clearer:
+ *
+ *   none            29     the material removed; the window is still not clear,
+ *                          because `transparent` is fixed when a window is made
+ *   hud             22     the clearest of them
+ *   fullscreen-ui   24
+ *   under-window    33
+ *   titlebar        43     what Slack asks for, and the frostiest
+ *
+ * Ordered clearest first, so a picker reads as a scale.
+ */
+export const WINDOW_MATERIALS = Object.freeze([
+  'hud', 'fullscreen-ui', 'under-window', 'titlebar', 'none',
+] as const);
+
+/**
+ * Ask Slack's own bridge to put a material on this window.
+ *
+ * Everything about this is deliberately narrow: one method out of the list
+ * Slack's main process is willing to run, and only the arguments above. A
+ * plugin runs unsandboxed, and `callBrowserWindowMethod` reaches a good deal
+ * more than vibrancy.
+ */
+async function setMaterial(name: string): Promise<boolean> {
+  if (!WINDOW_MATERIALS.includes(name as (typeof WINDOW_MATERIALS)[number])) {
+    throw new Error(`"${name}" is not a window material BetterSlack will set`);
+  }
+  const bridge = (window as unknown as {
+    desktop?: { window?: { getWindowId?: () => Promise<number>; callBrowserWindowMethod?: (...args: unknown[]) => Promise<unknown> } };
+  }).desktop?.window;
+  if (typeof bridge?.getWindowId !== 'function' || typeof bridge?.callBrowserWindowMethod !== 'function') {
+    return false;
+  }
+  try {
+    const id = await bridge.getWindowId();
+    await bridge.callBrowserWindowMethod(id, 'setVibrancy', name === 'none' ? null : name);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function createSlackApi(pluginId: string): SlackApi {
@@ -581,6 +683,26 @@ export function createSlackApi(pluginId: string): SlackApi {
       const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
       return match ? match[1]!.toUpperCase() : null;
     },
+    /*
+     * Filled in by `createPluginApi`, which is where the settings live. Left
+     * inert here so `createSlackApi` still satisfies the type on its own, and
+     * so a caller that somehow reaches this copy gets an honest "no" rather
+     * than a promise nobody keeps.
+     */
+    desktop: {
+      supported: false,
+      keys: () => [],
+      get: () => undefined,
+      launched: () => undefined,
+      needsRestart: () => false,
+      set: async () => undefined,
+      clear: async () => undefined,
+      managed: () => ({}),
+      materials: WINDOW_MATERIALS,
+      setMaterial,
+    },
+    restart: async () => undefined,
+
     selectors: Object.freeze({
       message: MESSAGE,
       messageActions: ACTIONS_GROUP,

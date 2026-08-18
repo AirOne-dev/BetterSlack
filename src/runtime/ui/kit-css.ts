@@ -39,6 +39,83 @@ export const KIT_CSS = `/* The design system, as a stylesheet.
   --sm-focus: #1264a3;
   --sm-font: Lato, Slack-Lato, appleLogo, -apple-system, sans-serif;
   --sm-mono: Monaco, Menlo, Consolas, monospace;
+
+  /* How the kit moves.
+   *
+   * Values, not rules, so the whole design system has one tempo and anything
+   * that wants to change it changes six numbers rather than forty
+   * declarations. A mod with an opinion -- the Motion mod is the one this was
+   * built for -- redefines these on the root of whatever document the kit is
+   * in, and every control below follows without knowing it exists.
+   *
+   * Set to 0 and the kit is still: sm-motion-shift and sm-motion-pop are the
+   * only sources of travel in here.
+   */
+  --sm-motion-quick: 120ms;
+  --sm-motion-base: 200ms;
+  --sm-motion-ease: cubic-bezier(.2, .9, .25, 1);
+  --sm-motion-spring: cubic-bezier(.22, 1.4, .36, 1);
+  --sm-motion-shift: 8px;
+  --sm-motion-pop: .06;
+}
+
+/* ================================================================== motion */
+
+/* A design system with no transitions is a design system that is finished
+ * everywhere except in time. Every rule here is additive -- it sets transition,
+ * animation or transform and nothing else -- so a document that zeroes the
+ * tokens above gets exactly the layout it had before. */
+
+.sm-btn,
+.sm-icon-btn,
+.sm-input,
+.sm-select,
+.sm-swatch,
+.sm-segmented__item,
+.sm-rail__item {
+  transition:
+    background-color var(--sm-motion-quick) var(--sm-motion-ease),
+    border-color var(--sm-motion-quick) var(--sm-motion-ease),
+    color var(--sm-motion-quick) var(--sm-motion-ease),
+    box-shadow var(--sm-motion-quick) var(--sm-motion-ease),
+    transform var(--sm-motion-quick) var(--sm-motion-ease);
+}
+
+.sm-swatch:hover {
+  transform: translateY(calc(var(--sm-motion-shift) * -.35))
+             scale(calc(1 + var(--sm-motion-pop) * .8));
+}
+
+.sm-btn:active,
+.sm-icon-btn:active,
+.sm-swatch:active,
+.sm-segmented__item:active {
+  transform: scale(calc(1 - var(--sm-motion-pop)));
+  transition-duration: 60ms;
+}
+
+@keyframes sm-motion-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--sm-motion-shift) * .8))
+               scale(calc(1 - var(--sm-motion-pop)));
+  }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes sm-motion-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sm-dialog, .sm-popover { animation: sm-motion-arrive var(--sm-motion-base) var(--sm-motion-spring); }
+.sm-scrim { animation: sm-motion-fade var(--sm-motion-base) var(--sm-motion-ease); }
+
+/* The kit is used in windows a mod opened, which have no other stylesheet and
+ * so no other chance to honour this. Fades stay; travel goes -- which is what
+ * reduced motion asks for, rather than stillness. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --sm-motion-shift: 0px; --sm-motion-pop: 0; }
 }
 
 /* ================================================================ controls */

@@ -57,6 +57,8 @@ export async function readSettings(): Promise<Settings> {
       hotReload: typeof parsed.hotReload === 'boolean' ? parsed.hotReload : true,
       modFailures:
         parsed.modFailures && typeof parsed.modFailures === 'object' ? parsed.modFailures : {},
+      slackPrefs:
+        parsed.slackPrefs && typeof parsed.slackPrefs === 'object' ? parsed.slackPrefs : {},
     };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {

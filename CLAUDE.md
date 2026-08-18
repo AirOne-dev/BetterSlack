@@ -19,6 +19,24 @@ tests/         Shared test harness (jsdom + a recording fake api)
 
 ## Commands
 
+**Keep `pnpm start` running the whole time you are working.** Not as a final
+check -- from the first minute, in the background, for the length of the
+session. Everything this project gets wrong is invisible until it is on screen:
+an animation that reads as a blink, a button that never mounted, a selector that
+stopped matching, a renderer that has quietly stopped answering. The loader
+prints the page's own errors to that terminal, so a mod that threw at boot says
+so there instead of hiding in a DevTools window you have to go and open.
+
+Mods hot-reload into the running client -- edit anything under `mods/` and the
+loader broadcasts it, no restart. A mod asking for `api.slack.restart()` does
+not cost you the session either: the loader stops Slack, applies whatever
+preferences were wanted, launches it again and rebuilds its CDP connection in
+place, so the same process and the same terminal carry on. Changing `src/` needs `pnpm build` and a
+restart, and `pnpm dev` (esbuild watch) makes that one keystroke. The one thing
+that does need it stopped is a CDP probe of your own: Slack is launched with
+`--remote-debugging-pipe` and the loader holds the descriptors, so a second
+process cannot attach. Stop it, probe, start it again.
+
 `pnpm test:live` boots the real Slack, asks the runtime what loaded and turns
 the answer into an exit code. Every failure that has mattered here -- a wedged
 renderer, two runtimes in one document, a mod that threw on start -- was
@@ -77,6 +95,44 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   `{import('../../../src/runtime/api.js')}`, which is not an import.
 - **No debugging port.** The loader uses `--remote-debugging-pipe` (fds 3 and 4),
   so Slack listens on no TCP port. Do not add a flag that reopens one.
+- **`app.asar` cannot be patched, but it can be read** -- and reading it is how
+  the one genuinely new capability in this project was found. Slack's main
+  process builds its window options from its own settings:
+  `windowVibrancy` true gives macOS `vibrancy: "titlebar"` and Windows 11
+  `backgroundMaterial: "acrylic"` with `transparent: true`, and in both cases
+  drops the opaque `backgroundColor` behind the page. The flag lives in
+  `~/Library/Application Support/Slack/storage/root-state.json`, plain JSON
+  outside the archive, so switching it on is a preference and not a patch.
+  Measured: with the page's own backgrounds cleared, the window's darkest pixel
+  goes 27 -> 43 over an identical backdrop, and an opaque window with no
+  `backgroundColor` would have been white.
+  **On macOS the ceiling is the material, not the CSS.** `vibrancy: "titlebar"`
+  is an NSVisualEffectView: frosted by construction, with a blur and a grey of
+  its own, and `transparent: true` is set only alongside Windows 11 acrylic --
+  never on macOS. A fully clear window is therefore not reachable from here
+  however transparent the page is, and it was worth proving rather than
+  assuming: with every dial at zero, no element covering more than 20% of the
+  window paints anything at all, and the only other filtered node is Slack's
+  split-view handle at `opacity: 0`. What is left is the operating system.
+  **But which material is a choice, and it is reachable.** Slack's main process
+  registers `EXEC_BROWSERWINDOW_METHOD`, which runs an allow-listed set of
+  `BrowserWindow` methods for the page -- `setVibrancy`, `setOpacity`,
+  `setBackgroundColor`, `setBackgroundMaterial` are all on it -- and the preload
+  exposes it as `desktop.window.callBrowserWindowMethod`. Measured first deciles
+  over one wallpaper (which alone reads 3): `hud` 22, `fullscreen-ui` 24,
+  `none` 29, `under-window` 33, `titlebar` 43. Slack asks for the frostiest of
+  them. `api.slack.desktop.setMaterial` is the narrow wrapper: that one method,
+  those five names. No mod ships using it today -- the one it was built for was
+  dropped -- but the measurements are why it stays. On a window created opaque it succeeds and does nothing
+  (27.3 before and after), so the preference and its restart are still what make
+  any of it visible. It must be written *before* Slack
+  starts, and re-written at every launch since Slack rewrites that file itself.
+  `src/loader/slack-settings.ts` owns the file, keeps one backup of the original
+  before its first write, and answers only for the keys in `SLACK_PREFS` --
+  `api.slack.desktop` publishes that same list, so a key cannot be offered and
+  then refused. Anything read when a window is created needs
+  `api.slack.restart()`; compare `desktop.get(key)` with `desktop.launched(key)`
+  to know whether a restart would change anything before offering one.
 - **`app.asar` cannot be patched.** `EnableEmbeddedAsarIntegrityValidation` and
   `OnlyLoadAppFromAsar` are on, with the hash in a code-signed `Info.plist`.
 - **Slack's CDN has no CORS headers.** `fetch('https://ca.slack-edge.com/…')`
@@ -266,6 +322,34 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   Slack's screen-reader label, and never again, so it kept saying whatever was
   true when the strip happened to be built. A green dot next to "Absent(e)" is
   worse than either being wrong alone.
+- **Timings for anything that animates a view change**, measured from the click
+  on a channel in the sidebar: `navigation.currententrychange` fires at **9ms**
+  (same tick as `history.pushState`), the conversation column starts repainting
+  at **50ms** and stops at **291ms**, and a 250ms poll comparing
+  `location.pathname` only notices at **286ms** -- after the repaint has
+  finished, which is why a poll-triggered entrance reads as a blink rather than
+  as a transition. Also: **Slack blocks the main thread for ~100ms after the
+  click**, so no frame at all is painted between the two, and the first frame
+  anyone sees is the new content at the animation's time zero. An entrance
+  therefore has to start from opacity 0; anything that starts at 1 and dips
+  paints the new content solid first and flickers. `mods/plugins/motion` is
+  where all of this is written down next to the code it decides.
+- **Slack's Preferences is a tabbed dialog whose panel really is remounted.**
+  `.p-prefs_dialog__modal` is the ReactModal content, `.p-prefs_dialog__menu` the
+  vertical rail, and clicking a section adds a fresh `<section>` into
+  `.p-prefs_dialog__panel` -- so an `animation` on the panel's child fires on
+  exactly the right frame with no trigger at all. Scope such a rule inside
+  `.ReactModal__Content`: `.c-tabs__tab_panel--active` is also what the *main*
+  workspace area wears, and a rule matching both animates the whole conversation
+  column. The Mods panel is the opposite case and needs JavaScript -- it rebuilds
+  itself wholesale on every change, so it stamps its body only when the tab
+  really changed.
+- **`:host-context()` does not work.** Chromium has dropped it, so the obvious
+  way for a rule inside a shadow root to follow a class on `<html>` silently
+  matches nothing -- the stylesheet is inert and there is no error. Custom
+  properties *do* inherit through a shadow boundary (measured: a property set on
+  `<html>` read back inside one), so the way to switch shadow-root rules from
+  outside is to define or not define a property, not to write a selector.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
@@ -298,6 +382,18 @@ Shape of it:
   `en` and `fr`, and `tests/i18n.test.mjs` fails a mod whose tables do not cover
   the same keys.
 - `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
+
+**A plugin writes CSS through two nodes, not one.** `api.css` replaces the
+plugin's stylesheet whole -- that is the contract, and it is right, since a mod
+that recomputes its CSS on a settings change would otherwise stack copies of it
+for ever. `helpers.toggle({ whenOn })`, `helpers.badge` and `helpers.tooltip`
+write CSS too, and they used to write it through that same node, so a mod using
+both kept only whichever went last. Focus Mode shipped that way: it put its
+class on `<html>`, drew its indicator, and folded nothing away, because its
+indicator stylesheet had overwritten the rules that hide the sidebar. Its tests
+passed the whole time -- they asserted on every call the mod made, and the bug
+is that only one of those calls survives. The helpers now own
+`plugin:<id>:helpers`, covered by `tests/styles.test.mjs`.
 
 When two mods want the same block, it belongs in the API, and the mods get
 refactored onto it in the same change. Five things were lifted that way after an
@@ -420,6 +516,36 @@ request timed out after fifteen seconds while their buttons sat there looking
 fine. `boot()` now claims `window.__BETTERSLACK_BOOTING__` synchronously. Found
 through a theme gallery that came up blank, with six answers delivered by the
 loader and six timeouts in the page.
+
+**Nothing may touch the document while a module is being evaluated.** The
+runtime is injected at document-start, before Slack's markup exists, so
+`document.documentElement` is genuinely `null` there. `ui/panel.ts` built its
+translator at module scope, `detectLocale` read `lang` off that null, and the
+*whole bundle* threw at evaluation -- so the document-start injection failed and
+the mods arrived through the loader's re-injection fallback instead, against a
+DOM Slack had already half built, which is precisely where both renderer
+freezes came from. It was silent for months because the fallback works.
+
+There were two of them, and the second only became reachable once the first was
+fixed: `waitForClient` and `dom.waitFor` both called
+`observer.observe(document.documentElement, …)`, which throws on `null` for the
+same reason. Both now observe `document.documentElement ?? document` -- the
+Document node is observable and sees `<html>` itself arrive.
+
+Build translators, read attributes and observe elements lazily or defensively;
+assume nothing on the page exists yet.
+
+**`runtime went missing after a navigation, re-injecting` is not that bug, and
+is not a bug at all.** It was tempting to blame it for the above; it survived
+the fix, which settled it. `boot()` is async and only assigns
+`window.__betterslack` on its last line, after themes are in and
+`waitForClient` has returned -- seconds later. Slack's load event fires long
+before that, the loader looks for the marker, finds nothing and says so. The
+re-injection it then performs is a no-op, because `boot()` claims
+`window.__BETTERSLACK_BOOTING__` synchronously on the way in. So the line means
+"has not finished starting", not "is not there". What tells you a boot really
+failed is a `page error` line, which the loader forwards for exactly that
+reason.
 
 **`store.ts` resolves `~/.betterslack` once, when it is imported.** A test that
 wants a scratch home has to set `BETTERSLACK_HOME` *before* importing it —

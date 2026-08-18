@@ -39,7 +39,14 @@ function waitForClient(): Promise<void> {
     const observer = new MutationObserver(() => {
       if (document.querySelector(CLIENT_SELECTOR)) finish();
     });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    /*
+     * `document` and not `document.documentElement`: at document-start, which
+     * is when the runtime is injected on a fresh navigation, there is no
+     * documentElement yet and `observe(null)` throws -- taking boot down and
+     * leaving the loader's re-injection to do the work every time. Observing
+     * the Document node sees `<html>` itself arrive.
+     */
+    observer.observe(document.documentElement ?? document, { childList: true, subtree: true });
     const timer = setTimeout(() => {
       console.warn('[betterslack] Slack’s client never appeared; starting plugins anyway');
       finish();
@@ -402,6 +409,18 @@ export class ModManager {
       getSettings: () => this.settings,
       saveModSettings: (id, values) =>
         this.patchSettings({ modSettings: { ...this.settings.modSettings, [id]: values } }),
+      // Stored here; the loader writes it into Slack's own settings before the
+      // next launch, because the window's material is chosen when the window
+      // is created and there is no way to change it afterwards.
+      setSlackPrefs: (values) => this.patchSettings({ slackPrefs: values }),
+      slackPrefsAtLaunch: this.boot.info.slackPrefsAtLaunch ?? {},
+      // What the file says now is what the loader last wrote plus whatever
+      // Slack had; the settings BetterSlack keeps are the part it owns, and
+      // the launch snapshot is the rest.
+      slackPrefsNow: () => ({ ...this.boot.info.slackPrefsAtLaunch, ...this.settings.slackPrefs }),
+      restartSlack: async () => {
+        await this.bridge.request({ type: 'slack.restart' });
+      },
       listCommands: () => [...this.commands.values()],
       listMods: () => this.mods.map((mod) => ({
         id: mod.id,

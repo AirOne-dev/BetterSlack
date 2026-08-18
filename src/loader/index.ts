@@ -13,6 +13,7 @@ import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo 
 import { Catalog, parseManifest } from './catalog.js';
 import { downloadFile } from './download.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack } from './slack.js';
+import { applyDesktopPrefs, checkPref, prefsSupported, readDesktopPrefs } from './slack-settings.js';
 import { applyUpdate, checkForUpdate } from './update.js';
 import {
   fetchModFiles, findModUpdates, folderFor, inspectRemote, manifestFrom,
@@ -124,11 +125,20 @@ class Loader {
   private update: UpdateStatus | undefined;
 
   constructor(
-    private readonly connection: CdpConnection,
+    /*
+     * Not readonly: restarting Slack replaces it. The alternative -- handing
+     * over to a detached copy of the loader, as an update does -- works, but
+     * it takes the terminal with it, and a restart offered from a settings
+     * dialog should not cost you the log you are watching.
+     */
+    private connection: CdpConnection,
     private readonly slackPath: string,
     private readonly verbose: boolean,
     private readonly safeRequested: boolean = false,
     private readonly healthcheck: boolean = false,
+    private slackPrefsAtLaunch: Record<string, unknown> = {},
+    /** How to get a fresh Slack and a connection to it. Set by main(). */
+    private relaunch: (() => Promise<CdpConnection>) | null = null,
   ) {
     this.catalog = new Catalog(BUILTIN_MODS_ROOT, USER_MODS_ROOT);
   }
@@ -148,6 +158,10 @@ class Loader {
       transport: 'CDP pipe (no network port)',
       root: REPO_ROOT,
       safeMode: this.safeRequested,
+      // What the Slack now running was launched with, read by main() after it
+      // had written whatever was wanted. Not the same as what is wanted now:
+      // the two disagree exactly when a restart would change something.
+      slackPrefsAtLaunch: this.slackPrefsAtLaunch,
     };
 
     /*
@@ -211,6 +225,10 @@ class Loader {
   /** Keep every Slack client target injected, including ones opened later. */
   private async attachLoop(): Promise<void> {
     for (;;) {
+      if (this.restarting) {
+        await sleep(300);
+        continue;
+      }
       if (this.connection.isClosed) {
         console.log('[betterslack] Slack closed, exiting');
         return;
@@ -219,6 +237,7 @@ class Loader {
       try {
         targets = await this.connection.targets();
       } catch {
+        if (this.restarting) continue;
         console.log('[betterslack] Slack closed, exiting');
         return;
       }
@@ -234,6 +253,86 @@ class Loader {
         await this.attachAuxiliary(target);
       }
       await sleep(1500);
+    }
+  }
+
+  /**
+   * Stop Slack, start it again, and carry on driving it.
+   *
+   * For the preferences Slack reads when it creates a window -- the translucent
+   * one above all -- which can never take effect in place. Everything that
+   * makes this loader itself keeps running: the catalogue watcher, the
+   * terminal, the settings. Only the connection and the sessions are rebuilt,
+   * because they belong to a process that no longer exists.
+   *
+   * `restarting` gates the attach loop rather than stopping it: the loop reads
+   * `this.connection` every round, so it picks the new one up on its own once
+   * this returns, and a round that runs mid-swap would otherwise attach to a
+   * closed connection and log a failure that means nothing.
+   */
+  private restarting = false;
+
+  private async restartSlack(): Promise<void> {
+    if (this.restarting || !this.relaunch) return;
+    this.restarting = true;
+    console.log('[betterslack] restarting Slack');
+    try {
+      for (const { session } of this.attachments.values()) session.close();
+      for (const session of this.auxiliary.values()) session.close();
+      this.attachments.clear();
+      this.auxiliary.clear();
+      this.connection.close();
+
+      await stopSlack();
+      // Whatever a mod asked to be kept set, written before the window that
+      // will read it exists. This is the entire point of restarting.
+      if (prefsSupported()) {
+        const settings = await readSettings();
+        await applyDesktopPrefs(settings.slackPrefs ?? {});
+      }
+      this.connection = await this.relaunch();
+      this.slackPrefsAtLaunch = await readDesktopPrefs();
+      this.info.slackPrefsAtLaunch = this.slackPrefsAtLaunch;
+      console.log('[betterslack] Slack is back');
+    } catch (err) {
+      console.error(`[betterslack] could not restart Slack: ${(err as Error).message}`);
+    } finally {
+      this.restarting = false;
+    }
+  }
+
+  /**
+   * Write a PNG of one renderer, for the screenshots the site is built from.
+   *
+   * The viewport is forced to a fixed size first. Without it every picture
+   * depends on how wide whoever took it happened to have Slack open, and the
+   * catalogue ends up with thumbnails that do not match each other -- which is
+   * exactly what the first attempt at refreshing them produced.
+   */
+  private async shoot(session: CdpSession, name: string): Promise<void> {
+    const dir = process.env.BETTERSLACK_SHOT;
+    if (!dir) return;
+    const [width, height] = (process.env.BETTERSLACK_SHOT_SIZE ?? '1800x1128')
+      .split('x').map((n) => Number(n) || 0);
+    const delay = Number(process.env.BETTERSLACK_SHOT_DELAY ?? 6000);
+
+    await sleep(delay);
+    try {
+      if (width && height) {
+        await session.send('Emulation.setDeviceMetricsOverride', {
+          width, height, deviceScaleFactor: 2, mobile: false,
+        });
+        // Slack reflows, and the frame after a reflow is not the one to keep.
+        await sleep(1500);
+      }
+      const shot = await session.send<{ data: string }>('Page.captureScreenshot', { format: 'png' });
+      const file = path.join(dir, `${name.replace(/[^\w-]+/g, '-').slice(0, 60)}.png`);
+      await fs.writeFile(file, Buffer.from(shot.data, 'base64'));
+      console.log(`[betterslack] wrote ${file}`);
+    } catch (err) {
+      console.warn(`[betterslack] could not photograph ${name}: ${(err as Error).message}`);
+    } finally {
+      await session.send('Emulation.clearDeviceMetricsOverride').catch(() => undefined);
     }
   }
 
@@ -300,6 +399,7 @@ class Loader {
     console.log(`[betterslack] injected into ${target.title || target.url}`);
 
     if (this.healthcheck) void this.reportHealth(session);
+    if (process.env.BETTERSLACK_SHOT) void this.shoot(session, process.env.BETTERSLACK_SHOT_NAME ?? 'client');
     else this.watch(session);
 
     if (process.env.BETTERSLACK_DIAGNOSE === '1') {
@@ -493,21 +593,10 @@ class Loader {
      * another Space or another display -- screencapture takes a picture of the
      * desktop, not of the window, so it is no help at all. CDP renders the page
      * itself. BETTERSLACK_SHOT=<dir> is how the theme builder's own interface was
-     * looked at while it was being built.
+     * looked at while it was being built, and how the site's screenshots are
+     * taken -- see shoot(), which the client uses too.
      */
-    if (process.env.BETTERSLACK_SHOT) {
-      void (async () => {
-        await sleep(4000);
-        const shot = await session
-          .send<{ data: string }>('Page.captureScreenshot', { format: 'png' })
-          .catch(() => null);
-        if (!shot) return;
-        const name = (target.title || 'window').replace(/[^\w-]+/g, '-').slice(0, 60);
-        const file = path.join(process.env.BETTERSLACK_SHOT!, `${name}.png`);
-        await fs.writeFile(file, Buffer.from(shot.data, 'base64'));
-        console.log(`[betterslack] wrote ${file}`);
-      })();
-    }
+    if (process.env.BETTERSLACK_SHOT) void this.shoot(session, target.title || 'window');
     const paint = () => void this.paintAuxiliary(session);
     session.on('Page.loadEventFired', paint);
     session.on('Page.frameStoppedLoading', paint);
@@ -667,6 +756,19 @@ class Loader {
 
       case 'settings.set': {
         const saved = await mergeSettings(request.settings);
+        /*
+         * Written through immediately as well as before the next launch. Most
+         * of these do nothing until Slack restarts, but writing now means the
+         * file already agrees with the panel -- and a preference that a mod
+         * says it set, and that is not in the file, is a preference somebody
+         * will spend an afternoon on.
+         */
+        if (request.settings.slackPrefs && prefsSupported()) {
+          const result = await applyDesktopPrefs(saved.slackPrefs ?? {});
+          if (result === 'failed') {
+            console.warn('[betterslack] could not write Slack\'s settings file');
+          }
+        }
         // The document-start script embeds a snapshot of the settings; without
         // this, the next reload would come back with whatever was enabled when
         // the loader first attached.
@@ -733,6 +835,16 @@ class Loader {
           });
         }, 400);
         return result;
+      }
+
+      case 'slack.restart': {
+        /*
+         * Answered before anything happens: the renderer that asked is about
+         * to go away with the window it is in, and a reply that arrives after
+         * that is a reply nobody hears.
+         */
+        setTimeout(() => void this.restartSlack(), 400);
+        return { ok: true };
       }
 
       case 'backup.export':
@@ -884,7 +996,43 @@ async function main(): Promise<void> {
   // from ever needing a debugging port.
   console.log('[betterslack] starting Slack...');
   await stopSlack();
-  const child = launchSlack({ slackPath });
+  /*
+   * Before Slack starts, never after: the window's material is chosen when the
+   * window is created, and Slack rewrites its own settings file at other times
+   * -- including on quit -- so the wanted state is re-applied at every launch
+   * rather than written once and hoped for.
+   */
+  if (prefsSupported()) {
+    const settings = await readSettings();
+    const result = await applyDesktopPrefs(settings.slackPrefs ?? {});
+    if (result === 'written') {
+      console.log(
+        `[betterslack] wrote Slack's own preferences: ${Object.keys(settings.slackPrefs ?? {}).join(', ')}`,
+      );
+    } else if (result === 'failed') {
+      console.warn('[betterslack] could not write Slack\'s settings file; it is left as it was');
+    }
+  }
+  /*
+   * Read *after* writing, and this is the point of it: these are the values
+   * the window about to open is created with, whatever anyone wants later. A
+   * mod compares the two to know whether offering a restart would change
+   * anything.
+   */
+  const slackPrefsAtLaunch = await readDesktopPrefs();
+
+  /*
+   * One way to start Slack, used for the first launch and for every restart a
+   * mod asks for. The child is kept here so the shutdown handler and the next
+   * launch both know which process they are talking about.
+   */
+  let child = launchSlack({ slackPath });
+  const relaunch = async (): Promise<CdpConnection> => {
+    child = launchSlack({ slackPath });
+    const next = CdpConnection.fromChild(child);
+    await waitForClientTarget(next, 90_000);
+    return next;
+  };
 
   let connection: CdpConnection;
   try {
@@ -896,7 +1044,9 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const loader = new Loader(connection, slackPath, args.verbose, args.safe, args.healthcheck);
+  const loader = new Loader(
+    connection, slackPath, args.verbose, args.safe, args.healthcheck, slackPrefsAtLaunch, relaunch,
+  );
   const shutdown = () => {
     console.log('\n[betterslack] detaching (Slack keeps running; mods stay until you reload it)');
     loader.dispose();

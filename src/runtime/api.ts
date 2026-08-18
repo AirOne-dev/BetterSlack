@@ -4,7 +4,7 @@
 // the plugin is disabled, so toggling a plugin off really does leave the DOM as
 // it was found.
 
-import type { ModFiles, ModRecord, Settings } from '../shared/protocol.js';
+import { SLACK_PREFS, type ModFiles, type ModRecord, type Settings } from '../shared/protocol.js';
 import { h, keepMounted, onEach, onShortcut, waitFor, type Cleanup } from './dom.js';
 import { collectCleanups } from './plugins.js';
 import { createHelpers, type Helpers } from './helpers.js';
@@ -289,6 +289,12 @@ export interface ApiContext {
   files: ModFiles;
   styles: StyleManager;
   getSettings: () => Settings;
+  setSlackPrefs: (values: Record<string, unknown>) => Promise<void>;
+  restartSlack: () => Promise<void>;
+  /** What Slack was launched with, from the boot payload. */
+  slackPrefsAtLaunch: Record<string, unknown>;
+  /** What is in Slack's file now, refreshed when the loader answers. */
+  slackPrefsNow: () => Record<string, unknown>;
   saveModSettings: (id: string, values: Record<string, unknown>) => Promise<void>;
   /** Tell a plugin its settings changed, for the ones that would rather not reload. */
   onSettingsChanged: (id: string, handler: (values: Record<string, unknown>) => void) => Cleanup;
@@ -349,8 +355,39 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
 
     slack: (() => {
       const slack = createSlackApi(record.id);
+      /*
+       * Slack's own desktop preferences.
+       *
+       * A named list and not the settings object: that file also holds the
+       * workspaces you are signed in to, and a plugin runs unsandboxed in an
+       * authenticated Slack. `SLACK_PREFS` is the same list the loader
+       * enforces -- it refuses anything else by name, so a mod cannot reach
+       * past it even if this copy were edited.
+       */
+      const desktop = {
+        supported: /Mac OS X|Windows NT/.test(navigator.userAgent),
+        keys: () => SLACK_PREFS.map((pref) => ({ ...pref })),
+        get: (key: string) => ctx.slackPrefsNow()[key],
+        launched: (key: string) => ctx.slackPrefsAtLaunch[key],
+        needsRestart: (key: string) =>
+          SLACK_PREFS.find((pref) => pref.key === key)?.restart === true,
+        set: (key: string, value: unknown) =>
+          ctx.setSlackPrefs({ ...ctx.getSettings().slackPrefs, [key]: value }),
+        clear: (key: string) => {
+          const next = { ...ctx.getSettings().slackPrefs };
+          delete next[key];
+          return ctx.setSlackPrefs(next);
+        },
+        managed: () => ({ ...ctx.getSettings().slackPrefs }),
+        // Live, and not through the loader: this one is a method on the window
+        // that is already open, reached through Slack's own preload bridge.
+        materials: slack.desktop.materials,
+        setMaterial: slack.desktop.setMaterial,
+      };
       return {
         ...slack,
+        desktop,
+        restart: () => ctx.restartSlack(),
         // Both install observers; tie them to the plugin lifecycle so disabling
         // the plugin really does remove its buttons.
         addMessageAction: track(slack.addMessageAction.bind(slack)),
@@ -364,7 +401,27 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
 
     helpers: createHelpers({
       pluginId: record.id,
-      css: (text) => api.css(text),
+      /*
+       * A style node of the helpers' own, not the plugin's.
+       *
+       * `api.css` replaces the plugin's stylesheet whole, which is the
+       * documented contract and the right one -- a mod that recomputes its CSS
+       * on a settings change would otherwise stack copies of it forever. But
+       * `helpers.toggle({ whenOn })`, `helpers.badge` and `helpers.tooltip`
+       * all wrote through that same node, so a mod that used one of them *and*
+       * called `api.css` silently kept only whichever went last. Focus Mode
+       * did exactly that and shipped: it put its class on <html>, drew its
+       * indicator, and folded nothing away, because its own indicator
+       * stylesheet had overwritten the rules that hide the sidebar. Its tests
+       * passed throughout -- they asserted on every call made, and the bug is
+       * that only one of them survives.
+       *
+       * Two nodes, one per author, and neither can erase the other.
+       */
+      css: (text) => {
+        ctx.styles.set('plugin', `${record.id}:helpers`, text);
+        cleanups.add(() => ctx.styles.remove('plugin', `${record.id}:helpers`));
+      },
       toast: (message, options) => api.ui.toast(message, options),
       settings: {
         get: (key, fallback) => api.settings.get(key, fallback),
