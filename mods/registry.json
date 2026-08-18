@@ -20,6 +20,19 @@
         "glass",
         "colourful"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "Slack wearing the theme, in a workspace with the names replaced.",
+            "fr": "Slack habillé du thème, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "themes/aurora"
     },
     {
@@ -67,6 +80,19 @@
         "profile",
         "files"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "plugins/avatar-downloader"
     },
     {
@@ -86,6 +112,19 @@
       "tags": [
         "productivity",
         "example"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "plugins/channel-notes"
     },
@@ -108,6 +147,19 @@
         "warm",
         "soft"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "Slack wearing the theme, in a workspace with the names replaced.",
+            "fr": "Slack habillé du thème, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "themes/cocoa"
     },
     {
@@ -127,6 +179,19 @@
       "tags": [
         "appearance",
         "productivity"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "plugins/code-highlight"
     },
@@ -158,6 +223,19 @@
         "navigation",
         "keyboard",
         "tools"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "plugins/command-palette"
     },
@@ -197,6 +275,19 @@
       "tags": [
         "composer"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "plugins/composer-char-count"
     },
     {
@@ -215,6 +306,19 @@
       "slackVersion": "4.51",
       "tags": [
         "messages"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "plugins/copy-message-link"
     },
@@ -235,6 +339,19 @@
       "tags": [
         "developer",
         "tools"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "plugins/devtools"
     },
@@ -260,6 +377,19 @@
         "dark",
         "discord"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "Slack wearing the theme, in a workspace with the names replaced.",
+            "fr": "Slack habillé du thème, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "themes/discord-dark"
     },
     {
@@ -279,6 +409,19 @@
       "tags": [
         "light",
         "discord"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "Slack wearing the theme, in a workspace with the names replaced.",
+            "fr": "Slack habillé du thème, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "themes/discord-light"
     },
@@ -300,6 +443,19 @@
         "productivity",
         "layout"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "plugins/focus-mode"
     },
     {
@@ -318,6 +474,19 @@
       "slackVersion": "4.51",
       "tags": [
         "accessibility"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "Slack wearing the theme, in a workspace with the names replaced.",
+            "fr": "Slack habillé du thème, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "themes/focus-rings"
     },
@@ -338,6 +507,19 @@
       "tags": [
         "messages",
         "productivity"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "plugins/full-links"
     },
@@ -382,6 +564,19 @@
         "sidebar",
         "presence"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "plugins/member-sidebar"
     },
     {
@@ -400,6 +595,19 @@
       "slackVersion": "4.51",
       "tags": [
         "dark"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "Slack wearing the theme, in a workspace with the names replaced.",
+            "fr": "Slack habillé du thème, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "themes/midnight"
     },
@@ -479,6 +687,19 @@
         "layout",
         "tools"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "plugins/motion"
     },
     {
@@ -498,6 +719,19 @@
       "tags": [
         "messages",
         "composer"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "plugins/quote-reply"
     },
@@ -519,6 +753,19 @@
         "sidebar",
         "profile"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "plugins/sidebar-account"
     },
     {
@@ -539,6 +786,19 @@
         "dark",
         "monospace",
         "retro"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "Slack wearing the theme, in a workspace with the names replaced.",
+            "fr": "Slack habillé du thème, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "themes/terminal"
     },
@@ -562,6 +822,19 @@
         "colours",
         "inspector"
       ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
+      ],
       "path": "plugins/theme-builder"
     },
     {
@@ -581,6 +854,19 @@
       "tags": [
         "profile",
         "api"
+      ],
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "screenshots": [
+        {
+          "file": "screenshot.jpg",
+          "captions": {
+            "en": "The mod at work, in a workspace with the names replaced.",
+            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        }
       ],
       "path": "plugins/user-inspector"
     }

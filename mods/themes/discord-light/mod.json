@@ -15,5 +15,18 @@
   "tags": [
     "light",
     "discord"
+  ],
+  "readme": "README.md",
+  "readmes": {
+    "fr": "README.fr.md"
+  },
+  "screenshots": [
+    {
+      "file": "screenshot.jpg",
+      "captions": {
+        "en": "Slack wearing the theme, in a workspace with the names replaced.",
+        "fr": "Slack habillé du thème, dans un espace de travail dont les noms ont été remplacés."
+      }
+    }
   ]
 }

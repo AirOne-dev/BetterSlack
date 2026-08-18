@@ -147,6 +147,10 @@ export class Panel {
     this.shelf = 'installed';
     this.search = '';
     this.tag = null;
+    // The mod's own page, which is where its description, its picture, what it
+    // is for and its settings all are. Before there was one this opened the
+    // row's settings drawer, which showed the settings and nothing else.
+    this.detail = id;
     this.openSettings.add(id);
     this.scrollTop = 0;
     if (this.isOpen) this.render();
@@ -475,9 +479,8 @@ export class Panel {
       this.renderRow(mod).querySelector('.betterslack-row__actions') ?? h('div'),
     ]);
 
-    const parts: Node[] = [back, head, h('p', { class: 'betterslack-detail__lede' }, [
-      localised(mod.description, mod.descriptions, language()),
-    ])];
+    const lede = localised(mod.description, mod.descriptions, language()).trim();
+    const parts: Node[] = [back, head, h('p', { class: 'betterslack-detail__lede' }, [lede])];
 
     const shots = mod.screenshots ?? [];
     if (shots.length > 0) {
@@ -498,7 +501,17 @@ export class Panel {
       parts.push(strip);
     }
 
-    const readme = localised(mod.readmeText ?? '', mod.readmeTexts, language());
+    /*
+     * The readme, minus what is already above it.
+     *
+     * A mod's README.md is also a file people read in the repository, so it
+     * opens with the mod's name and its description -- and on this page that
+     * is the heading and the paragraph the reader has just read. Trimmed here
+     * rather than left out of the file: the file has to stand on its own.
+     */
+    const readme = localised(mod.readmeText ?? '', mod.readmeTexts, language())
+      .replace(/^\s*#\s+.*\n/, '')
+      .replace(new RegExp(`^\\s*${lede.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`), '');
     if (readme.trim()) {
       const article = h('div', { class: 'betterslack-detail__readme sm-md' });
       article.innerHTML = renderMarkdown(readme, {

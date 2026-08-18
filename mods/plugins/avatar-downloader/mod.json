@@ -42,5 +42,18 @@
   "tags": [
     "profile",
     "files"
+  ],
+  "readme": "README.md",
+  "readmes": {
+    "fr": "README.fr.md"
+  },
+  "screenshots": [
+    {
+      "file": "screenshot.jpg",
+      "captions": {
+        "en": "The mod at work, in a workspace with the names replaced.",
+        "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+      }
+    }
   ]
 }

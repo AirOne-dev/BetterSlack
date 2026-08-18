@@ -527,7 +527,11 @@ export const PANEL_CSS = CODE_CSS + `
   padding-bottom: 8px;
   margin-bottom: 6px;
 }
+/* One picture fills the column -- a mod's shot is a whole Slack window, and at
+   420px the thing it is meant to show is a few pixels tall. Two or more go back
+   to a strip you push sideways. */
 .betterslack-shot { flex: 0 0 auto; width: min(420px, 78%); margin: 0; }
+.betterslack-shots:has(> :only-child) .betterslack-shot { width: 100%; }
 .betterslack-shot img {
   width: 100%;
   border-radius: 8px;
