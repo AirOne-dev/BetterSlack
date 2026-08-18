@@ -26,10 +26,7 @@ const run = promisify(execFile);
 const OUT = process.env.BETTERSLACK_SHOT;
 const DEMO_TEAM = process.env.BETTERSLACK_SHOT_TEAM ?? 'T0BQ89Z4L4F';
 
-const THEMES = ['aurora', 'cocoa', 'discord-dark', 'discord-light', 'focus-rings', 'midnight', 'terminal'];
-
-/** The frames the site and the README declare, so nothing is resized later. */
-const THEME_SIZE = '1800x1128';
+/** The frame the site and the README declare, so nothing is resized later. */
 const PANEL_SIZE = '1800x990';
 
 /** In the page: everything the runtime already knows how to do. */
@@ -73,13 +70,14 @@ export default async function shootSite({ evaluate, shoot, sleep }) {
     throw new Error(`refusing to photograph ${team}: these pictures are public`);
   }
 
-  // The catalogue thumbnails: one theme at a time, nothing else on.
-  for (const id of THEMES) {
-    await evaluate(only([id]));
-    await sleep(1400);
-    await shoot(`crop-${id}`, THEME_SIZE);
-    console.log(`[shots] crop-${id}`);
-  }
+  /*
+   * The themes are not photographed here any more.
+   *
+   * Every mod has one picture, taken by `pnpm shoot --mods` into its own
+   * folder, and both the panel and the site read that one. This recipe keeps
+   * what has nowhere else to come from: the panel, the palette, the builder's
+   * window, and Discord Dark with its two plugins in one frame.
+   */
 
   /*
    * The panel, over Discord Dark rather than Slack's default. The panel wears
@@ -94,6 +92,16 @@ export default async function shootSite({ evaluate, shoot, sleep }) {
   await sleep(900);
   await shoot('panel', PANEL_SIZE);
   console.log('[shots] panel');
+
+  /*
+   * A mod's own page: picture, what it does in the reader's language, what it
+   * is made of, and its settings. This is the frame that says the panel is a
+   * catalogue rather than a list of switches.
+   */
+  await evaluate(`(() => { window.__betterslack.panel.open('themes'); window.__betterslack.panel.openMod('discord-dark'); return true; })()`);
+  await sleep(1200);
+  await shoot('panel-mod', PANEL_SIZE);
+  console.log('[shots] panel-mod');
 
   await evaluate(openPanel('plugins', 2));
   await sleep(1200);

@@ -319,18 +319,74 @@ class Loader {
       await sleep(500);
     }
 
+    /*
+     * Slack in the background is Slack that is not rendering: its own dialogs
+     * never open and a deep link that should slide a profile in does nothing.
+     * A recipe that drives the client has to have it in front.
+     */
+    await session.send('Page.bringToFront').catch(() => undefined);
+
     const file = path.resolve(process.env.BETTERSLACK_SHOT_SCRIPT!);
     try {
       const recipe = (await import(pathToFileURL(file).href)) as {
         default: (page: {
           evaluate: <T>(expression: string) => Promise<T>;
-          shoot: (name: string, size?: string, delayMs?: number) => Promise<void>;
+          shoot: (name: string, size?: string, delayMs?: number, hover?: string) => Promise<void>;
+          shootWindow: (match: string, name: string, size?: string) => Promise<boolean>;
+          click: (selector: string, index?: number) => Promise<string>;
           sleep: (ms: number) => Promise<void>;
         }) => Promise<void>;
       };
       await recipe.default({
         evaluate: (expression) => session.evaluate(expression),
-        shoot: (name, size, delayMs) => this.shoot(session, name, size, delayMs ?? 0),
+        shoot: (name, size, delayMs, hover) => this.shoot(session, name, size, delayMs ?? 0, hover),
+        /*
+         * A window a mod opened is a separate renderer, so the client's session
+         * cannot photograph it -- and `screencapture` misses it, since Slack
+         * routinely puts it on another Space. The loader is already attached to
+         * every page target, so it is the only thing that can.
+         */
+        shootWindow: async (match, name, size) => {
+          for (const [, other] of this.auxiliary) {
+            // A window a mod opens with `window.open('', name)` is about:blank
+            // with a title in the user's language, so neither the URL nor the
+            // title identifies it. `window.name` is the name the mod chose.
+            const here = await other
+              .evaluate<string>('[location.href, document.title, window.name].join(" ")')
+              .catch(() => '');
+            if (!here.includes(match)) continue;
+            await this.shoot(other, name, size, 0);
+            return true;
+          }
+          return false;
+        },
+        /*
+         * A real click, because some of Slack's own controls ignore a
+         * synthetic one -- the workspace switcher reported success on
+         * `element.click()` and stayed exactly where it was.
+         */
+        click: async (selector, index = 0) => {
+          // Only what is actually drawn: Slack keeps copies of its own controls
+          // in menus that are not open, and the first match in document order
+          // was one of those -- zero by zero, and a click aimed at its middle
+          // lands on the window and reports success.
+          const at = await session.evaluate<{ x: number; y: number; why?: string } | null>(
+            `(() => { const all = [...document.querySelectorAll(${JSON.stringify(selector)})]`
+            + `   .map((el) => el.getBoundingClientRect())`
+            + `   .filter((box) => box.width >= 2 && box.height >= 2 && box.bottom > 0 && box.top < innerHeight);`
+            + ` const box = all[${Number(index) || 0}];`
+            + ` if (!box) { const raw = [...document.querySelectorAll(${JSON.stringify(selector)})]`
+            + `     .map((el) => { const r = el.getBoundingClientRect(); return Math.round(r.width) + 'x' + Math.round(r.height) + '@' + Math.round(r.top); });`
+            + `   return { x: 0, y: 0, why: all.length + ' visible of ' + raw.length + ' [' + raw.join(' ') + '] in ' + innerWidth + 'x' + innerHeight }; }`
+            + ` return { x: box.left + box.width / 2, y: box.top + box.height / 2 }; })()`,
+          );
+          if (!at || at.why) return at?.why ?? 'nothing matched';
+          const where = { x: at.x, y: at.y, button: 'left', clickCount: 1, buttons: 1 };
+          await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y, buttons: 0 });
+          await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...where });
+          await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...where });
+          return 'clicked';
+        },
         sleep,
       });
       console.log('[betterslack] the shot script finished');
@@ -349,7 +405,13 @@ class Loader {
    * catalogue ends up with thumbnails that do not match each other -- which is
    * exactly what the first attempt at refreshing them produced.
    */
-  private async shoot(session: CdpSession, name: string, size?: string, delayMs?: number): Promise<void> {
+  private async shoot(
+    session: CdpSession,
+    name: string,
+    size?: string,
+    delayMs?: number,
+    hover?: string,
+  ): Promise<void> {
     const dir = process.env.BETTERSLACK_SHOT;
     if (!dir) return;
     const [width, height] = (size ?? process.env.BETTERSLACK_SHOT_SIZE ?? '1800x1128')
@@ -364,6 +426,40 @@ class Loader {
         });
         // Slack reflows, and the frame after a reflow is not the one to keep.
         await sleep(1500);
+      }
+      /*
+       * A message action only exists while the pointer is over the message,
+       * and Slack draws that toolbar from CSS `:hover` -- which no synthetic
+       * event reaches. This is a real pointer, and it has to be moved *after*
+       * the viewport override, since that is what the coordinates are in.
+       */
+      if (hover) {
+        /*
+         * The last match that is comfortably inside the window. Asking for a
+         * particular one by index does not survive Slack's virtual list --
+         * `:nth-last-of-type` matched nothing at all, since each row is an only
+         * child of its own wrapper -- and the last match is usually behind the
+         * composer.
+         */
+        const at = await session.evaluate<{ x: number; y: number } | null>(
+          `(() => { const all = [...document.querySelectorAll(${JSON.stringify(hover)})]`
+          + `   .map((el) => el.getBoundingClientRect())`
+          + `   .filter((box) => box.height > 12 && box.top >= 0 && box.bottom <= innerHeight);`
+          /*
+           * Away from the top bar and the composer if anything is -- a message
+           * half under the composer is a poor thing to photograph -- but a
+           * control strip button lives at the very bottom, and insisting on
+           * the margin left nothing to hover at all. Note the comment is out
+           * here: the expression below is concatenated into a single line, so
+           * a `//` inside it comments out everything after it.
+           */
+          + ` const comfy = all.filter((box) => box.top > 120 && box.bottom < innerHeight - 220);`
+          + ` const box = (comfy.length ? comfy : all).at(-1); if (!box) return null;`
+          + ` return { x: box.left + box.width / 2, y: box.top + box.height / 2 }; })()`,
+        );
+        if (!at) throw new Error(`nothing matches ${hover} to hover`);
+        await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y, buttons: 0 });
+        await sleep(700);
       }
       const shot = await session.send<{ data: string }>('Page.captureScreenshot', { format: 'png' });
       const file = path.join(dir, `${name.replace(/[^\w-]+/g, '-').slice(0, 60)}.png`);
@@ -641,7 +737,12 @@ class Loader {
      * looked at while it was being built, and how the site's screenshots are
      * taken -- see shoot(), which the client uses too.
      */
-    if (process.env.BETTERSLACK_SHOT) void this.shoot(session, target.title || 'window');
+    // Not while a recipe is running: it says what to photograph and when, and
+    // a window Slack opened mid-run would otherwise drop a frame of its own
+    // into the folder the recipe is filling -- under whatever Slack calls it.
+    if (process.env.BETTERSLACK_SHOT && !process.env.BETTERSLACK_SHOT_SCRIPT) {
+      void this.shoot(session, target.title || 'window');
+    }
     const paint = () => void this.paintAuxiliary(session);
     session.on('Page.loadEventFired', paint);
     session.on('Page.frameStoppedLoading', paint);
