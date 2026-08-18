@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertPluginShape, createTestApi, installDom } from '../../../tests/harness.mjs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertPluginShape, createTestApi, installDom, readModFiles } from '../../../tests/harness.mjs';
 import plugin from './index.js';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
 
 test('has the shape the runtime loads', () => assertPluginShape(assert, plugin));
 
@@ -207,6 +211,49 @@ test('it works with no token at all, on what BetterSlack knows', async () => {
     await plugin.start(api);
     press();
     assert.ok(shown(recorded).length >= 4, 'the panel’s own doors are still there');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('binds every shortcut asked for, and refuses nonsense', async () => {
+  const { parseShortcuts, comboOf } = await import('./shortcuts.js');
+
+  // The setting is a list because the question is not "which of ours" but
+  // "which of yours".
+  assert.deepEqual(parseShortcuts('mod+k, mod+shift+p'), ['mod+k', 'mod+shift+p']);
+  assert.deepEqual(parseShortcuts(' MOD+K , mod+k '), ['mod+k'], 'tidied and deduplicated');
+
+  // Never unreachable: a setting emptied by hand falls back to the one
+  // everybody knows rather than leaving the palette with no way in.
+  assert.deepEqual(parseShortcuts(''), ['mod+k']);
+  assert.deepEqual(parseShortcuts('¯\\_(ツ)_/¯'), ['mod+k']);
+
+  // Recording a combination.
+  assert.equal(comboOf({ key: 'k', metaKey: true }), 'mod+k');
+  assert.equal(comboOf({ key: 'P', metaKey: true, shiftKey: true }), 'mod+shift+p');
+  assert.equal(comboOf({ key: 'F5' }), 'f5');
+  assert.equal(comboOf({ key: 'Shift', shiftKey: true }), null, 'still pressing');
+  // A bare letter would fire while somebody is typing a message.
+  assert.equal(comboOf({ key: 'k' }), null);
+});
+
+test('every shortcut in the setting opens it, not just the first', async () => {
+  const { api, recorded, dom } = mount({});
+  try {
+    // Two of them, one of which Slack has its own use for.
+    await api.settings.set('shortcuts', 'mod+k, mod+shift+p');
+    await plugin.start(api);
+    await settle();
+
+    const mac = /mac/i.test(globalThis.navigator?.platform ?? '');
+    const hit = (init) => globalThis.window.dispatchEvent(
+      new globalThis.window.KeyboardEvent('keydown', { bubbles: true, metaKey: mac, ctrlKey: !mac, ...init }),
+    );
+
+    hit({ code: 'KeyK', key: 'k' });
+    hit({ code: 'KeyP', key: 'p', shiftKey: true });
+    assert.equal(recorded.palettes.length, 2, 'both combinations reached it');
   } finally {
     dom.cleanup();
   }

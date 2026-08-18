@@ -176,8 +176,8 @@ window.CATALOGUE = {
     {
       "id": "command-palette",
       "name": "Command Palette",
-      "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods — all from one keystroke, with / @ # to narrow it down.",
-      "version": "1.1.0",
+      "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods -- all from one keystroke, with / @ # to narrow it down. Bind it to as many shortcuts as you like, taken from Slack if Slack had them.",
+      "version": "1.2.0",
       "tags": [
         "navigation",
         "keyboard",

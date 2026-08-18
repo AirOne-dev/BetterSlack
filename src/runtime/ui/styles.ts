@@ -434,9 +434,29 @@ export const PANEL_CSS = CODE_CSS + `
   justify-content: space-between;
   gap: 16px;
   padding: 6px 0;
+  /* A control and its explanation share a line until there is no room for
+     both, and then the control takes one of its own rather than shrinking to
+     nothing. */
+  flex-wrap: wrap;
 }
-.betterslack-settings__meta { min-width: 0; }
-.betterslack-settings__input { max-width: 200px; }
+.betterslack-settings__meta { min-width: 0; flex: 1 1 260px; }
+
+/*
+ * Wide enough to read what is in it.
+ *
+ * A max-width of 200px was left over from when these were all short numbers;
+ * a select showing a sentence -- the palette's shortcut was one -- came out
+ * clipped to a few characters with no way to see the rest. The width now
+ * follows the content, within bounds, and the row wraps before it starves.
+ */
+.betterslack-settings__input {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 220px;
+  max-width: 100%;
+}
+.betterslack-row__actions:has(> .betterslack-settings__input) { flex: 1 1 240px; }
+.betterslack-row__actions > .betterslack-settings__input { width: 100%; }
 .betterslack-row__group { display: block; }
 
 .betterslack-row {

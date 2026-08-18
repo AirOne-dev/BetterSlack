@@ -114,27 +114,18 @@
       "id": "command-palette",
       "name": "Command Palette",
       "type": "plugin",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": "AirOne-dev",
-      "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods — all from one keystroke, with / @ # to narrow it down.",
+      "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods -- all from one keystroke, with / @ # to narrow it down. Bind it to as many shortcuts as you like, taken from Slack if Slack had them.",
       "entry": "index.js",
       "settings": [
         {
-          "key": "shortcut",
-          "type": "choice",
-          "label": "Shortcut",
-          "hint": "⌘K is the one everyone reaches for, and it is also Slack's own quick switcher — which stays reachable from the search field. Pick ⌘⇧K to leave it alone.",
+          "key": "shortcuts",
+          "type": "text",
+          "label": "Shortcuts",
+          "hint": "One or more, separated by commas -- mod+k, mod+shift+p. `mod` is Cmd on a Mac and Ctrl elsewhere. Whatever you bind is taken from Slack if Slack had it: the palette listens before the app does. Easier from the palette itself: run \"Change the shortcuts\" and press the keys.",
           "default": "mod+k",
-          "options": [
-            {
-              "value": "mod+k",
-              "label": "⌘K — replaces Slack's switcher"
-            },
-            {
-              "value": "mod+shift+k",
-              "label": "⌘⇧K — leaves Slack's alone"
-            }
-          ]
+          "placeholder": "mod+k, mod+shift+p"
         }
       ],
       "betterslackApi": 1,

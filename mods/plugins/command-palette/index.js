@@ -25,6 +25,7 @@
 // instantly would make the list less trustworthy.
 
 import { STRINGS } from './strings.js';
+import { openShortcutEditor, parseShortcuts } from './shortcuts.js';
 import { createDirectory } from './directory.js';
 import { createActions } from './actions.js';
 
@@ -34,7 +35,15 @@ const MIXED_LIMIT = 6;
 export default {
   async start(api) {
     const t = api.i18n.strings(STRINGS);
-    const shortcut = api.settings.get('shortcut', 'mod+k');
+    /*
+     * However many the user asked for.
+     *
+     * The old setting offered a choice of two, which answered the wrong
+     * question: the interesting one is not "which of ours" but "which of
+     * yours". `shortcut` is still read so an upgrade keeps whatever was
+     * chosen back when it was a menu.
+     */
+    const stored = () => api.settings.get('shortcuts', api.settings.get('shortcut', 'mod+k'));
 
     /** The open palette, so a search that lands late can repaint it. */
     let handle = null;
@@ -122,11 +131,47 @@ export default {
       void directory.load().then(() => handle?.refresh());
     };
 
-    api.helpers.hotkey(shortcut, open);
-    api.commands.add({ id: 'open', title: t('command'), subtitle: api.helpers.describeHotkey(shortcut), icon: '⌘', run: open });
+    /** The bindings in force, so they can be swapped without a reload. */
+    let bound = [];
+    const bindShortcuts = () => {
+      for (const off of bound) off();
+      const combos = parseShortcuts(stored());
+      bound = combos.map((combo) => api.helpers.hotkey(combo, open));
+      return combos;
+    };
+    let combos = bindShortcuts();
+    api.onDispose(() => { for (const off of bound) off(); });
+
+    const describe = () => combos.map((combo) => api.helpers.describeHotkey(combo)).join('  ·  ');
+    const openCommand = { id: 'open', title: t('command'), subtitle: describe(), icon: '⌘', run: open };
+    api.commands.add(openCommand);
+
+    api.commands.add({
+      id: 'shortcuts',
+      title: t('shortcutsCommand'),
+      subtitle: t('shortcutsSubtitle'),
+      icon: '⌨️',
+      run: () => openShortcutEditor(api, t, {
+        current: combos,
+        onSave: async (next) => {
+          await api.settings.set('shortcuts', next.join(', '));
+          combos = bindShortcuts();
+          openCommand.subtitle = describe();
+          api.ui.toast(t('shortcutsSaved', { list: describe() }), { variant: 'success' });
+        },
+      }),
+    });
+
+    // The panel writes the same key, and a mod that hears about it keeps
+    // running rather than being reloaded mid-keystroke.
+    api.settings.onChange(() => {
+      combos = bindShortcuts();
+      openCommand.subtitle = describe();
+    });
+
     api.onDispose(() => directory.dispose());
 
     void directory.load();
-    api.log.info(`ready — ${api.helpers.describeHotkey(shortcut)}`);
+    api.log.info(`ready — ${describe()}`);
   },
 };
