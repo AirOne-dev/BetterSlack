@@ -5,8 +5,15 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Slack wearing Discord's default light theme: white chat on grey chrome, blurple accent, gg sans type stack, 8px corners and circular avatars.",
+  "descriptions": {
+    "fr": "Slack habillé du thème clair de Discord : conversation blanche sur chrome gris, accent blurple, pile typographique gg sans, coins de 8 px et avatars circulaires."
+  },
   "entry": "theme.css",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["light", "discord"]
+  "tags": [
+    "light",
+    "discord"
+  ]
 }

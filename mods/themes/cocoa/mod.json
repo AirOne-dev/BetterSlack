@@ -5,8 +5,16 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "A warm, low-contrast light theme: cream paper, cocoa text, generous 18px corners and soft shadows instead of borders. Easy on the eyes for a long day of reading.",
+  "descriptions": {
+    "fr": "Un thème clair, chaud et peu contrasté : papier crème, texte cacao, coins généreux de 18 px et ombres douces plutôt que des bordures. Reposant pour une longue journée de lecture."
+  },
   "entry": "theme.css",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["light", "warm", "soft"]
+  "tags": [
+    "light",
+    "warm",
+    "soft"
+  ]
 }

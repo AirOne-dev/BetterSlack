@@ -5,7 +5,11 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Colours the code blocks in messages, and works out which language they are on its own -- Slack sends them as plain grey text with no way to say what they contain. Twenty-one languages, from JSON and SQL to GraphQL, Dockerfiles and diffs, and it leaves a block alone when it is not sure.",
+  "descriptions": {
+    "fr": "Colore les blocs de code des messages et devine tout seul de quel langage il s'agit — Slack les envoie en gris, sans aucun moyen de dire ce qu'ils contiennent. Vingt et un langages, de JSON et SQL à GraphQL, aux Dockerfile et aux diffs, et il laisse un bloc tranquille quand il n'est sûr de rien."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": [

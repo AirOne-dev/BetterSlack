@@ -459,6 +459,137 @@ export const PANEL_CSS = CODE_CSS + `
 .betterslack-row__actions > .betterslack-settings__input { width: 100%; }
 .betterslack-row__group { display: block; }
 
+/* ---- a mod's mark, and its page ---- */
+
+/*
+ * Every mod gets a shape, drawn or derived.
+ *
+ * A list of names is a table; a list of marks is a shelf, and this panel is a
+ * shop before it is a settings screen. A mod that ships no icon.svg gets its
+ * initial on a colour derived from its id -- its own, stable, and never a hole
+ * where the others have something.
+ */
+.betterslack-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.10);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.9);
+}
+.betterslack-icon--sm { width: 34px; height: 34px; }
+.betterslack-icon--lg { width: 64px; height: 64px; border-radius: 14px; }
+.betterslack-icon svg { width: 62%; height: 62%; display: block; }
+.betterslack-icon--letter {
+  font-weight: 900;
+  background: hsl(var(--betterslack-icon-hue, 210) 45% 42%);
+  color: #fff;
+}
+.betterslack-icon--sm.betterslack-icon--letter { font-size: 15px; }
+.betterslack-icon--lg.betterslack-icon--letter { font-size: 27px; }
+
+/* The name is what you press to open the page, so it has to look pressable
+   without turning the list into a wall of links. */
+.betterslack-row__open {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+}
+.betterslack-row__open:hover { text-decoration: underline; }
+
+.betterslack-back {
+  display: inline-block;
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  cursor: pointer;
+}
+.betterslack-detail__head { display: flex; align-items: flex-start; gap: 16px; }
+.betterslack-detail__title { flex: 1 1 auto; min-width: 0; }
+.betterslack-detail__name { margin: 0 0 2px; font-size: 22px; font-weight: 900; }
+.betterslack-detail__lede {
+  margin: 14px 0 18px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.85);
+}
+.betterslack-detail__section { margin: 22px 0 8px; font-size: 15px; font-weight: 900; }
+
+/* Screenshots scroll sideways rather than stacking: a mod has two or three,
+   and three tall pictures push the readme off the screen. */
+.betterslack-shots {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+}
+.betterslack-shot { flex: 0 0 auto; width: min(420px, 78%); margin: 0; }
+.betterslack-shot img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  display: block;
+}
+.betterslack-shot figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+
+/* ---- a readme, rendered ---- */
+
+.sm-md { font-size: 14px; line-height: 1.55; }
+.sm-md__h1, .sm-md__h2, .sm-md__h3, .sm-md__h4 {
+  margin: 20px 0 8px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+.sm-md__h1 { font-size: 19px; }
+.sm-md__h2 { font-size: 17px; }
+.sm-md__h3 { font-size: 15px; }
+.sm-md__h4 { font-size: 14px; }
+.sm-md p { margin: 0 0 12px; }
+.sm-md__list { margin: 0 0 12px; padding-left: 22px; }
+.sm-md__list li { margin: 3px 0; }
+.sm-md__link { color: rgba(var(--sk_highlight, 18, 100, 163), 1); }
+.sm-md__img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  margin: 6px 0 14px;
+}
+.sm-md__quote {
+  margin: 0 0 12px;
+  padding-left: 12px;
+  border-left: 3px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.75);
+}
+.sm-md__rule {
+  border: none;
+  border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  margin: 18px 0;
+}
+.sm-md__code, .sm-md__pre code {
+  font-family: Monaco, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+.sm-md__code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
+}
+.sm-md__pre {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.10);
+}
+
 .betterslack-row {
   display: flex;
   align-items: flex-start;

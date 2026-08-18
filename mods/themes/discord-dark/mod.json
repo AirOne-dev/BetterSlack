@@ -5,7 +5,11 @@
   "version": "4.0.1",
   "author": "AirOne-dev",
   "description": "Slack rebuilt as Discord: colours sampled from the real client, round server icons with the sliding pill, and Discord's sidebar. Brings in the member column and account strip as plugins.",
+  "descriptions": {
+    "fr": "Slack rebâti comme Discord : couleurs relevées sur le vrai client, icônes rondes avec la pastille coulissante, et la barre latérale de Discord. Amène la colonne des membres et le bandeau de compte sous forme de plugins."
+  },
   "entry": "theme.css",
+  "icon": "icon.svg",
   "requires": [
     "member-sidebar",
     "sidebar-account"

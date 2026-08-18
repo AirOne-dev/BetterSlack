@@ -18,6 +18,28 @@
     return node;
   };
 
+  /*
+   * A mod's sentence, in both languages, handed to the toggle below.
+   *
+   * The page already swaps anything carrying data-en/data-fr, so a card's
+   * description only has to declare both and the existing machinery does the
+   * rest -- rather than a second, parallel way of being bilingual.
+   */
+  const describe = (mod) => {
+    const node = el('p', { textContent: mod.description });
+    node.dataset.en = mod.description;
+    node.dataset.fr = mod.descriptions?.fr ?? mod.description;
+    return node;
+  };
+
+  /** The mark, inlined by the build so a card needs no extra request. */
+  const mark = (mod) => {
+    if (!mod.icon) return null;
+    const box = el('span', { className: 'card__icon' });
+    box.innerHTML = mod.icon;
+    return box;
+  };
+
   const gallery = document.getElementById('theme-gallery');
   for (const theme of catalogue.themes) {
     const strip = el('div', { className: 'theme__strip' });
@@ -27,10 +49,12 @@
       strip.append(band);
     }
 
-    const body = el('div', { className: 'theme__body' }, [
-      el('h3', { textContent: theme.name }),
-      el('p', { textContent: theme.description }),
-    ]);
+    const heading = el('div', { className: 'card__heading' });
+    const themeMark = mark(theme);
+    if (themeMark) heading.append(themeMark);
+    heading.append(el('h3', { textContent: theme.name }));
+
+    const body = el('div', { className: 'theme__body' }, [heading, describe(theme)]);
 
     if (theme.requires.length) {
       body.append(el('div', { className: 'card__meta' }, [
@@ -64,11 +88,12 @@
         textContent: `${plugin.settings} setting${plugin.settings > 1 ? 's' : ''}`,
       }));
     }
-    plugins?.append(el('article', { className: 'card reveal' }, [
-      el('h3', { textContent: plugin.name }),
-      el('p', { textContent: plugin.description }),
-      meta,
-    ]));
+    const heading = el('div', { className: 'card__heading' });
+    const pluginMark = mark(plugin);
+    if (pluginMark) heading.append(pluginMark);
+    heading.append(el('h3', { textContent: plugin.name }));
+
+    plugins?.append(el('article', { className: 'card reveal' }, [heading, describe(plugin), meta]));
   }
 
   const count = document.getElementById('mod-count');

@@ -5,8 +5,15 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "A private scratchpad per channel, opened from a button in the channel header. Notes are stored locally and never sent anywhere. Doubles as the worked example of the BetterSlack widget API.",
+  "descriptions": {
+    "fr": "Un bloc-notes privé par canal, ouvert depuis un bouton dans l'en-tête. Les notes restent sur votre machine et ne partent nulle part. Sert aussi d'exemple complet de l'API des composants BetterSlack."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["productivity", "example"]
+  "tags": [
+    "productivity",
+    "example"
+  ]
 }

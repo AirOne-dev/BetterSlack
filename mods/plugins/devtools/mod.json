@@ -5,8 +5,15 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Opens and closes Slack's real Chrome DevTools — console, elements, network, the lot — from a button above the BetterSlack one. Same action as Slack's own hidden ⌘⌥I menu item.",
+  "descriptions": {
+    "fr": "Ouvre et referme les vrais outils de développement de Chrome dans Slack — console, éléments, réseau — depuis un bouton au-dessus de celui de BetterSlack. La même action que l'entrée de menu cachée ⌘⌥I de Slack."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["developer", "tools"]
+  "tags": [
+    "developer",
+    "tools"
+  ]
 }

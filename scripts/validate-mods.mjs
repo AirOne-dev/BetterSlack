@@ -5,7 +5,7 @@
 // Nothing here can tell a well-written plugin from a malicious one, so it only
 // enforces the things a reviewer should never have to check by hand.
 
-import { promises as fs } from 'node:fs';
+import { existsSync, promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -71,6 +71,50 @@ for (const kind of ['themes', 'plugins']) {
     }
     if (!ID_PATTERN.test(manifest.id ?? '')) fail(`"id" must match ${ID_PATTERN}`);
     if (manifest.id !== entry.name) fail(`"id" must equal the folder name ("${entry.name}")`);
+    /*
+     * The listing: a mark, the sentence in other languages, pictures, a page.
+     *
+     * Every one is optional and every one is a promise to a reader -- a
+     * manifest naming a picture that is not there shows a hole in the panel and
+     * a broken image on the site, and neither says which mod did it. So they
+     * are checked here, where a pull request is refused rather than merged.
+     */
+    for (const [field, value] of [['icon', manifest.icon], ['readme', manifest.readme]]) {
+      if (value === undefined) continue;
+      if (typeof value !== 'string') { fail(`"${field}" must be a string`); continue; }
+      if (path.isAbsolute(value) || value.split(/[\\/]/).includes('..')) {
+        fail(`"${field}" must stay inside the mod folder`);
+      } else if (!existsSync(path.join(modDir, value))) {
+        fail(`"${field}" names "${value}", which is not in the folder`);
+      }
+    }
+    if (manifest.icon !== undefined && !String(manifest.icon).endsWith('.svg')) {
+      // Drawn at four sizes between a row and a card, on light and on dark.
+      fail('"icon" must be an .svg');
+    }
+    for (const [field, table] of [['descriptions', manifest.descriptions], ['readmes', manifest.readmes]]) {
+      if (table === undefined) continue;
+      if (typeof table !== 'object' || Array.isArray(table)) { fail(`"${field}" must be an object keyed by language`); continue; }
+      for (const [language, value] of Object.entries(table)) {
+        if (typeof value !== 'string' || !value.trim()) fail(`"${field}.${language}" must be a non-empty string`);
+        else if (field === 'readmes' && !existsSync(path.join(modDir, value))) {
+          fail(`"readmes.${language}" names "${value}", which is not in the folder`);
+        }
+      }
+    }
+    if (manifest.screenshots !== undefined) {
+      if (!Array.isArray(manifest.screenshots)) fail('"screenshots" must be an array');
+      else for (const [index, shot] of manifest.screenshots.entries()) {
+        const shotFile = shot?.file;
+        if (typeof shotFile !== 'string') { fail(`"screenshots[${index}].file" must be a string`); continue; }
+        if (path.isAbsolute(shotFile) || shotFile.split(/[\\/]/).includes('..')) {
+          fail(`"screenshots[${index}].file" must stay inside the mod folder`);
+        } else if (!existsSync(path.join(modDir, shotFile))) {
+          fail(`"screenshots[${index}].file" names "${shotFile}", which is not in the folder`);
+        }
+      }
+    }
+
     if (manifest.type !== type) fail(`"type" must be "${type}"`);
     if (manifest.betterslackApi !== API_VERSION) fail(`"betterslackApi" must be ${API_VERSION}`);
 

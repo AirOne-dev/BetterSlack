@@ -5,7 +5,11 @@
   "version": "1.1.0",
   "author": "AirOne-dev",
   "description": "Download a member's profile picture at the highest quality Slack stores — the original upload when there is one, otherwise the largest rendition. Adds a button to the profile pane and to the hover actions on a message.",
+  "descriptions": {
+    "fr": "Télécharge la photo de profil d'un membre dans la meilleure qualité que Slack conserve : l'original quand il existe, sinon le plus grand rendu. Ajoute un bouton dans le panneau de profil et dans les actions au survol d'un message."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "settings": [
     {
       "key": "quality",

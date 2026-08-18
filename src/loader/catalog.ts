@@ -11,6 +11,7 @@ import { promises as fs, watch as fsWatch, type FSWatcher } from 'node:fs';
 import path from 'node:path';
 import {
   MOD_API_VERSION,
+  type ModAssets,
   type ModFiles,
   type ModManifest,
   type ModSettingField,
@@ -147,6 +148,49 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     );
   }
 
+  /*
+   * The listing fields. Every one is optional and every one names a file in
+   * the mod's own folder, so each goes through the same containment check as
+   * `entry` -- a manifest is a pull request, and one of these could come from
+   * somebody else's repository entirely.
+   */
+  const icon = typeof m.icon === 'string' ? assertContained(m.icon, 'icon') : undefined;
+  const readme = typeof m.readme === 'string' ? assertContained(m.readme, 'readme') : undefined;
+
+  const strings = (value: unknown, field: string): Record<string, string> | undefined => {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      throw new ManifestError(file, `"${field}" must be an object keyed by language`);
+    }
+    const out: Record<string, string> = {};
+    for (const [language, text] of Object.entries(value as Record<string, unknown>)) {
+      if (typeof text !== 'string' || !text.trim()) {
+        throw new ManifestError(file, `"${field}.${language}" must be a non-empty string`);
+      }
+      out[language] = text;
+    }
+    return Object.keys(out).length ? out : undefined;
+  };
+
+  const readmes = strings(m.readmes, 'readmes');
+  for (const [language, value] of Object.entries(readmes ?? {})) {
+    assertContained(value, `readmes.${language}`);
+  }
+
+  let screenshots: ModManifest['screenshots'];
+  if (m.screenshots !== undefined) {
+    if (!Array.isArray(m.screenshots)) throw new ManifestError(file, '"screenshots" must be an array');
+    screenshots = m.screenshots.map((shot, index) => {
+      const entryShot = shot as Record<string, unknown>;
+      const shotFile = assertContained(assertString(entryShot.file, `screenshots[${index}].file`, file), 'screenshots');
+      return {
+        file: shotFile,
+        caption: typeof entryShot.caption === 'string' ? entryShot.caption : undefined,
+        captions: strings(entryShot.captions, `screenshots[${index}].captions`),
+      };
+    });
+  }
+
   return {
     id,
     name: assertString(m.name, 'name', file),
@@ -154,6 +198,11 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     version: assertString(m.version, 'version', file),
     author: assertString(m.author, 'author', file),
     description: assertString(m.description, 'description', file),
+    descriptions: strings(m.descriptions, 'descriptions'),
+    icon,
+    screenshots,
+    readme,
+    readmes,
     entry,
     requires,
     settings,
@@ -166,6 +215,34 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
 export interface ScanResult {
   mods: ModRecord[];
   errors: string[];
+}
+
+/**
+ * The text a listing needs before anything is installed: the mark, and the
+ * long description.
+ *
+ * Read here rather than fetched later because a row cannot wait -- the panel
+ * draws the whole catalogue at once, and an icon that arrives afterwards is a
+ * layout that jumps. They are small; screenshots are not, and go through
+ * `mods.asset` one at a time instead.
+ *
+ * A file that is missing or unreadable is left out rather than failing the
+ * mod: a broken picture is not a reason to refuse to load a theme.
+ */
+async function readAssets(dir: string, manifest: ModManifest): Promise<ModAssets> {
+  const assets: ModAssets = {};
+  const read = async (file?: string): Promise<string | undefined> => {
+    if (!file || path.isAbsolute(file) || file.split(/[\\/]/).includes('..')) return undefined;
+    return fs.readFile(path.join(dir, file), 'utf8').catch(() => undefined);
+  };
+
+  assets.iconSvg = await read(manifest.icon);
+  assets.readmeText = await read(manifest.readme);
+  for (const [language, file] of Object.entries(manifest.readmes ?? {})) {
+    const text = await read(file);
+    if (text) (assets.readmeTexts ??= {})[language] = text;
+  }
+  return assets;
 }
 
 async function scanKind(
@@ -199,6 +276,7 @@ async function scanKind(
       const declared = JSON.parse(rawManifest) as { origin?: string; source?: string };
       out.mods.push({
         ...manifest,
+        ...(await readAssets(path.join(dir, dirent.name), manifest)),
         origin: declared.origin === 'third-party' ? 'third-party' : origin,
         source: typeof declared.source === 'string' ? declared.source : undefined,
         path: `${kind}s/${dirent.name}`,
@@ -265,6 +343,32 @@ export class Catalog {
    * reads a directory that arrived through a pull request, and an accidental
    * node_modules would otherwise be shipped into the page.
    */
+  /**
+   * One file out of a mod's folder, as a data URL.
+   *
+   * For the pictures a listing shows once somebody opens it. Kept to a named
+   * set of image types and to paths that stay inside the folder: this reads
+   * whatever a manifest asks for, and a manifest can come from somebody else's
+   * repository.
+   */
+  async readAsset(id: string, file: string): Promise<string | null> {
+    const entry = this.records.get(id);
+    if (!entry) return null;
+    if (path.isAbsolute(file) || file.split(/[\\/]/).includes('..')) return null;
+    const type = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+    }[path.extname(file).toLowerCase()];
+    if (!type) return null;
+
+    const full = path.join(entry.root, entry.record.path, file);
+    const data = await fs.readFile(full).catch(() => null);
+    // A picture nobody will look at twice is not worth a megabyte of settings
+    // traffic; the panel shows these one at a time.
+    if (!data || data.byteLength > 2_000_000) return null;
+    return `data:${type};base64,${data.toString('base64')}`;
+  }
+
   async readSource(id: string): Promise<ModFiles> {
     const entry = this.records.get(id);
     if (!entry) throw new Error(`unknown mod "${id}"`);

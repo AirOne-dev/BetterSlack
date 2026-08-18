@@ -5,7 +5,11 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Slack, with the frames in between: conversations that fade in instead of snapping, dialogs and menus that arrive on a spring, reactions that pop, and hover and press feedback on everything you point at. It covers the components the plugin API hands out too, so every mod's own interface moves with the app. Five families you can switch off one by one, and speed and amplitude on dials.",
+  "descriptions": {
+    "fr": "Slack, avec les images intermédiaires : les conversations arrivent en fondu au lieu de claquer, les dialogues et les menus se posent sur un ressort, les réactions surgissent, et tout ce que vous survolez ou pressez répond. Couvre aussi les composants que l'API distribue, donc l'interface de chaque mod bouge avec l'application. Cinq familles débrayables une par une, vitesse et amplitude au réglage."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "settings": [
     {
       "key": "speed",

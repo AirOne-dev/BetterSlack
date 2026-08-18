@@ -5,7 +5,11 @@
   "version": "3.0.0",
   "author": "AirOne-dev",
   "description": "A theme workbench in its own window, with the real Slack beside it as the preview: two colours become twelve roles across all four token families, point at anything in the app to see and edit the tokens that paint it, search every colour the client defines, and add CSS of your own on top.",
+  "descriptions": {
+    "fr": "Un atelier de thème dans sa propre fenêtre, avec le vrai Slack à côté en guise d'aperçu : deux couleurs en deviennent douze réparties sur les quatre familles de jetons, pointez n'importe quoi dans l'application pour voir et modifier les jetons qui le peignent, cherchez parmi toutes les couleurs du client, et ajoutez votre CSS par-dessus."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": [

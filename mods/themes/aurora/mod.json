@@ -5,8 +5,16 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Frosted glass over a slow aurora gradient. Translucent panels, soft 14px corners, a violet glow that follows what you hover. Heavier on the GPU than a flat theme.",
+  "descriptions": {
+    "fr": "Du verre dépoli sur un dégradé d'aurore qui dérive lentement. Panneaux translucides, coins doux de 14 px, une lueur violette qui suit ce que vous survolez. Plus gourmand en GPU qu'un thème plat."
+  },
   "entry": "theme.css",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["dark", "glass", "colourful"]
+  "tags": [
+    "dark",
+    "glass",
+    "colourful"
+  ]
 }

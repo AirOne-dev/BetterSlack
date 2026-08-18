@@ -5,8 +5,15 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Adds a Reply button to the hover actions on a message. It drops a link to that message into the composer as a single \".\" and focuses it, so your answer posts in the channel with Slack's own preview of the message you are answering.",
+  "descriptions": {
+    "fr": "Ajoute un bouton Répondre aux actions au survol d'un message. Il dépose le lien du message dans la zone de saisie sous la forme d'un simple « . » et y place le curseur : votre réponse part dans le canal avec l'aperçu natif de Slack du message auquel vous répondez."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["messages", "composer"]
+  "tags": [
+    "messages",
+    "composer"
+  ]
 }

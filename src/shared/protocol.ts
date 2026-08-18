@@ -43,6 +43,49 @@ export interface ModManifest {
    */
   settings?: ModSettingField[];
 
+  /**
+   * A square mark for the mod, as a file in its folder -- `icon.svg`.
+   *
+   * SVG rather than a bitmap: it is drawn at four sizes between the panel's
+   * rows and the site's cards, it has to sit on both a light and a dark
+   * surface, and `currentColor` lets it take the theme's ink for free. The
+   * catalogue inlines its markup, so a row can draw it before the mod is
+   * installed.
+   */
+  icon?: string;
+
+  /**
+   * The one-liner in other languages, keyed the way `api.i18n` keys anything.
+   *
+   * `description` stays required and is the English one: it is what the
+   * catalogue, the site and the pull request template all read, and a mod that
+   * described itself only in a language the reader does not have would be a
+   * mod nobody installs.
+   */
+  descriptions?: Record<string, string>;
+
+  /**
+   * Pictures of it working, in the mod's own folder.
+   *
+   * Fetched only when somebody opens the mod, since a catalogue that carried
+   * twenty screenshots would be a megabyte before anybody asked for one.
+   */
+  screenshots?: Array<{
+    file: string;
+    caption?: string;
+    captions?: Record<string, string>;
+  }>;
+
+  /**
+   * A markdown file in the mod's folder, rendered in the panel and on the site.
+   *
+   * The description says what a user gets in a sentence; this is where the
+   * rest goes -- what it does not do, what it costs, which setting to reach
+   * for. `readmes` names the translations, the same way `descriptions` does.
+   */
+  readme?: string;
+  readmes?: Record<string, string>;
+
   /** Manifest schema version. Mods declaring a newer version are refused. */
   betterslackApi: number;
   /** Optional: minimum tested Slack version, informational only. */
@@ -59,6 +102,20 @@ export interface ModManifest {
  * what made the theme builder a two-thousand-line wall.
  */
 export type ModFiles = Record<string, string>;
+
+/**
+ * What the catalogue carries beyond the manifest: the small things a row or a
+ * card needs before anybody installs anything.
+ *
+ * Inlined because they are text and they are tiny -- an icon is a few hundred
+ * bytes and a readme a few thousand. Screenshots are neither, and are fetched
+ * one at a time through `mods.asset`.
+ */
+export interface ModAssets {
+  iconSvg?: string;
+  readmeText?: string;
+  readmeTexts?: Record<string, string>;
+}
 
 /**
  * One setting, as the panel will draw it.
@@ -104,7 +161,7 @@ export interface RemoteMod {
   bytes: number;
 }
 
-export interface ModRecord extends ModManifest {
+export interface ModRecord extends ModManifest, ModAssets {
   /**
    * Where the mod came from.
    *
@@ -231,6 +288,8 @@ export type Request =
    * never take effect in place. The renderer asking for this is about to be
    * torn down with the page, so the answer goes out before anything happens.
    */
+  /** One file out of a mod's folder, as a data URL. For screenshots. */
+  | { type: 'mods.asset'; id: string; file: string }
   | { type: 'slack.restart' }
   | { type: 'settings.get' }
   | { type: 'settings.set'; settings: Partial<Settings> }

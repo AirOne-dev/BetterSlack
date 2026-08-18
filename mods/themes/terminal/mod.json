@@ -5,8 +5,16 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Slack as a phosphor terminal: monospace everywhere, zero rounded corners, hairline borders, amber and green on near-black. Square avatars included.",
+  "descriptions": {
+    "fr": "Slack en terminal à phosphore : monospace partout, aucun coin arrondi, bordures d'un cheveu, ambre et vert sur presque-noir. Avatars carrés compris."
+  },
   "entry": "theme.css",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["dark", "monospace", "retro"]
+  "tags": [
+    "dark",
+    "monospace",
+    "retro"
+  ]
 }

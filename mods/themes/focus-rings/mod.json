@@ -5,8 +5,14 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Thicker, higher-contrast keyboard focus outlines everywhere in Slack. Useful if you drive Slack from the keyboard or lose the cursor on a large screen.",
+  "descriptions": {
+    "fr": "Des contours de focus clavier plus épais et plus contrastés partout dans Slack. Utile si vous pilotez Slack au clavier ou si vous perdez le curseur sur un grand écran."
+  },
   "entry": "theme.css",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["accessibility"]
+  "tags": [
+    "accessibility"
+  ]
 }

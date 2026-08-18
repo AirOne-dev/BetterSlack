@@ -169,6 +169,17 @@ export class ModManager {
     this.notify();
   }
 
+  /**
+   * One file out of a mod's folder, as a data URL.
+   *
+   * For the screenshots a mod's page shows. Asked for one at a time and only
+   * once somebody opens that page: a catalogue that carried every picture
+   * would be a megabyte before anybody looked at anything.
+   */
+  asset(id: string, file: string): Promise<string | null> {
+    return this.bridge.request<string | null>({ type: 'mods.asset', id, file });
+  }
+
   /** Read a mod from a URL without installing it, so the user can be asked. */
   inspectRemote(url: string): Promise<RemoteMod | { error: string }> {
     return this.bridge.request<RemoteMod | { error: string }>({ type: 'mods.inspectRemote', url });

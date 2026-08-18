@@ -906,6 +906,9 @@ class Loader {
         return result;
       }
 
+      case 'mods.asset':
+        return this.catalog.readAsset(request.id, request.file);
+
       case 'mods.inspectRemote':
         return inspectRemote(request.url);
 

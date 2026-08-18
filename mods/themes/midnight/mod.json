@@ -5,8 +5,14 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "A deeper, cooler dark theme. Overrides Slack's design tokens rather than its class names, so it keeps working across Slack updates.",
+  "descriptions": {
+    "fr": "Un thème sombre plus profond et plus froid. Redéfinit les jetons de design de Slack plutôt que ses noms de classe, donc il survit aux mises à jour du client."
+  },
   "entry": "theme.css",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["dark"]
+  "tags": [
+    "dark"
+  ]
 }

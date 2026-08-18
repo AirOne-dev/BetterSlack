@@ -5,7 +5,11 @@
   "version": "1.2.0",
   "author": "AirOne-dev",
   "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods -- all from one keystroke, with / @ # to narrow it down. Bind it to as many shortcuts as you like, taken from Slack if Slack had them.",
+  "descriptions": {
+    "fr": "Le sélecteur rapide de Slack avec tout le reste dedans : aller à n'importe quelle conversation, trouver n'importe qui, lancer les commandes de vos mods, les activer ou les régler — le tout depuis une touche, avec / @ # pour affiner. Attribuez-lui autant de raccourcis que vous voulez ; ceux que Slack utilisait déjà lui sont repris."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "settings": [
     {
       "key": "shortcuts",

@@ -6,6 +6,9 @@ window.CATALOGUE = {
       "id": "aurora",
       "name": "Aurora",
       "description": "Frosted glass over a slow aurora gradient. Translucent panels, soft 14px corners, a violet glow that follows what you hover. Heavier on the GPU than a flat theme.",
+      "descriptions": {
+        "fr": "Du verre dépoli sur un dégradé d'aurore qui dérive lentement. Panneaux translucides, coins doux de 14 px, une lueur violette qui suit ce que vous survolez. Plus gourmand en GPU qu'un thème plat."
+      },
       "version": "1.0.0",
       "tags": [
         "dark",
@@ -13,6 +16,7 @@ window.CATALOGUE = {
         "colourful"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M2 15c4-6 8 2 12-3s6-1 8-3\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" opacity=\".55\"/><path d=\"M2 19c4-6 8 2 12-3s6-1 8-3\" stroke=\"#a78bfa\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/><circle cx=\"18\" cy=\"5\" r=\"2\" fill=\"#a78bfa\"/></svg>",
       "palette": [
         "rgba(14, 12, 28, 0.42)",
         "rgba(18, 16, 34, 0.34)",
@@ -26,6 +30,9 @@ window.CATALOGUE = {
       "id": "cocoa",
       "name": "Cocoa",
       "description": "A warm, low-contrast light theme: cream paper, cocoa text, generous 18px corners and soft shadows instead of borders. Easy on the eyes for a long day of reading.",
+      "descriptions": {
+        "fr": "Un thème clair, chaud et peu contrasté : papier crème, texte cacao, coins généreux de 18 px et ombres douces plutôt que des bordures. Reposant pour une longue journée de lecture."
+      },
       "version": "1.0.0",
       "tags": [
         "light",
@@ -33,6 +40,7 @@ window.CATALOGUE = {
         "soft"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M5 8h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V8Z\" fill=\"#c08457\"/><path d=\"M16 10h2a2.5 2.5 0 0 1 0 5h-2\" stroke=\"currentColor\" stroke-width=\"1.6\" fill=\"none\"/><path d=\"M8 3v2M11 3v2\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg>",
       "palette": [
         "#4a3b32",
         "#fffaf3",
@@ -46,6 +54,9 @@ window.CATALOGUE = {
       "id": "discord-dark",
       "name": "Discord Dark",
       "description": "Slack rebuilt as Discord: colours sampled from the real client, round server icons with the sliding pill, and Discord's sidebar. Brings in the member column and account strip as plugins.",
+      "descriptions": {
+        "fr": "Slack rebâti comme Discord : couleurs relevées sur le vrai client, icônes rondes avec la pastille coulissante, et la barre latérale de Discord. Amène la colonne des membres et le bandeau de compte sous forme de plugins."
+      },
       "version": "4.0.1",
       "tags": [
         "dark",
@@ -55,6 +66,7 @@ window.CATALOGUE = {
         "member-sidebar",
         "sidebar-account"
       ],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"14\" rx=\"5\" fill=\"#5865f2\"/><circle cx=\"9\" cy=\"11\" r=\"2\" fill=\"#fff\"/><circle cx=\"15\" cy=\"11\" r=\"2\" fill=\"#fff\"/><path d=\"M8 18l-2 3 5-3\" fill=\"#5865f2\"/></svg>",
       "palette": [
         "#121214",
         "#1a1a1e",
@@ -68,12 +80,16 @@ window.CATALOGUE = {
       "id": "discord-light",
       "name": "Discord Light",
       "description": "Slack wearing Discord's default light theme: white chat on grey chrome, blurple accent, gg sans type stack, 8px corners and circular avatars.",
+      "descriptions": {
+        "fr": "Slack habillé du thème clair de Discord : conversation blanche sur chrome gris, accent blurple, pile typographique gg sans, coins de 8 px et avatars circulaires."
+      },
       "version": "1.0.0",
       "tags": [
         "light",
         "discord"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"14\" rx=\"5\" fill=\"none\" stroke=\"#5865f2\" stroke-width=\"2\"/><circle cx=\"9\" cy=\"11\" r=\"1.8\" fill=\"#5865f2\"/><circle cx=\"15\" cy=\"11\" r=\"1.8\" fill=\"#5865f2\"/><path d=\"M8 18l-2 3 5-3\" fill=\"none\" stroke=\"#5865f2\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>",
       "palette": [
         "#f2f3f5",
         "#ffffff",
@@ -87,11 +103,15 @@ window.CATALOGUE = {
       "id": "focus-rings",
       "name": "Focus Rings",
       "description": "Thicker, higher-contrast keyboard focus outlines everywhere in Slack. Useful if you drive Slack from the keyboard or lose the cursor on a large screen.",
+      "descriptions": {
+        "fr": "Des contours de focus clavier plus épais et plus contrastés partout dans Slack. Utile si vous pilotez Slack au clavier ou si vous perdez le curseur sur un grand écran."
+      },
       "version": "1.0.0",
       "tags": [
         "accessibility"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"6\" y=\"6\" width=\"12\" height=\"12\" rx=\"3\" fill=\"currentColor\" opacity=\".25\"/><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"6\" fill=\"none\" stroke=\"#38bdf8\" stroke-width=\"2.4\"/></svg>",
       "palette": [
         "#4cc8ff"
       ],
@@ -101,11 +121,15 @@ window.CATALOGUE = {
       "id": "midnight",
       "name": "Midnight",
       "description": "A deeper, cooler dark theme. Overrides Slack's design tokens rather than its class names, so it keeps working across Slack updates.",
+      "descriptions": {
+        "fr": "Un thème sombre plus profond et plus froid. Redéfinit les jetons de design de Slack plutôt que ses noms de classe, donc il survit aux mises à jour du client."
+      },
       "version": "1.0.0",
       "tags": [
         "dark"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z\" fill=\"#818cf8\"/><circle cx=\"17\" cy=\"6\" r=\"1.2\" fill=\"currentColor\" opacity=\".7\"/></svg>",
       "palette": [
         "#0b0e14",
         "#0f1219",
@@ -119,6 +143,9 @@ window.CATALOGUE = {
       "id": "terminal",
       "name": "Terminal",
       "description": "Slack as a phosphor terminal: monospace everywhere, zero rounded corners, hairline borders, amber and green on near-black. Square avatars included.",
+      "descriptions": {
+        "fr": "Slack en terminal à phosphore : monospace partout, aucun coin arrondi, bordures d'un cheveu, ambre et vert sur presque-noir. Avatars carrés compris."
+      },
       "version": "1.0.0",
       "tags": [
         "dark",
@@ -126,6 +153,7 @@ window.CATALOGUE = {
         "retro"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" opacity=\".5\"/><path d=\"M6 9l3 3-3 3\" stroke=\"#4ade80\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/><path d=\"M12 15h6\" stroke=\"#4ade80\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
       "palette": [
         "#030506",
         "#05080a",
@@ -141,42 +169,57 @@ window.CATALOGUE = {
       "id": "avatar-downloader",
       "name": "Avatar Downloader",
       "description": "Download a member's profile picture at the highest quality Slack stores — the original upload when there is one, otherwise the largest rendition. Adds a button to the profile pane and to the hover actions on a message.",
+      "descriptions": {
+        "fr": "Télécharge la photo de profil d'un membre dans la meilleure qualité que Slack conserve : l'original quand il existe, sinon le plus grand rendu. Ajoute un bouton dans le panneau de profil et dans les actions au survol d'un message."
+      },
       "version": "1.1.0",
       "tags": [
         "profile",
         "files"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"8\" r=\"4\" fill=\"currentColor\" opacity=\".55\"/><path d=\"M3 20a7 7 0 0 1 11-5.7\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\" opacity=\".55\" stroke-linecap=\"round\"/><path d=\"M18 12v7m0 0 3-3m-3 3-3-3\" stroke=\"#38bdf8\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/></svg>",
       "settings": 1
     },
     {
       "id": "channel-notes",
       "name": "Channel Notes",
       "description": "A private scratchpad per channel, opened from a button in the channel header. Notes are stored locally and never sent anywhere. Doubles as the worked example of the BetterSlack widget API.",
+      "descriptions": {
+        "fr": "Un bloc-notes privé par canal, ouvert depuis un bouton dans l'en-tête. Les notes restent sur votre machine et ne partent nulle part. Sert aussi d'exemple complet de l'API des composants BetterSlack."
+      },
       "version": "1.0.0",
       "tags": [
         "productivity",
         "example"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"4\" y=\"3\" width=\"16\" height=\"18\" rx=\"3\" fill=\"currentColor\" opacity=\".25\"/><path d=\"M8 8h8M8 12h8M8 16h5\" stroke=\"#fbbf24\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
       "settings": 0
     },
     {
       "id": "code-highlight",
       "name": "Code Highlight",
       "description": "Colours the code blocks in messages, and works out which language they are on its own -- Slack sends them as plain grey text with no way to say what they contain. Twenty-one languages, from JSON and SQL to GraphQL, Dockerfiles and diffs, and it leaves a block alone when it is not sure.",
+      "descriptions": {
+        "fr": "Colore les blocs de code des messages et devine tout seul de quel langage il s'agit — Slack les envoie en gris, sans aucun moyen de dire ce qu'ils contiennent. Vingt et un langages, de JSON et SQL à GraphQL, aux Dockerfile et aux diffs, et il laisse un bloc tranquille quand il n'est sûr de rien."
+      },
       "version": "1.0.0",
       "tags": [
         "appearance",
         "productivity"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M8 8 4 12l4 4M16 8l4 4-4 4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/><path d=\"M13 5l-2 14\" stroke=\"#c678dd\" stroke-width=\"2.4\" stroke-linecap=\"round\"/></svg>",
       "settings": 0
     },
     {
       "id": "command-palette",
       "name": "Command Palette",
       "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods -- all from one keystroke, with / @ # to narrow it down. Bind it to as many shortcuts as you like, taken from Slack if Slack had them.",
+      "descriptions": {
+        "fr": "Le sélecteur rapide de Slack avec tout le reste dedans : aller à n'importe quelle conversation, trouver n'importe qui, lancer les commandes de vos mods, les activer ou les régler — le tout depuis une touche, avec / @ # pour affiner. Attribuez-lui autant de raccourcis que vous voulez ; ceux que Slack utilisait déjà lui sont repris."
+      },
       "version": "1.2.0",
       "tags": [
         "navigation",
@@ -184,70 +227,94 @@ window.CATALOGUE = {
         "tools"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"5\" width=\"20\" height=\"14\" rx=\"3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" opacity=\".55\"/><path d=\"M9 9.5h2.5a2 2 0 1 1-2 2V15\" stroke=\"#38bdf8\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/><circle cx=\"16.5\" cy=\"14.5\" r=\"1.3\" fill=\"#38bdf8\"/></svg>",
       "settings": 1
     },
     {
       "id": "composer-char-count",
       "name": "Composer Character Count",
       "description": "Shows a live character count under the message composer, and warns before you cross Slack's 4000-character limit and get split into two messages.",
+      "descriptions": {
+        "fr": "Affiche le nombre de caractères sous la zone de saisie, et prévient avant que vous ne dépassiez la limite de 4000 caractères et que Slack coupe votre message en deux."
+      },
       "version": "1.1.0",
       "tags": [
         "composer"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" opacity=\".35\"/><path d=\"M12 4a8 8 0 0 1 7 4\" stroke=\"#fbbf24\" stroke-width=\"2.4\" stroke-linecap=\"round\" fill=\"none\"/><path d=\"M9 12h6\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
       "settings": 2
     },
     {
       "id": "copy-message-link",
       "name": "Copy Message Link",
       "description": "One-click permalink copy in the hover actions, instead of opening the overflow menu and hunting for Copy link. Confirms with a small toast.",
+      "descriptions": {
+        "fr": "Copie le lien permanent d'un message en un clic, depuis les actions au survol, au lieu d'ouvrir le menu et d'y chercher « Copier le lien ». Confirme par une petite notification."
+      },
       "version": "1.0.0",
       "tags": [
         "messages"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M10 14a4 4 0 0 1 0-5.6l2.4-2.4a4 4 0 0 1 5.6 5.6L16.6 13\" stroke=\"#38bdf8\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/><path d=\"M14 10a4 4 0 0 1 0 5.6L11.6 18A4 4 0 0 1 6 12.4L7.4 11\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" opacity=\".6\"/></svg>",
       "settings": 0
     },
     {
       "id": "devtools",
       "name": "DevTools",
       "description": "Opens and closes Slack's real Chrome DevTools — console, elements, network, the lot — from a button above the BetterSlack one. Same action as Slack's own hidden ⌘⌥I menu item.",
+      "descriptions": {
+        "fr": "Ouvre et referme les vrais outils de développement de Chrome dans Slack — console, éléments, réseau — depuis un bouton au-dessus de celui de BetterSlack. La même action que l'entrée de menu cachée ⌘⌥I de Slack."
+      },
       "version": "1.0.0",
       "tags": [
         "developer",
         "tools"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M9 7 4 12l5 5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/><path d=\"M15 7l5 5-5 5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/><circle cx=\"12\" cy=\"12\" r=\"2\" fill=\"#f472b6\"/></svg>",
       "settings": 0
     },
     {
       "id": "focus-mode",
       "name": "Focus Mode",
       "description": "Press Cmd/Ctrl+Shift+F to fold away the sidebar, the rail and the top bar, leaving just the conversation on a narrower, centred column. Press again to bring it all back.",
+      "descriptions": {
+        "fr": "Cmd/Ctrl+Maj+F replie la barre latérale, le rail et la barre du haut, et ne laisse que la conversation, dans une colonne plus étroite et centrée. Une seconde pression remet tout en place."
+      },
       "version": "1.0.0",
       "tags": [
         "productivity",
         "layout"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M4 9V6a2 2 0 0 1 2-2h3M20 9V6a2 2 0 0 0-2-2h-3M4 15v3a2 2 0 0 0 2 2h3M20 15v3a2 2 0 0 1-2 2h-3\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/><rect x=\"9\" y=\"9\" width=\"6\" height=\"6\" rx=\"1.5\" fill=\"#4ade80\"/></svg>",
       "settings": 0
     },
     {
       "id": "full-links",
       "name": "Full Links",
       "description": "Keeps long links whole. Slack shortens a long URL to its host and an ellipsis -- in the messages you read, and in the ones you send, since the short label is stored in the message itself. This puts both back: it restores what is on screen, and stops the label being made when you paste.",
+      "descriptions": {
+        "fr": "Garde les liens longs entiers. Slack raccourcit une URL à son domaine suivi de points de suspension — dans les messages que vous lisez comme dans ceux que vous envoyez, puisque le libellé court est enregistré dans le message. Ce mod répare les deux : il rétablit ce qui est à l'écran, et empêche le raccourcissement au moment où vous collez."
+      },
       "version": "1.0.0",
       "tags": [
         "messages",
         "productivity"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M7 12h10\" stroke=\"#38bdf8\" stroke-width=\"2.4\" stroke-linecap=\"round\"/><path d=\"M9 8H5.5a4 4 0 0 0 0 8H9M15 8h3.5a4 4 0 0 1 0 8H15\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" opacity=\".65\"/></svg>",
       "settings": 0
     },
     {
       "id": "member-sidebar",
       "name": "Member Sidebar",
       "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
+      "descriptions": {
+        "fr": "Une colonne des membres du canal courant à droite du fil, séparée entre en ligne et hors ligne, où cliquer sur quelqu'un ouvre son profil Slack."
+      },
       "version": "1.3.0",
       "tags": [
         "members",
@@ -255,12 +322,16 @@ window.CATALOGUE = {
         "presence"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"10\" height=\"16\" rx=\"2\" fill=\"currentColor\" opacity=\".22\"/><circle cx=\"17\" cy=\"8\" r=\"2.2\" fill=\"#4ade80\"/><circle cx=\"17\" cy=\"15\" r=\"2.2\" fill=\"currentColor\" opacity=\".55\"/><path d=\"M15 4h7M15 20h7\" stroke=\"currentColor\" stroke-width=\"1.4\" opacity=\".3\"/></svg>",
       "settings": 2
     },
     {
       "id": "motion",
       "name": "Motion",
       "description": "Slack, with the frames in between: conversations that fade in instead of snapping, dialogs and menus that arrive on a spring, reactions that pop, and hover and press feedback on everything you point at. It covers the components the plugin API hands out too, so every mod's own interface moves with the app. Five families you can switch off one by one, and speed and amplitude on dials.",
+      "descriptions": {
+        "fr": "Slack, avec les images intermédiaires : les conversations arrivent en fondu au lieu de claquer, les dialogues et les menus se posent sur un ressort, les réactions surgissent, et tout ce que vous survolez ou pressez répond. Couvre aussi les composants que l'API distribue, donc l'interface de chaque mod bouge avec l'application. Cinq familles débrayables une par une, vitesse et amplitude au réglage."
+      },
       "version": "1.0.0",
       "tags": [
         "appearance",
@@ -268,36 +339,48 @@ window.CATALOGUE = {
         "tools"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"16\" cy=\"12\" r=\"4\" fill=\"#a78bfa\"/><path d=\"M3 8h6M2 12h5M3 16h6\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" opacity=\".6\"/></svg>",
       "settings": 7
     },
     {
       "id": "quote-reply",
       "name": "Quote Reply",
       "description": "Adds a Reply button to the hover actions on a message. It drops a link to that message into the composer as a single \".\" and focuses it, so your answer posts in the channel with Slack's own preview of the message you are answering.",
+      "descriptions": {
+        "fr": "Ajoute un bouton Répondre aux actions au survol d'un message. Il dépose le lien du message dans la zone de saisie sous la forme d'un simple « . » et y place le curseur : votre réponse part dans le canal avec l'aperçu natif de Slack du message auquel vous répondez."
+      },
       "version": "1.0.0",
       "tags": [
         "messages",
         "composer"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M4 14a3 3 0 1 1 3-3c0 3-1.5 5-4 6M12 14a3 3 0 1 1 3-3c0 3-1.5 5-4 6\" stroke=\"#fbbf24\" stroke-width=\"1.8\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M17 6l4 4-4 4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/></svg>",
       "settings": 0
     },
     {
       "id": "sidebar-account",
       "name": "Sidebar Account Strip",
       "description": "Your avatar, name and availability at the bottom of the channel sidebar, the way Discord and other chat apps put them; clicking it opens Slack's own account menu.",
+      "descriptions": {
+        "fr": "Votre avatar, votre nom et votre disponibilité en bas de la barre latérale, comme Discord et les autres messageries les placent ; un clic ouvre le menu de compte de Slack."
+      },
       "version": "1.0.0",
       "tags": [
         "sidebar",
         "profile"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3\" fill=\"currentColor\" opacity=\".18\"/><circle cx=\"8\" cy=\"16\" r=\"2.4\" fill=\"#4ade80\"/><path d=\"M12 15h6M12 18h4\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" opacity=\".6\"/></svg>",
       "settings": 0
     },
     {
       "id": "theme-builder",
       "name": "Theme Builder",
       "description": "A theme workbench in its own window, with the real Slack beside it as the preview: two colours become twelve roles across all four token families, point at anything in the app to see and edit the tokens that paint it, search every colour the client defines, and add CSS of your own on top.",
+      "descriptions": {
+        "fr": "Un atelier de thème dans sa propre fenêtre, avec le vrai Slack à côté en guise d'aperçu : deux couleurs en deviennent douze réparties sur les quatre familles de jetons, pointez n'importe quoi dans l'application pour voir et modifier les jetons qui le peignent, cherchez parmi toutes les couleurs du client, et ajoutez votre CSS par-dessus."
+      },
       "version": "3.0.0",
       "tags": [
         "themes",
@@ -306,18 +389,23 @@ window.CATALOGUE = {
         "inspector"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.9 1.2-1.7-.6-1.2.3-2.3 1.6-2.3H17a4 4 0 0 0 4-4c0-5-4-10-9-10Z\" fill=\"currentColor\" opacity=\".28\"/><circle cx=\"8\" cy=\"10\" r=\"1.5\" fill=\"#f472b6\"/><circle cx=\"12\" cy=\"7\" r=\"1.5\" fill=\"#f472b6\"/><circle cx=\"16\" cy=\"10\" r=\"1.5\" fill=\"#f472b6\"/></svg>",
       "settings": 0
     },
     {
       "id": "user-inspector",
       "name": "User Inspector",
       "description": "Shows everything Slack's API knows about a member — roles, timezone, presence, do-not-disturb, custom fields and every avatar size — as extra sections inside their profile, styled like Slack's own. Read-only; nothing leaves your machine.",
+      "descriptions": {
+        "fr": "Montre tout ce que l'API de Slack sait d'un membre — rôles, fuseau horaire, présence, Ne pas déranger, champs personnalisés et toutes les tailles d'avatar — en sections supplémentaires dans son profil, dans le style de Slack. En lecture seule ; rien ne quitte votre machine."
+      },
       "version": "1.1.0",
       "tags": [
         "profile",
         "api"
       ],
       "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"8\" r=\"3.5\" fill=\"currentColor\" opacity=\".5\"/><path d=\"M4 19a6 6 0 0 1 8.5-5.4\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\" opacity=\".5\" stroke-linecap=\"round\"/><circle cx=\"16.5\" cy=\"15.5\" r=\"3.5\" fill=\"none\" stroke=\"#38bdf8\" stroke-width=\"2\"/><path d=\"M19 18l2.5 2.5\" stroke=\"#38bdf8\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
       "settings": 0
     }
   ]

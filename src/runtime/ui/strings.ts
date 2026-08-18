@@ -31,6 +31,8 @@ export const PANEL_STRINGS = {
     byLine: 'v{version} · by {author}',
     filterAll: 'All',
 
+    backToList: '‹ All mods',
+    settingsTitle: 'Settings',
     install: 'Install',
     enable: 'Enable',
     disable: 'Disable',
@@ -144,6 +146,8 @@ export const PANEL_STRINGS = {
     byLine: 'v{version} · par {author}',
     filterAll: 'Tous',
 
+    backToList: '‹ Tous les mods',
+    settingsTitle: 'Réglages',
     install: 'Installer',
     enable: 'Activer',
     disable: 'Désactiver',

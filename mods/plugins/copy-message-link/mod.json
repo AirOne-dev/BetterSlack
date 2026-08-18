@@ -5,8 +5,14 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "One-click permalink copy in the hover actions, instead of opening the overflow menu and hunting for Copy link. Confirms with a small toast.",
+  "descriptions": {
+    "fr": "Copie le lien permanent d'un message en un clic, depuis les actions au survol, au lieu d'ouvrir le menu et d'y chercher « Copier le lien ». Confirme par une petite notification."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["messages"]
+  "tags": [
+    "messages"
+  ]
 }

@@ -362,3 +362,25 @@ kbd {
   .section--reverse .split__text { order: 0; }
   .nav__links { display: none; }
 }
+
+/* A mark on every card.
+ *
+ * The catalogue reads as a shelf rather than a list of paragraphs, and the
+ * same SVG is what the panel draws in Slack -- one drawing per mod, not two. */
+.card__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.card__heading h3 { margin: 0; }
+.card__icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.card__icon svg { width: 22px; height: 22px; display: block; }

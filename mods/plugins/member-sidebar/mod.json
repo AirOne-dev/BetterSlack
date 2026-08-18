@@ -5,7 +5,11 @@
   "version": "1.3.0",
   "author": "AirOne-dev",
   "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
+  "descriptions": {
+    "fr": "Une colonne des membres du canal courant à droite du fil, séparée entre en ligne et hors ligne, où cliquer sur quelqu'un ouvre son profil Slack."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "settings": [
     {
       "key": "memberLimit",

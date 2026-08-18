@@ -44,10 +44,25 @@ for (const mod of registry.mods) {
     id: mod.id,
     name: mod.name,
     description: mod.description,
+    // The page reads whichever language the browser asks for and falls back to
+    // the English one, exactly as the panel does.
+    descriptions: mod.descriptions ?? {},
     version: mod.version,
     tags: mod.tags ?? [],
     requires: mod.requires ?? [],
   };
+
+  /*
+   * The mark, inlined.
+   *
+   * A card without one is a paragraph with a heading; twenty-two of them is a
+   * wall. They are a few hundred bytes each and there are twenty-two, so the
+   * whole set costs less than one screenshot and needs no extra request.
+   */
+  if (mod.icon) {
+    const icon = readFileSync(path.join(folder, mod.icon), 'utf8').trim();
+    if (icon.startsWith('<svg')) entry.icon = icon;
+  }
 
   if (mod.type === 'theme') {
     const css = readFileSync(path.join(folder, mod.entry ?? 'theme.css'), 'utf8');

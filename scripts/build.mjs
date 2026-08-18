@@ -83,6 +83,7 @@ const runtimeModules = {
     `${root}/src/runtime/ui/menu.ts`,
     `${root}/src/runtime/ui/strings.ts`,
     `${root}/src/runtime/ui/palette.ts`,
+    `${root}/src/runtime/ui/markdown.ts`,
   ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },

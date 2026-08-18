@@ -22,6 +22,7 @@ import { createCodeEditor } from './code.js';
 import { closeMenu, openMenu } from './menu.js';
 import { mountCounts } from '../dom.js';
 import { createI18n } from '../i18n.js';
+import { renderMarkdown } from './markdown.js';
 import { PANEL_STRINGS } from './strings.js';
 
 type TabId = 'themes' | 'plugins' | 'css' | 'about';
@@ -51,6 +52,28 @@ const OVERFLOW_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 2
  * whole session even once the crash it also caused was fixed.
  */
 type Translate = ReturnType<ReturnType<typeof createI18n>['strings']>;
+
+/**
+ * A mod's own words, in the reader's language.
+ *
+ * `description` is required and English; `descriptions` carries the rest. The
+ * fallback chain is the same one `api.i18n` gives mods -- exact tag, then
+ * language, then English -- so a mod translated into "fr" is read by a "fr-CA"
+ * client rather than falling back to English for a regional tag nobody wrote.
+ */
+export function localised(
+  fallback: string,
+  translations: Record<string, string> | undefined,
+  locale: string,
+): string {
+  if (!translations) return fallback;
+  const language = locale.split('-')[0] ?? locale;
+  return translations[locale] ?? translations[language] ?? fallback;
+}
+let locale: string | null = null;
+/** The client's language, read when it is first needed rather than at load. */
+const language = (): string => (locale ??= createI18n().locale);
+
 let translator: Translate | null = null;
 const t: Translate = (key, vars) => {
   translator ??= createI18n().strings(PANEL_STRINGS);
@@ -276,6 +299,15 @@ export class Panel {
     body.append(...this.renderUpdate());
     body.append(...this.renderModUpdates());
 
+    if (this.detail) {
+      const mod = mods.find((entry) => entry.id === this.detail);
+      if (mod) {
+        body.append(...this.renderDetail(mod));
+        return;
+      }
+      this.detail = null;
+    }
+
     switch (this.tab) {
       case 'themes':
         body.append(...this.renderShelves(mods.filter((m) => m.type === 'theme'), 'theme'));
@@ -405,6 +437,96 @@ export class Panel {
     this.restoreScroll();
   }
 
+  /**
+   * One mod's page: what it looks like, what it says about itself, what it
+   * costs, and the switch.
+   *
+   * The catalogue is a shop before it is a list of installed things, and a
+   * shop that shows one line per item is asking people to install blind. The
+   * pieces are the ones a mod can actually provide -- a mark, a sentence in
+   * your language, pictures, and a readme -- and every one of them is
+   * optional: a mod that offers none of it still renders as its row did.
+   */
+  private renderDetail(mod: ModRecord): Node[] {
+    const back = h('button', { class: 'c-button-unstyled betterslack-back', type: 'button' }, [
+      t('backToList'),
+    ]);
+    back.addEventListener('click', () => {
+      this.detail = null;
+      this.scrollTop = 0;
+      this.render();
+    });
+
+    const title = h('div', { class: 'betterslack-detail__title' }, [
+      h('h2', { class: 'betterslack-detail__name' }, [mod.name]),
+      h('div', { class: 'betterslack-row__sub' }, [
+        t('byLine', { version: mod.version, author: mod.author }),
+      ]),
+    ]);
+    for (const tag of mod.tags ?? []) {
+      title.querySelector('.betterslack-row__sub')?.append(h('span', { class: 'betterslack-tag' }, [tag]));
+    }
+
+    const head = h('div', { class: 'betterslack-detail__head' }, [
+      this.renderIcon(mod, 'lg'),
+      title,
+      // The same controls as the row, so there is one place that decides what
+      // installing or switching on means.
+      this.renderRow(mod).querySelector('.betterslack-row__actions') ?? h('div'),
+    ]);
+
+    const parts: Node[] = [back, head, h('p', { class: 'betterslack-detail__lede' }, [
+      localised(mod.description, mod.descriptions, language()),
+    ])];
+
+    const shots = mod.screenshots ?? [];
+    if (shots.length > 0) {
+      const strip = h('div', { class: 'betterslack-shots' });
+      for (const shot of shots) {
+        const figure = h('figure', { class: 'betterslack-shot' });
+        const image = h('img', { alt: localised(shot.caption ?? '', shot.captions, language()) });
+        figure.append(image);
+        const caption = localised(shot.caption ?? '', shot.captions, language());
+        if (caption) figure.append(h('figcaption', {}, [caption]));
+        strip.append(figure);
+        // Fetched one at a time, and only now: the catalogue carries text.
+        void this.manager.asset(mod.id, shot.file).then((url) => {
+          if (url) (image as HTMLImageElement).src = url;
+          else figure.remove();
+        });
+      }
+      parts.push(strip);
+    }
+
+    const readme = localised(mod.readmeText ?? '', mod.readmeTexts, language());
+    if (readme.trim()) {
+      const article = h('div', { class: 'betterslack-detail__readme sm-md' });
+      article.innerHTML = renderMarkdown(readme, {
+        // A picture in a readme is a file in the mod's folder; nothing else is
+        // fetched, and a path that leaves the folder is dropped by the loader.
+        resolve: (href: string) => {
+          if (/^(https?:|mailto:|slack:)/i.test(href)) return href;
+          const slot = `betterslack-md-${Math.random().toString(36).slice(2)}`;
+          void this.manager.asset(mod.id, href).then((url) => {
+            const node = article.querySelector(`[src="${slot}"]`);
+            if (url && node) node.setAttribute('src', url);
+            else node?.remove();
+          });
+          return slot;
+        },
+      });
+      parts.push(article);
+    }
+
+    const fields = mod.settings ?? [];
+    if (fields.length > 0 && this.manager.isEnabled(mod.id)) {
+      parts.push(h('h3', { class: 'betterslack-detail__section' }, [t('settingsTitle')]));
+      parts.push(this.renderModSettings(mod, fields));
+    }
+
+    return [h('div', { class: 'betterslack-detail' }, parts)];
+  }
+
   private renderRow(mod: ModRecord): HTMLElement {
     const installed = this.manager.isInstalled(mod.id);
     const enabled = this.manager.isEnabled(mod.id);
@@ -458,14 +580,26 @@ export class Panel {
       actions.append(install);
     }
 
-    const title = h('div', { class: 'betterslack-row__name' }, [mod.name]);
+    const open = h('button', {
+      class: 'c-button-unstyled betterslack-row__open',
+      type: 'button',
+      'aria-label': mod.name,
+    }, [mod.name]);
+    open.addEventListener('click', () => {
+      this.detail = mod.id;
+      this.scrollTop = 0;
+      this.render();
+    });
+    const title = h('div', { class: 'betterslack-row__name' }, [open]);
     for (const tag of (mod.tags ?? []).slice(0, 3)) {
       title.append(h('span', { class: 'betterslack-tag' }, [tag]));
     }
 
     const meta = h('div', { class: 'betterslack-row__meta' }, [
       title,
-      h('div', { class: 'betterslack-row__desc' }, [mod.description]),
+      h('div', { class: 'betterslack-row__desc' }, [
+        localised(mod.description, mod.descriptions, language()),
+      ]),
       h('div', { class: 'betterslack-row__sub' }, [t('byLine', { version: mod.version, author: mod.author })]),
     ]);
 
@@ -519,7 +653,9 @@ export class Panel {
       meta.append(note);
     }
 
-    const row = h('div', { class: 'betterslack-row', 'data-betterslack-mod': mod.id }, [meta, actions]);
+    const row = h('div', { class: 'betterslack-row', 'data-betterslack-mod': mod.id }, [
+      this.renderIcon(mod), meta, actions,
+    ]);
 
     // Settings hang under the row they belong to, and only while the mod is on:
     // a control that changes nothing is a control that lies.
@@ -641,6 +777,37 @@ export class Panel {
 
   /** The tag being filtered on, or null for everything. */
   private tag: string | null = null;
+
+  /**
+   * The mod whose page is open, if any.
+   *
+   * A row is a line in a list and cannot hold what somebody deciding needs --
+   * what it looks like, what it does not do, which setting to reach for. That
+   * is a page, and this is which one.
+   */
+  private detail: string | null = null;
+
+  /**
+   * A mod's mark, or its initial.
+   *
+   * Every mod has one so the list reads as a list of things rather than a
+   * table of text, and a mod that has not drawn one yet still gets a shape
+   * rather than a hole: the letter, on a colour derived from the id so it is
+   * at least its own.
+   */
+  private renderIcon(mod: ModRecord, size = 'sm'): HTMLElement {
+    const box = h('div', { class: `betterslack-icon betterslack-icon--${size}` });
+    if (mod.iconSvg) {
+      box.innerHTML = mod.iconSvg;
+      return box;
+    }
+    let hash = 0;
+    for (const ch of mod.id) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
+    box.style.setProperty('--betterslack-icon-hue', String(hash));
+    box.classList.add('betterslack-icon--letter');
+    box.textContent = (mod.name[0] ?? '?').toUpperCase();
+    return box;
+  }
 
   /** Mods whose settings are unfolded, so a render does not close them. */
   private openSettings = new Set<string>();

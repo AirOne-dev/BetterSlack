@@ -5,8 +5,15 @@
   "version": "1.0.0",
   "author": "AirOne-dev",
   "description": "Press Cmd/Ctrl+Shift+F to fold away the sidebar, the rail and the top bar, leaving just the conversation on a narrower, centred column. Press again to bring it all back.",
+  "descriptions": {
+    "fr": "Cmd/Ctrl+Maj+F replie la barre latérale, le rail et la barre du haut, et ne laisse que la conversation, dans une colonne plus étroite et centrée. Une seconde pression remet tout en place."
+  },
   "entry": "index.js",
+  "icon": "icon.svg",
   "betterslackApi": 1,
   "slackVersion": "4.51",
-  "tags": ["productivity", "layout"]
+  "tags": [
+    "productivity",
+    "layout"
+  ]
 }
