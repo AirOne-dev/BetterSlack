@@ -112,10 +112,24 @@ export function installDom(html = SLACK_FIXTURE) {
     FormData: dom.window.FormData,
   };
 
+  /*
+   * Defined rather than assigned.
+   *
+   * Node 22 ships its own `globalThis.navigator`, and it is a getter with no
+   * setter: `globalThis.navigator = …` throws "Cannot set property navigator of
+   * #<Object> which has only a getter", and every test that installs a DOM dies
+   * on the first line. It passed for a long time only because the machine it
+   * was written on runs Node 20. Nine tests failed the moment CI moved.
+   */
   const previous = new Map();
   for (const [key, value] of Object.entries(globals)) {
-    previous.set(key, globalThis[key]);
-    globalThis[key] = value;
+    previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+    Object.defineProperty(globalThis, key, {
+      value,
+      configurable: true,
+      writable: true,
+      enumerable: true,
+    });
   }
 
   // jsdom has no clipboard or object URLs; record instead of failing.
@@ -143,9 +157,11 @@ export function installDom(html = SLACK_FIXTURE) {
     document: dom.window.document,
     recorded,
     cleanup() {
-      for (const [key, value] of previous) {
-        if (value === undefined) delete globalThis[key];
-        else globalThis[key] = value;
+      // Put back exactly what was there, getter and all, so a suite that runs
+      // in one process leaves the next test the globals it expects.
+      for (const [key, descriptor] of previous) {
+        if (descriptor === undefined) delete globalThis[key];
+        else Object.defineProperty(globalThis, key, descriptor);
       }
       dom.window.close();
     },

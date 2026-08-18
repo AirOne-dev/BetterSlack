@@ -40,13 +40,24 @@ test('a key missing everywhere shows the key, never an empty gap', () => {
 
 test('the language comes from Slack’s <html lang>, not from localStorage', () => {
   const dom = new JSDOM('<!doctype html><html lang="fr-FR"><body></body></html>');
-  const previous = [globalThis.document, globalThis.navigator];
-  globalThis.document = dom.window.document;
-  globalThis.navigator = dom.window.navigator;
+  // Defined, not assigned: Node 22's own `navigator` is a getter with no
+  // setter, and assigning to it throws. Same reason as in the harness.
+  const previous = ['document', 'navigator'].map((key) =>
+    [key, Object.getOwnPropertyDescriptor(globalThis, key)]);
+  for (const key of ['document', 'navigator']) {
+    Object.defineProperty(globalThis, key, {
+      value: dom.window[key],
+      configurable: true,
+      writable: true,
+    });
+  }
   try {
     assert.equal(detectLocale(), 'fr-FR');
   } finally {
-    [globalThis.document, globalThis.navigator] = previous;
+    for (const [key, descriptor] of previous) {
+      if (descriptor === undefined) delete globalThis[key];
+      else Object.defineProperty(globalThis, key, descriptor);
+    }
     dom.window.close();
   }
 
