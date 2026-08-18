@@ -48,6 +48,7 @@ pnpm validate-mods     # manifests
 pnpm registry          # regenerate mods/registry.json (commit it)
 pnpm typecheck
 pnpm site              # regenerate site/data.js from the registry (commit it)
+pnpm site:dev          # serve site/ with live reload (--port, --open)
 ```
 
 `site/` is the presentation page published to GitHub Pages by
