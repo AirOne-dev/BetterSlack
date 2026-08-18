@@ -7,12 +7,12 @@
 <meta name="description" content="BetterSlack adds themes, plugins, a command palette and a theme builder to the Slack desktop app — without modifying Slack.app.">
 <meta property="og:title" content="BetterSlack">
 <meta property="og:description" content="Themes, plugins and custom CSS for the Slack desktop app.">
-<meta property="og:image" content="https://airone-dev.github.io/SlackMod/cover.jpg">
-<meta property="og:url" content="https://airone-dev.github.io/SlackMod/">
+<meta property="og:image" content="https://airone-dev.github.io/BetterSlack/cover.jpg">
+<meta property="og:url" content="https://airone-dev.github.io/BetterSlack/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="BetterSlack">
 <meta name="twitter:description" content="You know BetterDiscord. Now Slack has one — themes, plugins and a ⌘K palette, without patching Slack.app.">
-<meta name="twitter:image" content="https://airone-dev.github.io/SlackMod/cover.jpg">
+<meta name="twitter:image" content="https://airone-dev.github.io/BetterSlack/cover.jpg">
 <meta property="og:type" content="website">
 <link rel="icon" href="mark.svg">
 <link rel="stylesheet" href="style.css">
@@ -36,7 +36,7 @@
   </nav>
   <div class="nav__actions">
     <button class="lang" type="button" id="lang" aria-label="Français">FR</button>
-    <a class="btn btn--ghost" href="https://github.com/AirOne-dev/SlackMod">GitHub</a>
+    <a class="btn btn--ghost" href="https://github.com/AirOne-dev/BetterSlack">GitHub</a>
   </div>
 </header>
 
@@ -59,12 +59,12 @@
 
     <div class="cta">
       <a class="btn btn--primary" href="#install" data-en="Install it" data-fr="L’installer">Install it</a>
-      <a class="btn btn--ghost" href="https://github.com/AirOne-dev/SlackMod/blob/master/docs/getting-started.md"
+      <a class="btn btn--ghost" href="https://github.com/AirOne-dev/BetterSlack/blob/master/docs/getting-started.md"
          data-en="Read the docs" data-fr="Lire la doc">Read the docs</a>
     </div>
 
     <div class="snippet" data-copy>
-      <code>git clone https://github.com/AirOne-dev/SlackMod.git &amp;&amp; cd SlackMod
+      <code>git clone https://github.com/AirOne-dev/BetterSlack.git &amp;&amp; cd BetterSlack
 pnpm install &amp;&amp; pnpm build &amp;&amp; pnpm start</code>
       <button class="snippet__copy" type="button" data-en="Copy" data-fr="Copier">Copy</button>
     </div>
@@ -161,7 +161,7 @@ $                        # nothing</code></pre>
     A theme is CSS and nothing else — no code, no permissions. Several can run at once. Each card below shows the palette read straight out of that theme’s stylesheet.
   </p>
   <div class="gallery" id="theme-gallery"></div>
-  <noscript><p class="note">The gallery is drawn from the catalogue with a few lines of JavaScript — see <a href="https://github.com/AirOne-dev/SlackMod/tree/master/mods/themes">mods/themes</a> for the same list.</p></noscript>
+  <noscript><p class="note">The gallery is drawn from the catalogue with a few lines of JavaScript — see <a href="https://github.com/AirOne-dev/BetterSlack/tree/master/mods/themes">mods/themes</a> for the same list.</p></noscript>
 </section>
 
 <section class="section" id="discord">
@@ -240,7 +240,7 @@ $                        # nothing</code></pre>
     A plugin is an ES module that exports start(api). Everything it registers is undone when it is switched off. These ship with the project; a fresh install starts empty and you install what you want.
   </p>
   <div class="cards cards--3" id="plugin-list"></div>
-  <noscript><p class="note">The list is drawn from the catalogue with a few lines of JavaScript — see <a href="https://github.com/AirOne-dev/SlackMod/tree/master/mods/plugins">mods/plugins</a> for the same list.</p></noscript>
+  <noscript><p class="note">The list is drawn from the catalogue with a few lines of JavaScript — see <a href="https://github.com/AirOne-dev/BetterSlack/tree/master/mods/plugins">mods/plugins</a> for the same list.</p></noscript>
 
   <figure class="wide">
     <img src="shots/panel-browse.jpg" alt="The Browse shelf of the BetterSlack panel, listing the catalogue" loading="lazy" width="2000" height="1101">
@@ -371,8 +371,8 @@ const { state } = await api.slack.web.availability('U1');   // 'active' | 'away'
   </p>
 
   <div class="snippet snippet--wide" data-copy>
-    <code>git clone https://github.com/AirOne-dev/SlackMod.git
-cd SlackMod
+    <code>git clone https://github.com/AirOne-dev/BetterSlack.git
+cd BetterSlack
 pnpm install &amp;&amp; pnpm build
 pnpm start</code>
     <button class="snippet__copy" type="button" data-en="Copy" data-fr="Copier">Copy</button>
@@ -393,11 +393,11 @@ pnpm start</code>
     <span>BetterSlack <span id="version"></span></span>
   </div>
   <nav class="footer__links">
-    <a href="https://github.com/AirOne-dev/SlackMod">GitHub</a>
-    <a href="https://github.com/AirOne-dev/SlackMod/blob/master/docs/getting-started.md" data-en="Getting started" data-fr="Démarrer">Getting started</a>
-    <a href="https://github.com/AirOne-dev/SlackMod/blob/master/docs/api.md" data-en="API reference" data-fr="Référence de l’API">API reference</a>
-    <a href="https://github.com/AirOne-dev/SlackMod/blob/master/docs/themes.md" data-en="Theming Slack" data-fr="Thématiser Slack">Theming Slack</a>
-    <a href="https://github.com/AirOne-dev/SlackMod/blob/master/CONTRIBUTING.md" data-en="Contributing" data-fr="Contribuer">Contributing</a>
+    <a href="https://github.com/AirOne-dev/BetterSlack">GitHub</a>
+    <a href="https://github.com/AirOne-dev/BetterSlack/blob/master/docs/getting-started.md" data-en="Getting started" data-fr="Démarrer">Getting started</a>
+    <a href="https://github.com/AirOne-dev/BetterSlack/blob/master/docs/api.md" data-en="API reference" data-fr="Référence de l’API">API reference</a>
+    <a href="https://github.com/AirOne-dev/BetterSlack/blob/master/docs/themes.md" data-en="Theming Slack" data-fr="Thématiser Slack">Theming Slack</a>
+    <a href="https://github.com/AirOne-dev/BetterSlack/blob/master/CONTRIBUTING.md" data-en="Contributing" data-fr="Contribuer">Contributing</a>
   </nav>
   <p class="footer__note"
      data-en="Not affiliated with Slack Technologies. Slack is a trademark of Salesforce, Inc."

@@ -1,16 +1,79 @@
-# BetterSlack
+<p align="center">
+  <img src="assets/mark.svg" width="76" alt="">
+</p>
 
-<img src="assets/mark.svg" width="72" alt="">
+<h1 align="center">BetterSlack</h1>
 
+<p align="center">
+  <strong>You know BetterDiscord. This is that, for Slack.</strong><br>
+  Themes, plugins, a ⌘K palette and a theme builder — inside the Slack desktop
+  app, without patching a single file of it.
+</p>
 
-Themes, plugins and custom CSS for the Slack desktop app, with a Mods panel
-inside Slack itself.
+<p align="center">
+  <a href="https://airone-dev.github.io/BetterSlack/"><strong>airone-dev.github.io/BetterSlack</strong></a> ·
+  <a href="docs/getting-started.md">Getting started</a> ·
+  <a href="docs/api.md">API</a> ·
+  <a href="docs/themes.md">Theming</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-**→ [airone-dev.github.io/SlackMod](https://airone-dev.github.io/SlackMod/)** — screenshots, the catalogue, and what the API looks like.
+<p align="center">
+  <img src="site/shots/panel.jpg" width="880" alt="The BetterSlack panel open inside Slack, listing installed themes with switches">
+</p>
 
-```
-⌘⇧M  (Ctrl+Shift+M on Windows/Linux)   or the sliders button above your avatar
-```
+<p align="center"><em>⌘⇧M, or the sliders button above your avatar.</em></p>
+
+## Seven themes, twelve plugins, one keystroke
+
+<table>
+  <tr>
+    <td width="50%"><img src="site/shots/crop-aurora.jpg" alt="Slack wearing the Aurora theme"></td>
+    <td width="50%"><img src="site/shots/crop-terminal.jpg" alt="Slack wearing the Terminal theme"></td>
+  </tr>
+  <tr>
+    <td><strong>Aurora</strong> — frosted glass over a drifting gradient.</td>
+    <td><strong>Terminal</strong> — monospace, square corners, phosphor.</td>
+  </tr>
+  <tr>
+    <td><img src="site/shots/crop-cocoa.jpg" alt="Slack wearing the Cocoa theme"></td>
+    <td><img src="site/shots/crop-midnight.jpg" alt="Slack wearing the Midnight theme"></td>
+  </tr>
+  <tr>
+    <td><strong>Cocoa</strong> — cream paper, cocoa text, soft shadows.</td>
+    <td><strong>Midnight</strong> — a deeper, cooler dark.</td>
+  </tr>
+</table>
+
+A theme is CSS and nothing else, so several can run at once. When a look needs
+behaviour CSS cannot do, the theme names a plugin in `requires` and the panel
+offers to switch it on — **Discord Dark** does exactly that, and brings the
+member column and the account strip with it:
+
+<p align="center">
+  <img src="site/shots/discord-combo.jpg" width="880" alt="Slack rebuilt as Discord: the theme, a member column on the right and an account strip bottom-left">
+</p>
+
+### ⌘K, and everything is one keystroke away
+
+<p align="center">
+  <img src="site/shots/palette.jpg" width="880" alt="The BetterSlack command palette open over Slack">
+</p>
+
+Slack's quick switcher with everything Slack has no idea about in the same list:
+any conversation, anyone in the workspace (through Slack's own search, not just
+your open DMs), every mod's commands, and a plugin's settings — `/` for actions,
+`@` for people, `#` for channels.
+
+### A theme builder whose preview is Slack
+
+<p align="center">
+  <img src="site/shots/builder.jpg" width="720" alt="The theme builder window, showing a gallery of themes to start from">
+</p>
+
+Two colours become twelve roles across all four of Slack's token families,
+hovering a colour outlines what it paints, and pointing at anything in the app
+shows the tokens behind it. It writes ordinary CSS you can commit.
 
 ## Install
 
@@ -22,8 +85,8 @@ binary in an install script, and only `pnpm-workspace.yaml` says which scripts
 may run.
 
 ```bash
-git clone https://github.com/AirOne-dev/SlackMod.git
-cd SlackMod
+git clone https://github.com/AirOne-dev/BetterSlack.git
+cd BetterSlack
 pnpm install && pnpm build
 pnpm start
 ```
@@ -42,11 +105,10 @@ gradient), Cocoa (warm light), Terminal (monospace phosphor), Discord Dark and
 Discord Light (Slack rebuilt as Discord, colours sampled from the real client),
 Focus Rings.
 
-**Plugins** — Command Palette (⌘K: any conversation, anyone in the workspace,
-every mod command and every theme in one list, with `/` `@` `#` to narrow it), Theme Builder (a workbench in its own window with the real
-Slack as the preview), Member Sidebar, Sidebar Account Strip, Quote Reply, Copy
-Message Link, Focus Mode (⌘⇧F), Composer Character Count, Channel Notes, User
-Inspector, Avatar Downloader, DevTools.
+**Plugins** — Command Palette (⌘K, with `/` `@` `#` to narrow it), Theme Builder,
+Member Sidebar, Sidebar Account Strip, Quote Reply, Copy Message Link, Focus
+Mode (⌘⇧F), Composer Character Count, Channel Notes, User Inspector, Avatar
+Downloader, DevTools.
 
 Several themes can run at once. Terminal is the exception: it restyles through
 `*` selectors, so run it on its own.

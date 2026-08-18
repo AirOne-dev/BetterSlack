@@ -20,8 +20,8 @@ binary in an install script, and `pnpm-workspace.yaml` is what allows that
 script to run.
 
 ```bash
-git clone https://github.com/AirOne-dev/SlackMod.git
-cd SlackMod
+git clone https://github.com/AirOne-dev/BetterSlack.git
+cd BetterSlack
 pnpm install
 pnpm build
 pnpm start

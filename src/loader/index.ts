@@ -57,14 +57,15 @@ const VERSION = '2.0.0';
 
 /** Where a copy of this checks whether it is current. */
 /*
- * The GitHub repository, which is still named SlackMod: the project was
- * renamed, the remote was not. The blanket rename changed this constant too and
- * would have pointed every update check at a repository that does not exist --
- * caught here rather than by someone whose update button quietly stopped
- * working. GitHub redirects a renamed repository, so this keeps working either
- * way.
+ * The repository, which every update check and every mod install goes through.
+ *
+ * It was `AirOne-dev/SlackMod` until the repository itself was renamed. Worth
+ * one line of care: a blanket search-and-replace once pointed this at a
+ * repository that did not exist yet, and the failure mode is an update button
+ * that quietly stops working rather than anything that looks broken. GitHub
+ * redirects a renamed repository, so an older copy still resolves.
  */
-const REPO = 'AirOne-dev/SlackMod';
+const REPO = 'AirOne-dev/BetterSlack';
 
 /** How often the watchdog asks the renderer whether it is still there. */
 const WATCHDOG_INTERVAL_MS = 30_000;

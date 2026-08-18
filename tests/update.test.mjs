@@ -156,7 +156,7 @@ test('a copy with no git is offered the tarball route, not a shrug', async () =>
     const status = await checkForUpdate({
       root,
       version: '0.0.1',
-      repo: 'AirOne-dev/SlackMod',
+      repo: 'AirOne-dev/BetterSlack',
       branch: 'master',
     });
     if (status.kind === 'unknown') return; // offline: nothing to assert about
@@ -206,7 +206,7 @@ test('only installed mods with a newer published version are offered', async () 
       { id: 'midnight', name: 'Midnight', version: '0.0.1', type: 'theme' },
       { id: 'not-a-real-mod', name: 'Nope', version: '0.0.1', type: 'plugin' },
     ],
-    { repo: 'AirOne-dev/SlackMod', branch: 'master' },
+    { repo: 'AirOne-dev/BetterSlack', branch: 'master' },
   );
   if (updates === null) return; // offline
   assert.equal(updates.some((u) => u.id === 'not-a-real-mod'), false,
@@ -284,11 +284,11 @@ test('a URL is read and described before anything is installed', async () => {
 
   // A real folder in this repository, read as if it were somebody else's.
   const result = await inspectRemote(
-    'https://github.com/AirOne-dev/SlackMod/tree/master/mods/plugins/quote-reply',
+    'https://github.com/AirOne-dev/BetterSlack/tree/master/mods/plugins/quote-reply',
   );
   if ('error' in result) return; // offline, or rate-limited
   assert.equal(result.manifest.id, 'quote-reply');
-  assert.equal(result.repo, 'AirOne-dev/SlackMod');
+  assert.equal(result.repo, 'AirOne-dev/BetterSlack');
   assert.ok(result.scripts.includes('index.js'), 'it says which files will run');
   assert.ok(result.bytes > 0, 'and how much of it there is');
   assert.equal(result.files['test.mjs'], undefined, 'tests are not part of a mod');
@@ -296,7 +296,7 @@ test('a URL is read and described before anything is installed', async () => {
 
 test('a folder with no mod.json is refused rather than half-installed', async () => {
   const { inspectRemote } = await import('../dist/mod-updates.mjs');
-  const result = await inspectRemote('https://github.com/AirOne-dev/SlackMod/tree/master/docs');
+  const result = await inspectRemote('https://github.com/AirOne-dev/BetterSlack/tree/master/docs');
   if (!('error' in result)) assert.fail('docs/ is not a mod');
   assert.match(result.error, /mod\.json/);
 });
