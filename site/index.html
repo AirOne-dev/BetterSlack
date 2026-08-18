@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BetterSlack — themes, plugins and custom CSS for Slack</title>
+<meta name="description" content="BetterSlack adds themes, plugins, a command palette and a theme builder to the Slack desktop app — without modifying Slack.app.">
+<meta property="og:title" content="BetterSlack">
+<meta property="og:description" content="Themes, plugins and custom CSS for the Slack desktop app.">
+<meta property="og:image" content="shots/panel.jpg">
+<meta property="og:type" content="website">
+<link rel="icon" href="mark.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<a class="skip" href="#main" data-en="Skip to content" data-fr="Aller au contenu">Skip to content</a>
+
+<header class="nav">
+  <a class="nav__brand" href="#top">
+    <img src="mark.svg" alt="" width="26" height="26">
+    <span>BetterSlack</span>
+  </a>
+  <nav class="nav__links">
+    <a href="#palette" data-en="Palette" data-fr="Palette">Palette</a>
+    <a href="#themes" data-en="Themes" data-fr="Thèmes">Themes</a>
+    <a href="#builder" data-en="Builder" data-fr="Constructeur">Builder</a>
+    <a href="#plugins" data-en="Plugins" data-fr="Plugins">Plugins</a>
+    <a href="#api" data-en="Write a mod" data-fr="Écrire un mod">Write a mod</a>
+  </nav>
+  <div class="nav__actions">
+    <button class="lang" type="button" id="lang" aria-label="Français">FR</button>
+    <a class="btn btn--ghost" href="https://github.com/AirOne-dev/SlackMod">GitHub</a>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero" id="top">
+  <div class="hero__glow" aria-hidden="true"></div>
+  <div class="hero__text">
+    <p class="eyebrow">
+      <span data-en="Open source · MIT · macOS, Windows, Linux" data-fr="Open source · MIT · macOS, Windows, Linux">Open source · MIT · macOS, Windows, Linux</span>
+    </p>
+    <h1>
+      <span data-en="Slack, the way you want it." data-fr="Slack, comme vous le voulez.">Slack, the way you want it.</span>
+    </h1>
+    <p class="lede"
+       data-en="Themes, plugins, a command palette and a theme builder — inside the Slack desktop app you already use. Nothing is patched: BetterSlack attaches to the renderer, so a Slack update can never break your install."
+       data-fr="Des thèmes, des plugins, une palette de commandes et un constructeur de thèmes — dans l’application Slack que vous utilisez déjà. Rien n’est patché : BetterSlack s’attache au renderer, donc une mise à jour de Slack ne peut pas casser votre installation.">
+      Themes, plugins, a command palette and a theme builder — inside the Slack desktop app you already use. Nothing is patched: BetterSlack attaches to the renderer, so a Slack update can never break your install.
+    </p>
+
+    <div class="cta">
+      <a class="btn btn--primary" href="#install" data-en="Install it" data-fr="L’installer">Install it</a>
+      <a class="btn btn--ghost" href="https://github.com/AirOne-dev/SlackMod/blob/master/docs/getting-started.md"
+         data-en="Read the docs" data-fr="Lire la doc">Read the docs</a>
+    </div>
+
+    <div class="snippet" data-copy>
+      <code>git clone https://github.com/AirOne-dev/SlackMod.git &amp;&amp; cd SlackMod
+pnpm install &amp;&amp; pnpm build &amp;&amp; pnpm start</code>
+      <button class="snippet__copy" type="button" data-en="Copy" data-fr="Copier">Copy</button>
+    </div>
+  </div>
+
+  <figure class="hero__shot">
+    <img src="shots/panel.jpg" alt="The BetterSlack panel open inside Slack, listing installed themes with switches" loading="eager" width="2000" height="1101">
+    <figcaption data-en="The Mods panel, wearing Slack’s own dialog — so it follows every theme."
+                data-fr="Le panneau des mods, habillé de la boîte de dialogue de Slack — il suit donc chaque thème.">
+      The Mods panel, wearing Slack’s own dialog — so it follows every theme.
+    </figcaption>
+  </figure>
+</section>
+
+<section class="strip">
+  <div class="strip__item">
+    <strong id="mod-count">19</strong>
+    <span data-en="mods in the catalogue" data-fr="mods au catalogue">mods in the catalogue</span>
+  </div>
+  <div class="strip__item">
+    <strong data-en="0 files" data-fr="0 fichier">0 files</strong>
+    <span data-en="changed in Slack.app" data-fr="modifié dans Slack.app">changed in Slack.app</span>
+  </div>
+  <div class="strip__item">
+    <strong data-en="No port" data-fr="Aucun port">No port</strong>
+    <span data-en="nothing listens on the network" data-fr="rien n’écoute sur le réseau">nothing listens on the network</span>
+  </div>
+  <div class="strip__item">
+    <strong>en · fr</strong>
+    <span data-en="every mod ships both" data-fr="chaque mod parle les deux">every mod ships both</span>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <h2 data-en="How it works" data-fr="Comment ça marche">How it works</h2>
+  <p class="section__lede"
+     data-en="BetterSlack drives the Slack desktop app over the Chrome DevTools Protocol and injects a small runtime into the renderer. Everything else — themes, plugins, the panel — is built on top of that one move."
+     data-fr="BetterSlack pilote l’application Slack via le Chrome DevTools Protocol et injecte un petit runtime dans le renderer. Tout le reste — thèmes, plugins, panneau — est construit sur ce seul geste.">
+    BetterSlack drives the Slack desktop app over the Chrome DevTools Protocol and injects a small runtime into the renderer. Everything else — themes, plugins, the panel — is built on top of that one move.
+  </p>
+
+  <div class="cards cards--3">
+    <article class="card">
+      <h3 data-en="Slack.app is never touched" data-fr="Slack.app n’est jamais touché">Slack.app is never touched</h3>
+      <p data-en="No patched asar, no code signature to break. Slack updates itself as usual and BetterSlack keeps working — and if you stop the loader, Slack is exactly the app you installed."
+         data-fr="Pas d’asar patché, pas de signature à casser. Slack se met à jour normalement et BetterSlack continue de fonctionner — et si vous arrêtez le loader, Slack redevient l’application que vous avez installée.">
+        No patched asar, no code signature to break. Slack updates itself as usual and BetterSlack keeps working — and if you stop the loader, Slack is exactly the app you installed.
+      </p>
+    </article>
+    <article class="card">
+      <h3 data-en="A pipe, not a debugging port" data-fr="Un tube, pas un port de débogage">A pipe, not a debugging port</h3>
+      <p data-en="The usual trick opens an unauthenticated TCP port any local process can drive your session through. BetterSlack uses --remote-debugging-pipe: two file descriptors handed over at spawn time, and nothing on the network."
+         data-fr="La méthode habituelle ouvre un port TCP non authentifié par lequel n’importe quel processus local peut piloter votre session. BetterSlack utilise --remote-debugging-pipe : deux descripteurs passés au lancement, et rien sur le réseau.">
+        The usual trick opens an unauthenticated TCP port any local process can drive your session through. BetterSlack uses --remote-debugging-pipe: two file descriptors handed over at spawn time, and nothing on the network.
+      </p>
+      <pre class="mini"><code>$ lsof -nP -iTCP -sTCP:LISTEN -p $(pgrep -x Slack)
+$                        # nothing</code></pre>
+    </article>
+    <article class="card">
+      <h3 data-en="A way back out" data-fr="Une porte de sortie">A way back out</h3>
+      <p data-en="A mod that wedges the renderer cannot lock you out: the next start applies nothing on its own, pnpm start --safe forces it, and a mod that throws twice is skipped until you switch it back on."
+         data-fr="Un mod qui bloque le renderer ne peut pas vous enfermer : le démarrage suivant n’applique rien de lui-même, pnpm start --safe le force, et un mod qui échoue deux fois est ignoré jusqu’à ce que vous le réactiviez.">
+        A mod that wedges the renderer cannot lock you out: the next start applies nothing on its own, pnpm start --safe forces it, and a mod that throws twice is skipped until you switch it back on.
+      </p>
+    </article>
+  </div>
+</section>
+
+<section class="section section--split" id="palette">
+  <div class="split__text">
+    <p class="eyebrow" data-en="Command palette" data-fr="Palette de commandes">Command palette</p>
+    <h2 data-en="⌘K, and everything is one keystroke away" data-fr="⌘K, et tout est à une frappe">⌘K, and everything is one keystroke away</h2>
+    <p data-en="Slack’s quick switcher, with everything Slack has no idea about in the same list: jump to any conversation, find anyone in the workspace through Slack’s own search, run any mod’s commands, switch a theme on, or open a plugin’s settings."
+       data-fr="Le sélecteur rapide de Slack, avec tout ce que Slack ignore dans la même liste : aller à n’importe quelle conversation, trouver n’importe qui dans l’espace de travail via la recherche de Slack, lancer les commandes d’un mod, activer un thème, ou ouvrir les réglages d’un plugin.">
+      Slack’s quick switcher, with everything Slack has no idea about in the same list: jump to any conversation, find anyone in the workspace through Slack’s own search, run any mod’s commands, switch a theme on, or open a plugin’s settings.
+    </p>
+    <ul class="ticks">
+      <li><kbd>/</kbd> <span data-en="actions — every mod command and every BetterSlack door" data-fr="actions — chaque commande de mod et chaque porte de BetterSlack">actions — every mod command and every BetterSlack door</span></li>
+      <li><kbd>@</kbd> <span data-en="people — anyone in the workspace, not only your open DMs" data-fr="personnes — n’importe qui dans l’espace, pas seulement vos DM ouverts">people — anyone in the workspace, not only your open DMs</span></li>
+      <li><kbd>#</kbd> <span data-en="channels — including the ones you have not joined" data-fr="canaux — y compris ceux que vous n’avez pas rejoints">channels — including the ones you have not joined</span></li>
+      <li><kbd>↑↓</kbd> <span data-en="and it is a plugin, so you can switch it off or move it to ⌘⇧K" data-fr="et c’est un plugin : désactivable, ou déplaçable sur ⌘⇧K">and it is a plugin, so you can switch it off or move it to ⌘⇧K</span></li>
+    </ul>
+  </div>
+  <figure class="split__shot">
+    <img src="shots/palette.jpg" alt="The BetterSlack command palette open over Slack, grouped into sections" loading="lazy" width="2000" height="1101">
+  </figure>
+</section>
+
+<section class="section" id="themes">
+  <h2 data-en="Themes" data-fr="Thèmes">Themes</h2>
+  <p class="section__lede"
+     data-en="A theme is CSS and nothing else — no code, no permissions. Several can run at once. Each card below shows the palette read straight out of that theme’s stylesheet."
+     data-fr="Un thème, c’est du CSS et rien d’autre — pas de code, pas de permissions. Plusieurs peuvent tourner ensemble. Chaque carte ci-dessous montre la palette lue directement dans la feuille de style du thème.">
+    A theme is CSS and nothing else — no code, no permissions. Several can run at once. Each card below shows the palette read straight out of that theme’s stylesheet.
+  </p>
+  <div class="gallery" id="theme-gallery"></div>
+  <noscript><p class="note">The gallery is drawn from the catalogue with a few lines of JavaScript — see <a href="https://github.com/AirOne-dev/SlackMod/tree/master/mods/themes">mods/themes</a> for the same list.</p></noscript>
+</section>
+
+<section class="section section--split section--reverse" id="builder">
+  <div class="split__text">
+    <p class="eyebrow" data-en="Theme builder" data-fr="Constructeur de thèmes">Theme builder</p>
+    <h2 data-en="The preview is Slack itself" data-fr="L’aperçu, c’est Slack lui-même">The preview is Slack itself</h2>
+    <p data-en="A workbench in a window of its own, painting the running client live. Pick two colours and twelve roles are derived across all four of Slack’s token families; hover a colour and the app outlines what it paints; point at anything in Slack to see the tokens behind it. It writes ordinary CSS you can commit."
+       data-fr="Un atelier dans sa propre fenêtre, qui repeint le client en direct. Choisissez deux couleurs : douze rôles sont déduits dans les quatre familles de tokens de Slack ; survolez une couleur et l’app entoure ce qu’elle peint ; pointez n’importe quoi dans Slack pour voir les tokens derrière. Il écrit du CSS ordinaire, que vous pouvez committer.">
+      A workbench in a window of its own, painting the running client live. Pick two colours and twelve roles are derived across all four of Slack’s token families; hover a colour and the app outlines what it paints; point at anything in Slack to see the tokens behind it. It writes ordinary CSS you can commit.
+    </p>
+    <p class="note" data-en="While it is open, your own themes are held back — what you see is what you are building."
+       data-fr="Tant qu’il est ouvert, vos thèmes sont mis de côté — ce que vous voyez est ce que vous construisez.">
+      While it is open, your own themes are held back — what you see is what you are building.
+    </p>
+  </div>
+  <figure class="split__shot">
+    <img src="shots/builder.jpg" alt="The theme builder window, showing a gallery of themes to start from" loading="lazy" width="1760" height="1448">
+  </figure>
+</section>
+
+<section class="section" id="plugins">
+  <h2 data-en="Plugins" data-fr="Plugins">Plugins</h2>
+  <p class="section__lede"
+     data-en="A plugin is an ES module that exports start(api). Everything it registers is undone when it is switched off. These ship with the project; a fresh install starts empty and you install what you want."
+     data-fr="Un plugin est un module ES qui exporte start(api). Tout ce qu’il enregistre est défait quand on l’éteint. Ceux-ci sont livrés avec le projet ; une installation neuve démarre vide et vous installez ce que vous voulez.">
+    A plugin is an ES module that exports start(api). Everything it registers is undone when it is switched off. These ship with the project; a fresh install starts empty and you install what you want.
+  </p>
+  <div class="cards cards--3" id="plugin-list"></div>
+  <noscript><p class="note">The list is drawn from the catalogue with a few lines of JavaScript — see <a href="https://github.com/AirOne-dev/SlackMod/tree/master/mods/plugins">mods/plugins</a> for the same list.</p></noscript>
+
+  <figure class="wide">
+    <img src="shots/panel-browse.jpg" alt="The Browse shelf of the BetterSlack panel, listing the catalogue" loading="lazy" width="2000" height="1101">
+    <figcaption data-en="The Browse shelf. Mods update on their own, one at a time — a fix to a theme is not a new release of the app."
+                data-fr="L’étagère Parcourir. Les mods se mettent à jour seuls, un par un — corriger un thème n’est pas une nouvelle version de l’app.">
+      The Browse shelf. Mods update on their own, one at a time — a fix to a theme is not a new release of the app.
+    </figcaption>
+  </figure>
+</section>
+
+<section class="section" id="api">
+  <h2 data-en="Write your own" data-fr="Écrivez le vôtre">Write your own</h2>
+  <p class="section__lede"
+     data-en="A mod is a folder under mods/, picked up live with no rebuild. Most of what a mod needs is one call."
+     data-fr="Un mod est un dossier dans mods/, pris en compte à chaud sans rebuild. L’essentiel de ce dont un mod a besoin tient en un appel.">
+    A mod is a folder under mods/, picked up live with no rebuild. Most of what a mod needs is one call.
+  </p>
+
+  <div class="tabs" id="code-tabs">
+    <div class="tabs__row" role="tablist">
+      <button role="tab" type="button" data-tab="plugin" aria-selected="true">index.js</button>
+      <button role="tab" type="button" data-tab="theme">theme.css</button>
+      <button role="tab" type="button" data-tab="manifest">mod.json</button>
+      <button role="tab" type="button" data-tab="helpers">api.helpers</button>
+    </div>
+
+    <div class="tabs__panel" data-panel="plugin">
+      <pre><code class="lang-js">// mods/plugins/hello/index.js — a complete, working plugin.
+export default {
+  start(api) {
+    const t = api.i18n.strings({
+      en: { label: 'Say hello', done: 'Hello' },
+      fr: { label: 'Dire bonjour', done: 'Bonjour' },
+    });
+
+    api.slack.addToolbarButton('channelHeader', {
+      id: 'hello',
+      label: t('label'),
+      icon: '&lt;svg viewBox="0 0 20 20"&gt;…&lt;/svg&gt;',
+      onClick: () =&gt; api.ui.toast(t('done'), { variant: 'success' }),
+    });
+
+    // Findable by typing, without taking a button in Slack's rail.
+    api.commands.add({ id: 'hello', title: t('label'), run: () =&gt; api.ui.toast(t('done')) });
+  },
+};</code></pre>
+    </div>
+
+    <div class="tabs__panel" data-panel="theme" hidden>
+      <pre><code class="lang-css">/* mods/themes/my-theme/theme.css — change tokens, not class names.
+   Slack's class names churn with every release; its design tokens do not. */
+:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --dt_color-base-pry: #101418;      /* the message surface */
+  --dt_color-content-pry: #e6e9ef;   /* body text */
+  --dt_color-content-hgl-1: #6cb6ff; /* links */
+
+  /* The chrome is a second family, and it needs !important. */
+  --dt_color-theme-rail_background: #0b0e12 !important;
+  --dt_color-theme-sidebar_background: #0f141a !important;
+}</code></pre>
+    </div>
+
+    <div class="tabs__panel" data-panel="manifest" hidden>
+      <pre><code class="lang-json">{
+  "id": "hello",
+  "name": "Hello",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "your-github-handle",
+  "description": "One sentence about what a user gets, not how it works.",
+  "entry": "index.js",
+  "settings": [
+    { "key": "loud", "type": "boolean", "label": "Shout it", "default": false }
+  ],
+  "betterslackApi": 1
+}</code></pre>
+    </div>
+
+    <div class="tabs__panel" data-panel="helpers" hidden>
+      <pre><code class="lang-js">// The first thing to reach for: most mods are one or two of these.
+const zen = api.helpers.toggle({          // a persisted flag + a class on &lt;html&gt;
+  key: 'on',
+  whenOn: `&amp; .p-channel_sidebar { display: none !important; }`,
+});
+api.helpers.hotkey('mod+shift+z', () =&gt; zen.toggle());
+api.helpers.mount(container, 'my-node', build);   // survives Slack's re-renders
+api.helpers.poll(refresh, 60_000);                // stops while the window is hidden
+
+// Slack's own web API, without ever seeing the token.
+const users = await api.slack.web.users(['U1', 'U2']);      // one request, cached
+const { state } = await api.slack.web.availability('U1');   // 'active' | 'away' | 'dnd'</code></pre>
+    </div>
+  </div>
+
+  <div class="cards cards--3">
+    <article class="card">
+      <h3 data-en="A mod is a folder" data-fr="Un mod est un dossier">A mod is a folder</h3>
+      <p data-en="entry is only where the app starts reading. Split the rest however you like — relative imports inside your own folder, @import for a theme’s CSS."
+         data-fr="entry n’est que le point de départ de la lecture. Découpez le reste comme vous voulez — imports relatifs dans votre dossier, @import pour le CSS d’un thème.">
+        entry is only where the app starts reading. Split the rest however you like — relative imports inside your own folder, @import for a theme’s CSS.
+      </p>
+    </article>
+    <article class="card">
+      <h3 data-en="Tests are not optional" data-fr="Les tests ne sont pas optionnels">Tests are not optional</h3>
+      <p data-en="Every mod ships a test.mjs, run against a Slack-shaped DOM and a recording stand-in for the API — no Slack, no Electron, no network."
+         data-fr="Chaque mod livre un test.mjs, exécuté sur un DOM en forme de Slack et une doublure enregistrante de l’API — sans Slack, sans Electron, sans réseau.">
+        Every mod ships a test.mjs, run against a Slack-shaped DOM and a recording stand-in for the API — no Slack, no Electron, no network.
+      </p>
+    </article>
+    <article class="card">
+      <h3 data-en="Reviewed by a human" data-fr="Relu par un humain">Reviewed by a human</h3>
+      <p data-en="A plugin runs unsandboxed in an authenticated Slack tab, so the code review is the security model. Mods from outside the catalogue can be installed, behind an explicit warning."
+         data-fr="Un plugin s’exécute sans bac à sable dans un Slack connecté : la relecture est le modèle de sécurité. Les mods extérieurs au catalogue sont installables, derrière un avertissement explicite.">
+        A plugin runs unsandboxed in an authenticated Slack tab, so the code review is the security model. Mods from outside the catalogue can be installed, behind an explicit warning.
+      </p>
+    </article>
+  </div>
+</section>
+
+<section class="section" id="install">
+  <h2 data-en="Install" data-fr="Installation">Install</h2>
+  <p class="section__lede"
+     data-en="Node 18+, pnpm, and the Slack desktop app. corepack enable gets you pnpm."
+     data-fr="Node 18+, pnpm, et l’application Slack. corepack enable vous donne pnpm.">
+    Node 18+, pnpm, and the Slack desktop app. corepack enable gets you pnpm.
+  </p>
+
+  <div class="snippet snippet--wide" data-copy>
+    <code>git clone https://github.com/AirOne-dev/SlackMod.git
+cd SlackMod
+pnpm install &amp;&amp; pnpm build
+pnpm start</code>
+    <button class="snippet__copy" type="button" data-en="Copy" data-fr="Copier">Copy</button>
+  </div>
+
+  <p class="note"
+     data-en="pnpm start restarts Slack with BetterSlack attached and stays running — mods are active as long as it does. Nothing is installed on a fresh setup: open the panel with ⌘⇧M and install what you want from Browse."
+     data-fr="pnpm start relance Slack avec BetterSlack attaché et reste ouvert — les mods sont actifs tant qu’il tourne. Rien n’est installé au départ : ouvrez le panneau avec ⌘⇧M et installez ce que vous voulez depuis Parcourir.">
+    pnpm start restarts Slack with BetterSlack attached and stays running — mods are active as long as it does. Nothing is installed on a fresh setup: open the panel with ⌘⇧M and install what you want from Browse.
+  </p>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer__brand">
+    <img src="mark.svg" alt="" width="22" height="22">
+    <span>BetterSlack <span id="version"></span></span>
+  </div>
+  <nav class="footer__links">
+    <a href="https://github.com/AirOne-dev/SlackMod">GitHub</a>
+    <a href="https://github.com/AirOne-dev/SlackMod/blob/master/docs/getting-started.md" data-en="Getting started" data-fr="Démarrer">Getting started</a>
+    <a href="https://github.com/AirOne-dev/SlackMod/blob/master/docs/api.md" data-en="API reference" data-fr="Référence de l’API">API reference</a>
+    <a href="https://github.com/AirOne-dev/SlackMod/blob/master/docs/themes.md" data-en="Theming Slack" data-fr="Thématiser Slack">Theming Slack</a>
+    <a href="https://github.com/AirOne-dev/SlackMod/blob/master/CONTRIBUTING.md" data-en="Contributing" data-fr="Contribuer">Contributing</a>
+  </nav>
+  <p class="footer__note"
+     data-en="Not affiliated with Slack Technologies. Slack is a trademark of Salesforce, Inc."
+     data-fr="Sans affiliation avec Slack Technologies. Slack est une marque de Salesforce, Inc.">
+    Not affiliated with Slack Technologies. Slack is a trademark of Salesforce, Inc.
+  </p>
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

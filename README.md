@@ -6,6 +6,8 @@
 Themes, plugins and custom CSS for the Slack desktop app, with a Mods panel
 inside Slack itself.
 
+**→ [airone-dev.github.io/SlackMod](https://airone-dev.github.io/SlackMod/)** — screenshots, the catalogue, and what the API looks like.
+
 ```
 ⌘⇧M  (Ctrl+Shift+M on Windows/Linux)   or the sliders button above your avatar
 ```
@@ -133,6 +135,9 @@ pnpm validate-mods                # manifests
 pnpm registry                     # regenerate mods/registry.json, then commit it
 pnpm typecheck
 pnpm release patch                # bump, write CHANGELOG.md, tag
+
+pnpm site:dev                     # the presentation site, live at localhost:4321
+pnpm site                         # regenerate site/data.js from the catalogue
 ```
 
 Mods in `~/.betterslack/mods/` shadow the repo copies, which is handy for iterating
