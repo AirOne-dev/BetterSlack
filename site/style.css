@@ -250,6 +250,7 @@ kbd {
   padding: 22px;
 }
 .card p { font-size: 14.5px; margin: 0; }
+.card h3 code { font: 600 15px/1 var(--mono); color: var(--blue); }
 .card p + .mini { margin-top: 14px; }
 .card__meta {
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center;

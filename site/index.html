@@ -24,6 +24,7 @@
   <nav class="nav__links">
     <a href="#palette" data-en="Palette" data-fr="Palette">Palette</a>
     <a href="#themes" data-en="Themes" data-fr="Thèmes">Themes</a>
+    <a href="#discord" data-en="Discord" data-fr="Discord">Discord</a>
     <a href="#builder" data-en="Builder" data-fr="Constructeur">Builder</a>
     <a href="#plugins" data-en="Plugins" data-fr="Plugins">Plugins</a>
     <a href="#api" data-en="Write a mod" data-fr="Écrire un mod">Write a mod</a>
@@ -156,6 +157,56 @@ $                        # nothing</code></pre>
   </p>
   <div class="gallery" id="theme-gallery"></div>
   <noscript><p class="note">The gallery is drawn from the catalogue with a few lines of JavaScript — see <a href="https://github.com/AirOne-dev/SlackMod/tree/master/mods/themes">mods/themes</a> for the same list.</p></noscript>
+</section>
+
+<section class="section" id="discord">
+  <h2 data-en="A theme can ask for more" data-fr="Un thème peut en demander plus">A theme can ask for more</h2>
+  <p class="section__lede"
+     data-en="CSS reaches everything about how Slack looks and nothing about how it is arranged: it cannot move a node under a different parent, read who is signed in, or press a button. When a look needs one of those, that part is a plugin — and the theme names it."
+     data-fr="Le CSS atteint tout ce qui concerne l’apparence de Slack et rien de son agencement : il ne peut pas déplacer un nœud sous un autre parent, savoir qui est connecté, ni cliquer sur un bouton. Quand un rendu a besoin de ça, cette partie est un plugin — et le thème le nomme.">
+    CSS reaches everything about how Slack looks and nothing about how it is arranged: it cannot move a node under a different parent, read who is signed in, or press a button. When a look needs one of those, that part is a plugin — and the theme names it.
+  </p>
+
+  <figure class="wide">
+    <img src="shots/discord-combo.jpg" alt="Slack rebuilt as Discord: the Discord Dark theme with a member column on the right and an account strip at the bottom of the sidebar" loading="lazy" width="2000" height="1101">
+    <figcaption data-en="Discord Dark, with the two plugins it asks for: the member column on the right, the account strip bottom-left."
+                data-fr="Discord Dark, avec les deux plugins qu’il demande : la colonne des membres à droite, la barre de compte en bas à gauche.">
+      Discord Dark, with the two plugins it asks for: the member column on the right, the account strip bottom-left.
+    </figcaption>
+  </figure>
+
+  <div class="cards cards--3">
+    <article class="card">
+      <h3><code>requires</code></h3>
+      <p data-en="Discord Dark is a stylesheet. It lists member-sidebar and sidebar-account in its manifest, and the panel offers to switch them on when you enable the theme."
+         data-fr="Discord Dark est une feuille de style. Il liste member-sidebar et sidebar-account dans son manifeste, et le panneau propose de les activer quand vous activez le thème.">
+        Discord Dark is a stylesheet. It lists member-sidebar and sidebar-account in its manifest, and the panel offers to switch them on when you enable the theme.
+      </p>
+      <pre class="mini"><code>{
+  "id": "discord-dark",
+  "type": "theme",
+  "entry": "theme.css",
+  "requires": [
+    "member-sidebar",
+    "sidebar-account"
+  ]
+}</code></pre>
+    </article>
+    <article class="card">
+      <h3 data-en="It asks, it never assumes" data-fr="Il demande, il ne décide pas">It asks, it never assumes</h3>
+      <p data-en="A plugin is code that keeps running after the theme is switched off, so it is never turned on quietly. Decline and the theme still applies — it is a stylesheet either way, just a plainer one."
+         data-fr="Un plugin est du code qui continue de tourner après l’extinction du thème : il n’est donc jamais activé en douce. Refusez, et le thème s’applique quand même — c’est une feuille de style dans les deux cas, simplement plus sobre.">
+        A plugin is code that keeps running after the theme is switched off, so it is never turned on quietly. Decline and the theme still applies — it is a stylesheet either way, just a plainer one.
+      </p>
+    </article>
+    <article class="card">
+      <h3 data-en="Each half stands alone" data-fr="Chaque moitié tient debout seule">Each half stands alone</h3>
+      <p data-en="Both plugins read Slack’s own design tokens, so they follow whatever theme is on — a member column for anyone who wants one, not a piece of Discord Dark. A theme may not style a plugin’s markup, and a test enforces it."
+         data-fr="Les deux plugins lisent les tokens de Slack : ils suivent donc n’importe quel thème — une colonne de membres pour qui en veut une, pas un morceau de Discord Dark. Un thème n’a pas le droit de styler le markup d’un plugin, et un test le vérifie.">
+        Both plugins read Slack’s own design tokens, so they follow whatever theme is on — a member column for anyone who wants one, not a piece of Discord Dark. A theme may not style a plugin’s markup, and a test enforces it.
+      </p>
+    </article>
+  </div>
 </section>
 
 <section class="section section--split section--reverse" id="builder">
