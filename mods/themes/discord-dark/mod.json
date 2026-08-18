@@ -2,7 +2,7 @@
   "id": "discord-dark",
   "name": "Discord Dark",
   "type": "theme",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "author": "AirOne-dev",
   "description": "Slack rebuilt as Discord: colours sampled from the real client, round server icons with the sliding pill, and Discord's sidebar. Brings in the member column and account strip as plugins.",
   "entry": "theme.css",

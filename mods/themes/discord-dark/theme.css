@@ -193,8 +193,31 @@ html, body { background-color: var(--dc-chat); }
   width: 100% !important;
   max-width: 100% !important;
   padding-top: 12px !important;
+  justify-content: center !important;
+  /* The containing block for the separator below, which must not be a flex
+     item -- see the note there. */
+  position: relative !important;
 }
-.p-tab_rail__tab_menu { width: 100% !important; }
+
+/*
+ * The menu has to fill the rail, or nothing inside it can be centred in the
+ * rail.
+ *
+ * Measured, and it is the whole reason the icons looked pushed to one side:
+ * the rail is 70px wide and its centre is at 35, but this menu was laid out
+ * 50px wide starting at 21 -- so a button with `margin: auto` centred itself
+ * at 46, eleven pixels off, and the pill beside it made the asymmetry obvious.
+ * `width: 100%` alone did not do it: as a flex item it was still allowed to
+ * shrink to its content, so the basis has to be stated too.
+ */
+.p-tab_rail__tab_menu {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  align-items: center !important;
+}
 
 .p-tab_rail__button {
   position: relative;
@@ -228,12 +251,19 @@ html, body { background-color: var(--dc-chat); }
   color: #ffffff !important;
 }
 
-/* The pill. Discord animates its height, so the transition is on height and the
- * offset that keeps it centred, not on transform. */
+/*
+ * The pill, against the rail's left edge, out of the flow entirely.
+ *
+ * It is absolute, so it never took space -- but where it sits depends on the
+ * button it hangs off, and the button now sits in the middle of the rail. The
+ * rail is 70px and the button 40, so there are 15px of air on each side and
+ * -15px puts the pill's left edge exactly on the rail's. If either number
+ * changes, this is the line to change with it.
+ */
 .p-tab_rail__button::before {
   content: "";
   position: absolute;
-  left: -11px;
+  left: -15px;
   top: 50%;
   width: 4px;
   height: 0;
@@ -245,7 +275,19 @@ html, body { background-color: var(--dc-chat); }
 .p-tab_rail__button:hover::before { height: 16px; margin-top: -8px; }
 .p-tab_rail__button--active::before { height: 32px; margin-top: -16px; }
 
-/* The workspace icon sits above the sections, with Discord's separator under it. */
+/*
+ * The separator under the workspace icon, and the mistake it used to be.
+ *
+ * This container is laid out `flex-direction: row`, so a ::before with a width
+ * is not a line above the icons -- it is a *sibling of them*, 32px wide, taking
+ * its place in the row. Measured: it left the tab menu 50px wide starting at
+ * x=21 inside a 70px rail, so every icon centred itself at 46 instead of 35 and
+ * the whole column looked shoved to the right. Reported as "the bar pushes the
+ * icons", which is exactly what it was doing.
+ *
+ * Absolute, therefore: out of the row, centred by hand, and back to being a
+ * line rather than a column.
+ */
 .p-tab_rail [data-qa="team-icon"],
 .p-tab_rail [data-qa="account_switcher_team_icon"] {
   border-radius: 14px !important;
@@ -253,10 +295,12 @@ html, body { background-color: var(--dc-chat); }
 }
 .p-tab_rail__tab_container::before {
   content: "";
-  display: block;
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 32px;
   height: 2px;
-  margin: 0 auto 12px;
   border-radius: 1px;
   background: var(--dc-surface);
 }
