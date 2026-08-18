@@ -99,7 +99,7 @@ const STRINGS = {
     roleDeactivated: 'Désactivé',
     roleEmailConfirmed: 'E-mail confirmé',
     active: 'Disponible',
-    away: 'Absent(e)',
+    away: 'Absent',
     userId: 'ID utilisateur',
     username: 'Nom d’utilisateur',
     roles: 'Rôles',

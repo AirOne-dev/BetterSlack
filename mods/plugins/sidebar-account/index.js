@@ -144,7 +144,7 @@ const STRINGS = {
     account: 'Votre compte',
     settings: 'Réglages du compte',
     available: 'Disponible',
-    away: 'Absent(e)',
+    away: 'Absent',
     dnd: 'Ne pas déranger',
   },
 };
@@ -294,7 +294,7 @@ export default {
       /**
        * The dot and the word beside it, from the same reading.
        *
-       * They are one thing: a green dot next to "Absent(e)" is worse than
+       * They are one thing: a green dot next to "Absent" is worse than
        * either being wrong on its own, and that is what happened while the text
        * was written once at mount and the dot was polled.
        */

@@ -59,14 +59,14 @@ export const STRINGS = {
     members: 'Membres',
     online: 'En ligne',
     offline: 'Hors ligne',
-    noMembers: 'Slack ne donne pas la liste des membres de cette conversation.',
+    noMembers: 'Slack ne fournit pas la liste des membres de cette conversation.',
     noToken: 'Aucun jeton de session Slack dans cette fenêtre.',
     presenceCap:
-      'La présence ne couvre que les {count} premiers. Slack répond pour une personne par requête, ' +
-      'et les demander toutes atteindrait sa limite.',
+      'La disponibilité n’est affichée que pour les {count} premiers : Slack ne répond que pour ' +
+      'une personne à la fois, et les demander toutes ferait dépasser sa limite de requêtes.',
     profile: 'Profil',
     active: 'Disponible',
-    away: 'Absent(e)',
+    away: 'Absent',
     localTime: '{time} heure locale',
     dnd: 'Ne pas déranger',
     message: 'Message',

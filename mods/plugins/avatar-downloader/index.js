@@ -86,7 +86,7 @@ const STRINGS = {
     downloadTheirs: 'Download this person’s avatar',
   },
   fr: {
-    unknownUser: 'Impossible de déterminer de quel utilisateur il s’agit',
+    unknownUser: 'Impossible d’identifier cette personne',
     noToken: 'Aucun jeton de session Slack pour cet espace de travail',
     fetching: 'Récupération de l’avatar…',
     noAvatar: 'Cet utilisateur n’a pas d’avatar',

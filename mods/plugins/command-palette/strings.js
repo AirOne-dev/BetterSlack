@@ -51,7 +51,7 @@ export const STRINGS = {
     placeholderPeople: 'Trouver quelqu’un…',
     placeholderChannels: 'Trouver un canal…',
     empty: 'Aucun résultat.',
-    searching: 'recherche…',
+    searching: 'recherche en cours…',
 
     modeActions: 'Actions',
     modePeople: 'Personnes',

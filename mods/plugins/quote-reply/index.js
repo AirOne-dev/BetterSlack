@@ -23,7 +23,7 @@ const QUOTE_TEXT = '.';
 
 const STRINGS = {
   en: { action: 'Reply in channel (quote)' },
-  fr: { action: 'Répondre dans le canal (citation)' },
+  fr: { action: 'Citer dans le canal' },
 };
 
 export default {
