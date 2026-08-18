@@ -12,10 +12,12 @@ Then: [test it](#test-your-mod) and [ship it](#ship-it).
 
 ## Just run it
 
-Requires Node 18+, pnpm, and the Slack desktop app. Node ships Corepack, so
-`corepack enable` gets you pnpm; `npm i -g pnpm` works too. It has to be pnpm —
-esbuild fetches its platform binary in an install script, and `pnpm-workspace.yaml`
-is what allows that script to run.
+Requires Node 18+, pnpm, and the Slack desktop app — Node 22+ if pnpm comes
+from Corepack, because pnpm 11 refuses to run on anything older when Node is
+what runs it. `corepack enable` gets you pnpm; `npm i -g pnpm` and Homebrew's
+standalone binary work too. It has to be pnpm — esbuild fetches its platform
+binary in an install script, and `pnpm-workspace.yaml` is what allows that
+script to run.
 
 ```bash
 git clone https://github.com/AirOne-dev/SlackMod.git

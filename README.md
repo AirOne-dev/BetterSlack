@@ -14,10 +14,12 @@ inside Slack itself.
 
 ## Install
 
-Requires Node 18+ and pnpm. Node ships Corepack, so `corepack enable` is enough
-to get it; `npm i -g pnpm` works too. It has to be pnpm — esbuild fetches its
-platform binary in an install script, and only `pnpm-workspace.yaml` says which
-scripts may run.
+Requires Node 18+ and pnpm — Node 22+ if you get pnpm through Corepack, since
+pnpm 11 refuses to run on anything older when it is Node that runs it. Corepack
+ships with Node, so `corepack enable` is enough; `npm i -g pnpm` and Homebrew's
+standalone binary work too. It has to be pnpm: esbuild fetches its platform
+binary in an install script, and only `pnpm-workspace.yaml` says which scripts
+may run.
 
 ```bash
 git clone https://github.com/AirOne-dev/SlackMod.git
