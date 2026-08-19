@@ -299,3 +299,52 @@ test('a person carries their status, emoji and all', async () => {
     dom.cleanup();
   }
 });
+
+test('says it is still looking, rather than that nothing matches', async () => {
+  /*
+   * The two are different answers and the palette was giving the second for the
+   * first. A directory search is debounced and then goes to the network, so for
+   * a few hundred milliseconds after typing a name the list is empty because
+   * nobody has answered yet.
+   */
+  const { api, recorded, dom } = mount({
+    conversations: [],
+    search: { people: [{ id: 'U9', profile: { display_name: 'Zoe' } }] },
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+    await settle();
+
+    const palette = recorded.palettes.at(-1);
+    await palette.entries('zoe');
+    assert.equal(palette.busy, true, 'waiting starts at the keystroke, not at the request');
+
+    // The debounce, then the answer.
+    await settle(SEARCHED);
+    await palette.entries('zoe');
+    assert.equal(palette.busy, false, 'and stops when Slack has answered');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('a query too short to search is not a query being waited for', async () => {
+  const { api, recorded, dom } = mount({ conversations: [] });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+    await settle();
+
+    const palette = recorded.palettes.at(-1);
+    await palette.entries('z');
+    assert.equal(palette.busy, false,
+      'nothing is asked for one letter, so there is nothing to wait for');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

@@ -1381,12 +1381,27 @@ dialog.close();</code></pre>
   <div class="panel__body">
     <p>The command palette, as a component.</p>
 <p>The list is yours: this draws it, ranks it as you type, moves with the arrow keys and closes on Escape. Nothing about what belongs in it is decided here -- the mod that opens it decides, which is what lets one plugin put Slack's own conversations and BetterSlack's actions in the same list.</p>
+<p>Because it fetches nothing, it cannot know when you are still fetching — and &quot;nothing matches&quot; is a different answer from &quot;still looking&quot;. Tell it with <code>setBusy</code> on the handle, and give it a <code>searching</code> label to show: an empty list then says it is waiting rather than that it found nothing. Waiting starts at the keystroke, not when the request goes out; a debounce in front of a search is part of the wait.</p>
     <div class="api-demo" data-demo="ui-palette" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
-    <pre class="api-code"><code>api.ui.palette(
-  (query) =&gt; rowsFor(query),
-  { placeholder: 'Jump to…', empty: 'Nothing matches' },
-);</code></pre>
+    <pre class="api-code"><code>const palette = api.ui.palette(
+  (query) =&gt; {
+    directory.search(query);              // debounced, answers later
+    palette.setBusy(directory.searching);  // includes the debounce
+    return rowsFor(query);                 // whatever is already known
+  },
+  {
+    placeholder: 'Jump to…',
+    empty: 'Nothing matches',
+    searching: 'searching…',
+  },
+);
+
+// When the slow half lands, clear it and paint again.
+directory.onResults(() =&gt; {
+  palette.setBusy(false);
+  palette.refresh();
+});</code></pre>
   </div>
 </section>
 <section class="panel" id="p-ui-toast" hidden>

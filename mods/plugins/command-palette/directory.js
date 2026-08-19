@@ -70,6 +70,8 @@ export function createDirectory(api, { onResults }) {
   let remote = { query: '', people: [], channels: [] };
   let timer = null;
   let searching = false;
+  /** True from the keystroke to the answer, debounce included. */
+  let pending = false;
   /*
    * The workspace's custom emoji, for status shortcodes.
    *
@@ -204,6 +206,7 @@ export function createDirectory(api, { onResults }) {
     searching = true;
     const [people, channels] = await Promise.all([ask('people'), ask('channels')]);
     searching = false;
+    pending = false;
     // Someone typed on while this was in flight; the newer answer wins.
     if (remote.query !== query) return;
 
@@ -249,10 +252,24 @@ export function createDirectory(api, { onResults }) {
     checkTeam();
     if (!api.slack.web.available) return;
     const trimmed = query.trim();
-    if (trimmed.length < MIN_QUERY || trimmed === remote.query) return;
+    if (trimmed.length < MIN_QUERY || trimmed === remote.query) {
+      // Nothing will be asked, so nothing is being waited for. Without this the
+      // spinner would sit there for a one-letter query that is never sent.
+      if (trimmed.length < MIN_QUERY) pending = false;
+      return;
+    }
 
     remote = { query: trimmed, people: [], channels: [] };
     clearTimeout(timer);
+    /*
+     * Waiting starts here, not when the request goes out.
+     *
+     * There is a debounce between the keystroke and the fetch, and during it
+     * the local list has already been narrowed to nothing while Slack has not
+     * been asked yet. Counting only the request left that gap saying "nothing
+     * matches", then a spinner, then the answer -- three states for one wait.
+     */
+    pending = true;
     timer = setTimeout(() => void searchNow(trimmed), SEARCH_DEBOUNCE_MS);
   };
 
@@ -281,8 +298,9 @@ export function createDirectory(api, { onResults }) {
   return {
     load,
     search,
+    /** Whether anything is still out: the debounce as well as the request. */
     get searching() {
-      return searching;
+      return pending || searching;
     },
     dispose: () => clearTimeout(timer),
 

@@ -489,6 +489,14 @@ export function createTestApi({
         recorded.palettes.push(entry);
         const close = () => {};
         close.refresh = () => {};
+        /*
+         * Recorded rather than ignored: whether the palette was told a lookup
+         * is still out is the difference between showing "nothing matches" and
+         * showing that it is still looking, and a stub that swallowed it would
+         * let that regress silently.
+         */
+        entry.busy = false;
+        close.setBusy = (on) => { entry.busy = on; };
         return close;
       },
     },

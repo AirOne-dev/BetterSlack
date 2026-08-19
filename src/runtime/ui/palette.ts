@@ -93,11 +93,19 @@ export interface PaletteMode {
 export interface PaletteLabels {
   placeholder: string;
   empty: string;
+  /**
+   * Shown instead of `empty` while a lookup is still out.
+   *
+   * "Nothing matches" and "still looking" are different answers, and the palette
+   * was giving the first one for the second: a directory search is debounced and
+   * then goes to the network, so for a few hundred milliseconds after typing a
+   * name the list is empty because nobody has answered yet -- not because
+   * nobody matches.
+   */
+  searching?: string;
   /** Footer hints, e.g. "open" and "close". */
   openHint?: string;
   closeHint?: string;
-  /** Shown while a source is still answering. */
-  searching?: string;
   modes?: PaletteMode[];
 }
 
@@ -116,6 +124,13 @@ export type PaletteSource =
 /** The cleanup, with a way to paint again while it is open. */
 export interface PaletteHandle extends Cleanup {
   refresh(): void;
+  /**
+   * Say whether a lookup is out, so the list can show it.
+   *
+   * The palette does not fetch anything -- the mod that opens it decides what
+   * belongs in the list -- so it cannot know this for itself.
+   */
+  setBusy(on: boolean): void;
 }
 
 /**
@@ -255,13 +270,21 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
     }));
   if (modes.length === 0) modesBar.setAttribute('hidden', 'hidden');
 
+  /** True while the mod that opened this has a lookup out. */
+  let busy = false;
+
   const paint = (entries: Command[]) => {
     shown = entries;
     list.replaceChildren();
     rows = [];
 
     if (shown.length === 0) {
-      list.append(h('div', { class: 'betterslack-empty' }, [labels.empty]));
+      list.append(busy
+        ? h('div', { class: 'betterslack-palette__searching' }, [
+          h('span', { class: 'betterslack-palette__spinner' }),
+          h('span', {}, [labels.searching ?? labels.empty]),
+        ])
+        : h('div', { class: 'betterslack-empty' }, [labels.empty]));
       footerCount.textContent = '';
       footerAction.textContent = '';
       return;
@@ -438,6 +461,14 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
 
   close.refresh = () => {
     if (isPaletteOpen()) update();
+  };
+  close.setBusy = (on: boolean) => {
+    if (busy === on) return;
+    busy = on;
+    // Only when there is nothing else to look at: repainting a list somebody is
+    // arrowing through, to change a word they are not reading, would move the
+    // selection under them.
+    if (isPaletteOpen() && shown.length === 0) update();
   };
   return close;
 }

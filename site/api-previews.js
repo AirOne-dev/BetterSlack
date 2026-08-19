@@ -1375,6 +1375,36 @@
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(2px);
 }
+/*
+ * Still looking, rather than nothing found.
+ *
+ * A directory search is debounced and then goes to the network, so for a few
+ * hundred milliseconds after typing a name the list is empty because nobody has
+ * answered yet. Saying "nothing matches" there is a wrong answer, not a plain
+ * one. Same spinner as the update notice, from the same keyframes.
+ */
+.betterslack-palette__searching {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 16px;
+  font-size: 14px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+.betterslack-palette__spinner {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--sk_foreground_max, 29, 28, 29), 0.2);
+  border-top-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  animation: betterslack-spin 700ms linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .betterslack-palette__spinner { animation: none; }
+}
+
 .betterslack-palette__box {
   width: min(680px, calc(100vw - 48px));
   max-height: min(560px, 70vh);
@@ -2245,12 +2275,16 @@
       })
     );
     if (modes.length === 0) modesBar.setAttribute("hidden", "hidden");
+    let busy = false;
     const paint = (entries) => {
       shown = entries;
       list.replaceChildren();
       rows = [];
       if (shown.length === 0) {
-        list.append(h("div", { class: "betterslack-empty" }, [labels.empty]));
+        list.append(busy ? h("div", { class: "betterslack-palette__searching" }, [
+          h("span", { class: "betterslack-palette__spinner" }),
+          h("span", {}, [labels.searching ?? labels.empty])
+        ]) : h("div", { class: "betterslack-empty" }, [labels.empty]));
         footerCount.textContent = "";
         footerAction.textContent = "";
         return;
@@ -2390,6 +2424,11 @@
     queueMicrotask(() => input.focus());
     close.refresh = () => {
       if (isPaletteOpen()) update();
+    };
+    close.setBusy = (on) => {
+      if (busy === on) return;
+      busy = on;
+      if (isPaletteOpen() && shown.length === 0) update();
     };
     return close;
   }

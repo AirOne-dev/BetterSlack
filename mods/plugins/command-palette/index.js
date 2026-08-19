@@ -49,7 +49,10 @@ export default {
     let handle = null;
 
     const directory = createDirectory(api, {
-      onResults: () => handle?.refresh(),
+      onResults: () => {
+        handle?.setBusy(false);
+        handle?.refresh();
+      },
     });
     const actions = createActions(api, t);
 
@@ -94,6 +97,13 @@ export default {
     const provider = (query, mode) => {
       const asked = query.trim().length > 0;
       if (asked) directory.search(query);
+      /*
+       * Say whether anything is still out, so an empty list can say "looking"
+       * rather than "nothing matches" -- two different answers, and the second
+       * one was being given for the first. The palette cannot know this: it
+       * does not fetch anything, the mod that opened it does.
+       */
+      handle?.setBusy(directory.searching);
 
       if (mode === 'actions') return actions.list(query);
       if (mode === 'people') {
