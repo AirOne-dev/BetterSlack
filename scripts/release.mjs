@@ -110,7 +110,17 @@ manifest.version = version;
 await fs.writeFile(path.join(root, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 await fs.writeFile(changelogPath, changelog);
 
-await run('git add package.json CHANGELOG.md');
+/*
+ * The site carries the version too.
+ *
+ * `site/data.js` is generated from the catalogue and holds the number, and it
+ * is committed and checked for drift -- so a release that bumped only
+ * package.json left the published site a version behind and the Pages job red
+ * on the next push. Regenerated here rather than remembered.
+ */
+await run('node scripts/build-site.mjs');
+
+await run('git add package.json CHANGELOG.md site/');
 await run(`git commit -m "release: ${version}"`);
 await run(`git tag -a v${version} -m "${version}"`);
 
