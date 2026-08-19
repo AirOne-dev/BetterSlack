@@ -24,7 +24,7 @@
 
 <p align="center"><em>⌘⇧M, or the sliders button above your avatar.</em></p>
 
-## Seven themes, sixteen plugins, one keystroke
+## Seven themes, fifteen plugins, one keystroke
 
 <table>
   <tr>
@@ -89,9 +89,16 @@ may run.
 ```bash
 git clone https://github.com/AirOne-dev/BetterSlack.git
 cd BetterSlack
+nvm use                 # optional; .nvmrc pins the version CI uses
 pnpm install && pnpm build
 pnpm start
 ```
+
+`pnpm build` is not optional: the loader and the runtime are TypeScript, `dist/`
+is not committed, and `bin/betterslack.mjs` refuses to start without
+`dist/loader.mjs`. You need it once after cloning and again after any change
+under `src/` — never for a change under `mods/`, which hot-reloads into the
+running client.
 
 `pnpm start` restarts Slack with BetterSlack attached and stays running — mods are
 active as long as it does. Nothing is installed on a fresh setup: open the panel
@@ -122,8 +129,8 @@ Focus Rings.
 **Plugins** — Command Palette (⌘K, with `/` `@` `#` to narrow it), Theme Builder,
 Motion (Slack with the frames in between), Code Highlight (twenty-one
 languages, detected), Full Links (Slack stops shortening your URLs), Member
-Sidebar, Sidebar Account Strip, Quote Reply, Copy Message Link, Focus Mode
-(⌘⇧F), Composer Character Count, Channel Notes, User Inspector, Avatar
+Sidebar, Sidebar Account Strip, Quote Reply, Copy Message Link,
+Composer Character Count, Channel Notes, User Inspector, Avatar
 Downloader, DevTools, Demo Mode (a Slack full of people who do not exist, for
 when you are screenshotting or sharing your screen).
 

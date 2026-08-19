@@ -168,6 +168,116 @@ function crossCheckPreviews(groups) {
 const THEMES = [];
 const HIGHLIGHT_CSS = read('mods/plugins/code-highlight/highlight.css');
 
+/* -- the guide -------------------------------------------------------------- *
+ *
+ * `docs/guide/*.md` is plain markdown with three keys at the top, and it is the
+ * source the same way `docs/api/*.md` is: the page is generated from it, so a
+ * step that is wrong is wrong in one place. The API entries have a format of
+ * their own because every one of them has a signature and a preview; a guide
+ * has neither, and forcing it into that shape would have meant inventing keys
+ * nobody fills in.
+ *
+ * The renderer below is deliberately small -- headings, paragraphs, lists,
+ * fenced code, and inline code, bold and links. Anything a step-by-step guide
+ * needs and nothing else. A markdown dependency here would be a parser with a
+ * specification standing between a writer and eight files.
+ */
+
+function renderInline(text) {
+  return escape(text)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>');
+}
+
+function renderMarkdown(md) {
+  const out = [];
+  const lines = md.split('\n');
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Fenced code, taken verbatim and coloured in the page by the tokeniser
+    // this project ships -- the same one Code Highlight uses in Slack.
+    const fence = /^```(\w*)\s*$/.exec(line);
+    if (fence) {
+      const body = [];
+      i += 1;
+      while (i < lines.length && !/^```\s*$/.test(lines[i])) { body.push(lines[i]); i += 1; }
+      i += 1;
+      out.push(`<pre class="api-code" data-lang="${escape(fence[1] || 'javascript')}">`
+        + `<code>${escape(body.join('\n'))}</code></pre>`);
+      continue;
+    }
+
+    const heading = /^(#{2,4})\s+(.*)$/.exec(line);
+    if (heading) {
+      const level = heading[1].length;
+      out.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
+      i += 1;
+      continue;
+    }
+
+    if (/^\s*[-*]\s+/.test(line)) {
+      const items = [];
+      while (i < lines.length && (/^\s*[-*]\s+/.test(lines[i]) || (items.length && /^\s{2,}\S/.test(lines[i])))) {
+        if (/^\s*[-*]\s+/.test(lines[i])) items.push(lines[i].replace(/^\s*[-*]\s+/, ''));
+        else items[items.length - 1] += ` ${lines[i].trim()}`;
+        i += 1;
+      }
+      out.push(`<ul>${items.map((it) => `<li>${renderInline(it)}</li>`).join('')}</ul>`);
+      continue;
+    }
+
+    if (line.trim() === '') { i += 1; continue; }
+
+    const para = [];
+    while (i < lines.length && lines[i].trim() !== ''
+      && !/^```/.test(lines[i]) && !/^#{2,4}\s/.test(lines[i]) && !/^\s*[-*]\s+/.test(lines[i])) {
+      para.push(lines[i].trim());
+      i += 1;
+    }
+    out.push(`<p>${renderInline(para.join(' '))}</p>`);
+  }
+  return out.join('\n');
+}
+
+/** The guide pages, in the order their `order:` key gives. */
+function readGuide() {
+  const dir = path.join(root, 'docs/guide');
+  return readdirSync(dir).filter((f) => f.endsWith('.md')).map((file) => {
+    const raw = readFileSync(path.join(dir, file), 'utf8');
+    const parsed = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(raw);
+    if (!parsed) throw new Error(`docs/guide/${file}: no front matter`);
+    const meta = Object.fromEntries(parsed[1].split('\n')
+      .filter(Boolean)
+      .map((l) => {
+        const at = l.indexOf(':');
+        if (at === -1) throw new Error(`docs/guide/${file}: "${l}" is not key: value`);
+        return [l.slice(0, at).trim(), l.slice(at + 1).trim()];
+      }));
+    for (const key of ['name', 'title', 'order']) {
+      if (!meta[key]) throw new Error(`docs/guide/${file}: missing ${key}`);
+    }
+    const body = parsed[2].trim();
+    if (!body) throw new Error(`docs/guide/${file}: nothing but front matter`);
+    return { slug: `guide-${file.replace(/\.md$/, '')}`, name: meta.name, title: meta.title,
+      order: Number(meta.order), body };
+  }).sort((a, b) => a.order - b.order);
+}
+
+function guidePanel(page) {
+  return `<section class="panel panel--guide" id="p-${page.slug}" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">${escape(page.title)}</p>
+    <h1>${escape(page.name)}</h1>
+  </header>
+  <div class="panel__body">
+${renderMarkdown(page.body)}
+  </div>
+</section>`;
+}
+
 function shell({ title, description, body }) {
   return `<!doctype html>
 <html lang="en">
@@ -192,7 +302,7 @@ function shell({ title, description, body }) {
     <span>BetterSlack</span>
   </a>
   <nav class="nav__links">
-    <a href="api.html" aria-current="page">API</a>
+    <a href="api.html" aria-current="page" data-en="Doc" data-fr="Doc">Doc</a>
   </nav>
   <div class="nav__actions">
     <label class="stage-bar" for="stage-theme">
@@ -245,8 +355,21 @@ export function buildApiPage() {
   crossCheck(groups);
   crossCheckPreviews(groups);
 
-  const first = groups[0].entries[0].slug;
-  const nav = groups.map((group) => `<li class="side__group"><p class="side__title">${escape(group.title)}</p>
+  /*
+   * The guide first, and it is what the page opens on.
+   *
+   * A reference is what you come back to; a guide is what you need the first
+   * time. Landing somebody on `tools.highlight` because it sorted first was an
+   * accident of the ordering, not a decision.
+   */
+  const guide = readGuide();
+  const sections = [
+    { title: guide[0].title, entries: guide, guide: true },
+    ...groups.map((group) => ({ ...group, guide: false })),
+  ];
+
+  const first = sections[0].entries[0].slug;
+  const nav = sections.map((group) => `<li class="side__group"><p class="side__title">${escape(group.title)}</p>
       <ul>${group.entries.map((e) => `<li><a href="#${e.slug}">${escape(e.name)}</a></li>`).join('')}</ul></li>`).join('\n');
 
   const body = `<main id="main" class="api">
@@ -256,19 +379,23 @@ export function buildApiPage() {
     </label>
     <nav><ul class="side__list">${nav}</ul></nav>
   </aside>
-  <div class="stack" data-first="${first}"><div class="stack__inner">${groups.flatMap((g) => g.entries.map(panel)).join('\n')}</div></div>
+  <div class="stack" data-first="${first}"><div class="stack__inner">${sections.flatMap((g) => g.entries.map(g.guide ? guidePanel : panel)).join('\n')}</div></div>
 </main>`;
 
   writeFileSync(path.join(root, 'site/api.html'), shell({
-    title: 'BetterSlack — the plugin API',
-    description: 'Every entry in the BetterSlack plugin API, most of them running in the browser.',
+    title: 'BetterSlack — documentation',
+    description: 'How to install BetterSlack and write a plugin or a theme, and every entry in the plugin API, most of them running in the browser.',
     body,
   }));
 
   writeDocsIndex(groups);
 
   const entries = groups.reduce((n, g) => n + g.entries.length, 0);
-  return { entries, previews: groups.flatMap((g) => g.entries).filter((e) => e.preview).length };
+  return {
+    entries,
+    guide: guide.length,
+    previews: groups.flatMap((g) => g.entries).filter((e) => e.preview).length,
+  };
 }
 
 /**

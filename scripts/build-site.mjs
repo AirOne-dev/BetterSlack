@@ -108,4 +108,4 @@ await bundlePreviews();
 // Tokens first: the page's theme picker is built from what this returns.
 buildThemeTokens();
 const api = buildApiPage();
-console.log(`site/api.html: ${api.entries} entries, ${api.previews} with a preview`);
+console.log(`site/api.html: ${api.guide} guide page(s), ${api.entries} entries, ${api.previews} with a preview`);

@@ -1426,7 +1426,7 @@ const IMITATED = {
   'app-commands': {
     render: () => {
       const rows = [
-        { id: 'focus-mode:toggle', title: 'Toggle Focus Mode', source: 'Focus Mode', shortcut: '⌘⇧F' },
+        { id: 'motion:toggle', title: 'Turn Motion off', source: 'Motion', shortcut: '' },
         { id: 'theme-builder:open', title: 'Open the theme builder', source: 'Theme Builder', shortcut: '' },
         { id: 'demo-mode:toggle', title: 'Turn demo mode on', source: 'Demo Mode', shortcut: '' },
       ];
@@ -1467,9 +1467,9 @@ const IMITATED = {
     render: (v, { stage }) => {
       const out = kit.el('pre', { class: 'pg__out' }, ['']);
       const row = modRow({
-        name: 'Focus Mode', description: 'Folds the sidebar away on ⌘⇧F.',
+        name: 'Motion', description: 'Slack with the frames in between.',
         enabled: v.enabled,
-        onToggle: (on) => { out.textContent = `api.app.setEnabled('focus-mode', ${on})`; },
+        onToggle: (on) => { out.textContent = `api.app.setEnabled('motion', ${on})`; },
       });
       return [row, out, kit.el('p', { class: 'sm-hint' }, [
         'A plugin is code that keeps running after the theme that wanted it is off, so nothing switches one on without asking.',
@@ -1746,6 +1746,16 @@ filter();
  */
 for (const block of document.querySelectorAll('.api-code')) {
   const code = block.querySelector('code');
-  if (code) code.innerHTML = highlight(code.textContent ?? '', 'javascript');
+  /*
+   * The guide's fences say what they are; an API entry's example is always
+   * JavaScript. The tokeniser here is Code Highlight's, which is the same one
+   * running in Slack, and it knows json, css and bash among twenty-one others
+   * -- so the guide's manifests and stylesheets are coloured as what they are
+   * rather than as JavaScript that happens to parse.
+   */
+  const language = block.dataset.lang ?? 'javascript';
+  if (code && language in LANGUAGES) {
+    code.innerHTML = highlight(code.textContent ?? '', language);
+  }
   block.append(copyButton(() => code?.textContent ?? ''));
 }

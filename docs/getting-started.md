@@ -24,10 +24,16 @@ script to run.
 ```bash
 git clone https://github.com/AirOne-dev/BetterSlack.git
 cd BetterSlack
-pnpm install
-pnpm build
+nvm use                 # optional; .nvmrc pins the version CI uses
+pnpm install && pnpm build
 pnpm start
 ```
+
+`pnpm build` is not optional: the loader and the runtime are TypeScript, `dist/`
+is not committed, and `bin/betterslack.mjs` refuses to start without
+`dist/loader.mjs`. You need it once after cloning and again after any change
+under `src/` — never for a change under `mods/`, which hot-reloads into the
+running client.
 
 `pnpm start` closes Slack, starts it again with BetterSlack attached, and stays
 running. Leave that terminal open — mods are only active while it runs.
@@ -354,9 +360,10 @@ keep its stylesheet in a real `.css` file: `api.css(api.assets.text('ui/panel.cs
 
 [`channel-notes`](../mods/plugins/channel-notes/index.js) is the worked example
 — a button, a modal, settings, a confirm, a toast, and no CSS at all.
-[`focus-mode`](../mods/plugins/focus-mode/index.js) is almost entirely one
-`toggle()` call. [`quote-reply`](../mods/plugins/quote-reply/index.js) is the
-shortest useful one.
+[`motion`](../mods/plugins/motion/index.js) is the one to read for
+`helpers.toggle` and a stylesheet built in one `api.css` call.
+[`quote-reply`](../mods/plugins/quote-reply/index.js) is the shortest useful
+one.
 
 ### Rules that save an afternoon
 

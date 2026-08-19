@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BetterSlack — the plugin API</title>
-<meta name="description" content="Every entry in the BetterSlack plugin API, most of them running in the browser.">
+<title>BetterSlack — documentation</title>
+<meta name="description" content="How to install BetterSlack and write a plugin or a theme, and every entry in the plugin API, most of them running in the browser.">
 <link rel="icon" href="mark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="slack-context.css">
@@ -87,7 +87,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
     <span>BetterSlack</span>
   </a>
   <nav class="nav__links">
-    <a href="api.html" aria-current="page">API</a>
+    <a href="api.html" aria-current="page" data-en="Doc" data-fr="Doc">Doc</a>
   </nav>
   <div class="nav__actions">
     <label class="stage-bar" for="stage-theme">
@@ -112,7 +112,9 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
     <label class="side__search">
       <input type="search" id="side-filter" placeholder="Filter…" aria-label="Filter the list">
     </label>
-    <nav><ul class="side__list"><li class="side__group"><p class="side__title">Tools</p>
+    <nav><ul class="side__list"><li class="side__group"><p class="side__title">Getting started</p>
+      <ul><li><a href="#guide-install">Install and run</a></li><li><a href="#guide-plugin">Your first plugin</a></li><li><a href="#guide-theme">Your first theme</a></li></ul></li>
+<li class="side__group"><p class="side__title">Tools</p>
       <ul><li><a href="#tools-highlight">highlight · detect</a></li><li><a href="#tools-markdown">renderMarkdown</a></li><li><a href="#tools-roles">derivePalette</a></li></ul></li>
 <li class="side__group"><p class="side__title">Component kit</p>
       <ul><li><a href="#kit-button">button</a></li><li><a href="#kit-card">card</a></li><li><a href="#kit-checker">CHECKER</a></li><li><a href="#kit-code">code</a></li><li><a href="#kit-confirm">confirm</a></li><li><a href="#kit-copytext">copyText</a></li><li><a href="#kit-el">el</a></li><li><a href="#kit-emptystate">emptyState</a></li><li><a href="#kit-field">field</a></li><li><a href="#kit-hoverable">hoverable</a></li><li><a href="#kit-iconbutton">iconButton</a></li><li><a href="#kit-input">input</a></li><li><a href="#kit-popover">popover</a></li><li><a href="#kit-segmented">segmented</a></li><li><a href="#kit-select">select</a></li><li><a href="#kit-swatch">swatch</a></li></ul></li>
@@ -143,7 +145,205 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">On the api object</p>
       <ul><li><a href="#plugin-css">css</a></li><li><a href="#plugin-id">id</a></li><li><a href="#plugin-manifest">manifest</a></li><li><a href="#plugin-ondispose">onDispose</a></li><li><a href="#plugin-savetheme">saveTheme</a></li><li><a href="#plugin-version">version</a></li></ul></li></ul></nav>
   </aside>
-  <div class="stack" data-first="tools-highlight"><div class="stack__inner"><section class="panel" id="p-tools-highlight" hidden>
+  <div class="stack" data-first="guide-install"><div class="stack__inner"><section class="panel panel--guide" id="p-guide-install" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Getting started</p>
+    <h1>Install and run</h1>
+  </header>
+  <div class="panel__body">
+<p>BetterSlack drives the Slack desktop app over the Chrome DevTools Protocol and injects a runtime into it. It never modifies <code>Slack.app</code>, so a Slack update cannot break your install.</p>
+<h2>What you need</h2>
+<p>Node <strong>20.19+, 22.13+ or 24+</strong>, and pnpm. It has to be pnpm: esbuild fetches its platform binary in an install script, and <code>pnpm-workspace.yaml</code> is what allows that script to run. <code>corepack enable</code> is enough to get it — that wants Node 22+, since pnpm 11 refuses to run on anything older when Node is what runs it.</p>
+<h2>Run it</h2>
+<pre class="api-code" data-lang="bash"><code>git clone https://github.com/AirOne-dev/BetterSlack.git
+cd BetterSlack
+nvm use
+pnpm install &amp;&amp; pnpm build
+pnpm start</code></pre>
+<p><code>nvm use</code> is optional and only does anything if you use nvm — there is a <code>.nvmrc</code> in the repository pinning the version CI runs, so it saves you finding out from an error message which Node this wants.</p>
+<p><code>pnpm build</code> is <strong>not</strong> optional, which is worth saying because the other two are obvious and this one is not. The loader and the runtime are TypeScript, <code>dist/</code> is not committed, and <code>bin/betterslack.mjs</code> refuses to start without <code>dist/loader.mjs</code>. You need it once after cloning and again after any change under <code>src/</code>. You never need it for a change under <code>mods/</code>: the loader watches that folder and broadcasts what changed into the running client, with no restart at all.</p>
+<p><code>pnpm start</code> restarts Slack with BetterSlack attached and stays running. Mods are active as long as it does, so leave that terminal open — it is also where the page's own errors are printed, which is how a mod that threw at boot tells you so.</p>
+<p>Nothing is installed on a fresh setup. The repository is a catalogue, not a set of pre-installed mods: open the panel with <strong>⌘⇧M</strong> and install what you want from <strong>Browse</strong>.</p>
+<h2>On macOS, without a terminal</h2>
+<pre class="api-code" data-lang="bash"><code>pnpm build-app --install</code></pre>
+<p>That puts a <strong>BetterSlack.app</strong> in <code>~/Applications</code>, so it starts from Spotlight, the Dock or your login items. It is a launcher rather than a bundle — it runs this checkout, so keep the project folder where it is.</p>
+<p>Two things it needs. A C compiler at build time (<code>xcode-select --install</code>), because the bundle's executable has to be a real binary: macOS gates Desktop, Documents and Downloads per application, and an app whose executable is a shell script is not an application as far as that gate is concerned — the process it sees is <code>/bin/bash</code>. And, if the project lives in one of those three folders, macOS asks once for permission to read it. Say yes.</p>
+<p>Do not run the copy left in <code>dist/</code>. An app inside a gated folder cannot read even its own launcher, and a double-click does nothing at all.</p>
+<h2>If something goes wrong</h2>
+<pre class="api-code" data-lang="bash"><code>pnpm start --safe</code></pre>
+<p>That applies nothing. So does the next start after a run that never reported itself healthy — a mod that wedges the renderer cannot lock you out. A mod that throws on start is named on its own row, and is skipped after two failures until you switch it off and on again.</p>
+<pre class="api-code" data-lang="bash"><code>pnpm test:live</code></pre>
+<p>Boots the real Slack, asks the runtime what actually loaded, and turns the answer into an exit code. It closes Slack afterwards.</p>
+  </div>
+</section>
+<section class="panel panel--guide" id="p-guide-plugin" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Getting started</p>
+    <h1>Your first plugin</h1>
+  </header>
+  <div class="panel__body">
+<p>A plugin is one folder and one file. This builds a working one from nothing — a button in Slack's channel header that says hello — and then shows where each piece comes from.</p>
+<p>Everything here is live in the client as you save it. Mods hot-reload: the loader watches <code>mods/</code>, so there is no build step and no restart for anything under it.</p>
+<h2>1. Make the folder</h2>
+<p>There is a generator, and it writes a mod that already passes the checks:</p>
+<pre class="api-code" data-lang="bash"><code>pnpm new-mod plugin hello &quot;Says hello from the channel header&quot;</code></pre>
+<p>If you would rather see every file, the rest of this page is what it wrote.</p>
+<h2>2. <code>mods/plugins/hello/mod.json</code></h2>
+<pre class="api-code" data-lang="json"><code>{
+  &quot;id&quot;: &quot;hello&quot;,
+  &quot;name&quot;: &quot;Hello&quot;,
+  &quot;type&quot;: &quot;plugin&quot;,
+  &quot;version&quot;: &quot;1.0.0&quot;,
+  &quot;author&quot;: &quot;your-github-handle&quot;,
+  &quot;description&quot;: &quot;One sentence about what a user gets, not how it works.&quot;,
+  &quot;entry&quot;: &quot;index.js&quot;,
+  &quot;betterslackApi&quot;: 1
+}</code></pre>
+<p><code>id</code> has to match the folder name. <code>pnpm validate-mods</code> says so if it does not.</p>
+<h2>3. <code>mods/plugins/hello/index.js</code></h2>
+<p>A plugin is an ES module with one export. <code>start</code> is handed the API and may be async; anything it registers is undone when the mod is switched off.</p>
+<pre class="api-code" data-lang="js"><code>const ICON = '&lt;svg viewBox=&quot;0 0 20 20&quot; width=&quot;20&quot; height=&quot;20&quot; aria-hidden=&quot;true&quot;&gt;'
+  + '&lt;circle cx=&quot;10&quot; cy=&quot;10&quot; r=&quot;7&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;1.6&quot;/&gt;&lt;/svg&gt;';
+
+export default {
+  start(api) {
+    api.slack.addToolbarButton('channelHeader', {
+      id: 'hello',
+      label: 'Say hello',
+      icon: ICON,
+      onClick: () =&gt; api.ui.toast('Hello', { variant: 'success' }),
+    });
+  },
+};</code></pre>
+<p>That is the whole mod. Open the panel with <code>⌘⇧M</code>, install it from <strong>Browse</strong>, switch it on, and the button is in the channel header.</p>
+<h2>4. Give it a setting</h2>
+<p>Settings are declared in the manifest and drawn by the panel — you do not build a form. Add this to <code>mod.json</code>:</p>
+<pre class="api-code" data-lang="json"><code>{
+  &quot;settings&quot;: [
+    { &quot;key&quot;: &quot;greeting&quot;, &quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;What to say&quot;, &quot;default&quot;: &quot;Hello&quot; }
+  ]
+}</code></pre>
+<p>and read it where you need it:</p>
+<pre class="api-code" data-lang="js"><code>const greeting = api.settings.get('greeting', 'Hello');
+api.ui.toast(greeting, { variant: 'success' });</code></pre>
+<p><code>api.settings.onChange</code> fires when the user edits it, so a mod can redraw without being switched off and on.</p>
+<h2>5. Speak the reader's language</h2>
+<p>Every shipped plugin has English and French, and a test fails a mod whose tables do not cover the same keys. English is required, and is what an unknown language falls back to.</p>
+<pre class="api-code" data-lang="js"><code>const t = api.i18n.strings({
+  en: { hello: 'Hello' },
+  fr: { hello: 'Bonjour' },
+});
+api.ui.toast(t('hello'));</code></pre>
+<h2>6. Reach for the helpers before the DOM</h2>
+<p><code>api.helpers</code> is where most of a mod's work already exists. The four that come up most:</p>
+<pre class="api-code" data-lang="js"><code>// A persisted flag plus a class on &lt;html&gt;, so the behaviour can be pure CSS.
+await api.helpers.toggle({
+  key: 'quiet',
+  className: 'hello-quiet',
+  whenOn: 'html.hello-quiet .p-channel_sidebar { display: none }',
+});
+
+// Keep a node in a container Slack keeps re-rendering away.
+api.helpers.mount('.p-view_header__actions', 'hello-mark', () =&gt; api.dom.h('span', {}, ['·']));
+
+// A shortcut, with a guard that gates the match rather than the handler.
+api.helpers.hotkey('mod+shift+h', () =&gt; api.ui.toast('Hello'), { when: () =&gt; true });
+
+// Run for every match now and for every one that arrives later.
+api.helpers.each('[data-qa=&quot;message_container&quot;]', (message) =&gt; { /* … */ });</code></pre>
+<p>Never write a raw <code>MutationObserver</code> to insert something. Slack re-renders constantly and you will get duplicates; <code>mount</code> and <code>each</code> handle it, and give up loudly rather than looping if a container fights back.</p>
+<h2>7. Test it</h2>
+<p>A mod's test runs against a recording fake API — no Slack, no browser:</p>
+<pre class="api-code" data-lang="bash"><code>pnpm test -- hello</code></pre>
+<pre class="api-code" data-lang="js"><code>import test from 'node:test';
+import assert from 'node:assert/strict';
+import { load, fakeApi } from '../../../tests/harness.mjs';
+
+test('adds a button to the channel header', async () =&gt; {
+  const api = fakeApi();
+  await (await load(import.meta.url)).start(api);
+  assert.equal(api.slack.toolbarButtons[0].toolbar, 'channelHeader');
+});</code></pre>
+<p>Assert on what a user would notice, not on how you got there.</p>
+<h2>8. Ship it</h2>
+<pre class="api-code" data-lang="bash"><code>pnpm check</code></pre>
+<p>One command: types, build, manifests, the registry, the site, and every test. It regenerates <code>mods/registry.json</code>, which is committed — a dirty tree after it means the catalogue had drifted, and the fix is to commit it.</p>
+<p>Then open a pull request. A human reads it, and that review is the security model: a plugin runs unsandboxed in an authenticated Slack tab. <code>CONTRIBUTING.md</code> lists what gets rejected.</p>
+<h2>Three things that will catch you out</h2>
+<ul><li><strong><code>eval()</code> and <code>new Function()</code> throw.</strong> Slack's Content Security Policy has no <code>'unsafe-eval'</code>. They *work* in a DevTools console, which misleads.</li><li><strong>Anchor on <code>data-qa</code> attributes</strong>, then on design tokens. A class like <code>circleButton__cMiUK</code> is CSS-module output and changes every Slack build; <code>p-channel_sidebar__channel</code> is stable.</li><li><strong>Switching workspace does not reload the client.</strong> Same page, same mods, new team id in the URL. Anything cached at boot then belongs to the workspace the user has left, so watch the team in the URL and drop per-workspace state.</li></ul>
+  </div>
+</section>
+<section class="panel panel--guide" id="p-guide-theme" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Getting started</p>
+    <h1>Your first theme</h1>
+  </header>
+  <div class="panel__body">
+<p>A theme is CSS and nothing else. It runs no code, so several can be on at once, and a look that needs behaviour names a plugin instead — see the last section.</p>
+<h2>1. Make the folder</h2>
+<pre class="api-code" data-lang="bash"><code>pnpm new-mod theme my-theme &quot;A quieter dark&quot;</code></pre>
+<p>Two files: <code>mod.json</code> and <code>theme.css</code>.</p>
+<h2>2. <code>mods/themes/my-theme/mod.json</code></h2>
+<pre class="api-code" data-lang="json"><code>{
+  &quot;id&quot;: &quot;my-theme&quot;,
+  &quot;name&quot;: &quot;My Theme&quot;,
+  &quot;type&quot;: &quot;theme&quot;,
+  &quot;version&quot;: &quot;1.0.0&quot;,
+  &quot;author&quot;: &quot;your-github-handle&quot;,
+  &quot;description&quot;: &quot;One sentence about what a user gets, not how it works.&quot;,
+  &quot;entry&quot;: &quot;theme.css&quot;,
+  &quot;betterslackApi&quot;: 1
+}</code></pre>
+<h2>3. <code>mods/themes/my-theme/theme.css</code></h2>
+<p>Change Slack's <strong>design tokens</strong>, not its class names. Slack builds its whole interface on custom properties, so redefining them re-skins the app without naming a single element:</p>
+<pre class="api-code" data-lang="css"><code>:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --dt_color-base-pry: #101418;      /* the message surface */
+  --dt_color-content-pry: #e6e9ef;   /* body text */
+  --dt_color-content-hgl-1: #6cb6ff; /* links */
+}</code></pre>
+<p>Save it, open the panel, install and enable. Every save after that re-applies live.</p>
+<h2>4. All four token families, or the app chrome stays Slack's</h2>
+<p>This is the one that catches everybody. There are four, and a theme that only writes the first leaves the rail, the sidebar and the headers untouched:</p>
+<pre class="api-code" data-lang="css"><code>:root,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  /* Content: the conversation, dialogs, buttons. No !important needed. */
+  --dt_color-base-pry: #101418;
+  --dt_color-content-pry: #e6e9ef;
+
+  /* Chrome: the rail, the sidebar, the headers. These need !important. */
+  --dt_color-theme-base-inv-pry: #0b0e12 !important;
+  --dt_color-theme-content-inv-pry: #e6e9ef !important;
+
+  /* Legacy, and bare `r, g, b` triplets — a hex here parses as nothing. */
+  --sk_primary_background: 16, 20, 24 !important;
+  --sk_foreground_max: 230, 233, 239 !important;
+
+  /* Raw palette, also triplets. */
+  --dt_color-plt-blue-50: 108, 182, 255 !important;
+}</code></pre>
+<p><code>--sk_foreground_low</code> alone is referenced 31 times across BetterSlack's own interface, and its fallback is Slack's *light* default — leave it out of a dark theme and a dialog's hint text comes out near-black on near-black.</p>
+<h2>5. Clear the backdrop before painting one</h2>
+<p><code>.p-theme_background</code> is a full-viewport opaque layer above <code>&lt;body&gt;</code>. Anything you draw on <code>body</code> — a gradient, an image, translucency — is simply covered up until you clear it:</p>
+<pre class="api-code" data-lang="css"><code>.p-theme_background { background: transparent !important; }
+body { background: linear-gradient(160deg, #101418, #161c26); }</code></pre>
+<h2>6. Use the builder rather than guessing</h2>
+<pre class="api-code" data-lang="bash"><code># In Slack: ⌘K, then &quot;theme builder&quot;</code></pre>
+<p>It opens a window of its own and paints the client live, so <strong>the preview is Slack</strong>. Two colours become twelve roles across all four families, hovering a colour outlines what it paints, and pointing at anything in the app shows the tokens behind it. It writes ordinary CSS you can paste into <code>theme.css</code>.</p>
+<h2>7. When the look needs behaviour</h2>
+<p>A theme cannot run code, and that is deliberate. When a look needs something CSS cannot do — a member column, an account strip — the theme names a plugin:</p>
+<pre class="api-code" data-lang="json"><code>{ &quot;requires&quot;: [&quot;member-sidebar&quot;] }</code></pre>
+<p>The panel offers to switch it on, and enables the theme either way if the user declines: a plugin keeps running after the theme is off, so it is never turned on silently. The plugin has to stand alone — it reads Slack's tokens and follows any theme — and the theme must not style its markup.</p>
+<h2>8. Ship it</h2>
+<pre class="api-code" data-lang="bash"><code>pnpm check</code></pre>
+<p>The same one command as a plugin. <code>pnpm shoot --mods -- --only=my-theme</code> takes the screenshot the catalogue and the panel show, in a real Slack with every name, face and message on screen replaced first.</p>
+<h2>Two more traps, both measured</h2>
+<ul><li><strong>Slack has two &quot;jump to unread&quot; pills</strong> in the sidebar, one above and one below, sharing every class except a hashed one that changes per build. Tell them apart by which half of the sidebar they sit in — a rule matching both sets <code>top</code> and <code>bottom</code> on the same element and stretches it between them.</li><li><strong>Borrowing a Slack class borrows its layout.</strong> <code>.p-r_member_profile__avatar__img</code> is <code>position: absolute</code> in Slack's stylesheet, which parks a borrowed avatar on top of its own title. Reset explicitly.</li></ul>
+  </div>
+</section>
+<section class="panel" id="p-tools-highlight" hidden>
   <header class="panel__head">
     <p class="eyebrow">Tools</p>
     <h1><code>highlight · detect</code></h1>
@@ -1520,7 +1720,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
 saved; this points at the mod's own page there -- description, picture,
 readme, settings -- rather than reimplementing any of it somewhere with
 less room.</p>
-    <div class="api-demo" data-demo="app-openmod" data-controls="[{&quot;key&quot;:&quot;id&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;focus-mode&quot;,&quot;label&quot;:&quot;mod id&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <div class="api-demo" data-demo="app-openmod" data-controls="[{&quot;key&quot;:&quot;id&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;channel-notes&quot;,&quot;label&quot;:&quot;mod id&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.app.openMod('channel-notes');   // that mod's own page</code></pre>
   </div>

@@ -433,6 +433,21 @@ Three things make that possible:
   chosen against a dark background. `rgba(0, 0, 0, .4)` did follow the theme,
   which on Cocoa's cream stage came out grey-on-grey.
 
+**The guide is `docs/guide/*.md`, and it is markdown rather than the entry
+format.** Three keys -- `name`, `title`, `order` -- and then ordinary markdown,
+rendered by a small renderer in `build-api-page.mjs`: headings, paragraphs,
+lists, fenced code, inline code, bold, links. An entry's format exists because
+every entry has a signature and a preview; a guide page has neither, and forcing
+it into that shape would have meant inventing keys nobody fills in. A fence's
+language reaches the page as `data-lang` and is coloured by Code Highlight's
+tokeniser -- the same one running in Slack -- so a `json` manifest is coloured
+as JSON rather than as JavaScript that happens to parse.
+
+**The guide comes first and the page opens on it.** Landing somebody on
+`tools.highlight` was an accident of the ordering, not a decision: a reference
+is what you come back to, a guide is what you need the first time. The tab in
+the bar says *Doc* for the same reason.
+
 **One file, one panel at a time.** Every entry is a `<section class="panel">` in
 that single document and the list on the left switches between them; the page
 itself does not scroll. Ninety-eight separate files was an earlier shape and the
@@ -811,12 +826,15 @@ plugin's stylesheet whole -- that is the contract, and it is right, since a mod
 that recomputes its CSS on a settings change would otherwise stack copies of it
 for ever. `helpers.toggle({ whenOn })`, `helpers.badge` and `helpers.tooltip`
 write CSS too, and they used to write it through that same node, so a mod using
-both kept only whichever went last. Focus Mode shipped that way: it put its
+both kept only whichever went last. A shipped mod went out that way: it put its
 class on `<html>`, drew its indicator, and folded nothing away, because its
 indicator stylesheet had overwritten the rules that hide the sidebar. Its tests
 passed the whole time -- they asserted on every call the mod made, and the bug
 is that only one of those calls survives. The helpers now own
-`plugin:<id>:helpers`, covered by `tests/styles.test.mjs`.
+`plugin:<id>:helpers`, covered by `tests/styles.test.mjs`, which carries that
+shape as a fixture rather than importing the mod: the mod has since been
+dropped, and a regression test that can be deleted along with its subject is not
+covering the runtime.
 
 When two mods want the same block, it belongs in the API, and the mods get
 refactored onto it in the same change. Five things were lifted that way after an
@@ -897,6 +915,22 @@ and the only honest source is the page. Two families take bare `r, g, b`
 triplets (`--sk_*`, `--dt_color-plt-*`) -- writing a colour there parses, paints
 nothing, and reports nothing, which is why every value goes through
 `formatFor(kind, colour)`.
+
+**Discord Light is Discord Dark's stylesheet with one block changed**, and a
+test in its folder fails if the two drift below the palette. Two stylesheets
+meaning to be one design come apart the moment a fix lands in whichever file was
+open, and the one that misses out is always the one nobody is looking at. Five
+things a light palette cannot inherit are variables for that reason --
+`--dc-header-shadow`, `--dc-float`, `--dc-float-text` and the two scrollbar
+colours: a shadow that has to be a tint rather than a shade, a floating surface
+that is the darkest thing on screen in one and the brightest in the other, and a
+scrollbar whose thumb and track trade places. A second test refuses any hex or
+`rgb()` below the palette at all, white excepted -- the text on the blurple
+accent and on the red badge, which is the same colour either way.
+
+The two are honest about coming from different places, and say so in their own
+headers: Discord Dark's colours were sampled off a screenshot of the real
+client, Discord Light's are Discord's published design tokens by name.
 
 ## Themes require plugins; they do not run code
 
@@ -1068,10 +1102,19 @@ by an earlier render in the same frame.
   template literal, so a backticked `.c-dialog` in a comment closes the string
   and the rest parses as JavaScript — `.c - dialog` — which builds cleanly and
   then throws `ReferenceError: dialog is not defined` at boot, taking the whole
-  runtime down with no styling on the failure. This has happened twice.
-  `tests/requires.test.mjs` now fails if a backtick appears in there.
+  runtime down with no styling on the failure. This has happened **three times**,
+  and every time it was a comment explaining a CSS property by naming it in
+  backticks. Write the property in words instead: "sets display flex", not the
+  backticked declaration. `tests/requires.test.mjs` fails if a backtick appears
+  in there, and typecheck usually gets there first with a baffling
+  `',' expected` pointing at the middle of a sentence.
 - Mods are distributed through pull requests and reviewed by a human; that
   review is the security model, since plugins run unsandboxed in an
   authenticated Slack tab. `CONTRIBUTING.md` lists what gets rejected.
 - Commits and PRs are authored by the repository owner. Do not add AI
   co-author trailers.
+- **Never push without asking.** Commit freely -- finish a piece of work, run
+  `pnpm check`, commit -- but `git push` is the owner's call every time, and a
+  force-push doubly so. A commit is local and can be rewritten; a push is out in
+  the world, and this repository's history gets rewritten often enough that a
+  push nobody asked for is a push somebody has to undo.

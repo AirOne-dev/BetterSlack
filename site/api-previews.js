@@ -1129,11 +1129,88 @@
 .sm-code__input { caret-color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1); }
 .sm-code__input::placeholder { color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.5); }
 
-/* The update notice: the same row as everything else, marked by an accent edge
- * rather than a colour of its own, so it reads as important without shouting. */
-.betterslack-row--notice {
-  border-left: 3px solid rgba(var(--sk_highlight, 18, 100, 163), 1);
-  padding-left: 12px;
+/*
+ * The update notice.
+ *
+ * It was the ordinary row with a 3px edge and 12px of padding on the left only,
+ * which is where it went wrong: the base row is padded 14px top and bottom and
+ * nothing left or right, so the edge
+ * had a gap on one side and the text ran to the dialog's margin on the other,
+ * and the whole thing sat flush against the rows above and below it with no
+ * more weight than a mod. A notice that is easy to miss is a notice that does
+ * not work.
+ *
+ * So it is a card now -- tinted, padded on all four sides, and set apart with
+ * margin rather than by borrowing the row separator.
+ */
+/* Both classes on purpose. The plain row class sets display flex further down
+ * this same stylesheet, and one class beats one class only by coming later --
+ * so with a single-class selector the block below lost, the notice stayed a
+ * flex row, and the progress line's full width crushed the text beside it to
+ * nothing. Measured at 0px wide before this, 706px after. */
+.betterslack-row.betterslack-row--notice {
+  display: block;
+  margin: 4px 0 16px;
+  padding: 16px 18px;
+  border: 1px solid rgba(var(--sk_highlight, 18, 100, 163), 0.35);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: rgba(var(--sk_highlight, 18, 100, 163), 0.07);
+}
+.betterslack-row.betterslack-row--notice .betterslack-row__meta { margin-bottom: 12px; }
+.betterslack-row.betterslack-row--notice .betterslack-row__actions { flex-wrap: wrap; gap: 10px; }
+
+/*
+ * The state while it is working, which used to be a disabled button with a line
+ * of grey text beside it.
+ *
+ * That reads as broken rather than as busy: the row it sat in does not grow,
+ * so "Downloading and rebuilding..." either squeezed the
+ * button or wrapped under it, and nothing on screen moved for however long the
+ * pull took. The line moved under the buttons, where it has the width, and it
+ * spins while there is something to wait for.
+ */
+.betterslack-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.75);
+}
+.betterslack-progress:empty { display: none; }
+.betterslack-progress::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--sk_highlight, 18, 100, 163), 0.25);
+  border-top-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  animation: betterslack-spin 700ms linear infinite;
+}
+/* Finished, one way or the other: the spinner becomes a mark, because a circle
+   still turning after the work is done says the opposite of what happened. */
+.betterslack-progress--done::before,
+.betterslack-progress--failed::before {
+  animation: none;
+  border: 0;
+  width: 14px;
+  height: 14px;
+  font-size: 13px;
+  line-height: 14px;
+  text-align: center;
+}
+.betterslack-progress--done { color: var(--dt_color-content-hgl-2, #007a5a); }
+.betterslack-progress--done::before { content: "\u2713"; color: inherit; }
+.betterslack-progress--failed { color: var(--dt_color-content-imp, #c01343); }
+.betterslack-progress--failed::before { content: "\u2715"; color: inherit; }
+
+@keyframes betterslack-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .betterslack-progress::before { animation: none; }
 }
 
 /* A mod and its settings read as one block, with the settings indented under
@@ -5419,7 +5496,7 @@ ${editor.value.length} bytes \u2014 it shows up in the panel as an installed the
     "app-commands": {
       render: () => {
         const rows = [
-          { id: "focus-mode:toggle", title: "Toggle Focus Mode", source: "Focus Mode", shortcut: "\u2318\u21E7F" },
+          { id: "motion:toggle", title: "Turn Motion off", source: "Motion", shortcut: "" },
           { id: "theme-builder:open", title: "Open the theme builder", source: "Theme Builder", shortcut: "" },
           { id: "demo-mode:toggle", title: "Turn demo mode on", source: "Demo Mode", shortcut: "" }
         ];
@@ -5457,11 +5534,11 @@ ${editor.value.length} bytes \u2014 it shows up in the panel as an installed the
       render: (v, { stage }) => {
         const out = kit.el("pre", { class: "pg__out" }, [""]);
         const row = modRow({
-          name: "Focus Mode",
-          description: "Folds the sidebar away on \u2318\u21E7F.",
+          name: "Motion",
+          description: "Slack with the frames in between.",
           enabled: v.enabled,
           onToggle: (on) => {
-            out.textContent = `api.app.setEnabled('focus-mode', ${on})`;
+            out.textContent = `api.app.setEnabled('motion', ${on})`;
           }
         });
         return [row, out, kit.el("p", { class: "sm-hint" }, [
@@ -5683,7 +5760,10 @@ const kit = api.ui.kit(win.document);`)
   filter();
   for (const block of document.querySelectorAll(".api-code")) {
     const code = block.querySelector("code");
-    if (code) code.innerHTML = highlight(code.textContent ?? "", "javascript");
+    const language = block.dataset.lang ?? "javascript";
+    if (code && language in LANGUAGES) {
+      code.innerHTML = highlight(code.textContent ?? "", language);
+    }
     block.append(copyButton(() => code?.textContent ?? ""));
   }
 })();
