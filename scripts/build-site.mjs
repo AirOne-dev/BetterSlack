@@ -17,6 +17,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { bundleDemos, buildApiPage } from './build-api-page.mjs';
 import { stripFrom } from '../mods/plugins/theme-builder/read-theme.js';
 import { formatCss } from '../mods/plugins/theme-builder/colour.js';
 
@@ -96,3 +97,13 @@ writeFileSync(
 );
 
 console.log(`site/data.js: ${themes.length} theme(s), ${plugins.length} plugin(s)`);
+
+/*
+ * The API page, built from the API.
+ *
+ * Here rather than as a script of its own so `pnpm site` means "the site",
+ * and so the page cannot be forgotten when the catalogue is regenerated.
+ */
+await bundleDemos();
+const api = buildApiPage();
+console.log(`site/api.html: ${api.entries} entries across ${api.groups} namespaces, ${api.kit} kit primitives`);

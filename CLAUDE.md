@@ -290,6 +290,22 @@ live client rather than assumed:
   there when the demo started is somebody's words; what you type during the
   demo is your own.
 
+`site/api.html` is **generated from the API**, by `scripts/build-api-page.mjs`:
+it reads the TypeScript interfaces -- `PluginApi`, `SlackApi`, `Helpers`,
+`I18n`, `Kit` -- and their doc comments, and takes the examples from the
+matching `###` headings in `docs/api.md`. Add a method and it appears; delete
+one and it leaves. Writing that list a third time, after the types and the
+reference, is how two of them end up disagreeing.
+
+Its live half is `scripts/api-demos.js`, bundled into `site/api-demos.js`. It
+imports the real modules -- `createKit`, `renderMarkdown`, Code Highlight's
+tokeniser and detector, the theme builder's `derivePalette` -- so the page
+renders what runs in Slack rather than a mock-up of it, and the site build
+fails if one of them stops compiling. Anything that needs Slack itself (a
+toolbar button, a message action, the web API) is shown as code with a note,
+because re-implementing it for a web page would be exactly the second version
+this project keeps avoiding.
+
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script
 -- nothing fetched from a CDN, so it renders the same whatever else the network

@@ -38,12 +38,15 @@ jobs:
         with:
           node-version: 22
 
-      - name: site/data.js is up to date
+      - name: the generated site files are up to date
         run: |
           node scripts/build-site.mjs
-          if ! git diff --quiet -- site/data.js; then
-            echo "::error::site/data.js is stale. Run 'pnpm site' and commit the result."
-            git --no-pager diff -- site/data.js
+          # api.html and api-demos.js are generated from the TypeScript and from
+          # the mods, so they go stale the moment the API changes -- which is
+          # the whole reason the page is generated rather than written.
+          if ! git diff --quiet -- site/data.js site/api.html site/api-demos.js; then
+            echo "::error::a generated site file is stale. Run 'pnpm site' and commit the result."
+            git --no-pager diff --stat -- site/data.js site/api.html site/api-demos.js
             exit 1
           fi
 
