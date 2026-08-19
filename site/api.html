@@ -85,9 +85,6 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
     <span>BetterSlack</span>
   </a>
   <nav class="nav__links">
-    <a href="index.html#themes" data-en="Themes" data-fr="Thèmes">Themes</a>
-    <a href="index.html#plugins" data-en="Plugins" data-fr="Plugins">Plugins</a>
-    <a href="index.html#install" data-en="Install" data-fr="Installation">Install</a>
     <a href="api.html" aria-current="page" data-en="API" data-fr="API">API</a>
   </nav>
   <div class="nav__actions">
@@ -103,6 +100,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
       <li><a href="#playground" data-en="Live" data-fr="En direct">Live</a>
         <ul>
           <li><a href="#kit">component kit</a></li>
+          <li><a href="#i18n-live">i18n fallbacks</a></li>
           <li><a href="#markdown">markdown</a></li>
           <li><a href="#highlighting">highlighting</a></li>
           <li><a href="#roles">theme roles</a></li>
@@ -251,6 +249,29 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 </article>
       </div>
 
+      <h4 id="i18n-live"><code>api.i18n.strings({ en, fr })</code></h4>
+      <p data-en="English is required, and is what an unknown language and a missing key both fall back to. Change the locale to fr and watch bye fall back; change it to de and watch both."
+         data-fr="L’anglais est obligatoire, et c’est ce vers quoi retombent une langue inconnue comme une clé manquante. Passez la locale à fr et regardez bye retomber ; passez-la à de et regardez les deux.">
+        English is required, and is what an unknown language and a missing key both fall back to. Change the locale to fr and watch <code>bye</code> fall back; change it to de and watch both.
+      </p>
+      <div class="api-toolbar">
+        <label for="i18n-locale" data-en="Locale" data-fr="Locale">Locale</label>
+        <select id="i18n-locale" class="api-select">
+          <option value="en-GB">en-GB</option>
+          <option value="fr-FR">fr-FR</option>
+          <option value="de-DE">de-DE</option>
+        </select>
+        <label for="i18n-key" data-en="Key" data-fr="Clé">Key</label>
+        <select id="i18n-key" class="api-select">
+          <option value="hello">hello</option>
+          <option value="bye">bye</option>
+          <option value="missing">missing</option>
+        </select>
+        <label for="i18n-name" data-en="name" data-fr="name">name</label>
+        <input id="i18n-name" class="api-select" value="Ada" size="8">
+      </div>
+      <p id="i18n-out" class="api-result"></p>
+
       <h4 id="markdown"><code>renderMarkdown(source)</code></h4>
       <p data-en="What the panel runs on a mod's README. It escapes first and drops a javascript: URL, which is why a readme can be rendered at all."
          data-fr="Ce que le panneau exécute sur le README d’un mod. Il échappe d’abord et supprime toute URL javascript:, ce qui est la raison pour laquelle un readme peut être rendu du tout.">
@@ -313,10 +334,10 @@ a hotkey, a badge, a copy-and-confirm, Slack-styled buttons, fields and
 sections. All of it is built on the rest of this API, and all of it is
 torn down with the plugin.</p>
   <article class="api-entry" id="entry-toggle-1">
-  <h4><code>toggle</code><span class="api-sig">(options: ToggleOptions): Toggle</span></h4>
+  <h4><code>toggle</code><span class="api-sig">(options: ToggleOptions): Toggle</span><span class="api-badge api-badge--live">live below</span></h4>
   <p>A persisted on/off flag that also drives a class on &lt;html&gt;, so the whole
 behaviour can be pure CSS. This is the shape most "mode" mods want.</p>
-  
+  <div class="api-demo" data-demo="toggle"></div>
   <pre class="api-code"><code>const zen = api.helpers.toggle({
   key: 'on',                       // settings key it persists under
   className: 'my-zen',             // optional; defaults to betterslack-&lt;plugin&gt;-&lt;key&gt;
@@ -347,13 +368,13 @@ api.helpers.hotkey('escape', () =&gt; zen.set(false), {
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-describeHotkey-3">
-  <h4><code>describeHotkey</code><span class="api-sig">(combo: string): string</span></h4>
+  <h4><code>describeHotkey</code><span class="api-sig">(combo: string): string</span><span class="api-badge api-badge--live">live below</span></h4>
   <p>Human-readable form of a combo, for tooltips: ⌘⇧F or Ctrl+Shift+F.</p>
-  
+  <div class="api-demo" data-demo="describeHotkey"></div>
   <pre class="api-code"><code>api.helpers.describeHotkey('mod+shift+k');  // '⌘⇧K' or 'Ctrl+Shift+K'</code></pre>
 </article>
 <article class="api-entry" id="entry-poll-4">
-  <h4><code>poll</code><span class="api-sig">(handler: () =&gt; void | Promise&lt;void&gt;, everyMs: number): Cleanup</span></h4>
+  <h4><code>poll</code><span class="api-sig">(handler: () =&gt; void | Promise&lt;void&gt;, everyMs: number): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Run something every so often, and stop while nobody is looking.</p>
 <p>Slack does not render while its window is hidden, so a poll that keeps
 going in the background is requests nobody will see the result of -- and
@@ -365,14 +386,14 @@ as it comes back. Stops with the plugin.</p>
   <pre class="api-code"><code>api.helpers.poll(() =&gt; refreshPresence(), 60_000);</code></pre>
 </article>
 <article class="api-entry" id="entry-badge-5">
-  <h4><code>badge</code><span class="api-sig">(selector: string, id: string, value: () =&gt; string | number | null): Cleanup</span></h4>
+  <h4><code>badge</code><span class="api-sig">(selector: string, id: string, value: () =&gt; string | number | null): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>A small count/dot badge pinned to any element, kept in sync by a getter.</p>
   
   <pre class="api-code"><code>let unread = 0;
 api.helpers.badge('[data-qa="betterslack_button"]', 'unread', () =&gt; unread);</code></pre>
 </article>
 <article class="api-entry" id="entry-each-6">
-  <h4><code>each</code><span class="api-sig">&lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void): Cleanup</span></h4>
+  <h4><code>each</code><span class="api-sig">&lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Run a handler for every element matching a selector, now and in future,
 and undo it for you when the plugin stops.</p>
   
@@ -381,7 +402,7 @@ and undo it for you when the plugin stops.</p>
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-mount-7">
-  <h4><code>mount</code><span class="api-sig">(container: string, id: string, factory: () =&gt; HTMLElement, options?: { before?: string }): Cleanup</span></h4>
+  <h4><code>mount</code><span class="api-sig">(container: string, id: string, factory: () =&gt; HTMLElement, options?: { before?: string }): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Keep an element mounted somewhere, surviving Slack's re-renders.</p>
   
   <pre class="api-code"><code>api.helpers.mount('[data-qa="message_input"]', 'my-counter', () =&gt;
@@ -393,19 +414,19 @@ api.helpers.mount('.p-control_strip', 'my-button', makeButton, {
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-tooltip-8">
-  <h4><code>tooltip</code><span class="api-sig">(element: HTMLElement, title: string, subtitle?: string): Cleanup</span></h4>
+  <h4><code>tooltip</code><span class="api-sig">(element: HTMLElement, title: string, subtitle?: string): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Slack-styled tooltip on anything.</p>
   
   <pre class="api-code"><code>api.ui.tooltip(el, { title: 'BetterSlack', subtitle: '⌘⇧M', placement: 'right' });</code></pre>
 </article>
 <article class="api-entry" id="entry-copy-9">
-  <h4><code>copy</code><span class="api-sig">(text: string, message?: string): Promise&lt;boolean&gt;</span></h4>
+  <h4><code>copy</code><span class="api-sig">(text: string, message?: string): Promise&lt;boolean&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Copy text and confirm with a toast, the way three mods were doing by hand.</p>
   
   <pre class="api-code"><code>await api.helpers.copy(message.permalink, 'Link copied');</code></pre>
 </article>
 <article class="api-entry" id="entry-iconButton-10">
-  <h4><code>iconButton</code><span class="api-sig">(options: {</span></h4>
+  <h4><code>iconButton</code><span class="api-sig">(options: {</span><span class="api-badge">inside Slack</span></h4>
   <p>Build an icon button wearing Slack's classes for a given surface.</p>
   
   <pre class="api-code"><code>const button = api.helpers.iconButton({
@@ -417,7 +438,7 @@ api.helpers.mount('.p-control_strip', 'my-button', makeButton, {
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-field-11">
-  <h4><code>field</code><span class="api-sig">(label: string, value: string | Node): HTMLElement</span></h4>
+  <h4><code>field</code><span class="api-sig">(label: string, value: string | Node): HTMLElement</span><span class="api-badge">inside Slack</span></h4>
   <p>A labelled row in Slack's profile/field style.</p>
   
   <pre class="api-code"><code>const { field, section } = api.helpers;
@@ -427,7 +448,7 @@ pane.append(section('More details', [
 ]));</code></pre>
 </article>
 <article class="api-entry" id="entry-section-12">
-  <h4><code>section</code><span class="api-sig">(title: string, children: (Node | string)[]): HTMLElement</span></h4>
+  <h4><code>section</code><span class="api-sig">(title: string, children: (Node | string)[]): HTMLElement</span><span class="api-badge">inside Slack</span></h4>
   <p>A section with Slack's own header styling, for panes.</p>
   
   <pre class="api-code"><code>const { field, section } = api.helpers;
@@ -437,13 +458,13 @@ pane.append(section('More details', [
 ]));</code></pre>
 </article>
 <article class="api-entry" id="entry-debounce-13">
-  <h4><code>debounce</code><span class="api-sig">&lt;T extends (...args: never[]) =&gt; void&gt;(fn: T, ms: number): T</span></h4>
+  <h4><code>debounce</code><span class="api-sig">&lt;T extends (...args: never[]) =&gt; void&gt;(fn: T, ms: number): T</span><span class="api-badge api-badge--live">live below</span></h4>
   <p>Debounce. No shipped mod calls this today -- the two that debounce
 something do it inside code that has no <code>api</code> to reach for: the palette's
 directory search, and Demo Mode's engine, which the screenshot recipe also
 runs outside the runtime. Kept because it is three lines and it is the
 obvious thing to reach for.</p>
-  
+  <div class="api-demo" data-demo="debounce"></div>
   <pre class="api-code"><code>const search = api.helpers.debounce((q) =&gt; run(q), 200);</code></pre>
 </article>
 </section>
@@ -451,7 +472,7 @@ obvious thing to reach for.</p>
   <h3>api.slack</h3>
   <p class="section__lede">Slack-aware helpers: toolbars, message actions, permalinks, the composer.</p>
   <article class="api-entry" id="entry-addMessageAction-14">
-  <h4><code>addMessageAction</code><span class="api-sig">(action: MessageAction): Cleanup</span></h4>
+  <h4><code>addMessageAction</code><span class="api-sig">(action: MessageAction): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Add a button to the hover toolbar on messages.</p>
   
   <pre class="api-code"><code>api.slack.addMessageAction({
@@ -462,7 +483,7 @@ obvious thing to reach for.</p>
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-addToolbarButton-15">
-  <h4><code>addToolbarButton</code><span class="api-sig">(toolbar: ToolbarName, button: ToolbarButton): Cleanup</span></h4>
+  <h4><code>addToolbarButton</code><span class="api-sig">(toolbar: ToolbarName, button: ToolbarButton): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Add a button to one of Slack's toolbars:
   <code>controlStrip</code>  – the bottom of the rail, next to your avatar
   <code>composer</code>      – the formatting row under the message box
@@ -478,7 +499,7 @@ obvious thing to reach for.</p>
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-addProfileButton-16">
-  <h4><code>addProfileButton</code><span class="api-sig">(button: ProfileButton): Cleanup</span></h4>
+  <h4><code>addProfileButton</code><span class="api-sig">(button: ProfileButton): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Add a button to the member profile pane.</p>
   
   <pre class="api-code"><code>api.slack.addProfileButton({
@@ -492,7 +513,7 @@ api.slack.onProfilePane(({ element, userId }) =&gt; {
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-onProfilePane-17">
-  <h4><code>onProfilePane</code><span class="api-sig">(handler: (pane: ProfilePane) =&gt; void): Cleanup</span></h4>
+  <h4><code>onProfilePane</code><span class="api-sig">(handler: (pane: ProfilePane) =&gt; void): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Run a handler each time a member profile pane opens.</p>
   
   <pre class="api-code"><code>api.slack.addProfileButton({
@@ -506,7 +527,7 @@ api.slack.onProfilePane(({ element, userId }) =&gt; {
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-openConversation-18">
-  <h4><code>openConversation</code><span class="api-sig">(channelId: string): void</span></h4>
+  <h4><code>openConversation</code><span class="api-sig">(channelId: string): void</span><span class="api-badge">inside Slack</span></h4>
   <p>Move the client to a conversation, without a page load.</p>
 <p>Slack's own navigation lives in a private closure: its router state is
 pushed with history.pushState and nothing outside reacts to a synthetic
@@ -518,7 +539,7 @@ measured against 4.51: same document, no reload, view follows.</p>
   
 </article>
 <article class="api-entry" id="entry-openDirectMessage-19">
-  <h4><code>openDirectMessage</code><span class="api-sig">(userId: string): Promise&lt;string | null&gt;</span></h4>
+  <h4><code>openDirectMessage</code><span class="api-sig">(userId: string): Promise&lt;string | null&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Open the direct message with someone, creating it if there is none.</p>
 <p><code>conversations.open</code> returns the IM's id, and opening one that did not
 exist makes Slack navigate to it on its own; the deep link covers the rest.</p>
@@ -526,25 +547,25 @@ exist makes Slack navigate to it on its own; the deep link covers the rest.</p>
   
 </article>
 <article class="api-entry" id="entry-openUserProfile-20">
-  <h4><code>openUserProfile</code><span class="api-sig">(userId: string): void</span></h4>
+  <h4><code>openUserProfile</code><span class="api-sig">(userId: string): void</span><span class="api-badge">inside Slack</span></h4>
   <p>Show someone's profile in Slack, through the same deep-link scheme.</p>
   
   
 </article>
 <article class="api-entry" id="entry-hideConversation-21">
-  <h4><code>hideConversation</code><span class="api-sig">(channelId: string): Promise&lt;void&gt;</span></h4>
+  <h4><code>hideConversation</code><span class="api-sig">(channelId: string): Promise&lt;void&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Remove a conversation from the sidebar. The history is untouched.</p>
   
   
 </article>
 <article class="api-entry" id="entry-filesFrom-22">
-  <h4><code>filesFrom</code><span class="api-sig">(userId: string, limit?: number): Promise&lt;Array&lt;Record&lt;string, unknown&gt;&gt;&gt;</span></h4>
+  <h4><code>filesFrom</code><span class="api-sig">(userId: string, limit?: number): Promise&lt;Array&lt;Record&lt;string, unknown&gt;&gt;&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Files someone shared, newest first.</p>
   
   
 </article>
 <article class="api-entry" id="entry-startHuddle-23">
-  <h4><code>startHuddle</code><span class="api-sig">(userId: string): Promise&lt;boolean&gt;</span></h4>
+  <h4><code>startHuddle</code><span class="api-sig">(userId: string): Promise&lt;boolean&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Start a huddle with someone: open the conversation, then press Slack's own
 start control.</p>
 <p>This one really is a press, and there is no way around it -- measured:
@@ -557,13 +578,13 @@ it, so at least no trusted gesture is needed.</p>
   
 </article>
 <article class="api-entry" id="entry-vipUsers-24">
-  <h4><code>vipUsers</code><span class="api-sig">(): Promise&lt;string[]&gt;</span></h4>
+  <h4><code>vipUsers</code><span class="api-sig">(): Promise&lt;string[]&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>The people marked VIP, in Slack's own order.</p>
   
   
 </article>
 <article class="api-entry" id="entry-setVip-25">
-  <h4><code>setVip</code><span class="api-sig">(userId: string, isVip: boolean): Promise&lt;boolean&gt;</span></h4>
+  <h4><code>setVip</code><span class="api-sig">(userId: string, isVip: boolean): Promise&lt;boolean&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Add or remove someone from your VIP list, and report the new state.</p>
 <p>VIP is a user preference, not an endpoint of its own: Slack keeps it in
 <code>vip_users</code> as a comma-separated list. Read, edit, write -- which also
@@ -573,7 +594,7 @@ they would in Slack itself.</p>
   
 </article>
 <article class="api-entry" id="entry-web-26">
-  <h4><code>web</code><span class="api-sig">: WebApi</span></h4>
+  <h4><code>web</code><span class="api-sig">: WebApi</span><span class="api-badge">inside Slack</span></h4>
   <p>Slack's own web API, as the signed-in user. Reads the session token in one
 audited place so mods never touch localStorage themselves; requests can
 only reach Slack's own origin. See src/runtime/web-api.ts.</p>
@@ -587,7 +608,7 @@ only reach Slack's own origin. See src/runtime/web-api.ts.</p>
 }</code></pre>
 </article>
 <article class="api-entry" id="entry-describeMessage-27">
-  <h4><code>describeMessage</code><span class="api-sig">(element: HTMLElement): MessageRef</span></h4>
+  <h4><code>describeMessage</code><span class="api-sig">(element: HTMLElement): MessageRef</span><span class="api-badge">inside Slack</span></h4>
   <p>Read channel, timestamp, permalink and text off a message element.</p>
   
   <pre class="api-code"><code>const message = api.slack.describeMessage(el);
@@ -595,7 +616,7 @@ const author  = api.slack.userIdFromMessage(message);   // 'U0123…'
 const channel = api.slack.currentChannelId();           // 'C0123…'</code></pre>
 </article>
 <article class="api-entry" id="entry-composer-28">
-  <h4><code>composer</code><span class="api-sig">: ComposerApi</span></h4>
+  <h4><code>composer</code><span class="api-sig">: ComposerApi</span><span class="api-badge">inside Slack</span></h4>
   <p>The message composer.</p>
   
   <pre class="api-code"><code>const c = api.slack.composer;
@@ -607,7 +628,7 @@ c.insertText(' hello');
 c.insertLink('https://…', '.');    // a real hyperlink, http(s) only</code></pre>
 </article>
 <article class="api-entry" id="entry-currentChannelId-29">
-  <h4><code>currentChannelId</code><span class="api-sig">(): string | null</span></h4>
+  <h4><code>currentChannelId</code><span class="api-sig">(): string | null</span><span class="api-badge">inside Slack</span></h4>
   <p>The channel currently open, read from the client URL.</p>
   
   <pre class="api-code"><code>const message = api.slack.describeMessage(el);
@@ -615,7 +636,7 @@ const author  = api.slack.userIdFromMessage(message);   // 'U0123…'
 const channel = api.slack.currentChannelId();           // 'C0123…'</code></pre>
 </article>
 <article class="api-entry" id="entry-userIdFromMessage-30">
-  <h4><code>userIdFromMessage</code><span class="api-sig">(message: MessageRef): string | null</span></h4>
+  <h4><code>userIdFromMessage</code><span class="api-sig">(message: MessageRef): string | null</span><span class="api-badge">inside Slack</span></h4>
   <p>The author of a message, read from their avatar URL.</p>
   
   <pre class="api-code"><code>const message = api.slack.describeMessage(el);
@@ -623,7 +644,7 @@ const author  = api.slack.userIdFromMessage(message);   // 'U0123…'
 const channel = api.slack.currentChannelId();           // 'C0123…'</code></pre>
 </article>
 <article class="api-entry" id="entry-avatarUrl-31">
-  <h4><code>avatarUrl</code><span class="api-sig">(url: string | null | undefined, size: number): string | null</span></h4>
+  <h4><code>avatarUrl</code><span class="api-sig">(url: string | null | undefined, size: number): string | null</span><span class="api-badge">inside Slack</span></h4>
   <p>The same avatar at another size.</p>
 <p>Slack serves them as <code>&lt;base&gt;-&lt;size&gt;</code>, so asking for a bigger one is a
 string edit rather than another request -- the rail renders a 48 and a
@@ -634,7 +655,7 @@ what a custom image or a data URI will be.</p>
   
 </article>
 <article class="api-entry" id="entry-desktop-32">
-  <h4><code>desktop</code><span class="api-sig">: {</span></h4>
+  <h4><code>desktop</code><span class="api-sig">: {</span><span class="api-badge">inside Slack</span></h4>
   <p>Slack's own translucent window, which it ships switched off.</p>
 <p><code>set</code> takes effect the next time Slack starts: the window's material is
 chosen when the window is created, and nothing in the page can restart it.
@@ -654,7 +675,7 @@ if (desktop.supported) {                       // false where there is no such f
 desktop.keys();  // every preference this API will touch, with a note on each</code></pre>
 </article>
 <article class="api-entry" id="entry-restart-33">
-  <h4><code>restart</code><span class="api-sig">(): Promise&lt;void&gt;</span></h4>
+  <h4><code>restart</code><span class="api-sig">(): Promise&lt;void&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Stop Slack and start it again, with the loader still driving.</p>
 <p>For settings that are read when a window is created, so they can never
 take effect in place. This tears down the page that called it: do nothing
@@ -674,7 +695,7 @@ if (desktop.supported) {                       // false where there is no such f
 desktop.keys();  // every preference this API will touch, with a note on each</code></pre>
 </article>
 <article class="api-entry" id="entry-selectors-34">
-  <h4><code>selectors</code><span class="api-sig">: Readonly&lt;Record&lt;string, string&gt;&gt;</span></h4>
+  <h4><code>selectors</code><span class="api-sig">: Readonly&lt;Record&lt;string, string&gt;&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Stable selectors, for mods that need to go beyond these helpers.</p>
   
   
@@ -686,7 +707,7 @@ desktop.keys();  // every preference this API will touch, with a note on each</c
 They live in shadow roots (a broken theme cannot make them unusable) and
 read Slack's design tokens, so they follow the active theme.</p>
   <article class="api-entry" id="entry-toast-35">
-  <h4><code>toast</code><span class="api-sig">(message: string, options?: ToastOptions): ToastHandle</span></h4>
+  <h4><code>toast</code><span class="api-sig">(message: string, options?: ToastOptions): ToastHandle</span><span class="api-badge">inside Slack</span></h4>
   <p>Transient message at the bottom of the window.</p>
   
   <pre class="api-code"><code>api.ui.toast('Saved', { variant: 'success' });   // info | success | warning | error
@@ -696,7 +717,7 @@ t.dismiss();
 api.ui.toast('Deleted', { action: { label: 'Undo', onClick: () =&gt; restore() } });</code></pre>
 </article>
 <article class="api-entry" id="entry-modal-36">
-  <h4><code>modal</code><span class="api-sig">(options: ModalOptions): ModalHandle</span></h4>
+  <h4><code>modal</code><span class="api-sig">(options: ModalOptions): ModalHandle</span><span class="api-badge">inside Slack</span></h4>
   <p>A dialog. Returns a handle so you can update or close it later.</p>
   
   <pre class="api-code"><code>const dialog = api.ui.modal({
@@ -717,7 +738,7 @@ dialog.body;     // the element holding `content`, for live updates
 dialog.close();</code></pre>
 </article>
 <article class="api-entry" id="entry-confirm-37">
-  <h4><code>confirm</code><span class="api-sig">(options: ConfirmOptions): Promise&lt;boolean&gt;</span></h4>
+  <h4><code>confirm</code><span class="api-sig">(options: ConfirmOptions): Promise&lt;boolean&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Yes/no dialog; resolves false if dismissed.</p>
   
   <pre class="api-code"><code>const sure = await api.ui.confirm({
@@ -728,13 +749,13 @@ dialog.close();</code></pre>
 });</code></pre>
 </article>
 <article class="api-entry" id="entry-tooltip-38">
-  <h4><code>tooltip</code><span class="api-sig">(element: HTMLElement, options: TooltipOptions): Cleanup</span></h4>
+  <h4><code>tooltip</code><span class="api-sig">(element: HTMLElement, options: TooltipOptions): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Slack-style tooltip on any element you built yourself.</p>
   
   <pre class="api-code"><code>api.ui.tooltip(el, { title: 'BetterSlack', subtitle: '⌘⇧M', placement: 'right' });</code></pre>
 </article>
 <article class="api-entry" id="entry-menu-39">
-  <h4><code>menu</code><span class="api-sig">(anchor: HTMLElement, items: MenuItem[], options?: MenuOptions): Cleanup</span></h4>
+  <h4><code>menu</code><span class="api-sig">(anchor: HTMLElement, items: MenuItem[], options?: MenuOptions): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Slack's overflow menu, against an anchor you give it.</p>
 <p>Borrowed rather than drawn: it wears <code>c-menu</code>, so it follows every theme,
 including one being edited. One menu is open at a time, Escape and a
@@ -744,7 +765,7 @@ room below -- which is always, for a button in the control strip.</p>
   
 </article>
 <article class="api-entry" id="entry-kit-40">
-  <h4><code>kit</code><span class="api-sig">(doc?: Document): Kit</span></h4>
+  <h4><code>kit</code><span class="api-sig">(doc?: Document): Kit</span><span class="api-badge api-badge--live">live below</span></h4>
   <p>Slack's design system, as components, bound to a document.</p>
 <p>Inside the client, Slack's own classes are the right answer -- the Mods
 panel wears <code>.c-dialog</code> and follows every theme for free. They are not
@@ -756,7 +777,7 @@ rather than once per mod.</p>
   kit.card('Palette', [kit.button('Save', { variant: 'primary' })]);</p>
 <p>Everything is prefixed <code>sm-</code>, so the stylesheet is safe to inject into
 the client itself.</p>
-  <div class="api-demo"><p class="note">Every primitive is below, in
+  <div class="api-demo api-demo--flat"><p class="note">Every primitive is below, in
     <a href="#kit">the component gallery</a> — rendered by the same
     <code>createKit</code> a mod is handed.</p></div>
   <pre class="api-code"><code>const editor = kit.code({
@@ -776,7 +797,7 @@ editor.set(text);        // replace it</code></pre>
   
 </article>
 <article class="api-entry" id="entry-palette-42">
-  <h4><code>palette</code><span class="api-sig">(source: PaletteSource, labels: PaletteLabels): PaletteHandle</span></h4>
+  <h4><code>palette</code><span class="api-sig">(source: PaletteSource, labels: PaletteLabels): PaletteHandle</span><span class="api-badge">inside Slack</span></h4>
   <p>The command palette, as a component.</p>
 <p>The list is yours: this draws it, ranks it as you type, moves with the
 arrow keys and closes on Escape. Nothing about what belongs in it is
@@ -803,13 +824,13 @@ same list.</p>
   
 </article>
 <article class="api-entry" id="entry-onEach-45">
-  <h4><code>onEach</code><span class="api-sig">: &lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void) =&gt; Cleanup</span></h4>
+  <h4><code>onEach</code><span class="api-sig">: &lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void) =&gt; Cleanup</span><span class="api-badge">inside Slack</span></h4>
   
   
   
 </article>
 <article class="api-entry" id="entry-onShortcut-46">
-  <h4><code>onShortcut</code><span class="api-sig">: (match: (event: KeyboardEvent) =&gt; boolean, handler: (event: KeyboardEvent) =&gt; void) =&gt; Cleanup</span></h4>
+  <h4><code>onShortcut</code><span class="api-sig">: (match: (event: KeyboardEvent) =&gt; boolean, handler: (event: KeyboardEvent) =&gt; void) =&gt; Cleanup</span><span class="api-badge">inside Slack</span></h4>
   
   
   
@@ -871,7 +892,7 @@ same list.</p>
   
 </article>
 <article class="api-entry" id="entry-onChange-54">
-  <h4><code>onChange</code><span class="api-sig">(handler: (values: Record&lt;string, unknown&gt;) =&gt; void): Cleanup</span></h4>
+  <h4><code>onChange</code><span class="api-sig">(handler: (values: Record&lt;string, unknown&gt;) =&gt; void): Cleanup</span><span class="api-badge">inside Slack</span></h4>
   <p>Called when the panel changes one of the declared settings.</p>
 <p>A plugin that does nothing here is still correct: the runtime reloads it
 after a change, so <code>start</code> simply runs again with the new values. This is
@@ -885,7 +906,7 @@ a window that would close.</p>
   <h3>api.commands</h3>
   <p class="section__lede">Things this mod can do, findable by typing.</p>
   <article class="api-entry" id="entry-add-55">
-  <h4><code>add</code><span class="api-sig">(command: {</span></h4>
+  <h4><code>add</code><span class="api-sig">(command: {</span><span class="api-badge">inside Slack</span></h4>
   
   
   
@@ -982,13 +1003,13 @@ back. Undone automatically when the plugin stops.</p>
   
 </article>
 <article class="api-entry" id="entry-openPanel-66">
-  <h4><code>openPanel</code><span class="api-sig">(tab?: 'themes' | 'plugins' | 'css' | 'about'): void</span></h4>
+  <h4><code>openPanel</code><span class="api-sig">(tab?: 'themes' | 'plugins' | 'css' | 'about'): void</span><span class="api-badge">inside Slack</span></h4>
   <p>Open the Mods panel, optionally straight to a tab.</p>
   
   
 </article>
 <article class="api-entry" id="entry-openMod-67">
-  <h4><code>openMod</code><span class="api-sig">(id: string): void</span></h4>
+  <h4><code>openMod</code><span class="api-sig">(id: string): void</span><span class="api-badge">inside Slack</span></h4>
   <p>Open the panel on one mod, with its settings unfolded.</p>
 <p>The panel is where a setting is drawn from the manifest, checked and
 saved; this points at the mod's own page there -- description, picture,
@@ -998,7 +1019,7 @@ less room.</p>
   
 </article>
 <article class="api-entry" id="entry-commands-68">
-  <h4><code>commands</code><span class="api-sig">(): Command[]</span></h4>
+  <h4><code>commands</code><span class="api-sig">(): Command[]</span><span class="api-badge">inside Slack</span></h4>
   <p>What every other mod has registered, so a palette can show them all.</p>
   
   
@@ -1048,13 +1069,13 @@ less room.</p>
   
 </article>
 <article class="api-entry" id="entry-css-75">
-  <h4><code>css</code><span class="api-sig">(text: string): void</span></h4>
+  <h4><code>css</code><span class="api-sig">(text: string): void</span><span class="api-badge">inside Slack</span></h4>
   <p>Stylesheet owned by this plugin; replaced wholesale on each call.</p>
   
   
 </article>
 <article class="api-entry" id="entry-saveTheme-76">
-  <h4><code>saveTheme</code><span class="api-sig">(options: { id: string; name: string; description: string; css: string }): Promise&lt;void&gt;</span></h4>
+  <h4><code>saveTheme</code><span class="api-sig">(options: { id: string; name: string; description: string; css: string }): Promise&lt;void&gt;</span><span class="api-badge">inside Slack</span></h4>
   <p>Write a theme into the user's own mods folder, where it appears in the
 panel like any other and survives a restart.</p>
 <p>Deliberately themes only. A theme is CSS and the loader re-validates the
@@ -1065,7 +1086,7 @@ why there is no equivalent for them.</p>
   
 </article>
 <article class="api-entry" id="entry-onDispose-77">
-  <h4><code>onDispose</code><span class="api-sig">(fn: Cleanup): void</span></h4>
+  <h4><code>onDispose</code><span class="api-sig">(fn: Cleanup): void</span><span class="api-badge">inside Slack</span></h4>
   <p>Register a teardown callback; runs when the plugin is disabled.</p>
   
   

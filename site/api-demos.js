@@ -232,7 +232,7 @@
 
   // src/runtime/ui/kit.ts
   function createKit(doc = document) {
-    const el = (tag, props = {}, children = []) => {
+    const el2 = (tag, props = {}, children = []) => {
       const node = doc.createElement(tag);
       for (const [key, value] of Object.entries(props)) {
         if (value === void 0 || value === null) continue;
@@ -248,9 +248,9 @@
       return node;
     };
     const button = (label, { variant = "default", icon, onClick, title, wide, onHover } = {}) => {
-      const node = el("button", { class: `sm-btn sm-btn--${variant}`, title, type: "button" }, [
-        icon ? el("span", { class: "sm-btn__icon", html: icon }) : null,
-        el("span", { textContent: label })
+      const node = el2("button", { class: `sm-btn sm-btn--${variant}`, title, type: "button" }, [
+        icon ? el2("span", { class: "sm-btn__icon", html: icon }) : null,
+        el2("span", { textContent: label })
       ]);
       if (wide) node.classList.add("sm-btn--wide");
       if (onClick) node.addEventListener("click", onClick);
@@ -258,7 +258,7 @@
       return node;
     };
     const iconButton = (glyph, { onClick, title, danger } = {}) => {
-      const node = el("button", {
+      const node = el2("button", {
         class: `sm-icon-btn${danger ? " sm-icon-btn--danger" : ""}`,
         title,
         type: "button",
@@ -275,14 +275,14 @@
       node.addEventListener("blur", leave);
       return node;
     };
-    const field = (label, control, hint) => el("div", { class: "field" }, [
-      el("label", { class: "field__label", textContent: label }),
-      control,
-      hint ? el("p", { class: "field__hint", textContent: hint }) : null
+    const field = (label, control2, hint) => el2("div", { class: "field" }, [
+      el2("label", { class: "field__label", textContent: label }),
+      control2,
+      hint ? el2("p", { class: "field__hint", textContent: hint }) : null
     ]);
     const input = (props = {}) => {
       const { class: extra, ...rest } = props;
-      return el("input", {
+      return el2("input", {
         class: extra ? `sm-input ${String(extra)}` : "sm-input",
         type: "text",
         spellcheck: false,
@@ -290,15 +290,15 @@
       });
     };
     const select = (options, { onChange, title } = {}) => {
-      const node = el("select", { class: "sm-input sm-select", title });
+      const node = el2("select", { class: "sm-input sm-select", title });
       for (const option of options) {
-        node.append(el("option", { value: option.value, textContent: option.label }));
+        node.append(el2("option", { value: option.value, textContent: option.label }));
       }
       if (onChange) node.addEventListener("change", () => onChange(node.value));
       return node;
     };
     const segmented = (options, { onChange } = {}) => {
-      const node = el("div", { class: "sm-segmented", role: "tablist" });
+      const node = el2("div", { class: "sm-segmented", role: "tablist" });
       let value = options[0]?.value ?? "";
       const buttons = /* @__PURE__ */ new Map();
       const set = (next) => {
@@ -306,14 +306,14 @@
         for (const [key, item] of buttons) item.setAttribute("aria-selected", String(key === next));
       };
       for (const option of options) {
-        const item = el("button", {
+        const item = el2("button", {
           class: "sm-segmented__item",
           type: "button",
           role: "tab",
           title: option.title
         }, [
-          el("span", { textContent: option.label }),
-          option.count === void 0 ? null : el("em", { textContent: String(option.count) })
+          el2("span", { textContent: option.label }),
+          option.count === void 0 ? null : el2("em", { textContent: String(option.count) })
         ]);
         item.addEventListener("click", () => {
           set(option.value);
@@ -325,29 +325,29 @@
       set(value);
       return { node, set, value: () => value };
     };
-    const card = (title, children, { actions, subtitle } = {}) => el("section", { class: "sm-card" }, [
-      title ? el("header", { class: "sm-card__head" }, [
-        el("div", {}, [
-          el("h2", { textContent: title }),
-          subtitle ? el("p", { textContent: subtitle }) : null
+    const card = (title, children, { actions, subtitle } = {}) => el2("section", { class: "sm-card" }, [
+      title ? el2("header", { class: "sm-card__head" }, [
+        el2("div", {}, [
+          el2("h2", { textContent: title }),
+          subtitle ? el2("p", { textContent: subtitle }) : null
         ]),
-        actions ? el("div", { class: "sm-card__actions" }, actions) : null
+        actions ? el2("div", { class: "sm-card__actions" }, actions) : null
       ]) : null,
-      el("div", { class: "sm-card__body" }, children)
+      el2("div", { class: "sm-card__body" }, children)
     ]);
-    const emptyState = (title, body, action) => el("div", { class: "sm-empty" }, [
-      el("h3", { textContent: title }),
-      el("p", { textContent: body }),
+    const emptyState = (title, body, action) => el2("div", { class: "sm-empty" }, [
+      el2("h3", { textContent: title }),
+      el2("p", { textContent: body }),
       action ?? null
     ]);
     const CHECKER = "linear-gradient(45deg,rgba(0,0,0,.28) 25%,transparent 25%),linear-gradient(-45deg,rgba(0,0,0,.28) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,rgba(0,0,0,.28) 75%),linear-gradient(-45deg,transparent 75%,rgba(0,0,0,.28) 75%)";
     const swatch = (css, { size = "md" } = {}) => {
-      const node = el("span", { class: `sm-swatch sm-swatch--${size}` });
+      const node = el2("span", { class: `sm-swatch sm-swatch--${size}` });
       node.style.backgroundImage = `linear-gradient(${css}, ${css}), ${CHECKER}`;
       return node;
     };
     const popover = (content, anchor, { onClose } = {}) => {
-      const node = el("div", { class: "sm-popover" }, [content]);
+      const node = el2("div", { class: "sm-popover" }, [content]);
       doc.body.append(node);
       const place = () => {
         const box = anchor.getBoundingClientRect();
@@ -385,13 +385,13 @@
       return { node, close, place };
     };
     const confirm = ({ title, body, action, cancel: cancelLabel, danger }) => new Promise((resolve) => {
-      const scrim = el("div", { class: "sm-scrim" });
+      const scrim = el2("div", { class: "sm-scrim" });
       const cancel = button(cancelLabel, { variant: "ghost" });
       const go = button(action, { variant: danger ? "danger" : "primary" });
-      const dialog = el("div", { class: "sm-dialog", role: "dialog", "aria-modal": "true" }, [
-        el("h2", { textContent: title }),
-        el("p", { textContent: body }),
-        el("div", { class: "sm-dialog__actions" }, [cancel, go])
+      const dialog = el2("div", { class: "sm-dialog", role: "dialog", "aria-modal": "true" }, [
+        el2("h2", { textContent: title }),
+        el2("p", { textContent: body }),
+        el2("div", { class: "sm-dialog__actions" }, [cancel, go])
       ]);
       scrim.append(dialog);
       doc.body.append(scrim);
@@ -416,7 +416,7 @@
         await doc.defaultView.navigator.clipboard.writeText(text);
         return true;
       } catch {
-        const scratch = el("textarea", { value: text });
+        const scratch = el2("textarea", { value: text });
         scratch.style.position = "fixed";
         scratch.style.opacity = "0";
         doc.body.append(scratch);
@@ -427,7 +427,7 @@
       }
     };
     return {
-      el,
+      el: el2,
       button,
       iconButton,
       field,
@@ -719,6 +719,429 @@
 
 
 ` + CODE_CSS;
+
+  // src/runtime/dom.ts
+  var REMOUNT_LIMIT = 25;
+  var REMOUNT_WINDOW_MS = 2e3;
+  var mountCounts = /* @__PURE__ */ new Map();
+  function keepMounted(containerSelector, nodeId, factory, options = {}) {
+    const { position = "append", before } = typeof options === "string" ? { position: options, before: void 0 } : options;
+    let disposed = false;
+    let attempts = [];
+    const countAttempt = () => {
+      const now = Date.now();
+      attempts = attempts.filter((t) => now - t < REMOUNT_WINDOW_MS);
+      attempts.push(now);
+      if (attempts.length <= REMOUNT_LIMIT) return true;
+      disposed = true;
+      observer.disconnect();
+      console.error(
+        `[betterslack] giving up on "${nodeId}": it moved or was re-added ${attempts.length} times in ${REMOUNT_WINDOW_MS}ms, so something else owns "${containerSelector}". Anchor it with \`before\` or pick another container.`
+      );
+      document.getElementById(nodeId)?.remove();
+      return false;
+    };
+    const mount = () => {
+      if (disposed) return;
+      const container = document.querySelector(containerSelector);
+      if (!container) return;
+      const anchor = before ? container.querySelector(before) : null;
+      const current = document.getElementById(nodeId);
+      if (current && container.contains(current)) {
+        const misplaced = anchor !== null && anchor !== current && (current.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING) === 0;
+        if (misplaced && countAttempt()) anchor.before(current);
+        return;
+      }
+      if (!countAttempt()) return;
+      mountCounts.set(nodeId, (mountCounts.get(nodeId) ?? 0) + 1);
+      current?.remove();
+      const node = factory();
+      node.id = nodeId;
+      if (anchor) anchor.before(node);
+      else if (position === "prepend") container.prepend(node);
+      else container.append(node);
+    };
+    mount();
+    const observer = new MutationObserver(() => mount());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      document.getElementById(nodeId)?.remove();
+    };
+  }
+  function onEach(selector, handler) {
+    const seen = /* @__PURE__ */ new WeakSet();
+    const scan = () => {
+      for (const element of document.querySelectorAll(selector)) {
+        if (seen.has(element)) continue;
+        seen.add(element);
+        try {
+          handler(element);
+        } catch (err) {
+          console.error("[betterslack] onEach handler threw", err);
+        }
+      }
+    };
+    scan();
+    const observer = new MutationObserver(scan);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }
+  function onShortcut(match, handler) {
+    const listener = (event) => {
+      if (!match(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handler(event);
+    };
+    window.addEventListener("keydown", listener, true);
+    return () => window.removeEventListener("keydown", listener, true);
+  }
+  function h(tag, attrs = {}, children = []) {
+    const element = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key === "class") element.className = value;
+      else element.setAttribute(key, value);
+    }
+    for (const child of children) {
+      element.append(typeof child === "string" ? document.createTextNode(child) : child);
+    }
+    return element;
+  }
+
+  // src/runtime/ui/tooltip.ts
+  var SHOW_DELAY_MS = 150;
+  var EDGE_OVERLAP = 4;
+  var VIEWPORT_MARGIN = 8;
+  function attachTooltip(trigger, options) {
+    const { title, subtitle, placement = "right", delayMs = SHOW_DELAY_MS } = options;
+    trigger.removeAttribute("title");
+    trigger.setAttribute("aria-label", subtitle ? `${title}. ${subtitle}` : title);
+    let layer = null;
+    let timer;
+    const build = () => {
+      const tip = h("div", {
+        class: `c-tooltip__tip c-tooltip__tip--${placement} c-tooltip__tip--small`,
+        "data-qa": "tooltip-tip",
+        "data-sk": "tooltip"
+      }, [h("div", {}, [title])]);
+      if (subtitle) tip.append(h("div", { class: "c-tooltip__subtitle" }, [subtitle]));
+      tip.append(h("div", { class: "c-tooltip__tip__arrow", "data-qa": "tooltip-tip-arrow" }));
+      return h("div", {
+        class: "betterslack-tooltip",
+        role: "tooltip",
+        "data-qa": "tooltip-popover",
+        style: "position: fixed; top: 0; left: 0; z-index: 1001; pointer-events: none; will-change: transform; transition: opacity 80ms ease;"
+      }, [h("div", { role: "presentation" }, [tip])]);
+    };
+    const position = (node) => {
+      const t = trigger.getBoundingClientRect();
+      const { width: w, height: hgt } = node.getBoundingClientRect();
+      let left;
+      let top;
+      switch (placement) {
+        case "left":
+          left = t.left - w + EDGE_OVERLAP;
+          top = t.top + t.height / 2 - hgt / 2;
+          break;
+        case "top":
+          left = t.left + t.width / 2 - w / 2;
+          top = t.top - hgt + EDGE_OVERLAP;
+          break;
+        case "bottom":
+          left = t.left + t.width / 2 - w / 2;
+          top = t.bottom - EDGE_OVERLAP;
+          break;
+        default:
+          left = t.right - EDGE_OVERLAP;
+          top = t.top + t.height / 2 - hgt / 2;
+      }
+      left = Math.min(Math.max(left, VIEWPORT_MARGIN), window.innerWidth - w - VIEWPORT_MARGIN);
+      top = Math.min(Math.max(top, VIEWPORT_MARGIN), window.innerHeight - hgt - VIEWPORT_MARGIN);
+      node.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+    };
+    const show = () => {
+      if (layer || !trigger.isConnected) return;
+      layer = build();
+      layer.style.visibility = "hidden";
+      document.body.append(layer);
+      position(layer);
+      layer.style.visibility = "";
+    };
+    const hide = () => {
+      clearTimeout(timer);
+      timer = void 0;
+      layer?.remove();
+      layer = null;
+    };
+    const scheduleShow = (immediate = false) => {
+      if (layer) return;
+      clearTimeout(timer);
+      timer = setTimeout(show, immediate ? 0 : delayMs);
+    };
+    const onEnter = () => scheduleShow();
+    const onLeave = () => hide();
+    const onFocus = (event) => {
+      if (trigger.matches(":focus-visible")) scheduleShow(true);
+      else ;
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") hide();
+    };
+    trigger.addEventListener("mouseenter", onEnter);
+    trigger.addEventListener("mouseleave", onLeave);
+    trigger.addEventListener("mousedown", onLeave);
+    trigger.addEventListener("click", onLeave);
+    trigger.addEventListener("focus", onFocus);
+    trigger.addEventListener("blur", onLeave);
+    document.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("scroll", onLeave, true);
+    window.addEventListener("resize", onLeave);
+    return () => {
+      hide();
+      trigger.removeEventListener("mouseenter", onEnter);
+      trigger.removeEventListener("mouseleave", onLeave);
+      trigger.removeEventListener("mousedown", onLeave);
+      trigger.removeEventListener("click", onLeave);
+      trigger.removeEventListener("focus", onFocus);
+      trigger.removeEventListener("blur", onLeave);
+      document.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("scroll", onLeave, true);
+      window.removeEventListener("resize", onLeave);
+    };
+  }
+
+  // src/runtime/helpers.ts
+  var BUTTON_CLASSES = {
+    composer: "c-button-unstyled c-icon_button c-icon_button--size_smedium p-composer__button c-icon_button--default",
+    header: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default",
+    strip: "c-button-unstyled p-control_strip__circle_button",
+    message: "c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button"
+  };
+  var isMac = () => {
+    if (typeof navigator === "undefined") return false;
+    const hint = `${navigator.platform ?? ""} ${navigator.userAgent ?? ""}`;
+    return /Mac|iPhone|iPad/.test(hint);
+  };
+  function parseCombo(combo) {
+    const parts = combo.toLowerCase().split("+").map((p) => p.trim());
+    const key = parts[parts.length - 1] ?? "";
+    const want = {
+      mod: parts.includes("mod"),
+      ctrl: parts.includes("ctrl"),
+      shift: parts.includes("shift"),
+      alt: parts.includes("alt") || parts.includes("option"),
+      meta: parts.includes("cmd") || parts.includes("meta")
+    };
+    const code = key.length === 1 ? `Key${key.toUpperCase()}` : null;
+    return (event) => {
+      if (want.mod && !event.metaKey && !event.ctrlKey) return false;
+      if (!want.mod && want.meta !== event.metaKey) return false;
+      if (!want.mod && want.ctrl !== event.ctrlKey) return false;
+      if (want.shift !== event.shiftKey) return false;
+      if (want.alt !== event.altKey) return false;
+      return code ? event.code === code : event.key.toLowerCase() === key;
+    };
+  }
+  function describeCombo(combo) {
+    const mac = isMac();
+    return combo.toLowerCase().split("+").map((part) => {
+      const p = part.trim();
+      if (p === "mod") return mac ? "\u2318" : "Ctrl";
+      if (p === "shift") return mac ? "\u21E7" : "Shift";
+      if (p === "alt" || p === "option") return mac ? "\u2325" : "Alt";
+      if (p === "cmd" || p === "meta") return mac ? "\u2318" : "Win";
+      if (p === "ctrl") return mac ? "\u2303" : "Ctrl";
+      return p.toUpperCase();
+    }).join(mac ? "" : "+");
+  }
+  function createHelpers(ctx) {
+    const scopedCss = /* @__PURE__ */ new Map();
+    const applyCss = () => ctx.css([...scopedCss.values()].join("\n"));
+    return {
+      toggle({ key, className, defaultOn = false, whenOn, onChange }) {
+        const flag = className ?? `betterslack-${ctx.pluginId}-${key}`;
+        if (whenOn) {
+          scopedCss.set(`toggle:${key}`, whenOn.replace(/&/g, `html.${flag}`));
+          applyCss();
+        }
+        const apply = (on) => {
+          document.documentElement.classList.toggle(flag, on);
+          onChange?.(on);
+        };
+        apply(ctx.settings.get(key, defaultOn) === true);
+        ctx.track(() => document.documentElement.classList.remove(flag));
+        return {
+          get on() {
+            return document.documentElement.classList.contains(flag);
+          },
+          async set(on) {
+            apply(on);
+            await ctx.settings.set(key, on);
+          },
+          async toggle() {
+            const next = !document.documentElement.classList.contains(flag);
+            apply(next);
+            await ctx.settings.set(key, next);
+            return next;
+          }
+        };
+      },
+      hotkey: (combo, handler, options) => {
+        const matches = parseCombo(combo);
+        return ctx.track(
+          onShortcut((event) => matches(event) && (options?.when?.() ?? true), handler)
+        );
+      },
+      describeHotkey: describeCombo,
+      poll(handler, everyMs) {
+        let timer;
+        let running = false;
+        const tick = () => {
+          if (running || document.visibilityState === "hidden") return;
+          running = true;
+          void Promise.resolve(handler()).finally(() => {
+            running = false;
+          });
+        };
+        const start = () => {
+          if (timer !== void 0) return;
+          tick();
+          timer = setInterval(tick, everyMs);
+        };
+        const stop = () => {
+          if (timer === void 0) return;
+          clearInterval(timer);
+          timer = void 0;
+        };
+        const onVisibility = () => document.visibilityState === "hidden" ? stop() : start();
+        document.addEventListener("visibilitychange", onVisibility);
+        if (document.visibilityState !== "hidden") start();
+        ctx.track(() => {
+          document.removeEventListener("visibilitychange", onVisibility);
+          stop();
+        });
+        return () => {
+          document.removeEventListener("visibilitychange", onVisibility);
+          stop();
+        };
+      },
+      badge(selector, id, value) {
+        const nodeId = `betterslack-badge-${ctx.pluginId}-${id}`;
+        scopedCss.set(`badge:${id}`, `
+        #${nodeId} {
+          position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px;
+          padding: 0 4px; border-radius: 999px; display: grid; place-items: center;
+          font: 700 10px/1 Lato, sans-serif; color: #fff;
+          background: var(--dt_color-content-imp, #c01343);
+        }
+        #${nodeId}[hidden] { display: none; }
+      `);
+        applyCss();
+        const refresh = () => {
+          const node = document.getElementById(nodeId);
+          if (!node) return;
+          const next = value();
+          node.textContent = next === null ? "" : String(next);
+          node.toggleAttribute("hidden", next === null || next === 0 || next === "");
+        };
+        const cleanup = keepMounted(selector, nodeId, () => {
+          const node = h("span", { "aria-hidden": "true" });
+          queueMicrotask(refresh);
+          return node;
+        });
+        const timer = setInterval(refresh, 1e3);
+        return ctx.track(() => {
+          clearInterval(timer);
+          cleanup();
+        });
+      },
+      each: (selector, handler) => ctx.track(onEach(selector, handler)),
+      mount: (container, id, factory, options) => ctx.track(keepMounted(container, id, factory, options ?? {})),
+      tooltip: (element, title, subtitle) => ctx.track(attachTooltip(element, { title, subtitle })),
+      async copy(text, message = "Copied") {
+        try {
+          await navigator.clipboard.writeText(text);
+          ctx.toast(message, { variant: "success" });
+          return true;
+        } catch {
+          ctx.toast("Could not copy", { variant: "error" });
+          return false;
+        }
+      },
+      iconButton({ icon, label, description, surface = "header", onClick }) {
+        const button = h("button", {
+          class: `${BUTTON_CLASSES[surface]} betterslack-icon-button`,
+          type: "button",
+          "aria-label": label
+        });
+        button.innerHTML = icon;
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onClick(event);
+        });
+        ctx.track(attachTooltip(button, {
+          title: label,
+          subtitle: description,
+          placement: surface === "strip" ? "right" : "top"
+        }));
+        return button;
+      },
+      field(label, value) {
+        return h("div", { class: "p-rimeto_member_profile_field__contact_info" }, [
+          h("div", { class: "p-rimeto_member_profile_field" }, [
+            h("div", { class: "p-rimeto_member_profile_field__primary" }, [
+              h("div", { class: "p-rimeto_member_profile_field__label" }, [label]),
+              h("div", { class: "p-rimeto_member_profile_field__value" }, [value])
+            ])
+          ])
+        ]);
+      },
+      section(title, children) {
+        return h("div", { class: "p-r_member_profile_section" }, [
+          h("div", { style: "display: flex;" }, [
+            h("div", { class: "p-r_member_profile_section_header", style: "flex: 1 1 0%;" }, [title])
+          ]),
+          h("div", { class: "p-r_member_profile_section_content" }, children)
+        ]);
+      },
+      debounce(fn, ms) {
+        let timer;
+        return (...args) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => fn(...args), ms);
+        };
+      }
+    };
+  }
+
+  // src/runtime/i18n.ts
+  function detectLocale() {
+    const declared = document.documentElement?.getAttribute("lang");
+    if (declared && declared.trim()) return declared.trim();
+    return navigator.language || "en";
+  }
+  function interpolate(text, vars) {
+    if (!vars) return text;
+    return text.replace(/\{(\w+)\}/g, (whole, name) => name in vars ? String(vars[name]) : whole);
+  }
+  function createI18n(locale = detectLocale()) {
+    const language = locale.split(/[-_]/)[0].toLowerCase();
+    return {
+      locale,
+      language,
+      strings(tables) {
+        const exact = tables[locale] ?? tables[locale.replace("_", "-")];
+        const byLanguage = tables[language];
+        return (key, vars) => {
+          const value = exact?.[key] ?? byLanguage?.[key] ?? tables.en[key];
+          return interpolate(value ?? key, vars);
+        };
+      }
+    };
+  }
 
   // src/runtime/ui/markdown.ts
   var ESCAPES2 = {
@@ -1814,98 +2237,358 @@
   // scripts/api-demos.js
   var kit = createKit(document);
   var $ = (id) => document.getElementById(id);
-  function installKitCss() {
+  var store = /* @__PURE__ */ new Map();
+  var helperCss = document.createElement("style");
+  var toasted = () => {
+  };
+  var helpers = createHelpers({
+    pluginId: "api-page",
+    css: (text) => {
+      helperCss.textContent = text;
+    },
+    toast: (message) => toasted(message),
+    settings: {
+      get: (key, fallback) => store.has(key) ? store.get(key) : fallback,
+      set: async (key, value) => {
+        store.set(key, value);
+      }
+    },
+    track: (cleanup) => cleanup
+  });
+  function installStyles() {
     if (document.getElementById("sm-kit-css")) return;
     const style = document.createElement("style");
     style.id = "sm-kit-css";
     style.textContent = KIT_CSS;
-    document.head.append(style);
+    document.head.append(style, helperCss);
   }
-  var DEMOS = {
-    el: () => [kit.el("div", { class: "sm-card" }, [
-      kit.el("strong", {}, ["kit.el"]),
-      kit.el("p", { class: "sm-hint", style: "margin:4px 0 0" }, ["The same maker every primitive below is built from."])
-    ])],
-    copyText: () => {
-      const button = kit.button("Copy \u201C#611f69\u201D");
-      const said = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
-      button.addEventListener("click", async () => {
-        said.textContent = await kit.copyText("#611f69") ? "copied" : "the clipboard said no";
+  var el = (tag, className, children = []) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    node.append(...children);
+    return node;
+  };
+  function control(spec2, state, draw) {
+    const id = `pg-${spec2.key}-${Math.random().toString(36).slice(2, 7)}`;
+    let input;
+    if (spec2.type === "select") {
+      input = kit.select(spec2.options.map((o) => ({ value: o, label: o })), {
+        value: state[spec2.key],
+        onChange: (value) => {
+          state[spec2.key] = value;
+          draw();
+        }
       });
-      return [button, said];
-    },
-    button: () => [
-      kit.button("Save", { variant: "primary" }),
-      kit.button("Cancel"),
-      kit.button("Skip", { variant: "ghost" }),
-      kit.button("Remove", { variant: "danger" })
-    ],
-    buttonWide: () => [kit.button("Apply to every theme", { variant: "primary", wide: true })],
-    iconButton: () => [
-      kit.iconButton("\u270E", { title: "Rename" }),
-      kit.iconButton("\u29C9", { title: "Duplicate" }),
-      kit.iconButton("\u{1F5D1}", { title: "Delete", danger: true })
-    ],
-    input: () => [kit.input({ value: "Midnight", placeholder: "Theme name" })],
-    field: () => [kit.field("Theme name", kit.input({ value: "Midnight" }), "Shown in the panel and in the palette.")],
-    select: () => [kit.select(
-      [{ value: "dark", label: "Dark" }, { value: "light", label: "Light" }],
-      { value: "dark" }
-    )],
-    segmented: () => [kit.segmented(
-      [{ value: "colours", label: "Colours", count: 12 }, { value: "css", label: "CSS" }],
-      { value: "colours" }
-    ).node],
-    card: () => [kit.card("Palette", [kit.el("p", { class: "sm-hint" }, ["Two colours, ten derived."])], {
-      actions: [kit.button("Reset", { variant: "ghost" })]
-    })],
-    emptyState: () => [kit.emptyState("No themes yet", "Build one and it appears here.", kit.button("New theme", { variant: "primary" }))],
-    swatch: () => ["sm", "md", "lg"].map((size) => kit.swatch("#611f69", { size })),
-    checker: () => [kit.swatch("rgba(97, 31, 105, 0.35)", { size: "lg" })],
-    popover: () => {
-      const anchor = kit.button("Open a popover");
-      anchor.addEventListener("click", () => {
-        const content = kit.el("div", { style: "padding:12px;min-width:200px" }, [
-          kit.el("p", { class: "sm-hint", style: "margin:0 0 10px" }, ["Anchored, and dismissed on a click outside."]),
-          kit.button("Got it", { variant: "primary", wide: true })
-        ]);
-        const pop = kit.popover(content, anchor);
-        content.querySelector("button").addEventListener("click", () => pop.close());
+    } else if (spec2.type === "boolean") {
+      input = document.createElement("input");
+      input.type = "checkbox";
+      input.className = "pg__check";
+      input.checked = Boolean(state[spec2.key]);
+      input.addEventListener("change", () => {
+        state[spec2.key] = input.checked;
+        draw();
       });
-      return [anchor];
+    } else {
+      input = kit.input({ value: state[spec2.key], type: spec2.type === "number" ? "number" : "text" });
+      input.addEventListener("input", () => {
+        state[spec2.key] = spec2.type === "number" ? Number(input.value) : input.value;
+        draw();
+      });
+    }
+    input.id = id;
+    const label = el("label", "pg__label");
+    label.htmlFor = id;
+    label.textContent = spec2.label ?? spec2.key;
+    return el("div", "pg__control", [label, input]);
+  }
+  function playground(name, spec2) {
+    const slot = document.querySelector(`[data-demo="${name}"]`);
+    if (!slot) return;
+    const state = {};
+    for (const c of spec2.controls ?? []) state[c.key] = c.value;
+    const stage = el("div", "pg__stage");
+    const code = el("pre", "pg__code");
+    const draw = () => {
+      try {
+        const made = spec2.render(state, { stage });
+        if (made !== void 0) stage.replaceChildren(...[].concat(made).filter(Boolean));
+        code.innerHTML = highlight(spec2.code(state), "javascript");
+      } catch (err) {
+        stage.textContent = `this demo threw: ${err.message}`;
+      }
+    };
+    const parts = [stage];
+    if (spec2.controls?.length) {
+      parts.push(el("div", "pg__controls", spec2.controls.map((c) => control(c, state, draw))));
+    }
+    parts.push(code);
+    slot.replaceChildren(el("div", "pg", parts));
+    draw();
+  }
+  var KIT = {
+    el: {
+      controls: [
+        { key: "tag", type: "select", options: ["div", "p", "strong", "span"], value: "p" },
+        { key: "text", type: "text", value: "Built with the same maker as everything below." },
+        { key: "className", label: "class", type: "text", value: "sm-hint" }
+      ],
+      render: (v) => kit.el(v.tag, { class: v.className }, [v.text]),
+      code: (v) => `kit.el('${v.tag}', { class: '${v.className}' }, ['${v.text}'])`
     },
-    confirm: () => {
-      const trigger = kit.button("Delete the theme", { variant: "danger" });
-      const said = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
-      trigger.addEventListener("click", async () => {
-        const yes = await kit.confirm({
-          title: "Delete Midnight?",
-          body: "The stylesheet goes with it. This cannot be undone.",
-          action: "Delete",
-          cancel: "Keep it",
-          danger: true
+    button: {
+      controls: [
+        { key: "label", type: "text", value: "Save" },
+        { key: "variant", type: "select", options: ["default", "primary", "ghost", "danger"], value: "primary" },
+        { key: "wide", type: "boolean", value: false },
+        { key: "title", label: "tooltip", type: "text", value: "Write the theme to disk" }
+      ],
+      render: (v) => kit.button(v.label, { variant: v.variant, wide: v.wide, title: v.title }),
+      code: (v) => `kit.button('${v.label}', {
+  variant: '${v.variant}',
+  wide: ${v.wide},
+  title: '${v.title}',
+})`
+    },
+    iconButton: {
+      controls: [
+        { key: "glyph", type: "text", value: "\u270E" },
+        { key: "title", type: "text", value: "Rename" },
+        { key: "danger", type: "boolean", value: false }
+      ],
+      render: (v) => kit.iconButton(v.glyph, { title: v.title, danger: v.danger }),
+      code: (v) => `kit.iconButton('${v.glyph}', { title: '${v.title}', danger: ${v.danger} })`
+    },
+    input: {
+      controls: [
+        { key: "value", type: "text", value: "Midnight" },
+        { key: "placeholder", type: "text", value: "Theme name" }
+      ],
+      render: (v) => kit.input({ value: v.value, placeholder: v.placeholder }),
+      code: (v) => `kit.input({ value: '${v.value}', placeholder: '${v.placeholder}' })`
+    },
+    field: {
+      controls: [
+        { key: "label", type: "text", value: "Theme name" },
+        { key: "hint", type: "text", value: "Shown in the panel and in the palette." }
+      ],
+      render: (v) => kit.field(v.label, kit.input({ value: "Midnight" }), v.hint),
+      code: (v) => `kit.field('${v.label}', kit.input({ value: 'Midnight' }),
+  '${v.hint}')`
+    },
+    select: {
+      controls: [
+        { key: "options", type: "text", value: "dark, light, follow the system" },
+        { key: "value", type: "text", value: "dark" }
+      ],
+      render: (v) => kit.select(
+        v.options.split(",").map((o) => ({ value: o.trim(), label: o.trim() })),
+        { value: v.value.trim() }
+      ),
+      code: (v) => `kit.select([
+${v.options.split(",").map((o) => `  { value: '${o.trim()}', label: '${o.trim()}' },`).join("\n")}
+], { value: '${v.value.trim()}' })`
+    },
+    segmented: {
+      controls: [
+        { key: "labels", type: "text", value: "Colours, CSS, Inspect" },
+        { key: "count", label: "badge on the first", type: "number", value: 12 }
+      ],
+      render: (v) => kit.segmented(
+        v.labels.split(",").map((label, i) => ({
+          value: label.trim().toLowerCase(),
+          label: label.trim(),
+          count: i === 0 && v.count ? v.count : void 0
+        })),
+        { value: v.labels.split(",")[0].trim().toLowerCase() }
+      ).node,
+      code: (v) => `kit.segmented([
+${v.labels.split(",").map((l, i) => `  { value: '${l.trim().toLowerCase()}', label: '${l.trim()}'${i === 0 && v.count ? `, count: ${v.count}` : ""} },`).join("\n")}
+], { value: '${v.labels.split(",")[0].trim().toLowerCase()}' }).node`
+    },
+    card: {
+      controls: [
+        { key: "title", type: "text", value: "Palette" },
+        { key: "subtitle", type: "text", value: "Two colours, ten derived" },
+        { key: "action", label: "action button", type: "text", value: "Reset" }
+      ],
+      render: (v) => kit.card(v.title, [kit.el("p", { class: "sm-hint" }, [v.subtitle])], {
+        actions: v.action ? [kit.button(v.action, { variant: "ghost" })] : []
+      }),
+      code: (v) => `kit.card('${v.title}', [
+  kit.el('p', { class: 'sm-hint' }, ['${v.subtitle}']),
+], { actions: [kit.button('${v.action}', { variant: 'ghost' })] })`
+    },
+    emptyState: {
+      controls: [
+        { key: "title", type: "text", value: "No themes yet" },
+        { key: "body", type: "text", value: "Build one and it appears here." },
+        { key: "action", label: "button", type: "text", value: "New theme" }
+      ],
+      render: (v) => kit.emptyState(v.title, v.body, v.action ? kit.button(v.action, { variant: "primary" }) : void 0),
+      code: (v) => `kit.emptyState('${v.title}', '${v.body}',
+  kit.button('${v.action}', { variant: 'primary' }))`
+    },
+    swatch: {
+      controls: [
+        { key: "colour", type: "text", value: "rgba(97, 31, 105, 0.55)" },
+        { key: "size", type: "select", options: ["sm", "md", "lg"], value: "lg" }
+      ],
+      render: (v) => kit.swatch(v.colour, { size: v.size }),
+      code: (v) => `// a translucent colour reads as translucent: the checkerboard is kit.CHECKER
+kit.swatch('${v.colour}', { size: '${v.size}' })`
+    },
+    popover: {
+      controls: [{ key: "label", type: "text", value: "Open a popover" }],
+      render: (v) => {
+        const anchor = kit.button(v.label);
+        anchor.addEventListener("click", () => {
+          const content = kit.el("div", { style: "padding:12px;min-width:210px" }, [
+            kit.el("p", { class: "sm-hint", style: "margin:0 0 10px" }, ["Anchored, and dismissed by a click outside."])
+          ]);
+          kit.popover(content, anchor);
         });
-        said.textContent = yes ? "you chose Delete" : "you chose Keep it";
-      });
-      return [trigger, said];
+        return anchor;
+      },
+      code: (v) => `const anchor = kit.button('${v.label}');
+anchor.addEventListener('click', () => {
+  kit.popover(content, anchor);
+});`
     },
-    code: () => {
-      const editor = kit.code({
-        value: ":root {\n  --dt_color-base-pry: #0b0d12;\n  /* the message surface */\n}"
-      });
-      return [editor.node];
+    confirm: {
+      controls: [
+        { key: "title", type: "text", value: "Delete Midnight?" },
+        { key: "body", type: "text", value: "The stylesheet goes with it. This cannot be undone." },
+        { key: "action", type: "text", value: "Delete" },
+        { key: "danger", type: "boolean", value: true }
+      ],
+      render: (v) => {
+        const trigger = kit.button(v.action, { variant: v.danger ? "danger" : "primary" });
+        const said = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
+        trigger.addEventListener("click", async () => {
+          const yes = await kit.confirm({
+            title: v.title,
+            body: v.body,
+            action: v.action,
+            cancel: "Keep it",
+            danger: v.danger
+          });
+          said.textContent = yes ? `it resolved true` : "it resolved false";
+        });
+        return [trigger, said];
+      },
+      code: (v) => `const yes = await kit.confirm({
+  title: '${v.title}',
+  body: '${v.body}',
+  action: '${v.action}',
+  cancel: 'Keep it',
+  danger: ${v.danger},
+});`
+    },
+    copyText: {
+      controls: [{ key: "text", type: "text", value: "#611f69" }],
+      render: (v) => {
+        const button = kit.button(`Copy ${v.text}`);
+        const said = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
+        button.addEventListener("click", async () => {
+          said.textContent = await kit.copyText(v.text) ? "resolved true" : "resolved false";
+        });
+        return [button, said];
+      },
+      code: (v) => `const ok = await kit.copyText('${v.text}');`
+    },
+    code: {
+      controls: [
+        { key: "value", type: "text", value: ":root { --dt_color-base-pry: #0b0d12; }" }
+      ],
+      render: (v) => kit.code({ value: v.value }).node,
+      code: (v) => `const editor = kit.code({ value: '${v.value}' });
+document.body.append(editor.node);
+editor.value(); // what is in it now`
     }
   };
-  function mountGallery() {
-    for (const [name, build] of Object.entries(DEMOS)) {
-      const slot = document.querySelector(`[data-demo="${name}"]`);
-      if (!slot) continue;
-      try {
-        slot.replaceChildren(...build());
-      } catch (err) {
-        slot.textContent = `this demo failed: ${err.message}`;
-      }
+  var HELPERS = {
+    toggle: {
+      controls: [
+        { key: "className", label: "class on <html>", type: "text", value: "demo-zen" },
+        { key: "defaultOn", type: "boolean", value: false }
+      ],
+      render: (v) => {
+        for (const name of [...document.documentElement.classList]) {
+          if (name.startsWith("demo-") || name.startsWith("betterslack-api-page")) {
+            document.documentElement.classList.remove(name);
+          }
+        }
+        const flag = helpers.toggle({
+          key: `demo-${v.className}`,
+          className: v.className,
+          defaultOn: v.defaultOn,
+          whenOn: "& .pg__watch { outline: 2px solid #36c5f0; }"
+        });
+        const watch = el("div", "pg__watch");
+        const state = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, []);
+        const paint = () => {
+          state.textContent = flag.on ? `on \u2014 <html class="${v.className}">` : "off \u2014 the class is gone, and so is the CSS";
+        };
+        watch.append(kit.button("Toggle", { variant: "primary" }), state);
+        watch.querySelector("button").addEventListener("click", async () => {
+          await flag.toggle();
+          paint();
+        });
+        paint();
+        return watch;
+      },
+      code: (v) => `const zen = api.helpers.toggle({
+  key: 'on',
+  className: '${v.className}',
+  defaultOn: ${v.defaultOn},
+  whenOn: '& .p-channel_sidebar { display: none !important; }',
+});
+await zen.toggle();`
+    },
+    describeHotkey: {
+      controls: [{ key: "combo", type: "text", value: "mod+shift+f" }],
+      render: (v) => kit.el("strong", { style: "font-size:20px" }, [helpers.describeHotkey(v.combo)]),
+      code: (v) => `api.helpers.describeHotkey('${v.combo}')
+// \u2318\u21E7F on a Mac, Ctrl+Shift+F elsewhere`
+    },
+    debounce: {
+      controls: [{ key: "ms", label: "milliseconds", type: "number", value: 400 }],
+      render: (v, { stage }) => {
+        const out = kit.el("p", { class: "sm-hint" }, ["type below"]);
+        let typed = 0;
+        let ran = 0;
+        const run = helpers.debounce(() => {
+          ran += 1;
+          out.textContent = `${typed} keystrokes, ${ran} call${ran === 1 ? "" : "s"} through`;
+        }, v.ms);
+        const box = kit.input({ placeholder: "type quickly, then stop" });
+        box.addEventListener("input", () => {
+          typed += 1;
+          run();
+        });
+        return [box, out];
+      },
+      code: (v) => `const search = api.helpers.debounce((q) => run(q), ${v.ms});
+box.addEventListener('input', () => search(box.value));`
     }
+  };
+  function mountI18n() {
+    const locale = $("i18n-locale");
+    const key = $("i18n-key");
+    const name = $("i18n-name");
+    const out = $("i18n-out");
+    if (!locale || !out) return;
+    const TABLES = {
+      en: { hello: "Hi {name}, {count} unread", bye: "See you" },
+      fr: { hello: "Salut {name}, {count} non lus" }
+    };
+    const draw = () => {
+      const t = createI18n(locale.value).strings(TABLES);
+      out.textContent = t(key.value, { name: name.value, count: 3 });
+    };
+    for (const node of [locale, key, name]) node.addEventListener("input", draw);
+    locale.addEventListener("change", draw);
+    draw();
   }
   function mountMarkdown() {
     const source = $("md-source");
@@ -1966,8 +2649,14 @@
     accent.addEventListener("input", draw);
     draw();
   }
-  installKitCss();
-  mountGallery();
+  installStyles();
+  toasted = (message) => {
+    const note = $("helpers-toast");
+    if (note) note.textContent = `api.ui.toast(${JSON.stringify(message)})`;
+  };
+  for (const [name, spec2] of Object.entries(KIT)) playground(name, spec2);
+  for (const [name, spec2] of Object.entries(HELPERS)) playground(name, spec2);
+  mountI18n();
   mountMarkdown();
   mountHighlight();
   mountRoles();

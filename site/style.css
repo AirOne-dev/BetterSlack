@@ -590,7 +590,7 @@ kbd {
   gap: 10px;
 }
 .api-demo > p { margin: 0; }
-.api-kit { display: grid; gap: 14px; }
+.api-kit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .api-kit .api-entry { margin-bottom: 0; }
 
 .api-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
@@ -666,3 +666,82 @@ kbd {
 .api-output.sm-md h2 { font-size: 18px; }
 .api-output.sm-md h3 { font-size: 16px; }
 .note.is-bad { color: var(--red); }
+
+/* The playground -------------------------------------------------------- *
+ *
+ * One shape for every demo: what it made, the arguments that made it, and the
+ * call itself. Changing a control rebuilds all three, which is the difference
+ * between a screenshot of an API and an API you can hold.
+ */
+
+/* minmax(0, …) again: a grid column defaults to `auto`, whose minimum is the
+   content's, and the code block below would rather be 700px wide. */
+.pg { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.pg__stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background:
+    linear-gradient(0deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02)),
+    repeating-conic-gradient(rgba(255, 255, 255, 0.03) 0% 25%, transparent 0% 50%) 0 0 / 18px 18px;
+}
+.pg__stage > * { max-width: 100%; }
+.pg__stage, .pg__code, .pg__controls { min-width: 0; }
+
+.pg__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 10px 14px;
+}
+.pg__control { display: grid; gap: 5px; min-width: 0; }
+.pg__label {
+  font: 600 11px/1 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pg__check { width: 18px; height: 18px; accent-color: var(--blue); justify-self: start; }
+
+.pg__code {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  overflow-x: auto;
+  font: 12.5px/1.7 var(--mono);
+  color: #d5d5e2;
+  white-space: pre;
+}
+.pg__watch { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+.api-demo--flat { display: block; }
+.api-demo:has(.pg) { display: block; padding: 14px; border-style: solid; }
+
+.api-badge {
+  margin-left: auto;
+  font: 600 10.5px/1 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+.api-badge--live { color: var(--blue); border-color: rgba(54, 197, 240, 0.4); }
+
+.api-result {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  font: 600 16px/1.5 var(--sans);
+  color: var(--text);
+}

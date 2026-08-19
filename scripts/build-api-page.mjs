@@ -188,12 +188,31 @@ const KIT_DEMOS = new Set([
   'card', 'emptyState', 'swatch', 'popover', 'confirm', 'copyText', 'code',
 ]);
 
-/** Entry name -> the markup its live panel needs. */
+/**
+ * Entries that run on this page, and how each one is introduced.
+ *
+ * A demo is wired by hand in `scripts/api-demos.js` -- there is no way to
+ * derive "show me this one working" from a type -- so the two lists are kept
+ * side by side and a name in one without the other is a visible hole rather
+ * than a silent one.
+ */
+const LIVE_ENTRIES = new Set(['toggle', 'describeHotkey', 'debounce']);
+
 const LIVE = {
-  kit: `<div class="api-demo"><p class="note">Every primitive is below, in
+  kit: `<div class="api-demo api-demo--flat"><p class="note">Every primitive is below, in
     <a href="#kit">the component gallery</a> — rendered by the same
     <code>createKit</code> a mod is handed.</p></div>`,
 };
+
+/**
+ * Which entries cannot run outside Slack, said out loud.
+ *
+ * Anything that reaches for Slack's own markup, its stylesheet or its API only
+ * means something inside the client. Saying so beside the example is more
+ * honest than a lookalike, and it is the difference a reader most wants at a
+ * glance.
+ */
+const NEEDS_SLACK = /^(add|open|on|current|describeMessage|userIdFrom|web|composer|selectors|vip|setVip|hideConversation|filesFrom|startHuddle|desktop|restart|avatarUrl|toast|modal|confirm|menu|palette|badge|tooltip|mount|each|iconButton|field|section|copy|poll|themes|saveTheme|files|assets|app|commands|settings|css|log|i18n)/;
 
 const escape = (text) => String(text)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -204,10 +223,16 @@ function entryHtml(entry, example) {
   const doc = entry.doc
     ? entry.doc.split(/\n\s*\n/).map((p) => `<p>${escape(p).replace(/`([^`]+)`/g, '<code>$1</code>')}</p>`).join('\n')
     : '';
+  const live = LIVE_ENTRIES.has(entry.name)
+    ? `<div class="api-demo" data-demo="${escape(entry.name)}"></div>`
+    : (LIVE[entry.name] ?? '');
+  const tag = live
+    ? '<span class="api-badge api-badge--live">live below</span>'
+    : (NEEDS_SLACK.test(entry.name) ? '<span class="api-badge">inside Slack</span>' : '');
   return `<article class="api-entry" id="entry-${entry.id}">
-  <h4><code>${escape(entry.name)}</code><span class="api-sig">${escape(entry.signature)}</span></h4>
+  <h4><code>${escape(entry.name)}</code><span class="api-sig">${escape(entry.signature)}</span>${tag}</h4>
   ${doc}
-  ${LIVE[entry.name] ?? ''}
+  ${live}
   ${example ? `<pre class="api-code"><code>${escape(example)}</code></pre>` : ''}
 </article>`;
 }

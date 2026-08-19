@@ -298,13 +298,26 @@ one and it leaves. Writing that list a third time, after the types and the
 reference, is how two of them end up disagreeing.
 
 Its live half is `scripts/api-demos.js`, bundled into `site/api-demos.js`. It
-imports the real modules -- `createKit`, `renderMarkdown`, Code Highlight's
-tokeniser and detector, the theme builder's `derivePalette` -- so the page
-renders what runs in Slack rather than a mock-up of it, and the site build
-fails if one of them stops compiling. Anything that needs Slack itself (a
-toolbar button, a message action, the web API) is shown as code with a note,
-because re-implementing it for a web page would be exactly the second version
-this project keeps avoiding.
+imports the real modules -- `createKit`, `createHelpers`, `createI18n`,
+`renderMarkdown`, Code Highlight's tokeniser and detector, the theme builder's
+`derivePalette` -- so the page renders what runs in Slack rather than a mock-up
+of it, and the site build fails if one of them stops compiling.
+
+**`HelperContext` is five things**, which is why `api.helpers` can run on a web
+page at all: an id, a way to write CSS, a toast, a settings store and a cleanup
+tracker. The site supplies all five against an in-memory map and gets the
+shipped `toggle`, `debounce` and `describeHotkey` rather than an impression of
+them.
+
+Every demo has the same three parts -- a stage, controls that change the
+arguments, and the call that produced what you are looking at, coloured by Code
+Highlight. Changing a control rebuilds all three; that is the difference
+between a screenshot of an API and an API you can hold.
+
+Anything that needs Slack itself (a toolbar button, a message action, the web
+API) is shown as code and carries an "inside Slack" badge, because
+re-implementing it for a web page would be exactly the second version this
+project keeps avoiding.
 
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script

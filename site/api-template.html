@@ -19,9 +19,6 @@
     <span>BetterSlack</span>
   </a>
   <nav class="nav__links">
-    <a href="index.html#themes" data-en="Themes" data-fr="Thèmes">Themes</a>
-    <a href="index.html#plugins" data-en="Plugins" data-fr="Plugins">Plugins</a>
-    <a href="index.html#install" data-en="Install" data-fr="Installation">Install</a>
     <a href="api.html" aria-current="page" data-en="API" data-fr="API">API</a>
   </nav>
   <div class="nav__actions">
@@ -37,6 +34,7 @@
       <li><a href="#playground" data-en="Live" data-fr="En direct">Live</a>
         <ul>
           <li><a href="#kit">component kit</a></li>
+          <li><a href="#i18n-live">i18n fallbacks</a></li>
           <li><a href="#markdown">markdown</a></li>
           <li><a href="#highlighting">highlighting</a></li>
           <li><a href="#roles">theme roles</a></li>
@@ -82,6 +80,29 @@
       <div class="api-kit">
         <!--KIT-->
       </div>
+
+      <h4 id="i18n-live"><code>api.i18n.strings({ en, fr })</code></h4>
+      <p data-en="English is required, and is what an unknown language and a missing key both fall back to. Change the locale to fr and watch bye fall back; change it to de and watch both."
+         data-fr="L’anglais est obligatoire, et c’est ce vers quoi retombent une langue inconnue comme une clé manquante. Passez la locale à fr et regardez bye retomber ; passez-la à de et regardez les deux.">
+        English is required, and is what an unknown language and a missing key both fall back to. Change the locale to fr and watch <code>bye</code> fall back; change it to de and watch both.
+      </p>
+      <div class="api-toolbar">
+        <label for="i18n-locale" data-en="Locale" data-fr="Locale">Locale</label>
+        <select id="i18n-locale" class="api-select">
+          <option value="en-GB">en-GB</option>
+          <option value="fr-FR">fr-FR</option>
+          <option value="de-DE">de-DE</option>
+        </select>
+        <label for="i18n-key" data-en="Key" data-fr="Clé">Key</label>
+        <select id="i18n-key" class="api-select">
+          <option value="hello">hello</option>
+          <option value="bye">bye</option>
+          <option value="missing">missing</option>
+        </select>
+        <label for="i18n-name" data-en="name" data-fr="name">name</label>
+        <input id="i18n-name" class="api-select" value="Ada" size="8">
+      </div>
+      <p id="i18n-out" class="api-result"></p>
 
       <h4 id="markdown"><code>renderMarkdown(source)</code></h4>
       <p data-en="What the panel runs on a mod's README. It escapes first and drops a javascript: URL, which is why a readme can be rendered at all."
