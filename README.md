@@ -98,10 +98,9 @@ and install what you want from **Browse**.
 On macOS, `pnpm build-app` puts a **BetterSlack.app** in `dist/` so you can start
 it from Spotlight, the Dock or your login items instead of a terminal. It is a
 launcher rather than a bundle — it runs this checkout, so keep the folder where
-it is — and one thing is worth knowing before you build it: macOS gates Desktop,
-Documents and Downloads per application, and refuses an unsigned app without
-ever asking. A checkout in one of those cannot be read by its own app. Keep the
-project somewhere like `~/code`, or grant BetterSlack.app Full Disk Access.
+it is. It needs a C compiler at build time (`xcode-select --install`); without
+one it still builds, but macOS will then refuse it access to a project kept on
+the Desktop, in Documents or in Downloads.
 
 **→ [docs/getting-started.md](docs/getting-started.md)** covers running it,
 writing a theme, writing a plugin, testing and shipping.

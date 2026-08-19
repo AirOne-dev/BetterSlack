@@ -6,13 +6,26 @@
 // repository has to stay where it is. That is a deliberate simplification over
 // vendoring a Node runtime into the app.
 //
-// **macOS gates Desktop, Documents and Downloads per application.** A terminal
-// has been granted that access; a freshly built, unsigned app has not, and no
-// prompt appears for one — the read just fails with EPERM. Measured with a
-// throwaway bundle: the same script reads `~/anything` and is refused
-// `~/Desktop/anything`. So a checkout in one of those folders produces an app
-// that cannot read its own repository, which is worth saying at build time
-// rather than leaving in a log file as a stack trace.
+// **The bundle's executable is a real binary, and that is the whole point.**
+//
+// macOS gates Desktop, Documents and Downloads per application. An app whose
+// executable is a shell script is not an application as far as that gate is
+// concerned -- the process it sees is /bin/bash, a platform binary with no
+// identity of its own -- so the read is refused outright, with no prompt, and
+// `tccutil` does not even have a record of the bundle to reset. Measured with
+// four throwaway bundles:
+//
+//   script executable, unsigned            -> refused
+//   script executable, ad-hoc signed       -> refused
+//   script executable + usage descriptions -> refused
+//   Mach-O executable                      -> allowed, no prompt at all
+//   Mach-O executable exec'ing the script  -> allowed
+//
+// So `Contents/MacOS/betterslack` is a three-line C stub that execs
+// `Contents/Resources/launch.sh`, and everything below it inherits the app's
+// identity. Without a compiler on the machine the old shape still gets built,
+// and then the gate applies again -- which is what the warning at the end is
+// about.
 
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
@@ -47,8 +60,38 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIconFile</key><string>icon.icns</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>LSUIElement</key><true/>
+  <!-- Shown if macOS ever does ask. It does not, for this shape of app, but a
+       missing usage description is a silent denial on some releases. -->
+  <key>NSDesktopFolderUsageDescription</key><string>BetterSlack reads the project folder it was built from.</string>
+  <key>NSDocumentsFolderUsageDescription</key><string>BetterSlack reads the project folder it was built from.</string>
+  <key>NSDownloadsFolderUsageDescription</key><string>BetterSlack reads the project folder it was built from.</string>
 </dict>
 </plist>
+`;
+
+/*
+ * Three lines of C, so the bundle has an executable macOS recognises as one.
+ *
+ * It finds itself, walks to Contents/Resources/launch.sh and execs it, which
+ * keeps every decision in the shell script next door where it can be read.
+ */
+const stub = `#include <mach-o/dyld.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+int main(void) {
+  char exe[4096];
+  uint32_t size = sizeof(exe);
+  if (_NSGetExecutablePath(exe, &size) != 0) return 1;
+  char *slash = strrchr(exe, '/');
+  if (slash) *slash = '\\0';
+  char script[4600];
+  snprintf(script, sizeof(script), "%s/../Resources/launch.sh", exe);
+  execl("/bin/bash", "bash", script, (char *)NULL);
+  return 1;
+}
 `;
 
 // `command -v node` rather than a hardcoded path: Homebrew, nvm, Volta and the
@@ -95,7 +138,25 @@ exec "$NODE" "$REPO/bin/betterslack.mjs" >>"$LOG" 2>&1
 `;
 
 await fs.writeFile(path.join(app, 'Contents', 'Info.plist'), plist, 'utf8');
-await fs.writeFile(path.join(app, 'Contents', 'MacOS', 'betterslack'), launcher, { mode: 0o755 });
+
+/*
+ * The binary first, the script beside it.
+ *
+ * If there is no compiler the old shape is written instead -- the script as the
+ * executable -- which works everywhere except the folders macOS gates.
+ */
+const source = path.join(app, 'Contents', 'Resources', 'launch.c');
+let compiled = false;
+await fs.writeFile(source, stub, 'utf8');
+try {
+  await run('cc', ['-O2', '-o', path.join(app, 'Contents', 'MacOS', 'betterslack'), source]);
+  await fs.writeFile(path.join(app, 'Contents', 'Resources', 'launch.sh'), launcher, { mode: 0o755 });
+  compiled = true;
+} catch (err) {
+  console.warn(`no C compiler (${err.message.split('\n')[0]}), falling back to a script launcher`);
+  await fs.writeFile(path.join(app, 'Contents', 'MacOS', 'betterslack'), launcher, { mode: 0o755 });
+}
+await fs.rm(source, { force: true });
 await fs.copyFile(
   path.join(root, 'assets', 'icon.icns'),
   path.join(app, 'Contents', 'Resources', 'icon.icns'),
@@ -114,12 +175,12 @@ await run('codesign', ['--force', '--deep', '--sign', '-', app])
 console.log(`built ${app}`);
 
 const GATED = ['Desktop', 'Documents', 'Downloads'].map((name) => path.join(homedir(), name));
-if (GATED.some((dir) => root === dir || root.startsWith(`${dir}${path.sep}`))) {
+if (!compiled && GATED.some((dir) => root === dir || root.startsWith(`${dir}${path.sep}`))) {
   console.warn(
-    '\nThis project is in a folder macOS gates per application, so the app will not\n'
-    + 'be able to read it: an unsigned app is refused, and no prompt is shown. Either\n'
-    + 'move the project somewhere like ~/code and build again, or grant BetterSlack.app\n'
-    + 'Full Disk Access in System Settings > Privacy & Security.',
+    '\nThis project is in a folder macOS gates per application, and without a\n'
+    + 'compiler the app is a shell script, which that gate refuses outright. Install\n'
+    + 'the Xcode command line tools (xcode-select --install) and build again, move the\n'
+    + 'project somewhere like ~/code, or grant BetterSlack.app Full Disk Access.',
   );
 }
 

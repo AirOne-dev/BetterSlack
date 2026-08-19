@@ -60,13 +60,17 @@ loader itself.
 
 It is unsigned, so the first launch needs right-click → Open.
 
-**It cannot read a checkout on your Desktop, in Documents or in Downloads.**
-macOS gates those folders per application: your terminal has been granted
-access, a freshly built app has not, and no prompt is ever shown for an unsigned
-one — the read simply fails. `pnpm build-app` warns when the project is in one
-of them, and the app says so in a dialog rather than a log file. Either keep the
-project somewhere like `~/code`, or grant BetterSlack.app Full Disk Access in
-System Settings → Privacy & Security.
+**It needs a C compiler**, which you have if `xcode-select --install` has ever
+been run. The bundle's executable is a three-line stub that launches the shell
+script beside it, and that indirection is the difference between an app macOS
+lets read your project and one it refuses: a bundle whose executable *is* a
+shell script is not an application as far as the Desktop/Documents/Downloads
+gate is concerned — the process it sees is `/bin/bash` — so the read fails, with
+no prompt and no way to grant it.
+
+Without a compiler the script-only shape is still built and still works,
+provided the project is not in one of those three folders. `pnpm build-app`
+says so when it falls back.
 </details>
 
 ---

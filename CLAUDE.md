@@ -72,16 +72,26 @@ dialog, an empty log. The guard added to explain a failure was itself the
 reason nothing was explained. `|| true` on the assignment, and both paths
 verified by running the script with a repository path that does not exist.
 
-**`pnpm build-app` cannot read a checkout on the Desktop.** macOS gates
-Desktop, Documents and Downloads per application: a terminal has that access, a
-freshly built app has not, and no prompt is shown for an unsigned one -- the
-read fails with EPERM and nothing explains why. Measured with a throwaway
-bundle: the same script reads `~/anything` and is refused `~/Desktop/anything`,
-and an ad-hoc signature does not change it. The build warns, and the app now
-says so in a dialog instead of leaving a stack trace in
-`~/Library/Logs/BetterSlack.log`. This repository is on the Desktop, so the app
-built here will not start until the project moves or is granted Full Disk
-Access.
+**A bundle whose executable is a shell script is not an application**, as far
+as the gate on Desktop, Documents and Downloads is concerned. The process macOS
+sees is `/bin/bash`, a platform binary with no identity of its own, so the read
+is refused outright -- no prompt, and `tccutil` has no record of the bundle to
+reset. Four throwaway bundles, in order:
+
+| bundle | result |
+| --- | --- |
+| script executable, unsigned | refused |
+| script executable, ad-hoc signed | refused |
+| script executable + `NSDesktopFolderUsageDescription` | refused |
+| Mach-O executable | allowed, and no prompt at all |
+| Mach-O executable exec'ing the same script | allowed |
+
+So `build-app` compiles a three-line C stub as the bundle's executable, which
+execs `Contents/Resources/launch.sh`, and everything below it inherits the app's
+identity. Verified by double-clicking the built app with this repository on the
+Desktop: Slack comes up with its mods and nothing is ever asked. Without `cc` on
+the machine the old script-only shape is written instead, and then the gate
+applies again -- which is what the fallback warning is for.
 
 **pnpm, not npm.** `pnpm-workspace.yaml` carries `allowBuilds: esbuild: true` --
 pnpm refuses to run a dependency's install script unless it is named there, and
