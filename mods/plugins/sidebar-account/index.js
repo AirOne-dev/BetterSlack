@@ -438,7 +438,18 @@ export default {
         if (!button || gone) return;
         railWatcher.observe(button, {
           attributes: true,
-          attributeFilter: ['class'],
+          /*
+           * `src` as well as `class`, and this is what made a status look like
+           * it never updated.
+           *
+           * Presence is a class swap, which is why the filter said `class`.
+           * Changing your status swaps the `src` of the emoji image Slack keeps
+           * in this button -- the same node, a different attribute -- so with
+           * `class` alone nothing fired and the strip kept whatever it read at
+           * mount. Filtering attributes is only worth it if the filter lists
+           * every attribute that carries a change you care about.
+           */
+          attributeFilter: ['class', 'src'],
           subtree: true,
           childList: true,
         });

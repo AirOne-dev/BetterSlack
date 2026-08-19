@@ -590,6 +590,20 @@ export default {
         .filter((user) => user && !user.deleted)
         .sort((a, b) => displayName(a).localeCompare(displayName(b)));
 
+      /*
+       * An id the directory could not resolve is dropped from the list, and
+       * dropping it silently is how a failed lookup came to look like a channel
+       * with one person in it. `users.info` is per workspace and rate-limited;
+       * when most of a batch fails there is nothing on screen to say so, and
+       * the one row that did resolve is usually yourself -- you are in every
+       * cache. Say it instead.
+       */
+      const unresolved = ids.length - people.length;
+      if (unresolved > 0) {
+        api.log.warn(`${unresolved} of ${ids.length} members could not be read`
+          + ` in ${currentTeamId()} -- showing ${people.length}`);
+      }
+
       const online = people.filter((user) => presence.get(user.id) === 'active');
       const groups = online.length > 0
         ? [
@@ -605,6 +619,12 @@ export default {
           `${group.label} — ${group.list.length}${truncated ? '+' : ''}`,
         ]));
         for (const user of group.list) host.append(row(user));
+      }
+
+      if (unresolved > 0) {
+        host.append(api.dom.h('div', { class: 'betterslack-members__note' }, [
+          t('unresolved', { count: unresolved }),
+        ]));
       }
 
       if (people.length > PRESENCE_LIMIT) {

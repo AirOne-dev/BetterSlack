@@ -380,3 +380,42 @@ test('the status emoji opens Slack’s own status dialog, and only on a click', 
     dom.cleanup();
   }
 });
+
+test('re-reads your profile when Slack swaps the status emoji', async () => {
+  const dom = installDom();
+  /*
+   * Presence is a class swap on the user button, which is why the observer used
+   * to filter attributes down to `class`. Changing your status swaps the `src`
+   * of the emoji image in that same button -- the same node, a different
+   * attribute -- so with `class` alone nothing fired and the strip kept
+   * whatever it read at mount. That is what "the status never updates" was.
+   */
+  const button = document.querySelector('[data-qa="user-button"]');
+  const emoji = document.createElement('img');
+  emoji.setAttribute('src', 'https://emoji.slack-edge.com/T1/coffee/aaa.png');
+  button.prepend(emoji);
+
+  let reads = 0;
+  const { api, recorded } = createTestApi({
+    web: {
+      users: async (ids) => {
+        reads += 1;
+        return new Map(ids.map((id) => [id, { id, profile: { display_name: 'Erwan' } }]));
+      },
+    },
+  });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const first = reads;
+    assert.ok(first > 0, 'the profile was read once at mount');
+
+    emoji.setAttribute('src', 'https://emoji.slack-edge.com/T1/palm_tree/bbb.png');
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    assert.ok(reads > first, 'and again when the status emoji changed');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

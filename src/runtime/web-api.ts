@@ -195,11 +195,18 @@ export interface SlackUser {
 /**
  * How long a cached profile is trusted.
  *
- * Two minutes: a status changes several times a day and a mod that never
- * notices is the bug this exists to avoid, while a member list redrawn on every
- * channel change must not mean a request per member per change.
+ * One minute, which is the palette's own cache and so the two agree rather than
+ * one holding a profile the other has already replaced. A status changes
+ * several times a day and a mod that never notices is the bug this exists to
+ * avoid; a member list redrawn on every channel change must not mean a request
+ * per member per change.
+ *
+ * Your *own* status does not wait for this. Slack swaps the emoji in its user
+ * button the moment you change it, and the account strip reads that -- there is
+ * no such signal for anybody else, which is why theirs is a cache and not an
+ * observation.
  */
-const DIRECTORY_TTL = 2 * 60 * 1000;
+const DIRECTORY_TTL = 60 * 1000;
 
 export function createWebApi(): WebApi {
   /**

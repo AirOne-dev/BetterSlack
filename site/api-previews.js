@@ -241,7 +241,7 @@
       return null;
     }
   }
-  var DIRECTORY_TTL = 2 * 60 * 1e3;
+  var DIRECTORY_TTL = 60 * 1e3;
   function createWebApi() {
     let cachedTeam;
     const directory = /* @__PURE__ */ new Map();
