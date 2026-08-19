@@ -443,8 +443,23 @@ export function buildApiPage() {
   const nav = sections.map((group) => `<li class="side__group"><p class="side__title">${escape(group.title)}</p>
       <ul>${group.entries.map((e) => `<li><a href="#${e.slug}">${escape(e.name)}</a></li>`).join('')}</ul></li>`).join('\n');
 
+  /*
+   * The list is a column on a desktop and a drawer on a phone.
+   *
+   * Below 900px it used to stay open above the content, in a 220px window: four
+   * of ninety-nine entries visible, on every page, taking a third of the screen
+   * before anything you came for. The button below is what opens it there, and
+   * says where you are while it is shut; on a desktop it is not drawn at all.
+   */
   const body = `<main id="main" class="api">
-  <aside class="side" aria-label="API contents">
+  <button class="side__open" type="button" id="side-open" aria-expanded="false" aria-controls="side-nav">
+    <svg viewBox="0 0 20 20" aria-hidden="true" width="18" height="18">
+      <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    </svg>
+    <span class="side__open__label" id="side-open-label">Contents</span>
+  </button>
+  <div class="side__scrim" id="side-scrim" hidden></div>
+  <aside class="side" id="side-nav" aria-label="API contents">
     <label class="side__search">
       <input type="search" id="side-filter" placeholder="Filter…" aria-label="Filter the list">
     </label>

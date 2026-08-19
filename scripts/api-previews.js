@@ -1747,7 +1747,10 @@ function router() {
     for (const link of links) {
       const current = link.getAttribute('href') === `#${wanted.id.slice(2)}`;
       link.toggleAttribute('aria-current', current);
-      if (current) link.scrollIntoView({ block: 'nearest' });
+      if (current) {
+        link.scrollIntoView({ block: 'nearest' });
+        DRAWER.label(link);
+      }
     }
     /*
      * Twice, and the second one matters: a demo that mounts after this -- the
@@ -1762,10 +1765,49 @@ function router() {
     });
   };
 
-  const fromHash = () => show(location.hash.slice(1) || stack.dataset.first);
+  const fromHash = () => { show(location.hash.slice(1) || stack.dataset.first); DRAWER.close(); };
   window.addEventListener('hashchange', fromHash);
   fromHash();
 }
+
+/*
+ * The list as a drawer, below 900px.
+ *
+ * Everything here is behaviour the CSS cannot do on its own: what the button
+ * says, closing on a choice, and closing on Escape. The breakpoint itself is
+ * the stylesheet's -- the button is simply not drawn above it, so none of this
+ * runs on a desktop except the label, which nobody sees.
+ */
+function drawer() {
+  const open = document.getElementById('side-open');
+  const scrim = document.getElementById('side-scrim');
+  if (!open || !scrim) return { label: () => {}, close: () => {} };
+
+  const set = (on) => {
+    document.body.classList.toggle('is-drawer-open', on);
+    open.setAttribute('aria-expanded', String(on));
+    scrim.hidden = !on;
+    if (on) document.getElementById('side-filter')?.focus();
+  };
+  open.addEventListener('click', () => set(!document.body.classList.contains('is-drawer-open')));
+  scrim.addEventListener('click', () => set(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && document.body.classList.contains('is-drawer-open')) set(false);
+  });
+
+  return {
+    close: () => set(false),
+    /** What the button says while the drawer is shut: where you are. */
+    label: (link) => {
+      const node = document.getElementById('side-open-label');
+      if (!node || !link) return;
+      const group = link.closest('.side__group')?.querySelector('.side__title')?.textContent ?? '';
+      node.textContent = group ? `${group} · ${link.textContent}` : link.textContent;
+    },
+  };
+}
+
+const DRAWER = drawer();
 
 /** Narrow the list without leaving the page. */
 function filter() {

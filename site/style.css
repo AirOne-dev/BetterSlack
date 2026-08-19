@@ -1035,15 +1035,93 @@ body.api-page .footer { display: none; }
 .panel__head h1 code { font-family: var(--mono); }
 .panel__body h2 { font-size: 19px; margin: 30px 0 10px; }
 
+/* The button that opens the list on a phone; not drawn above the breakpoint. */
+.side__open { display: none; }
+.side__scrim { display: none; }
+
 @media (max-width: 900px) {
-  /* On a phone the two columns become two rows, and the page scrolls again:
-     a fixed-height split on a 660px-tall screen leaves room for neither. */
-  body.api-page { overflow: auto; }
+  /* On a phone the two columns become one, and the page scrolls again: a
+     fixed-height split on a 660px-tall screen leaves room for neither. */
+  body.api-page { overflow: auto; height: auto; }
   .api { grid-template-columns: minmax(0, 1fr); height: auto; }
-  body.api-page { height: auto; }
-  .side { border-right: 0; border-bottom: 1px solid var(--line); }
-  .side nav { max-height: 220px; }
-  .panel { min-height: 0; }
+  .panel { min-height: 0; padding-top: 20px; }
+
+  /*
+   * The list becomes a drawer.
+   *
+   * It used to stay open above the content in a 220px window -- four of
+   * ninety-nine entries, on every page, taking a third of the screen before
+   * anything you came for. Off-canvas now, with a button that says where you
+   * are and opens it.
+   */
+  .side__open {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 18px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-soft);
+    color: var(--text);
+    font: 500 14px/1.2 var(--sans);
+    text-align: left;
+    cursor: pointer;
+  }
+  .side__open__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .side__open svg { flex: 0 0 auto; color: var(--muted); }
+
+  .side {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: min(320px, 86vw);
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+    background: var(--bg-soft);
+    transform: translateX(-101%);
+    transition: transform 180ms ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  }
+  body.is-drawer-open .side { transform: none; }
+  .side nav { max-height: none; flex: 1 1 auto; }
+
+  .side__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  .side__scrim[hidden] { display: none; }
+
+  /* The bar is the navigation on a phone, so the header's one link -- which
+     points at the page you are already on -- is noise, and the theme label with
+     it. */
+  body.api-page .nav__links { display: none; }
+  body.api-page .stage-bar > span { display: none; }
+  body.api-page .nav { gap: 10px 12px; padding-block: 10px; flex-wrap: nowrap; }
+  body.api-page .nav__actions { gap: 8px; margin-left: auto; min-width: 0; }
+  body.api-page .api-select { max-width: 120px; }
+}
+
+/* One row for the header, which means the wordmark goes: the mark on its own is
+   still the way back to the site, and a brand taking a whole row on a phone is a
+   row not spent on the thing being documented. */
+@media (max-width: 620px) {
+  body.api-page .nav__brand span { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side { transition: none; }
 }
 
 /* Bits the panels use ---------------------------------------------------- *
