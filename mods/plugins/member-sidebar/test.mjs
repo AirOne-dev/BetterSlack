@@ -756,3 +756,74 @@ test('draws the list you saw last time before either request lands', async () =>
     dom.cleanup();
   }
 });
+
+test('the column is dragged by a handle wearing Slack\u2019s own classes', async () => {
+  /*
+   * Slack's channel sidebar is resized by a `.p-resizer`: 8px, absolute,
+   * col-resize, transparent, positioned rather than laid out. Wearing the same
+   * classes means Slack's stylesheet draws it, so it follows every theme and
+   * every hover state without a copy of that CSS here.
+   */
+  const dom = installDom();
+  const { api, recorded } = createApi({ web: web({ members: ['U1'] }).web, settings: { width: 300 } });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const column = document.getElementById('betterslack-member-column');
+    assert.equal(column.style.flex, '0 0 300px', 'the stored width is applied on mount');
+
+    const handle = column.querySelector('.betterslack-members__resizer');
+    assert.ok(handle, 'there is a handle');
+    assert.ok(handle.classList.contains('p-resizer'), 'and it is Slack\u2019s, not a lookalike');
+    assert.equal(handle.getAttribute('role'), 'none',
+      'no tab stop, since Slack\u2019s own handle has none either');
+
+    // The list is replaced on every redraw; the handle must survive it.
+    const list = column.querySelector('.betterslack-members__list');
+    assert.ok(list, 'the rows go in a list of their own');
+    assert.ok(column.contains(handle), 'the handle is not a child of what gets replaced');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('a dragged width is clamped, and written once at the end', async () => {
+  const dom = installDom();
+  const { api, recorded } = createApi({ web: web({ members: ['U1'] }).web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const column = document.getElementById('betterslack-member-column');
+    const handle = column.querySelector('.betterslack-members__resizer');
+    handle.setPointerCapture = () => {};
+    column.getBoundingClientRect = () => ({ right: 1000, left: 760, width: 240 });
+
+    const at = (type, x) => {
+      const event = new window.Event(type, { bubbles: true });
+      event.clientX = x;
+      event.pointerId = 1;
+      handle.dispatchEvent(event);
+    };
+
+    at('pointerdown', 760);
+    at('pointermove', 700);
+    assert.equal(column.style.flex, '0 0 300px', 'the right edge stays put');
+
+    // Past the far end: clamped rather than allowed to swallow the pane.
+    at('pointermove', 100);
+    assert.equal(column.style.flex, '0 0 520px');
+    at('pointermove', 990);
+    assert.equal(column.style.flex, '0 0 180px');
+
+    assert.equal(api.settings.get('width'), undefined, 'nothing written mid-drag');
+    at('pointerup', 990);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(api.settings.get('width'), 180, 'written once, when the drag ends');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

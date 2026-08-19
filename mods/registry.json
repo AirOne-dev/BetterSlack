@@ -590,7 +590,7 @@
       "id": "member-sidebar",
       "name": "Member Sidebar",
       "type": "plugin",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "author": "AirOne-dev",
       "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
       "descriptions": {

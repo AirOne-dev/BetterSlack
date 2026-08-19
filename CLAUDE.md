@@ -725,6 +725,14 @@ tests fail below it.
   `flex-direction: row` and append to it.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
+- **`.p-resizer` is Slack's drag handle, and it can be borrowed.** Measured on
+  the channel sidebar's: 8px wide, `position: absolute`, `cursor: col-resize`,
+  `z-index: 1000`, transparent, `role="none"` and no tab stop, positioned by
+  `left` rather than laid out -- a handle that took space would move the pane by
+  its own width. Wearing `p-resizer p-ia4_client__resizer` means Slack's
+  stylesheet draws it, so it follows every theme and hover state with no CSS of
+  our own; `--sidebar` is the one modifier to leave off, since it also positions
+  it against the channel list.
 - **`[data-qa="member_profile_pane"]` + `.p-r_member_profile__avatar__img` is a
   contract, not just Slack's markup.** Anything presenting a profile carries
   both; `user-inspector` finds it and appends its sections, and reads the user

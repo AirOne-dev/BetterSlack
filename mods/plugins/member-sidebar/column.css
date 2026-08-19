@@ -9,8 +9,12 @@
 .p-view_contents--primary > div:not(#betterslack-member-column) { flex: 1 1 auto; min-width: 0; }
 
 #betterslack-member-column {
+  /* Overridden inline once a width has been dragged or restored. */
   flex: 0 0 240px;
   order: 99;
+  /* The containing block for the resize handle, which is absolute so that it
+     takes no space -- the same trick Slack's own uses. */
+  position: relative;
   display: flex;
   flex-direction: column;
   /* Without these a flex item is sized by its content, so a long list grows
@@ -185,3 +189,42 @@
   padding-left: 6px;
   opacity: 0.9;
 }
+
+
+/*
+ * The resize handle, which is Slack's own.
+ *
+ * Not a copy of its look: the classes are Slack's, so `.p-resizer` and
+ * `.p-ia4_client__resizer` style it from Slack's stylesheet and it follows
+ * every theme, cursor and hover state the sidebar's handle has. Measured
+ * against the real one: 8px wide, `position: absolute`, `cursor: col-resize`,
+ * `z-index: 1000`, transparent, positioned rather than laid out -- a handle
+ * that took space would move the column by its own width.
+ *
+ * `role="none"` and no tab stop, also Slack's: its sidebar handle has neither,
+ * and adding one here would put a stop in the tab order that the client does
+ * not have.
+ */
+#betterslack-member-column .betterslack-members__resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Half of its 8px sits either side of the border, so the pointer finds it
+     from both directions. */
+  left: -4px;
+  width: 8px;
+  z-index: 1000;
+}
+
+/* While a drag is on, the pointer keeps the resize cursor wherever it goes and
+   nothing underneath takes the selection. */
+html.betterslack-members-resizing,
+html.betterslack-members-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* The list the rows are drawn into. `display: contents` so they remain the
+   column's own flex items -- every rule above about headings, rows and notes
+   holds, and the handle beside it is not one of them. */
+#betterslack-member-column .betterslack-members__list { display: contents; }

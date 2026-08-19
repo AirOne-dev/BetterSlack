@@ -3,6 +3,7 @@
 Une colonne des membres du canal courant à droite du fil, séparée entre en ligne et hors ligne, où cliquer sur quelqu'un ouvre son profil Slack.
 
 - Une colonne des membres du canal courant à droite de la conversation, en ligne d’abord.
+- Tirez son bord pour la redimensionner, exactement comme la liste des canaux : la poignée est le `.p-resizer` de Slack, donc même zone de préhension de 8 px, même curseur et même allure sous chaque thème. La largeur est retenue.
 - La liste vue la dernière fois s’affiche avant même que les requêtes n’aboutissent, et n’est corrigée derrière vous que si elle a changé — 81 ms au lieu de 805 ms, mesuré.
 - La présence suit le client au lieu d’interroger l’API : la pastille change en même temps que celle de Slack.
 - Qui a mis un statut voit son emoji sur sa ligne, la phrase passant dans l’infobulle — y compris un emoji personnalisé de l’espace de travail, dessiné avec l’image que celui-ci en a.

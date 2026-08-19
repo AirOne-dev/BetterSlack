@@ -747,11 +747,75 @@ export default {
       }, PRESENCE_INTERVAL_MS);
     };
 
+    /*
+     * Dragging the edge, the way the channel sidebar is dragged.
+     *
+     * The handle wears Slack's own classes, so it is styled by Slack's
+     * stylesheet rather than by a copy of it: same 8px hit area, same
+     * `col-resize` cursor, same hover, and it follows every theme for nothing.
+     * Measured against the real one before copying it.
+     */
+    const MIN_WIDTH = 180;
+    const MAX_WIDTH = 520;
+    const DEFAULT_WIDTH = 240;
+
+    const clamp = (px) => Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(px)));
+    let width = clamp(Number(api.settings.get('width', DEFAULT_WIDTH)) || DEFAULT_WIDTH);
+
+    const applyWidth = (column) => {
+      column.style.flex = `0 0 ${width}px`;
+    };
+
+    const makeResizer = (column) => {
+      const handle = api.dom.h('div', {
+        // Slack's classes first: they are what styles it. `--sidebar` is left
+        // off, since that one also positions it against the channel list.
+        class: 'p-resizer p-ia4_client__resizer betterslack-members__resizer',
+        role: 'none',
+      });
+
+      handle.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        handle.setPointerCapture(event.pointerId);
+        document.documentElement.classList.add('betterslack-members-resizing');
+        // The right edge stays put; the width is whatever is left of it.
+        const right = column.getBoundingClientRect().right;
+
+        const move = (moved) => {
+          width = clamp(right - moved.clientX);
+          applyWidth(column);
+        };
+        const done = () => {
+          handle.removeEventListener('pointermove', move);
+          handle.removeEventListener('pointerup', done);
+          handle.removeEventListener('pointercancel', done);
+          document.documentElement.classList.remove('betterslack-members-resizing');
+          // Written once, at the end: a settings write is a message to the
+          // loader, and one per pointermove is a few hundred of them per drag.
+          void api.settings.set('width', width);
+        };
+        handle.addEventListener('pointermove', move);
+        handle.addEventListener('pointerup', done);
+        handle.addEventListener('pointercancel', done);
+      });
+
+      return handle;
+    };
+
     api.dom.keepMounted('.p-view_contents--primary', COLUMN_ID, () => {
-      const host = api.dom.h('div', {});
+      const column = api.dom.h('div', {});
+      applyWidth(column);
+      /*
+       * Two children, and the list is the one that gets replaced. `paint` calls
+       * `replaceChildren`, so a handle sitting directly in the column would be
+       * wiped on every redraw. The list is `display: contents`, so its children
+       * are still the column's flex items and every rule about them holds.
+       */
+      const list = api.dom.h('div', { class: 'betterslack-members__list' });
+      column.append(makeResizer(column), list);
       const channel = currentChannelId();
-      if (channel) void render(host, channel);
-      return host;
+      if (channel) void render(list, channel);
+      return column;
     });
 
     // Slack changes channel without any navigation event a mod can hook, so the
@@ -780,8 +844,9 @@ export default {
       const channel = currentChannelId();
       if (channel === seen) return;
       seen = channel;
-      const host = document.getElementById(COLUMN_ID);
-      if (host && channel) void render(host, channel);
+      const column = document.getElementById(COLUMN_ID);
+      const list = column?.querySelector('.betterslack-members__list');
+      if (list && channel) void render(list, channel);
     }, 1000);
 
     api.onDispose(() => {
