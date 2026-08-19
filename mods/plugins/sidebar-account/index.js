@@ -121,6 +121,17 @@ const CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The name and its status emoji on one line: the name gives way, the emoji
+   never does -- a truncated face is worse than a truncated word. */
+#${STRIP_ID} .betterslack-me__nameline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+#${STRIP_ID} .betterslack-me__nameline .betterslack-me__name { min-width: 0; }
+#${STRIP_ID} .betterslack-me__emoji { flex: 0 0 auto; display: inline-flex; }
+#${STRIP_ID} .betterslack-me__emoji:empty { display: none; }
 #${STRIP_ID} .betterslack-me__name {
   font-size: 14px;
   font-weight: var(--custom-font-weight-bold, 700);
@@ -226,11 +237,30 @@ export default {
     api.css(CSS);
 
     api.dom.keepMounted('.p-channel_sidebar', STRIP_ID, () => {
-      const image = document.querySelector('[data-qa="user-button"] img');
+      /*
+       * The avatar, not merely the first image in the button.
+       *
+       * Slack draws your status emoji inside the same button when you have one
+       * set, and it comes first in the DOM -- so `querySelector('img')` picked
+       * the emoji, the strip showed it where the face goes, and the id read out
+       * of the URL below came back null because an emoji URL has no
+       * `/T…-U…-` in it. That last part is why the name stayed empty and no
+       * status was ever looked up: one wrong selector, three symptoms.
+       *
+       * An avatar is identifiable rather than positional: Slack serves it from
+       * a path carrying the team and the user. Take the first image that looks
+       * like one, and fall back to the old behaviour only if none does.
+       */
+      const images = [...document.querySelectorAll('[data-qa="user-button"] img')];
+      const AVATAR_URL = /\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i;
+      const image = images.find((img) => AVATAR_URL.test(img.getAttribute('src') ?? ''))
+        ?? document.querySelector('[data-qa="user-button"] .c-avatar img')
+        ?? images[0]
+        ?? null;
       const source = image?.getAttribute('src') ?? null;
       // The avatar URL carries the user id, identically in every language,
       // which the button's aria-label ("User: ...", "Utilisateur : ...") does not.
-      const userId = source?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i)?.[1]?.toUpperCase() ?? null;
+      const userId = source?.match(AVATAR_URL)?.[1]?.toUpperCase() ?? null;
 
       const avatar = api.dom.h('img', { class: 'betterslack-me__avatar', alt: '' });
       // The rail renders a 48; this one has room for a 72.
@@ -238,6 +268,13 @@ export default {
       if (best) avatar.setAttribute('src', best);
 
       const name = api.dom.h('div', { class: 'betterslack-me__name' }, ['…']);
+      /*
+       * The status emoji goes beside the name, which is where Slack puts it and
+       * where it reads as belonging to the person rather than to the line below.
+       * Its own node so the name can be rewritten without taking it away.
+       */
+      const nameEmoji = api.dom.h('span', { class: 'betterslack-me__emoji' });
+      const nameLine = api.dom.h('div', { class: 'betterslack-me__nameline' }, [name, nameEmoji]);
       // Filled in by paintDot, which is the only thing that writes this line.
       // It used to be read once here, from Slack's screen-reader label, and
       // then never again -- so it kept saying whatever was true at the moment
@@ -247,7 +284,7 @@ export default {
       const dot = api.dom.h('span', { class: 'betterslack-me__dot' });
       const me = api.dom.h('div', { class: 'betterslack-me' }, [
         api.dom.h('span', { class: 'betterslack-me__figure' }, [avatar, dot]),
-        api.dom.h('div', { class: 'betterslack-me__text' }, [name, status]),
+        api.dom.h('div', { class: 'betterslack-me__text' }, [nameLine, status]),
       ]);
 
       // The gear is the control. Pressing it opens Slack's own account menu,
@@ -321,14 +358,18 @@ export default {
         const word = dnd
           ? t('dnd')
           : dot.classList.contains('betterslack-me__dot--active') ? t('available') : t('away');
-        if (customStatus) {
-          // Replaced rather than appended: paintDot runs on every rail
-          // mutation, and appending would stack a status per keystroke of
-          // Slack's own re-rendering.
-          if (status.firstChild !== customStatus) status.replaceChildren(customStatus);
-          return;
+        /*
+         * The emoji beside the name, the sentence on the line below, and the
+         * presence word only when there is no sentence. Replaced rather than
+         * appended: paintDot runs on every rail mutation, and appending would
+         * stack a copy per re-render Slack does.
+         */
+        if (customStatus?.emoji && nameEmoji.firstChild !== customStatus.emoji) {
+          nameEmoji.replaceChildren(customStatus.emoji);
+        } else if (!customStatus?.emoji && nameEmoji.firstChild) {
+          nameEmoji.replaceChildren();
         }
-        const next = resolved ? word : '';
+        const next = customStatus?.text || (resolved ? word : '');
         if (status.textContent !== next) status.textContent = next;
       };
 
@@ -378,14 +419,38 @@ export default {
              * Slack sent with the profile first, then the workspace's custom
              * emoji, then anything Slack has already drawn on screen.
              */
-            void api.slack.web
-              .emoji()
-              .catch(() => null)
-              .then((custom) => {
-                const described = api.slack.describeStatus(profile, custom);
-                customStatus = described ? api.slack.statusNode(described, profile) : null;
-                paintDot();
-              });
+            /*
+             * Guarded rather than only caught. `emoji` and `describeStatus` are
+             * missing on a runtime older than this mod, and calling one then
+             * throws synchronously -- which would take the whole strip with it.
+             * A status is an enrichment; the avatar and the availability are
+             * what the strip is for.
+             */
+            const resolve = (custom) => {
+              try {
+                const described = api.slack.describeStatus?.(profile, custom);
+                customStatus = described
+                  ? {
+                    text: described.text,
+                    // Only the emoji: the sentence has a line of its own below.
+                    emoji: described.imageUrl
+                      ? api.slack.statusNode({ ...described, text: '' }, profile)
+                      : null,
+                  }
+                  : null;
+              } catch {
+                customStatus = null;
+              }
+              paintDot();
+            };
+            if (typeof api.slack.web?.emoji === 'function') {
+              Promise.resolve()
+                .then(() => api.slack.web.emoji())
+                .catch(() => null)
+                .then(resolve);
+            } else {
+              resolve(null);
+            }
             paintDot();
           })
           .catch((err) => {

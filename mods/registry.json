@@ -590,7 +590,7 @@
       "id": "member-sidebar",
       "name": "Member Sidebar",
       "type": "plugin",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "author": "AirOne-dev",
       "description": "A column of the current channel's members down the right of the message pane, split into online and offline, where clicking someone opens their Slack profile.",
       "descriptions": {
@@ -809,7 +809,7 @@
       "id": "sidebar-account",
       "name": "Sidebar Account Strip",
       "type": "plugin",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": "AirOne-dev",
       "description": "Your avatar, name and availability at the bottom of the channel sidebar, the way Discord and other chat apps put them; clicking it opens Slack's own account menu.",
       "descriptions": {

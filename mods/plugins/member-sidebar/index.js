@@ -102,12 +102,31 @@ export default {
      */
     let customEmoji = null;
     const loadEmoji = () => {
-      void api.slack.web
-        .emoji()
-        .then((map) => { customEmoji = map; })
-        .catch(() => { customEmoji = null; });
+      // Guarded, not just caught: `emoji` is missing on a runtime older than the
+      // mod, and calling it then throws *synchronously* -- inside start(), which
+      // takes the whole column down. A status is an enrichment; it is not a
+      // reason for the member list to fail to appear.
+      if (typeof api.slack.web?.emoji !== 'function') return;
+      try {
+        void api.slack.web
+          .emoji()
+          .then((map) => { customEmoji = map; })
+          .catch(() => { customEmoji = null; });
+      } catch {
+        customEmoji = null;
+      }
     };
     loadEmoji();
+
+    /** The status, or null on a runtime that cannot describe one. */
+    const statusOf = (who) => {
+      if (typeof api.slack.describeStatus !== 'function') return null;
+      try {
+        return api.slack.describeStatus(who, customEmoji);
+      } catch {
+        return null;
+      }
+    };
     /** Bumped on every render so a slow response cannot paint over a newer one. */
     let generation = 0;
     /** Stops the presence poll of the channel being left. */
@@ -314,7 +333,7 @@ export default {
        * image: what Slack sent with the profile, then the workspace's custom
        * emoji, then anything Slack has already drawn on this page.
        */
-      const status = api.slack.describeStatus(profile, customEmoji);
+      const status = statusOf(profile);
       if (status) {
         const line = api.dom.h('div', { class: 'betterslack-profile__line' }, [
           api.slack.statusNode(status, profile),
@@ -527,7 +546,7 @@ export default {
        * shows -- the sentence is too long for a row this narrow and goes in the
        * tooltip instead.
        */
-      const status = api.slack.describeStatus(user, customEmoji);
+      const status = statusOf(user);
       // Only when there is a picture: an emoji nothing resolved draws nothing,
       // and an empty node would still take the row's spare width.
       if (status?.imageUrl) {

@@ -287,12 +287,52 @@ test('shows your own status, emoji and all', async () => {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 30));
 
-    const strip = document.querySelector('.betterslack-me__status');
-    assert.ok(strip, 'the strip has a status line');
-    assert.match(strip.textContent, /On holiday/, 'the sentence someone wrote outranks the presence word');
-    const img = strip.querySelector('.betterslack-status__emoji');
-    assert.ok(img, 'and the emoji beside it');
+    const line = document.querySelector('.betterslack-me__status');
+    assert.ok(line, 'the strip has a status line');
+    assert.match(line.textContent, /On holiday/, 'the sentence someone wrote outranks the presence word');
+
+    // The emoji belongs beside the name, not on the line below: that is where
+    // Slack puts it, and where it reads as belonging to the person.
+    const img = document.querySelector('.betterslack-me__nameline .betterslack-status__emoji');
+    assert.ok(img, 'the emoji sits beside the name');
     assert.equal(img.getAttribute('src'), 'https://emoji.example/palm.png');
+    assert.equal(line.querySelector('.betterslack-status__emoji'), null,
+      'and not on the status line as well');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('takes the avatar, not whatever image Slack put in the button first', async () => {
+  const dom = installDom();
+  /*
+   * Slack draws your status emoji inside the user button when you have one set,
+   * and it comes first in the DOM. Picking `img` positionally took the emoji:
+   * the strip showed it where the face goes, and the id read out of the URL came
+   * back null -- an emoji URL has no team and user in it -- so the name stayed
+   * empty and no status was ever looked up. One selector, three symptoms.
+   */
+  const button = document.querySelector('[data-qa="user-button"]');
+  const emoji = document.createElement('img');
+  emoji.setAttribute('src', 'https://emoji.slack-edge.com/T025V5WN2/catjam/0e40.gif');
+  button.prepend(emoji);
+
+  const { api, recorded } = createTestApi({
+    web: {
+      users: async (ids) => new Map(ids.map((id) => [id, { id, profile: { display_name: 'Erwan' } }])),
+    },
+  });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const drawn = document.querySelector('.betterslack-me__avatar');
+    assert.ok(drawn, 'the strip drew an avatar');
+    assert.doesNotMatch(drawn.getAttribute('src') ?? '', /emoji\.slack-edge/,
+      'the status emoji is not the face');
+    assert.match(document.querySelector('.betterslack-me__name').textContent, /Erwan/,
+      'and the id was read, so the name arrived');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
