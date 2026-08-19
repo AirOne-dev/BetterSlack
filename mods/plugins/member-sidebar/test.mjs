@@ -705,3 +705,54 @@ test('lists the conversation Slack is showing, not the one the URL still names',
     dom.cleanup();
   }
 });
+
+test('draws the list you saw last time before either request lands', async () => {
+  /*
+   * Two round trips stood between changing channel and seeing anyone. What
+   * comes back is nearly always what came back before, so it is drawn from what
+   * was stored and confirmed behind you -- and the loading note only appears
+   * when there is nothing stored to show instead.
+   */
+  const dom = installDom();
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  const stub = web({ members: ['U1', 'U2'] });
+  const original = stub.web.call;
+  stub.web.call = async (method, params) => {
+    if (method === 'conversations.members') { await held; return { members: ['U1', 'U2'] }; }
+    return original(method, params);
+  };
+  stub.web.userInfo = async (id) => ({ id, profile: { display_name: `Person ${id}` } });
+
+  // A first run fills the cache.
+  const first = createApi({ web: stub.web });
+  release();
+  await plugin.start(first.api);
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  assert.equal(document.querySelectorAll('.betterslack-members__row').length, 2);
+  for (const dispose of first.recorded.disposers) dispose();
+  // The column survives its plugin being disposed, so the second run would
+  // otherwise be counting both.
+  document.getElementById('betterslack-member-column')?.remove();
+
+  // A second run, with the network held open: the rows are there anyway.
+  let stall;
+  const stalled = new Promise((resolve) => { stall = resolve; });
+  stub.web.call = async (method, params) => {
+    if (method === 'conversations.members') { await stalled; return { members: ['U1', 'U2'] }; }
+    return original(method, params);
+  };
+  const second = createApi({ web: stub.web, settings: first.api.settings.all() });
+  try {
+    await plugin.start(second.api);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    assert.equal(document.querySelectorAll('.betterslack-members__row').length, 2,
+      'drawn from the cache, with nothing yet answered');
+    assert.equal(document.querySelector('.betterslack-members__note'), null,
+      'and no loading note over a list that is already right');
+    stall();
+  } finally {
+    for (const dispose of second.recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

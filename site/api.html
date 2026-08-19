@@ -133,7 +133,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">Component kit</p>
       <ul><li><a href="#kit-button">button</a></li><li><a href="#kit-card">card</a></li><li><a href="#kit-checker">CHECKER</a></li><li><a href="#kit-code">code</a></li><li><a href="#kit-confirm">confirm</a></li><li><a href="#kit-copytext">copyText</a></li><li><a href="#kit-el">el</a></li><li><a href="#kit-emptystate">emptyState</a></li><li><a href="#kit-field">field</a></li><li><a href="#kit-hoverable">hoverable</a></li><li><a href="#kit-iconbutton">iconButton</a></li><li><a href="#kit-input">input</a></li><li><a href="#kit-popover">popover</a></li><li><a href="#kit-segmented">segmented</a></li><li><a href="#kit-select">select</a></li><li><a href="#kit-swatch">swatch</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.helpers</p>
-      <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
+      <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-cache">cache</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.slack</p>
       <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.ui</p>
@@ -689,6 +689,26 @@ kit.swatch('rgba(97, 31, 105, 0.35)');</code></pre>
     <pre class="api-code"><code>let unread = 0;
 api.helpers.badge('[data-qa=&quot;betterslack_notes_button&quot;]', 'unread', () =&gt; unread || null);
 // return null to take the badge away</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-helpers-cache" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>cache</code></h1>
+    <p class="api-sig api-sig--big">(name: string, options?: { keys?: number }): Cache</p>
+  </header>
+  <div class="panel__body">
+    <p>A cache that survives a restart and refreshes itself behind you.</p>
+<p>Both mods that list people had the same shape: ask Slack, wait, draw. The answer is nearly always the one from last time, so the waiting is spent confirming what was already known — and after a restart there is nothing to confirm against, so every list starts empty. Measured on a live client: a member column took <strong>805ms</strong> to show anybody, and <strong>81ms</strong> from the cache.</p>
+<p><code>swr</code> hands back what is stored, synchronously, and goes to the network anyway. Your callback runs *only if the answer differs* from what was stored, so a list that has not changed never repaints and one that has does not stay wrong.</p>
+<p>It is stored through <code>api.settings</code>, a file the loader owns, which is why it is there at the next launch — and why <code>keys</code> exists. That file is read at every start, so a cache that grows without limit becomes a slower start than the network it replaced. The oldest keys go first. Pass a smaller number when the values are big: the member column keeps twelve channels, the palette four workspaces.</p>
+    <div class="api-demo" data-demo="helpers-cache" data-controls="[{&quot;key&quot;:&quot;stored&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;the list you saw last time&quot;,&quot;label&quot;:&quot;what is stored&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;fresh&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;the list Slack just answered&quot;,&quot;label&quot;:&quot;what Slack answers&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>const store = api.helpers.cache('members', { keys: 12 });
+
+// Draw what you have, then let it correct itself.
+const held = store.swr(channelId, () =&gt; fetchMembers(channelId), (fresh) =&gt; paint(fresh));
+if (held) paint(held);</code></pre>
   </div>
 </section>
 <section class="panel" id="p-helpers-copy" hidden>

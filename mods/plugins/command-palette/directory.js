@@ -125,9 +125,56 @@ export function createDirectory(api, { onResults }) {
     loadEmoji();
   };
 
+  /*
+   * The list you saw last time, before the network is asked.
+   *
+   * Opening the palette used to mean waiting on `users.conversations` and then
+   * on a batch of `users.info`, every time -- and after a restart there was
+   * nothing at all until both landed. The answer is nearly always the one from
+   * last time, so it is drawn first and confirmed behind you. Four workspaces'
+   * worth: the value is a list of small records, and settings are a file the
+   * loader reads at every launch.
+   */
+  const store = api.helpers.cache('conversations', { keys: 4 });
+
+  /** Everything the palette draws for a conversation, and nothing else. */
+  const compact = (entry) => ({
+    id: entry.id,
+    conversationId: entry.conversationId,
+    kind: entry.kind,
+    title: entry.title,
+    icon: entry.icon,
+    hint: entry.hint,
+    handle: entry.handle,
+    member: entry.member,
+    profile: entry.profile
+      ? {
+        status_text: entry.profile.status_text,
+        status_emoji: entry.profile.status_emoji,
+        status_emoji_display_info: entry.profile.status_emoji_display_info,
+        status_expiration: entry.profile.status_expiration,
+      }
+      : undefined,
+  });
+
   const load = async () => {
     checkTeam();
     if (!api.slack.web.available) return;
+
+    /*
+     * Served, then confirmed. `onResults` fires only when the fresh list is not
+     * the stored one, so a palette open on an unchanged workspace never
+     * repaints -- and one on a changed workspace does, without having made
+     * anybody wait for it.
+     */
+    if (conversations.length === 0) {
+      const held = store.get(team ?? 'none');
+      if (Array.isArray(held) && held.length) {
+        conversations = held;
+        onResults();
+      }
+    }
+
     if (Date.now() - loadedAt < 60_000) return;
     loadedAt = Date.now();
 
@@ -181,6 +228,7 @@ export function createDirectory(api, { onResults }) {
           member: true,
         };
       });
+      store.set(team ?? 'none', conversations.map(compact));
     } catch (err) {
       api.log.warn('could not list conversations:', err.message);
     }

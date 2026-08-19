@@ -22,6 +22,28 @@ export interface HelperContext {
   track(cleanup: Cleanup): Cleanup;
 }
 
+export interface Cache {
+  /** What was stored for this key, or undefined. Synchronous. */
+  get<T = unknown>(key: string): T | undefined;
+  /** Store a value. Persisted, so it outlives the page. */
+  set(key: string, value: unknown): void;
+  /**
+   * The stored value now, the fresh one later, and `onFresh` only if they
+   * differ. Failures are silent: a cache that cannot refresh is still a cache.
+   */
+  swr<T>(key: string, load: () => Promise<T>, onFresh: (value: T) => void): T | undefined;
+}
+
+/**
+ * How much of one may be kept.
+ *
+ * Settings are a JSON file the loader reads at every launch, so a cache that
+ * grows without limit turns into a slower start than the network it replaced.
+ * The oldest keys go first; a member list nobody has opened in weeks is the one
+ * worth losing. A caller holding bigger values passes a smaller number.
+ */
+const CACHE_KEYS = 40;
+
 /** Slack's icon buttons expect a 20x20 viewBox and `currentColor`. */
 export type Icon = string;
 
@@ -73,6 +95,22 @@ export interface Helpers {
    * as it comes back. Stops with the plugin.
    */
   poll(handler: () => void | Promise<void>, everyMs: number): Cleanup;
+
+  /**
+   * A cache that survives a restart, and refreshes itself behind you.
+   *
+   * Both mods that list people had the same shape: ask Slack, wait, draw. The
+   * answer is nearly always the one from last time, so the waiting is spent
+   * confirming what was already known -- and after a restart there is nothing
+   * to confirm against, so every list starts empty.
+   *
+   * `swr` gives back what is stored, synchronously, and goes to the network
+   * anyway. Your callback runs only if the answer differs from what was shown,
+   * so a list that has not changed does not flicker and one that has does not
+   * stay wrong. Stored through `api.settings`, which is a file the loader owns,
+   * so it is there at the next launch.
+   */
+  cache(name: string, options?: { keys?: number }): Cache;
 
   /** A small count/dot badge pinned to any element, kept in sync by a getter. */
   badge(selector: string, id: string, value: () => string | number | null): Cleanup;
@@ -219,6 +257,65 @@ export function createHelpers(ctx: HelperContext): Helpers {
       );
     },
     describeHotkey: describeCombo,
+
+    cache(name, options = {}) {
+      const store = `cache:${name}`;
+      const limit = Math.max(1, options.keys ?? CACHE_KEYS);
+      /*
+       * Held in memory as well as written, because `settings.set` is a message
+       * to the loader: reading back what was just written would race the answer,
+       * and a list drawn from a cache that has not caught up is worse than one
+       * drawn from none.
+       */
+      let entries = ctx.settings.get<Record<string, { at: number; value: unknown }>>(store, {}) ?? {};
+      let writing: Promise<void> | null = null;
+
+      const persist = () => {
+        // Coalesced: several keys can be filled in one paint, and each write
+        // crosses to the loader and back.
+        if (writing) return;
+        writing = Promise.resolve().then(async () => {
+          writing = null;
+          const keys = Object.keys(entries);
+          if (keys.length > limit) {
+            const oldest = keys.sort((a, b) => (entries[a]?.at ?? 0) - (entries[b]?.at ?? 0));
+            for (const key of oldest.slice(0, keys.length - limit)) delete entries[key];
+          }
+          await ctx.settings.set(store, entries).catch(() => undefined);
+        });
+      };
+
+      const write = (key: string, value: unknown) => {
+        entries = { ...entries, [key]: { at: Date.now(), value } };
+        persist();
+      };
+
+      return {
+        get: (key) => entries[key]?.value as never,
+        set: write,
+        swr(key, load, onFresh) {
+          const held = entries[key]?.value;
+          void Promise.resolve()
+            .then(load)
+            .then((fresh) => {
+              if (fresh === undefined) return;
+              // Compared as text: these are lists of ids and small records, and
+              // "did it change" is the only question being asked. A deep
+              // comparison written by hand would be a second thing to get
+              // wrong.
+              if (JSON.stringify(fresh) === JSON.stringify(held)) {
+                // Still touch it, so a key in use is not the one evicted.
+                write(key, fresh);
+                return;
+              }
+              write(key, fresh);
+              onFresh(fresh);
+            })
+            .catch(() => undefined);
+          return held as never;
+        },
+      };
+    },
 
     poll(handler, everyMs) {
       let timer: ReturnType<typeof setInterval> | undefined;

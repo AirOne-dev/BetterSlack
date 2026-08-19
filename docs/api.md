@@ -40,6 +40,7 @@ few keys at the top, prose, and one example.
 ## api.helpers
 
 - [`badge`](api/helpers-badge.md) — A small count or dot pinned to any element, kept in sync by a getter rather than by you remembering to redraw it. Return null from the getter and the badge goes away.
+- [`cache`](api/helpers-cache.md) — A cache that survives a restart and refreshes itself behind you.
 - [`copy`](api/helpers-copy.md) — Put text on the clipboard and confirm it with a toast, which is the pair almost every copy button wants. Resolves false if the clipboard refused.
 - [`debounce`](api/helpers-debounce.md) — Debounce. No shipped mod calls this today -- the two that debounce
 - [`describeHotkey`](api/helpers-describehotkey.md) — A combo as a person would read it: `mod` becomes ⌘ on a Mac and Ctrl elsewhere, and the modifiers come out in the order that platform writes them. For a tooltip or a menu subtitle.

@@ -679,6 +679,27 @@ const SLACK_HELPERS = {
       return helpers.field((label ?? '').trim(), (value ?? '').trim());
     })),
   },
+  'helpers-cache': {
+    /*
+     * The real helper, against the page's in-memory settings. What it shows is
+     * the decision `swr` makes: the stored value is handed back at once, and
+     * the callback fires only when the fresh answer is not the stored one.
+     */
+    render: (v) => {
+      const store = helpers.cache('preview-demo', { keys: 4 });
+      store.set('list', v.stored);
+      const out = kit.el('pre', { class: 'pg__out' }, ['']);
+      const held = store.swr('list', async () => v.fresh, (fresh) => {
+        out.textContent += `\nonFresh fired: ${JSON.stringify(fresh)}`;
+      });
+      out.textContent = `store.swr(...) returned ${JSON.stringify(held)}  — synchronously`;
+      if (v.stored === v.fresh) {
+        out.textContent += '\n\n(the answer matches what was stored, so nothing repaints)';
+      }
+      return out;
+    },
+  },
+
   'helpers-badge': {
     render: (v, { stage }) => {
       const host = el('div', 'pg__badge-host');

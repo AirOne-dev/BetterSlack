@@ -1392,6 +1392,11 @@
   font-size: 14px;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
 }
+.betterslack-palette__count--busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .betterslack-palette__spinner {
   flex: 0 0 auto;
   width: 14px;
@@ -1402,7 +1407,12 @@
   animation: betterslack-spin 700ms linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .betterslack-palette__spinner { animation: none; }
+  .betterslack-palette__count--busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.betterslack-palette__spinner { animation: none; }
 }
 
 .betterslack-palette__box {
@@ -2276,6 +2286,18 @@
     );
     if (modes.length === 0) modesBar.setAttribute("hidden", "hidden");
     let busy = false;
+    const paintFooter = () => {
+      if (busy) {
+        footerCount.replaceChildren(
+          h("span", { class: "betterslack-palette__spinner" }),
+          h("span", {}, [labels.searching ?? "\u2026"])
+        );
+        footerCount.classList.add("betterslack-palette__count--busy");
+        return;
+      }
+      footerCount.classList.remove("betterslack-palette__count--busy");
+      footerCount.textContent = shown.length > 0 ? `${shown.length}` : "";
+    };
     const paint = (entries) => {
       shown = entries;
       list.replaceChildren();
@@ -2285,7 +2307,7 @@
           h("span", { class: "betterslack-palette__spinner" }),
           h("span", {}, [labels.searching ?? labels.empty])
         ]) : h("div", { class: "betterslack-empty" }, [labels.empty]));
-        footerCount.textContent = "";
+        paintFooter();
         footerAction.textContent = "";
         return;
       }
@@ -2322,7 +2344,7 @@
         }
       }
       shown = [...grouped.values()].flat();
-      footerCount.textContent = `${shown.length}`;
+      paintFooter();
       footerAction.textContent = `\u21B5 ${labels.openHint ?? "open"} \xB7 esc ${labels.closeHint ?? "close"}`;
       select(0);
     };
@@ -2337,7 +2359,7 @@
         paint(rank(answer, query));
         return;
       }
-      footerCount.textContent = labels.searching ?? "\u2026";
+      paintFooter();
       void answer.then((entries) => {
         if (mine !== generation || !isPaletteOpen()) return;
         paint(rank(entries, query));
@@ -2428,7 +2450,9 @@
     close.setBusy = (on) => {
       if (busy === on) return;
       busy = on;
-      if (isPaletteOpen() && shown.length === 0) update();
+      if (!isPaletteOpen()) return;
+      if (shown.length === 0) update();
+      else paintFooter();
     };
     return close;
   }
@@ -3219,6 +3243,7 @@
 ` + CODE_CSS;
 
   // src/runtime/helpers.ts
+  var CACHE_KEYS = 40;
   var BUTTON_CLASSES = {
     composer: "c-button-unstyled c-icon_button c-icon_button--size_smedium p-composer__button c-icon_button--default",
     header: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default",
@@ -3301,6 +3326,45 @@
         );
       },
       describeHotkey: describeCombo,
+      cache(name, options = {}) {
+        const store2 = `cache:${name}`;
+        const limit = Math.max(1, options.keys ?? CACHE_KEYS);
+        let entries = ctx.settings.get(store2, {}) ?? {};
+        let writing = null;
+        const persist = () => {
+          if (writing) return;
+          writing = Promise.resolve().then(async () => {
+            writing = null;
+            const keys = Object.keys(entries);
+            if (keys.length > limit) {
+              const oldest = keys.sort((a, b) => (entries[a]?.at ?? 0) - (entries[b]?.at ?? 0));
+              for (const key of oldest.slice(0, keys.length - limit)) delete entries[key];
+            }
+            await ctx.settings.set(store2, entries).catch(() => void 0);
+          });
+        };
+        const write = (key, value) => {
+          entries = { ...entries, [key]: { at: Date.now(), value } };
+          persist();
+        };
+        return {
+          get: (key) => entries[key]?.value,
+          set: write,
+          swr(key, load, onFresh) {
+            const held = entries[key]?.value;
+            void Promise.resolve().then(load).then((fresh) => {
+              if (fresh === void 0) return;
+              if (JSON.stringify(fresh) === JSON.stringify(held)) {
+                write(key, fresh);
+                return;
+              }
+              write(key, fresh);
+              onFresh(fresh);
+            }).catch(() => void 0);
+            return held;
+          }
+        };
+      },
       poll(handler, everyMs) {
         let timer;
         let running = false;
@@ -5058,6 +5122,27 @@
         const [label, value] = row.split(":");
         return helpers.field((label ?? "").trim(), (value ?? "").trim());
       }))
+    },
+    "helpers-cache": {
+      /*
+       * The real helper, against the page's in-memory settings. What it shows is
+       * the decision `swr` makes: the stored value is handed back at once, and
+       * the callback fires only when the fresh answer is not the stored one.
+       */
+      render: (v) => {
+        const store2 = helpers.cache("preview-demo", { keys: 4 });
+        store2.set("list", v.stored);
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        const held = store2.swr("list", async () => v.fresh, (fresh) => {
+          out.textContent += `
+onFresh fired: ${JSON.stringify(fresh)}`;
+        });
+        out.textContent = `store.swr(...) returned ${JSON.stringify(held)}  \u2014 synchronously`;
+        if (v.stored === v.fresh) {
+          out.textContent += "\n\n(the answer matches what was stored, so nothing repaints)";
+        }
+        return out;
+      }
     },
     "helpers-badge": {
       render: (v, { stage }) => {

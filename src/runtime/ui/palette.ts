@@ -273,6 +273,27 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
   /** True while the mod that opened this has a lookup out. */
   let busy = false;
 
+  /*
+   * The count, or the fact that there is more to come.
+   *
+   * The footer is the one place that can say "still looking" while there are
+   * rows on screen: saying it in the list would mean repainting a list somebody
+   * is arrowing through. With an empty list the whole panel says it instead --
+   * there, there is nothing to disturb.
+   */
+  const paintFooter = () => {
+    if (busy) {
+      footerCount.replaceChildren(
+        h('span', { class: 'betterslack-palette__spinner' }),
+        h('span', {}, [labels.searching ?? '…']),
+      );
+      footerCount.classList.add('betterslack-palette__count--busy');
+      return;
+    }
+    footerCount.classList.remove('betterslack-palette__count--busy');
+    footerCount.textContent = shown.length > 0 ? `${shown.length}` : '';
+  };
+
   const paint = (entries: Command[]) => {
     shown = entries;
     list.replaceChildren();
@@ -285,7 +306,7 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
           h('span', {}, [labels.searching ?? labels.empty]),
         ])
         : h('div', { class: 'betterslack-empty' }, [labels.empty]));
-      footerCount.textContent = '';
+      paintFooter();
       footerAction.textContent = '';
       return;
     }
@@ -341,7 +362,7 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
     // only true because the grouping above rewrote it.
     shown = [...grouped.values()].flat();
 
-    footerCount.textContent = `${shown.length}`;
+    paintFooter();
     footerAction.textContent = `↵ ${labels.openHint ?? 'open'} · esc ${labels.closeHint ?? 'close'}`;
     select(0);
   };
@@ -361,7 +382,7 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
     }
     // Still showing the previous answer, which is better than an empty list
     // that fills in: the rows under the pointer stop moving.
-    footerCount.textContent = labels.searching ?? '…';
+    paintFooter();
     void answer.then((entries) => {
       if (mine !== generation || !isPaletteOpen()) return;
       paint(rank(entries, query));
@@ -465,10 +486,16 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
   close.setBusy = (on: boolean) => {
     if (busy === on) return;
     busy = on;
-    // Only when there is nothing else to look at: repainting a list somebody is
-    // arrowing through, to change a word they are not reading, would move the
-    // selection under them.
-    if (isPaletteOpen() && shown.length === 0) update();
+    if (!isPaletteOpen()) return;
+    /*
+     * The footer always, the list only when it is empty. Repainting a list
+     * somebody is arrowing through, to change a word they are not reading,
+     * moves the selection under them -- but saying nothing at all while Slack
+     * is still being asked is how "no loading state" was reported in the first
+     * place, and rows on screen is the common case.
+     */
+    if (shown.length === 0) update();
+    else paintFooter();
   };
   return close;
 }

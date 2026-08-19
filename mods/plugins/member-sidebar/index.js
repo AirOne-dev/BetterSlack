@@ -634,6 +634,45 @@ export default {
       }
     };
 
+    /*
+     * The list you saw last time, before either request is made.
+     *
+     * Drawing a channel meant `conversations.members` and then a batch of
+     * `users.info` -- two round trips, every time you changed channel, and
+     * nothing on screen until both landed. What comes back is nearly always
+     * what came back before, so it is drawn from what was stored and confirmed
+     * behind you.
+     *
+     * Twelve channels rather than the default forty: the value here is a row
+     * per member, and settings are a file the loader reads at every launch. A
+     * cache big enough to slow the start is worse than the network it replaced.
+     */
+    const store = api.helpers.cache('members', { keys: 12 });
+
+    /** The three fields a row draws, and nothing else. */
+    const compact = (ids, users) => ids
+      .map((id) => users.get(id))
+      .filter((user) => user && !user.deleted)
+      .map((user) => ({
+        id: user.id,
+        name: displayName(user),
+        image: user.profile?.image_72 ?? user.profile?.image_192 ?? user.profile?.image_512,
+        profile: {
+          status_text: user.profile?.status_text,
+          status_emoji: user.profile?.status_emoji,
+          status_emoji_display_info: user.profile?.status_emoji_display_info,
+        },
+      }));
+
+    /** Compact rows back into the shape `paint` expects. */
+    const expand = (rows) => ({
+      ids: rows.map((row) => row.id),
+      users: new Map(rows.map((row) => [row.id, {
+        id: row.id,
+        profile: { display_name: row.name, image_72: row.image, ...row.profile },
+      }])),
+    });
+
     const render = async (host, channel) => {
       const mine = ++generation;
       /*
@@ -649,7 +688,20 @@ export default {
        * other workspace admits to.
        */
       const team = currentTeamId();
-      host.replaceChildren(api.dom.h('div', { class: 'betterslack-members__note' }, [t('loading')]));
+      const key = `${team}:${channel}`;
+
+      /*
+       * Whatever was there last time, immediately -- and the loading note only
+       * when there is nothing to show. A note that replaces a correct list for
+       * half a second is a worse answer than the list.
+       */
+      const held = store.get(key);
+      if (Array.isArray(held) && held.length) {
+        const { ids: heldIds, users: heldUsers } = expand(held);
+        paint(host, heldIds, false, heldUsers);
+      } else {
+        host.replaceChildren(api.dom.h('div', { class: 'betterslack-members__note' }, [t('loading')]));
+      }
 
       let ids = [];
       let truncated = false;
@@ -676,7 +728,15 @@ export default {
       if (mine !== generation || team !== currentTeamId()) return;
       const users = await api.slack.web.users(ids);
       if (mine !== generation || team !== currentTeamId()) return;
-      paint(host, ids, truncated, users);
+
+      /*
+       * Repainted only when the answer differs from what is already drawn.
+       * Redrawing an identical list would flash every avatar for nothing, and
+       * the common case is that nothing changed.
+       */
+      const fresh = compact(ids, users);
+      if (JSON.stringify(fresh) !== JSON.stringify(held ?? null)) paint(host, ids, truncated, users);
+      store.set(key, fresh);
 
       stopPolling?.();
       stopPolling = api.helpers.poll(async () => {

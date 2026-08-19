@@ -226,7 +226,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Le sélecteur rapide de Slack avec tout le reste dedans : aller à n'importe quelle conversation, trouver n'importe qui, lancer les commandes de vos mods, les activer ou les régler — le tout depuis une touche, avec / @ # pour affiner. Attribuez-lui autant de raccourcis que vous voulez ; ceux que Slack utilisait déjà lui sont repris."
       },
-      "version": "1.4.0",
+      "version": "1.5.0",
       "tags": [
         "navigation",
         "keyboard",
@@ -328,7 +328,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Une colonne des membres du canal courant à droite du fil, séparée entre en ligne et hors ligne, où cliquer sur quelqu'un ouvre son profil Slack."
       },
-      "version": "1.4.1",
+      "version": "1.5.0",
       "tags": [
         "members",
         "sidebar",

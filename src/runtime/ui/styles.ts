@@ -345,6 +345,11 @@ export const PANEL_CSS = CODE_CSS + `
   font-size: 14px;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
 }
+.betterslack-palette__count--busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .betterslack-palette__spinner {
   flex: 0 0 auto;
   width: 14px;
@@ -355,7 +360,12 @@ export const PANEL_CSS = CODE_CSS + `
   animation: betterslack-spin 700ms linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .betterslack-palette__spinner { animation: none; }
+  .betterslack-palette__count--busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.betterslack-palette__spinner { animation: none; }
 }
 
 .betterslack-palette__box {

@@ -881,6 +881,18 @@ both are part of the same contract.
 
 Shape of it:
 
+- **`api.helpers.cache(name, { keys })` is stale-while-revalidate, persisted.**
+  Both mods that list people asked Slack, waited, then drew -- and the answer is
+  nearly always the one from last time, so the waiting confirmed what was
+  already known. `swr` hands back what is stored, synchronously, goes to the
+  network anyway, and calls back **only when the answer differs**: an unchanged
+  list never repaints, a changed one does not stay wrong. Measured live on a
+  member column: 805ms to show anybody, 81ms from the cache.
+
+  It is written through `api.settings`, which is the file the loader reads at
+  every launch -- so `keys` is not decoration. A cache that grows without limit
+  is a slower start than the network it replaced. The member column keeps twelve
+  channels of compact rows; the palette keeps four workspaces.
 - `api.helpers` — the first thing to reach for. `toggle` (persisted flag + a
   class on `<html>` so behaviour is pure CSS), `hotkey` (`mod+shift+f`, with a
   `when` guard that gates the *match* so an inapplicable shortcut does not
