@@ -240,6 +240,21 @@ export const PANEL_CSS = CODE_CSS + `
 }
 .betterslack-row.betterslack-row--notice .betterslack-row__meta { margin-bottom: 12px; }
 .betterslack-row.betterslack-row--notice .betterslack-row__actions { flex-wrap: wrap; gap: 10px; }
+/* The same card, in the colour of something wrong rather than something new. */
+.betterslack-row.betterslack-row--warn {
+  border-color: rgba(var(--sk_highlight_accent, 224, 30, 90), 0.4);
+  background: rgba(var(--sk_highlight_accent, 224, 30, 90), 0.07);
+}
+.betterslack-skipped {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.75);
+  word-break: break-word;
+}
 
 /*
  * The state while it is working, which used to be a disabled button with a line

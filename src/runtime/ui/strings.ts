@@ -57,6 +57,8 @@ export const PANEL_STRINGS = {
     safeCrashed:
       '{reason}. Switch off whatever you suspect, then start BetterSlack again.',
 
+    skippedTitle: '{count} mod folder(s) were skipped',
+    skippedBody: 'These are in the mods folder but could not be read, so they are not listed above. The message says which file and why.',
     updateTitle: 'An update is available',
     updateGit: '{count} commit(s) behind{headline}. Updating pulls and rebuilds.',
     updateHeadline: ' — latest: {subject}',
@@ -173,6 +175,8 @@ export const PANEL_STRINGS = {
       'Démarré avec --safe. Vos mods sont intacts ; relancez sans l’option pour les charger.',
     safeCrashed: '{reason}. Désactivez ce que vous suspectez, puis relancez BetterSlack.',
 
+    skippedTitle: '{count} dossier(s) de mod ignoré(s)',
+    skippedBody: 'Ils sont dans le dossier mods mais n’ont pas pu être lus, donc ils ne sont pas listés ci-dessus. Le message indique quel fichier et pourquoi.',
     updateTitle: 'Une mise à jour est disponible',
     updateGit: '{count} commit(s) de retard{headline}. Mettre à jour récupère les commits et reconstruit.',
     updateHeadline: ' — dernier : {subject}',

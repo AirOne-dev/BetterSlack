@@ -463,6 +463,13 @@ export function buildApiPage() {
     <label class="side__search">
       <input type="search" id="side-filter" placeholder="Filter…" aria-label="Filter the list">
     </label>
+    <label class="side__sort" for="side-order">
+      <span data-en="Order" data-fr="Ordre">Order</span>
+      <select id="side-order" class="api-select">
+        <option value="name" data-en="A to Z" data-fr="De A à Z">A to Z</option>
+        <option value="updated" data-en="Recently updated" data-fr="Modifiés récemment">Recently updated</option>
+      </select>
+    </label>
     <nav><ul class="side__list">${nav}</ul></nav>
   </aside>
   <div class="stack" data-first="${first}"><div class="stack__inner">${sections.flatMap((g) => g.entries.map(g.guide ? guidePanel : panel)).join('\n')}</div></div>

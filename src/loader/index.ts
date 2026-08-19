@@ -154,6 +154,7 @@ class Loader {
       sessionId: `${process.pid}-${Date.now().toString(36)}`,
       modsRoot: BUILTIN_MODS_ROOT,
       userModsRoot: USER_MODS_ROOT,
+      skipped: [...this.catalog.errors],
       slackPath: this.slackPath,
       transport: 'CDP pipe (no network port)',
       root: REPO_ROOT,

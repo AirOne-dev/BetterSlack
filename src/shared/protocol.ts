@@ -382,6 +382,15 @@ export interface LoaderInfo {
   sessionId: string;
   modsRoot: string;
   userModsRoot: string;
+  /**
+   * Mod folders that were found and refused, with the reason.
+   *
+   * A mod that fails to parse is dropped from the catalogue, so it is simply
+   * not in Browse -- and the explanation only existed in the loader's terminal,
+   * which is not where somebody wondering why a mod is missing is looking.
+   * Carried here so the panel can say it where the mod would have been.
+   */
+  skipped: string[];
   slackPath: string;
   /** How the loader talks to Slack, shown in the About tab. */
   transport: string;

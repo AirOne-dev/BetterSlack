@@ -406,7 +406,7 @@ export class Panel {
 
     return [
       h('div', { class: 'betterslack-toolbar' }, [tabs, search]),
-      ...(this.shelf === 'browse' ? [this.renderRemoteInstall()] : []),
+      ...(this.shelf === 'browse' ? [this.renderRemoteInstall(), ...this.renderSkipped()] : []),
       ...(tags.length > 1 ? [filters] : []),
       h('div', { class: 'betterslack-list' }),
     ];
@@ -1063,6 +1063,28 @@ export class Panel {
    * message and the session token. So this asks, in those words, before
    * anything is written, and the mod carries a permanent mark afterwards.
    */
+  /**
+   * Mod folders the loader found and refused.
+   *
+   * On the Browse shelf, because that is where somebody looks for a mod that is
+   * not there. The reason used to exist only in the loader's terminal, which
+   * answers the question for whoever started it and nobody else -- and a mod
+   * missing after a pull is exactly the moment you are not reading a terminal.
+   */
+  private renderSkipped(): Node[] {
+    const skipped = this.manager.info.skipped ?? [];
+    if (skipped.length === 0) return [];
+    return [
+      h('div', { class: 'betterslack-row betterslack-row--notice betterslack-row--warn' }, [
+        h('div', { class: 'betterslack-row__meta' }, [
+          h('div', { class: 'betterslack-row__name' }, [t('skippedTitle', { count: skipped.length })]),
+          h('div', { class: 'betterslack-row__desc' }, [t('skippedBody')]),
+          h('ul', { class: 'betterslack-skipped' }, skipped.map((reason) => h('li', {}, [reason]))),
+        ]),
+      ]),
+    ];
+  }
+
   private renderRemoteInstall(): Node {
     const input = h('input', {
       class: 'betterslack-search',
