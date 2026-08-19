@@ -63,6 +63,7 @@ export const PANEL_STRINGS = {
     updatePackage:
       'Version {latest} is out; this is {current}. Updating downloads it from GitHub and replaces this copy — your mods and settings are kept, they live outside it.',
     updateGo: 'Update and restart',
+    updateWorking: 'Updating…',
     updateGitHub: 'Open GitHub',
     updatePulling: 'Pulling and rebuilding…',
     updateDownloading: 'Downloading and rebuilding…',
@@ -178,6 +179,7 @@ export const PANEL_STRINGS = {
     updatePackage:
       'La version {latest} est disponible ; vous êtes en {current}. Mettre à jour la télécharge depuis GitHub et remplace cette copie — vos mods et vos réglages sont conservés, ils sont stockés ailleurs.',
     updateGo: 'Mettre à jour et relancer',
+    updateWorking: 'Mise à jour…',
     updateGitHub: 'Ouvrir GitHub',
     updatePulling: 'Récupération et reconstruction…',
     updateDownloading: 'Téléchargement et reconstruction…',

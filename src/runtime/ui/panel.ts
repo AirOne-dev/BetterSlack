@@ -1379,7 +1379,20 @@ export class Panel {
       })
       : t('updatePackage', { latest: status.latest ?? '?', current: this.manager.info.version });
 
-    const status_line = h('span', { class: 'betterslack-status' });
+    /*
+     * The progress line, under the buttons rather than beside them.
+     *
+     * It used to be a `betterslack-status` span inside `row__actions`, which is
+     * `flex: 0 0 auto`: "Downloading and rebuilding..." either squeezed the
+     * button next to it or wrapped underneath it, and while the pull ran the
+     * only thing that had changed on screen was that the button had gone grey.
+     * That reads as broken, not as busy.
+     */
+    const progress = h('div', { class: 'betterslack-progress' });
+    const say = (text: string, state?: 'done' | 'failed') => {
+      progress.className = `betterslack-progress${state ? ` betterslack-progress--${state}` : ''}`;
+      progress.textContent = text;
+    };
     const actions: Node[] = [];
 
     if (status.updatable) {
@@ -1389,17 +1402,25 @@ export class Panel {
       }, [t('updateGo')]);
       update.addEventListener('click', () => {
         update.setAttribute('disabled', 'disabled');
-        status_line.textContent = status.kind === 'git' ? t('updatePulling') : t('updateDownloading');
+        update.textContent = t('updateWorking');
+        say(status.kind === 'git' ? t('updatePulling') : t('updateDownloading'));
         void this.manager
           .updateApp()
           .then((result) => {
-            status_line.textContent = result.ok
-              ? t('updateDone')
-              : t('updateFailed', { reason: result.detail });
-            if (!result.ok) update.removeAttribute('disabled');
+            if (result.ok) {
+              // Left disabled on purpose: it worked, and Slack is on its way
+              // out. Putting the button back would invite a second pull into a
+              // client that is already restarting.
+              say(t('updateDone'), 'done');
+              return;
+            }
+            say(t('updateFailed', { reason: result.detail }), 'failed');
+            update.textContent = t('updateGo');
+            update.removeAttribute('disabled');
           })
           .catch((err: Error) => {
-            status_line.textContent = err.message;
+            say(err.message, 'failed');
+            update.textContent = t('updateGo');
             update.removeAttribute('disabled');
           });
       });
@@ -1412,7 +1433,6 @@ export class Panel {
         rel: 'noreferrer',
       }, [t('updateGitHub')]));
     }
-    actions.push(status_line);
 
     return [
       h('div', { class: 'betterslack-row betterslack-row--notice' }, [
@@ -1423,6 +1443,7 @@ export class Panel {
           ]),
         ]),
         h('div', { class: 'betterslack-row__actions' }, actions),
+        progress,
       ]),
     ];
   }
