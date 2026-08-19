@@ -149,7 +149,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Slack en terminal à phosphore : monospace partout, aucun coin arrondi, bordures d'un cheveu, ambre et vert sur presque-noir. Avatars carrés compris."
       },
-      "version": "1.0.0",
+      "version": "2.0.0",
       "tags": [
         "dark",
         "monospace",

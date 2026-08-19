@@ -351,11 +351,20 @@ body { background: linear-gradient(160deg, #101418, #161c26); }</code></pre>
 <h2>6. Use the builder rather than guessing</h2>
 <pre class="api-code" data-lang="bash" data-label="bash"><code># In Slack: ⌘K, then &quot;theme builder&quot;</code></pre>
 <p>It opens a window of its own and paints the client live, so <strong>the preview is Slack</strong>. Two colours become twelve roles across all four families, hovering a colour outlines what it paints, and pointing at anything in the app shows the tokens behind it. It writes ordinary CSS you can paste into <code>theme.css</code>.</p>
-<h2>7. When the look needs behaviour</h2>
+<h2>7. Let somebody change your colours</h2>
+<p>A theme can have settings without running any code. It names the custom property each one writes, and the panel writes it — the theme reads nothing.</p>
+<pre class="api-code" data-lang="json" data-label="json"><code>{
+  &quot;settings&quot;: [
+    { &quot;key&quot;: &quot;accent&quot;, &quot;type&quot;: &quot;colour&quot;, &quot;label&quot;: &quot;Accent&quot;,
+      &quot;default&quot;: &quot;#6cb6ff&quot;, &quot;cssVar&quot;: &quot;--my-accent&quot; }
+  ]
+}</code></pre>
+<p>Two rules, or the colour repaints part of the client and not the rest. Derive every tint from the property rather than writing the colour out again — <code>color-mix(in srgb, var(--my-accent) 20%, transparent)</code>, not <code>rgba(108, 182, 255, 0.2)</code>. And point Slack's legacy <code>--sk_*</code> tokens at <code>--my-accent-rgb</code>, which the runtime writes alongside the colour: those take a bare <code>r, g, b</code> triplet, and a <code>var()</code> holding a hex parses there and paints nothing.</p>
+<h2>8. When the look needs behaviour</h2>
 <p>A theme cannot run code, and that is deliberate. When a look needs something CSS cannot do — a member column, an account strip — the theme names a plugin:</p>
 <pre class="api-code" data-lang="json" data-label="json"><code>{ &quot;requires&quot;: [&quot;member-sidebar&quot;] }</code></pre>
 <p>The panel offers to switch it on, and enables the theme either way if the user declines: a plugin keeps running after the theme is off, so it is never turned on silently. The plugin has to stand alone — it reads Slack's tokens and follows any theme — and the theme must not style its markup.</p>
-<h2>8. Ship it</h2>
+<h2>9. Ship it</h2>
 <pre class="api-code" data-lang="bash" data-label="bash"><code>pnpm check</code></pre>
 <p>The same one command as a plugin. <code>pnpm shoot --mods -- --only=my-theme</code> takes the screenshot the catalogue and the panel show, in a real Slack with every name, face and message on screen replaced first.</p>
 <h2>Two more traps, both measured</h2>

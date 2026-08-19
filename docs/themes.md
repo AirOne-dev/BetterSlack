@@ -273,6 +273,60 @@ still inlined where you put it, but a browser would ignore it — and a theme th
 only works inside BetterSlack is a theme nobody can debug. An `@import` inside a
 comment is left alone, so commenting one out really does switch it off.
 
+## Letting somebody change your colours
+
+A theme can have settings, and it still runs no code: it names the custom
+property each setting writes, and the panel writes it. Declare them in
+`mod.json` exactly as a plugin does, with one extra key:
+
+```json
+{
+  "settings": [
+    {
+      "key": "phosphor",
+      "type": "colour",
+      "label": "Phosphor",
+      "default": "#35e07f",
+      "cssVar": "--term-green",
+      "hint": "Text, borders and every tint derived from them."
+    }
+  ]
+}
+```
+
+The runtime writes `:root { --term-green: <value> }` into a layer of its own,
+created after your stylesheet, so it wins on order rather than on specificity.
+Your theme reads nothing and imports nothing.
+
+Two rules make the difference between a colour that repaints the client and one
+that repaints a third of it.
+
+**Derive, never write it out again.** Every tint of that colour has to come from
+the property:
+
+```css
+/* Not this: a colour chosen in the panel reaches none of it. */
+border-color: rgba(53, 224, 127, 0.22);
+
+/* This. */
+border-color: color-mix(in srgb, var(--term-green) 22%, transparent);
+```
+
+**Point the legacy families at the triplet.** `--sk_*` and `--dt_color-plt-*`
+take bare `r, g, b`, and a `var()` holding a hex parses there, paints nothing
+and says nothing. So a `colour` setting also writes `<cssVar>-rgb`:
+
+```css
+:root {
+  /* Your default, for when nothing is set. */
+  --term-green-rgb: 53, 224, 127;
+  --sk_foreground_max: var(--term-green-rgb) !important;
+}
+```
+
+`mods/themes/terminal` is the worked example: three colours, twenty-five derived
+tints and the whole legacy family following all three.
+
 ## When CSS is not enough
 
 A theme is CSS and nothing else. CSS reaches everything about how Slack *looks*

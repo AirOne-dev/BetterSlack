@@ -56,7 +56,7 @@ function parseSettings(value: unknown, file: string): ModSettingField[] | undefi
   const seen = new Set<string>();
   const fields: ModSettingField[] = [];
   for (const raw of value) {
-    const field = raw as Partial<ModSettingField> & { options?: unknown };
+    const field = raw as Partial<ModSettingField> & { options?: unknown; cssVar?: unknown };
     const key = assertString(field.key, 'settings[].key', file);
     if (!/^[a-zA-Z][\w-]{0,40}$/.test(key)) {
       throw new ManifestError(file, `"${key}" is not a usable settings key`);
@@ -69,6 +69,19 @@ function parseSettings(value: unknown, file: string): ModSettingField[] | undefi
       throw new ManifestError(file, `"${type}" is not a settings type (${[...FIELD_TYPES].join(', ')})`);
     }
     assertString(field.label, 'settings[].label', file);
+
+    /*
+     * `cssVar` is checked here rather than trusted, because a theme's settings
+     * do nothing else: the value is written straight into a stylesheet, so a
+     * name that is not a custom property is a rule the browser drops without a
+     * word, and the setting silently does nothing.
+     */
+    if (field.cssVar !== undefined) {
+      const cssVar = assertString(field.cssVar, 'settings[].cssVar', file);
+      if (!/^--[a-z0-9-]+$/i.test(cssVar)) {
+        throw new ManifestError(file, `"${cssVar}" is not a CSS custom property (--like-this)`);
+      }
+    }
 
     if (type === 'choice') {
       const options = field.options;

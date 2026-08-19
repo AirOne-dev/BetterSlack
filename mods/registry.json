@@ -842,7 +842,7 @@
       "id": "terminal",
       "name": "Terminal",
       "type": "theme",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "author": "AirOne-dev",
       "description": "Slack as a phosphor terminal: monospace everywhere, zero rounded corners, hairline borders, amber and green on near-black. Square avatars included.",
       "descriptions": {
@@ -850,6 +850,32 @@
       },
       "entry": "theme.css",
       "icon": "icon.svg",
+      "settings": [
+        {
+          "key": "phosphor",
+          "type": "colour",
+          "label": "Phosphor",
+          "default": "#35e07f",
+          "cssVar": "--term-green",
+          "hint": "Text, borders and every tint derived from them."
+        },
+        {
+          "key": "attention",
+          "type": "colour",
+          "label": "Attention",
+          "default": "#ffb638",
+          "cssVar": "--term-amber",
+          "hint": "Mentions, unread badges and anything asking for you."
+        },
+        {
+          "key": "background",
+          "type": "colour",
+          "label": "Background",
+          "default": "#05080a",
+          "cssVar": "--term-bg",
+          "hint": "The screen behind it all."
+        }
+      ],
       "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [

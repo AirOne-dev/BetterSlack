@@ -157,6 +157,14 @@ export class ModManager {
     }
 
     const record = this.mods.find((m) => m.id === id);
+    if (record?.type === 'theme') {
+      // Repainted rather than reloaded: the stylesheet has not changed, only
+      // the handful of properties on top of it, and rewriting those is instant
+      // where re-applying a theme is a flash of the whole client.
+      if (this.isEnabled(id)) this.applyThemeVars(record);
+      this.notify();
+      return;
+    }
     if (!record || record.type !== 'plugin' || !this.isEnabled(id)) {
       this.notify();
       return;
@@ -413,11 +421,71 @@ export class ModManager {
     await this.patchSettings({ modFailures: failures });
   }
 
+  /**
+   * A theme's settings, as the custom properties it named.
+   *
+   * This is the whole of how a theme has settings. It runs no code -- that is
+   * the rule, and a `script` field was built once and taken out for being a
+   * second, weaker plugin model -- so it declares which property each setting
+   * writes and the runtime writes it. Only fields carrying `cssVar` produce
+   * anything; the rest are stored and ignored, which is what a theme's author
+   * asked for by not naming a property.
+   *
+   * A layer of its own, created after the theme's, so it lands after it in
+   * `<head>` and the value wins on order rather than on specificity.
+   */
+  private applyThemeVars(record: ModRecord): void {
+    const fields = (record.settings ?? []).filter((field) => 'cssVar' in field && field.cssVar);
+    if (fields.length === 0) return;
+
+    const values = this.settings.modSettings[record.id] ?? {};
+    const declarations = fields
+      .map((field) => {
+        const value = field.key in values ? values[field.key] : field.default;
+        // An unset setting is not a value: writing `--x: undefined` would break
+        // the theme's own declaration rather than leave it alone.
+        if (value === undefined || value === null || value === '') return null;
+        // Only what a colour or a length can be. The panel writes these, but a
+        // hand-edited settings file is still a file somebody can put anything
+        // in, and this ends up inside a stylesheet.
+        const text = String(value);
+        if (/[;{}<>]/.test(text)) return null;
+
+        const name = (field as { cssVar: string }).cssVar;
+        const lines = [`  ${name}: ${text};`];
+        /*
+         * And the same colour as a bare `r, g, b` triplet, under `<name>-rgb`.
+         *
+         * Two of Slack's four token families take triplets rather than
+         * colours: `--sk_*` and `--dt_color-plt-*`. A `var()` holding a hex
+         * parses there, paints nothing and reports nothing -- so without this a
+         * colour chosen in the panel would reach the modern tokens and silently
+         * skip the legacy ones, which is a theme half-repainted and no error to
+         * explain it. Themes that use neither simply never reference it.
+         */
+        const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text.trim());
+        if (hex) {
+          const digits = hex[1]!.length === 3
+            ? hex[1]!.split('').map((d) => d + d).join('')
+            : hex[1]!;
+          const rgb = [0, 2, 4].map((at) => parseInt(digits.slice(at, at + 2), 16));
+          lines.push(`  ${name}-rgb: ${rgb.join(', ')};`);
+        }
+        return lines.join('\n');
+      })
+      .filter(Boolean);
+
+    this.styles.set('theme', `${record.id}:vars`, declarations.length
+      ? `:root, .sk-client-theme--light, .sk-client-theme--dark {\n${declarations.join('\n')}\n}`
+      : '');
+  }
+
   private async apply(record: ModRecord, files: ModFiles): Promise<void> {
     if (record.type === 'theme') {
       // Relative @import has no base URL inside an injected <style>, so the
       // folder is stitched together before it reaches the page.
       this.styles.set('theme', record.id, inlineCssImports(files, record.entry));
+      this.applyThemeVars(record);
       return;
     }
     const api = createPluginApi(record, {
@@ -517,8 +585,15 @@ export class ModManager {
   }
 
   private async unapply(record: ModRecord): Promise<void> {
-    if (record.type === 'theme') this.styles.remove('theme', record.id);
-    else await this.plugins.unload(record.id);
+    if (record.type === 'theme') {
+      this.styles.remove('theme', record.id);
+      // Its variables go with it. Left behind they would keep painting a theme
+      // that is no longer on -- and win over the next one, since they are
+      // written after every theme's own stylesheet.
+      this.styles.remove('theme', `${record.id}:vars`);
+      return;
+    }
+    await this.plugins.unload(record.id);
   }
 
   async setEnabled(id: string, enabled: boolean): Promise<void> {

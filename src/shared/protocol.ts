@@ -123,6 +123,16 @@ export interface ModAssets {
  * Deliberately few types. Anything a mod can express with a checkbox, a number,
  * a word, a colour or a choice belongs here; anything more belongs in the mod's
  * own window, where it can be explained properly.
+ *
+ * `cssVar` is how a **theme** has settings at all. A theme is CSS and runs no
+ * code -- that is the rule, and a `script` field was built once and removed for
+ * being a second, weaker plugin model -- so a theme cannot read a value and act
+ * on it. It names the custom property instead, and the runtime writes
+ * `:root { <cssVar>: <value> }` after the theme's own stylesheet. The theme is
+ * still only CSS; the panel does the writing.
+ *
+ * Plugins may declare it too, and it costs them nothing to ignore: they read
+ * the same key through `api.settings` as they always did.
  */
 export type ModSettingField =
   | { key: string; type: 'boolean'; label: string; hint?: string; default?: boolean }
@@ -136,8 +146,16 @@ export type ModSettingField =
     max?: number;
     step?: number;
   }
-  | { key: string; type: 'text'; label: string; hint?: string; default?: string; placeholder?: string }
-  | { key: string; type: 'colour'; label: string; hint?: string; default?: string }
+  | {
+    key: string;
+    type: 'text';
+    label: string;
+    hint?: string;
+    default?: string;
+    placeholder?: string;
+    cssVar?: string;
+  }
+  | { key: string; type: 'colour'; label: string; hint?: string; default?: string; cssVar?: string }
   | {
     key: string;
     type: 'choice';

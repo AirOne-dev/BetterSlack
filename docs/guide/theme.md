@@ -101,7 +101,29 @@ Slack**. Two colours become twelve roles across all four families, hovering a
 colour outlines what it paints, and pointing at anything in the app shows the
 tokens behind it. It writes ordinary CSS you can paste into `theme.css`.
 
-## 7. When the look needs behaviour
+## 7. Let somebody change your colours
+
+A theme can have settings without running any code. It names the custom property
+each one writes, and the panel writes it — the theme reads nothing.
+
+```json
+{
+  "settings": [
+    { "key": "accent", "type": "colour", "label": "Accent",
+      "default": "#6cb6ff", "cssVar": "--my-accent" }
+  ]
+}
+```
+
+Two rules, or the colour repaints part of the client and not the rest. Derive
+every tint from the property rather than writing the colour out again —
+`color-mix(in srgb, var(--my-accent) 20%, transparent)`, not
+`rgba(108, 182, 255, 0.2)`. And point Slack's legacy `--sk_*` tokens at
+`--my-accent-rgb`, which the runtime writes alongside the colour: those take a
+bare `r, g, b` triplet, and a `var()` holding a hex parses there and paints
+nothing.
+
+## 8. When the look needs behaviour
 
 A theme cannot run code, and that is deliberate. When a look needs something CSS
 cannot do — a member column, an account strip — the theme names a plugin:
@@ -115,7 +137,7 @@ declines: a plugin keeps running after the theme is off, so it is never turned
 on silently. The plugin has to stand alone — it reads Slack's tokens and follows
 any theme — and the theme must not style its markup.
 
-## 8. Ship it
+## 9. Ship it
 
 ```bash
 pnpm check

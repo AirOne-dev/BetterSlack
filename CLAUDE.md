@@ -1041,6 +1041,31 @@ plugin id in `requires` and the panel offers to switch it on.
   theme is off, so it is never turned on silently.
 - The required plugin must stand alone: it reads Slack's tokens and follows any
   theme, and the theme must not style its markup. Also a test.
+**A theme can have settings, and still runs no code.** A field in its `mod.json`
+carries `cssVar` naming a custom property; the runtime writes
+`:root { <cssVar>: <value> }` into a `theme:<id>:vars` layer created after the
+theme's own, so the value wins on order rather than on specificity. The theme
+reads nothing and the panel does the writing -- which is the whole point, and
+why this is not the `script` field below wearing a different hat.
+
+Two things it would half-work without, both of which cost a repaint that only
+covers some of the client:
+
+- **The legacy families take bare triplets.** `--sk_*` and `--dt_color-plt-*`
+  want `r, g, b`, and a `var()` holding a hex parses there, paints nothing and
+  reports nothing. So a colour setting also writes `<cssVar>-rgb` as a triplet,
+  and a theme points its legacy tokens at that. Terminal does.
+- **A theme must not write a colour out by hand.** Twenty-five rules in Terminal
+  held a tint of the phosphor as literal `rgba(53, 224, 127, …)`; a colour
+  chosen in the panel reached the tokens and none of those. They are
+  `color-mix(in srgb, var(--term-green) N%, transparent)` now, and a test fails
+  the theme if a literal comes back.
+
+Removing the theme removes its variables with it -- left behind they would paint
+a theme that is off, and beat the next one, since they are written after every
+theme's stylesheet. Changing one repaints rather than re-applies: the stylesheet
+has not changed, only the handful of properties on top of it.
+
 - **A `script` + `permissions` system for themes was built and then removed.**
   It put a second, weaker plugin model beside the real one — its own API to keep
   in step, its own consent dialog to explain — for something plugins already
