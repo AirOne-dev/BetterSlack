@@ -341,9 +341,18 @@ kit.button('Save', { variant: 'primary', onClick: () => save() });
   cannot be -- a workspace, a download folder -- the preview wears the
   `stubbed()` note, so the reader is never left to guess which.
 - Each `control` line is a knob beside the preview:
-  `key | type | value | label | options`. `text`, `number`, `boolean` and
-  `select`; `label` defaults to the key, and `options` is a comma-separated list
-  that only means anything for a select.
+  `key | type | value | label | options`. `text`, `textarea`, `number`,
+  `boolean` and `select`; `label` defaults to the key, and `options` is a
+  comma-separated list that only means anything for a select. **`\n` in a
+  default is a newline**, since the line it is written on cannot contain one --
+  without that, `renderMarkdown`'s sample arrived as a single line with the
+  escapes in it, so the preview showed no headings, no list, and printed
+  `\n` for everyone to read. `textarea` exists for the same defaults: a `text`
+  control is an `<input>`, which collapses a newline to nothing.
+- **The controls are the only place to type.** Three previews carried a
+  `<textarea>` of their own beside their output, which was a second input after
+  the knobs below were already one, and the two never agreed about which held
+  the source. The exception is `kit.code`, where the editor *is* the component.
 - Deliberately not YAML. Five keys and a repeated line do not need a parser with
   a specification, and a dependency that can only be wrong about indentation is
   a poor trade for a file a person writes by hand.
@@ -441,7 +450,13 @@ every entry has a signature and a preview; a guide page has neither, and forcing
 it into that shape would have meant inventing keys nobody fills in. A fence's
 language reaches the page as `data-lang` and is coloured by Code Highlight's
 tokeniser -- the same one running in Slack -- so a `json` manifest is coloured
-as JSON rather than as JavaScript that happens to parse.
+as JSON rather than as JavaScript that happens to parse. Aliases are resolved at
+build time (`js` -> `javascript`, `yml` -> `yaml`) and **an unknown one fails the
+build**: it used to mean the block was skipped and rendered as flat grey text,
+which reads like a block that has no highlighting rather than like a mistake, so
+five JavaScript examples went out uncoloured and nothing said so. The label above
+the block keeps what the writer typed, since `JS` reads better than
+`JAVASCRIPT`.
 
 **The guide comes first and the page opens on it.** Landing somebody on
 `tools.highlight` was an accident of the ordering, not a decision: a reference

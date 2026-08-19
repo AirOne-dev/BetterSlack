@@ -59,6 +59,14 @@ export function parseEntry(file, source) {
     if (control.type === 'select') control.options = control.options.split(',').map((o) => o.trim()).filter(Boolean);
     if (control.type === 'number') control.value = Number(control.value);
     if (control.type === 'boolean') control.value = control.value === 'true';
+    /*
+     * A `control:` line is one line, so `\n` in a default is the only way to
+     * write a newline. It used to arrive as the two characters it looks like,
+     * which is how the renderMarkdown preview came to be handed a single line
+     * of markdown with backslash-n in it: no headings, no list, and the escapes
+     * printed in the output for everyone to see.
+     */
+    if (typeof control.value === 'string') control.value = control.value.replace(/\\n/g, '\n');
     controls.push(control);
   }
 

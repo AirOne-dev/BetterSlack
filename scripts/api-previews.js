@@ -135,6 +135,15 @@ function control(spec, state, draw) {
     input.className = 'pg__check';
     input.checked = Boolean(state[spec.key]);
     input.addEventListener('change', () => { state[spec.key] = input.checked; draw(); });
+  } else if (spec.type === 'textarea') {
+    /*
+     * For the defaults that are genuinely several lines. A `text` control is an
+     * `<input>`, which collapses a newline to nothing on screen: the
+     * renderMarkdown knob showed its whole sample as one unreadable line, and
+     * editing it was impossible.
+     */
+    input = kit.el('textarea', { class: 'api-input', rows: '8', spellcheck: 'false' }, [state[spec.key] ?? '']);
+    input.addEventListener('input', () => { state[spec.key] = input.value; draw(); });
   } else {
     input = kit.input({ value: state[spec.key], type: spec.type === 'number' ? 'number' : 'text' });
     input.addEventListener('input', () => {
@@ -235,6 +244,21 @@ function copyButton(text) {
 
 /* -- the component kit ---------------------------------------------------- */
 
+/*
+ * Characters rather than an icon set, and one SVG.
+ *
+ * Each of these is a plain Unicode symbol that renders without a webfont, which
+ * is what a window a mod opens has. The last entry is markup instead, since
+ * `kit.iconButton` sets innerHTML and the commonest question about it is
+ * whether that means you can pass your own drawing. You can.
+ */
+const GLYPHS = ['\u270e', '\ud83d\uddd1', '\u22ef', '\u2699', '\u2713', '\u2715', '\uff0b',
+  '\u21bb', '\u2605', '\u2913', '\u21e7', '\u29c9', 'svg'];
+
+const GLYPH_SVG = '<svg viewBox="0 0 20 20" aria-hidden="true">'
+  + '<path d="M4 13.5V16h2.5l7.4-7.4-2.5-2.5L4 13.5Zm11.8-6.9a.7.7 0 0 0 0-1L14.4 4.2a.7.7 0 0 0-1 0l-1.2 1.2 2.5 2.5 1.1-1.3Z"'
+  + ' fill="currentColor"/></svg>';
+
 const KIT = {
   el: {
     render: (v) => kit.el(v.tag, { class: v.className }, [v.text]),
@@ -243,7 +267,32 @@ const KIT = {
     render: (v) => kit.button(v.label, { variant: v.variant, wide: v.wide, title: v.title }),
   },
   iconButton: {
-    render: (v) => kit.iconButton(v.glyph, { title: v.title, danger: v.danger }),
+    /*
+     * The glyph list, and what it honestly is.
+     *
+     * `kit.iconButton` sets the button's innerHTML to whatever it is handed, so
+     * a glyph is any markup at all -- a character, an emoji, an inline SVG.
+     * There is no list of "Slack's icons" to offer here and it would be wrong
+     * to invent one: Slack's own icons are classes in Slack's stylesheet, and
+     * the kit exists for a window a mod opens, where that stylesheet does not
+     * reach. So this is a set of characters that need no font beyond the
+     * system's, plus one entry that is a real SVG, because that is the answer
+     * to the question the select provokes.
+     */
+    render: (v) => {
+      const chosen = v.glyph === 'svg' ? GLYPH_SVG : v.glyph;
+      const shown = kit.iconButton(chosen, { title: v.title, danger: v.danger, onClick: () => {} });
+      return [
+        shown,
+        kit.el('span', { class: 'sm-hint' }, [
+          v.glyph === 'svg' ? 'any markup, not just a character' : `kit.iconButton(${JSON.stringify(v.glyph)})`,
+        ]),
+        kit.el('div', { class: 'pg__glyphs' }, GLYPHS.map((glyph) => kit.iconButton(
+          glyph === 'svg' ? GLYPH_SVG : glyph,
+          { title: glyph, onClick: () => {} },
+        ))),
+      ];
+    },
   },
   input: {
     render: (v) => kit.input({ value: v.value, placeholder: v.placeholder }),
@@ -314,7 +363,10 @@ const KIT = {
     },
   },
   code: {
-    render: (v) => kit.code({ value: v.value }).node,
+    // Full width and pre-filled: an editor is judged on how text sits in it, and
+    // an empty box half the stage wide shows neither the wrapping nor the
+    // colouring that is the whole point of the component.
+    render: (v) => kit.code({ value: v.value, rows: Math.max(4, Number(v.rows) || 12) }).node,
   },
 };
 
@@ -1551,10 +1603,6 @@ const IMITATED = {
 /* -- the tools, as previews ----------------------------------------------- */
 
 /** A two-column editor: type on the left, watch the right. */
-function split(input, output) {
-  return kit.el('div', { class: 'api-split' }, [input, output]);
-}
-
 const TOOLS = {
   'i18n-strings': {
     render: (v) => {
@@ -1571,34 +1619,36 @@ const TOOLS = {
     },
   },
   'tools-markdown': {
-    render: (v, { stage }) => {
-      const source = kit.el('textarea', { class: 'api-input', rows: '12', spellcheck: 'false' }, [v.source]);
+    /*
+     * The rendered README and nothing else. It used to carry its own textarea
+     * beside the output, which was a second place to type after the controls
+     * below already were one -- and the two never agreed about which held the
+     * source.
+     */
+    render: (v) => {
       const out = kit.el('div', { class: 'api-output sm-md' });
-      const draw = () => { out.innerHTML = renderMarkdown(source.value); };
-      source.addEventListener('input', draw);
-      draw();
-      return split(source, out);
+      out.innerHTML = renderMarkdown(v.source ?? '');
+      return out;
     },
   },
   'tools-highlight': {
-    render: (v, { stage }) => {
-      const source = kit.el('textarea', { class: 'api-input', rows: '12', spellcheck: 'false' }, [v.source]);
+    render: (v) => {
+      const chosen = v.language || detect(v.source ?? '');
       const code = kit.el('code', { class: 'betterslack-hl' });
-      const guess = kit.el('p', { class: 'sm-hint' }, ['']);
-      const draw = () => {
-        const chosen = v.language || detect(source.value);
-        guess.textContent = v.language
-          ? `forced to ${chosen}`
-          : (chosen ? `detected: ${chosen}` : 'not confident — left alone, which is the point');
-        code.innerHTML = chosen
-          ? highlight(source.value, chosen)
-          : source.value.replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'));
-      };
-      source.addEventListener('input', draw);
-      draw();
-      return [guess, split(source, kit.el('pre', { class: 'api-output' }, [code]))];
+      code.innerHTML = chosen
+        ? highlight(v.source ?? '', chosen)
+        : (v.source ?? '').replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'));
+      return [
+        kit.el('p', { class: 'sm-hint' }, [
+          v.language
+            ? `forced to ${chosen}`
+            : (chosen ? `detected: ${chosen}` : 'not confident — left alone, which is the point'),
+        ]),
+        kit.el('pre', { class: 'api-output' }, [code]),
+      ];
     },
   },
+
   'tools-roles': {
     render: (v) => {
       const palette = derivePalette(parseColour(v.background), parseColour(v.accent));
@@ -1752,6 +1802,10 @@ for (const block of document.querySelectorAll('.api-code')) {
    * running in Slack, and it knows json, css and bash among twenty-one others
    * -- so the guide's manifests and stylesheets are coloured as what they are
    * rather than as JavaScript that happens to parse.
+   *
+   * The build resolves the name a writer typed (```js) to the one the tokeniser
+   * uses (`javascript`) and fails on anything it does not know, so a language
+   * arriving here is one of its grammars.
    */
   const language = block.dataset.lang ?? 'javascript';
   if (code && language in LANGUAGES) {

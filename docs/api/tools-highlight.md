@@ -4,7 +4,7 @@ group: tools
 title: Tools
 signature: highlight(code: string, language: string): string · detect(code: string): string | null
 preview: tools-highlight
-control: source | text | select channel, count(*) as messages from events group by channel;
+control: source | textarea | select channel, count(*) as messages from events group by channel;
 control: language | select |  |  | , javascript, typescript, python, sql, json, css, bash
 ---
 

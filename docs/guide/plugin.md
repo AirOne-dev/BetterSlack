@@ -45,8 +45,10 @@ A plugin is an ES module with one export. `start` is handed the API and may be
 async; anything it registers is undone when the mod is switched off.
 
 ```js
-const ICON = '<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">'
-  + '<circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true">
+  <circle cx="10" cy="10" r="7" fill="none"
+          stroke="currentColor" stroke-width="1.6"/>
+</svg>`;
 
 export default {
   start(api) {
@@ -114,7 +116,8 @@ await api.helpers.toggle({
 });
 
 // Keep a node in a container Slack keeps re-rendering away.
-api.helpers.mount('.p-view_header__actions', 'hello-mark', () => api.dom.h('span', {}, ['·']));
+api.helpers.mount('.p-view_header__actions', 'hello-mark',
+  () => api.dom.h('span', {}, ['·']));
 
 // A shortcut, with a guard that gates the match rather than the handler.
 api.helpers.hotkey('mod+shift+h', () => api.ui.toast('Hello'), { when: () => true });

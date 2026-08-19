@@ -18,6 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 import { readEntries } from './api-doc.mjs';
+import { LANGUAGES } from '../mods/plugins/code-highlight/tokenise.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
@@ -183,6 +184,35 @@ const HIGHLIGHT_CSS = read('mods/plugins/code-highlight/highlight.css');
  * specification standing between a writer and eight files.
  */
 
+/*
+ * What a fence says, and what the tokeniser calls it.
+ *
+ * Writers type ```js and ```yml; Code Highlight's grammars are named
+ * `javascript` and `yaml`. There is no fallback on purpose -- an unknown
+ * language used to mean the block was skipped and rendered as flat grey text,
+ * which looks like a block that has no highlighting rather than like a mistake,
+ * so five JavaScript examples in the guide went out uncoloured and nothing
+ * said so. The build fails now, naming the fence.
+ *
+ * The label above the block keeps what was written -- JS reads better than
+ * JAVASCRIPT -- so the two are separate attributes.
+ */
+const ALIASES = {
+  js: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
+  ts: 'typescript', tsx: 'typescript',
+  sh: 'bash', shell: 'bash', console: 'bash', zsh: 'bash',
+  yml: 'yaml', md: 'markdown', text: 'plain', txt: 'plain',
+};
+
+function languageOf(written) {
+  const name = ALIASES[written] ?? written;
+  if (name !== 'plain' && !(name in LANGUAGES)) {
+    throw new Error(`docs/guide: \`\`\`${written} is not a language the tokeniser knows. `
+      + `Use one of: ${Object.keys(LANGUAGES).join(', ')}`);
+  }
+  return name;
+}
+
 function renderInline(text) {
   return escape(text)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -205,7 +235,9 @@ function renderMarkdown(md) {
       i += 1;
       while (i < lines.length && !/^```\s*$/.test(lines[i])) { body.push(lines[i]); i += 1; }
       i += 1;
-      out.push(`<pre class="api-code" data-lang="${escape(fence[1] || 'javascript')}">`
+      const written = fence[1] || 'js';
+      out.push(`<pre class="api-code" data-lang="${escape(languageOf(written))}"`
+        + ` data-label="${escape(written)}">`
         + `<code>${escape(body.join('\n'))}</code></pre>`);
       continue;
     }

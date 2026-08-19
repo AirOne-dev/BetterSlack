@@ -640,6 +640,20 @@ kbd {
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
 }
 
+/* The code editor is the one kit component whose preview needs the whole
+   stage: the caret has to be seen landing on a line that wraps. */
+.pg__stage .sm-code { width: 100%; }
+
+/* The whole glyph set at a glance, under the one the picker has selected. */
+.pg__glyphs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
 .pg__badge-host { position: relative; display: inline-block; }
 
 /* The guide pages ---------------------------------------------------------- *
@@ -681,7 +695,7 @@ kbd {
   padding-top: 30px;
 }
 .panel--guide .api-code::before {
-  content: attr(data-lang);
+  content: attr(data-label);
   position: absolute;
   top: 10px;
   left: 20px;
@@ -1046,13 +1060,15 @@ body.api-page .footer { display: none; }
   cursor: pointer;
 }
 
-.api-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 .api-input,
 .api-output {
   min-height: 260px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.35);
+  /* Fixed, not `rgba(0, 0, 0, .35)` over whatever theme the stage is wearing:
+     on Cocoa's cream that came out mid-grey with grey text on it. These panes
+     are the site's own, not a Slack surface. */
+  background: #14141c;
   padding: 14px 16px;
   font: 12.5px/1.7 var(--mono);
   color: #d5d5e2;
@@ -1062,7 +1078,18 @@ body.api-page .footer { display: none; }
 .api-input { resize: vertical; }
 .api-input:focus { outline: 2px solid var(--blue); outline-offset: -2px; }
 .api-output { margin: 0; }
-.api-output.sm-md { font-family: var(--sans); font-size: 14.5px; line-height: 1.6; }
+/* The rendered README, which is prose rather than code, and needs the spacing
+   prose has: block elements in an .api-output had none at all. */
+.api-output.sm-md { font-family: var(--sans); font-size: 14.5px; line-height: 1.6; color: #e6e6ef; }
+.api-output.sm-md > * + * { margin-top: 0.85em; }
+.api-output.sm-md h1,
+.api-output.sm-md h2,
+.api-output.sm-md h3 { margin: 1.2em 0 0; font-weight: 700; color: #fff; }
+.api-output.sm-md > :first-child { margin-top: 0; }
+.api-output.sm-md ul,
+.api-output.sm-md ol { padding-left: 1.2em; display: grid; gap: 0.3em; }
+.api-output.sm-md code { padding: 1px 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.08); }
+.api-output.sm-md a { color: var(--blue); }
 .api-output.sm-md h1 { font-size: 21px; }
 .api-output.sm-md h2 { font-size: 18px; }
 .api-output.sm-md h3 { font-size: 16px; }

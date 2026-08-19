@@ -4346,6 +4346,12 @@
         state[spec2.key] = input.checked;
         draw();
       });
+    } else if (spec2.type === "textarea") {
+      input = kit.el("textarea", { class: "api-input", rows: "8", spellcheck: "false" }, [state[spec2.key] ?? ""]);
+      input.addEventListener("input", () => {
+        state[spec2.key] = input.value;
+        draw();
+      });
     } else {
       input = kit.input({ value: state[spec2.key], type: spec2.type === "number" ? "number" : "text" });
       input.addEventListener("input", () => {
@@ -4432,6 +4438,22 @@
     });
     return button;
   }
+  var GLYPHS = [
+    "\u270E",
+    "\u{1F5D1}",
+    "\u22EF",
+    "\u2699",
+    "\u2713",
+    "\u2715",
+    "\uFF0B",
+    "\u21BB",
+    "\u2605",
+    "\u2913",
+    "\u21E7",
+    "\u29C9",
+    "svg"
+  ];
+  var GLYPH_SVG = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 13.5V16h2.5l7.4-7.4-2.5-2.5L4 13.5Zm11.8-6.9a.7.7 0 0 0 0-1L14.4 4.2a.7.7 0 0 0-1 0l-1.2 1.2 2.5 2.5 1.1-1.3Z" fill="currentColor"/></svg>';
   var KIT = {
     el: {
       render: (v) => kit.el(v.tag, { class: v.className }, [v.text])
@@ -4440,7 +4462,34 @@
       render: (v) => kit.button(v.label, { variant: v.variant, wide: v.wide, title: v.title })
     },
     iconButton: {
-      render: (v) => kit.iconButton(v.glyph, { title: v.title, danger: v.danger })
+      /*
+       * The glyph list, and what it honestly is.
+       *
+       * `kit.iconButton` sets the button's innerHTML to whatever it is handed, so
+       * a glyph is any markup at all -- a character, an emoji, an inline SVG.
+       * There is no list of "Slack's icons" to offer here and it would be wrong
+       * to invent one: Slack's own icons are classes in Slack's stylesheet, and
+       * the kit exists for a window a mod opens, where that stylesheet does not
+       * reach. So this is a set of characters that need no font beyond the
+       * system's, plus one entry that is a real SVG, because that is the answer
+       * to the question the select provokes.
+       */
+      render: (v) => {
+        const chosen = v.glyph === "svg" ? GLYPH_SVG : v.glyph;
+        const shown = kit.iconButton(chosen, { title: v.title, danger: v.danger, onClick: () => {
+        } });
+        return [
+          shown,
+          kit.el("span", { class: "sm-hint" }, [
+            v.glyph === "svg" ? "any markup, not just a character" : `kit.iconButton(${JSON.stringify(v.glyph)})`
+          ]),
+          kit.el("div", { class: "pg__glyphs" }, GLYPHS.map((glyph) => kit.iconButton(
+            glyph === "svg" ? GLYPH_SVG : glyph,
+            { title: glyph, onClick: () => {
+            } }
+          )))
+        ];
+      }
     },
     input: {
       render: (v) => kit.input({ value: v.value, placeholder: v.placeholder })
@@ -4515,7 +4564,10 @@
       }
     },
     code: {
-      render: (v) => kit.code({ value: v.value }).node
+      // Full width and pre-filled: an editor is judged on how text sits in it, and
+      // an empty box half the stage wide shows neither the wrapping nor the
+      // colouring that is the whole point of the component.
+      render: (v) => kit.code({ value: v.value, rows: Math.max(4, Number(v.rows) || 12) }).node
     }
   };
   var HELPERS = {
@@ -5616,9 +5668,6 @@ const kit = api.ui.kit(win.document);`)
       ]
     }
   };
-  function split(input, output) {
-    return kit.el("div", { class: "api-split" }, [input, output]);
-  }
   var TOOLS = {
     "i18n-strings": {
       render: (v) => {
@@ -5633,30 +5682,29 @@ const kit = api.ui.kit(win.document);`)
       }
     },
     "tools-markdown": {
-      render: (v, { stage }) => {
-        const source2 = kit.el("textarea", { class: "api-input", rows: "12", spellcheck: "false" }, [v.source]);
+      /*
+       * The rendered README and nothing else. It used to carry its own textarea
+       * beside the output, which was a second place to type after the controls
+       * below already were one -- and the two never agreed about which held the
+       * source.
+       */
+      render: (v) => {
         const out = kit.el("div", { class: "api-output sm-md" });
-        const draw = () => {
-          out.innerHTML = renderMarkdown(source2.value);
-        };
-        source2.addEventListener("input", draw);
-        draw();
-        return split(source2, out);
+        out.innerHTML = renderMarkdown(v.source ?? "");
+        return out;
       }
     },
     "tools-highlight": {
-      render: (v, { stage }) => {
-        const source2 = kit.el("textarea", { class: "api-input", rows: "12", spellcheck: "false" }, [v.source]);
+      render: (v) => {
+        const chosen = v.language || detect(v.source ?? "");
         const code = kit.el("code", { class: "betterslack-hl" });
-        const guess = kit.el("p", { class: "sm-hint" }, [""]);
-        const draw = () => {
-          const chosen = v.language || detect(source2.value);
-          guess.textContent = v.language ? `forced to ${chosen}` : chosen ? `detected: ${chosen}` : "not confident \u2014 left alone, which is the point";
-          code.innerHTML = chosen ? highlight(source2.value, chosen) : source2.value.replace(/[<&]/g, (c) => c === "<" ? "&lt;" : "&amp;");
-        };
-        source2.addEventListener("input", draw);
-        draw();
-        return [guess, split(source2, kit.el("pre", { class: "api-output" }, [code]))];
+        code.innerHTML = chosen ? highlight(v.source ?? "", chosen) : (v.source ?? "").replace(/[<&]/g, (c) => c === "<" ? "&lt;" : "&amp;");
+        return [
+          kit.el("p", { class: "sm-hint" }, [
+            v.language ? `forced to ${chosen}` : chosen ? `detected: ${chosen}` : "not confident \u2014 left alone, which is the point"
+          ]),
+          kit.el("pre", { class: "api-output" }, [code])
+        ];
       }
     },
     "tools-roles": {
