@@ -12,5 +12,5 @@ Fetch a URL and save it to the download folder. The renderer cannot do this for 
 
 ```js
 // The loader fetches it: Slack's CDN serves without CORS headers.
-const { path } = await api.files.save(avatarUrl, 'jean-original.jpg');
+const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');
 ```

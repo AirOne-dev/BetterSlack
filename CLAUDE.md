@@ -139,7 +139,7 @@ enabled mods are untouched -- and switch mods on and off through
 
 ```bash
 pnpm shoot         # site/shots: the panel, a mod's page, Browse, the palette,
-                   # the palette, Discord Dark with its plugins, the builder
+                   # and Discord Dark with its plugins -- five frames
 pnpm shoot --mods  # one frame per mod, filed as mods/<kind>/<id>/screenshot.webp
 pnpm shoot --mods -- --only=motion,devtools   # just those two, when one goes stale
 ```
@@ -435,6 +435,16 @@ wrong one: a reference is read by jumping around it, and a jump that costs a
 page load loses the theme you picked, the arguments you set and your place in
 the list.
 
+**The Pages job installs the dependencies**, and its comment said the opposite
+for a while: it was true when `build-site.mjs` only read the repository and
+wrote one file, and stopped being true the moment the API page arrived, since
+bundling `site/api-previews.js` is esbuild. Every push then failed on
+`Cannot find package 'esbuild'`. Its `paths:` filter had gone stale the same
+way -- it listed `site/**` and `mods/**` only, so a change to `docs/api/`, to
+the preview renderers or to the TypeScript they are checked against did not
+trigger the job at all, and the drift check did not run for the one change it
+exists to catch.
+
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script
 -- nothing fetched from a CDN, so it renders the same whatever else the network
@@ -452,10 +462,28 @@ before the site, which reads it. It regenerates `mods/registry.json` and
 `site/data.js` on the way through, both of which are committed, so a dirty tree
 afterwards means one of them had drifted and the fix is to commit it.
 
-`pnpm test:core` is `node --test tests/` rather than a list of files. It used to
-name all eight in `package.json`, which meant a new test file ran nowhere until
-somebody remembered to add it -- and checking that by hand is not a thing to
-rely on.
+`pnpm test:core` finds its own files rather than being handed a list. It used
+to name all eight in `package.json`, which meant a new test file ran nowhere
+until somebody remembered to add it -- and checking that by hand is not a thing
+to rely on.
+
+It was `node --test tests/` for a while, which is the same idea in one line, and
+**Node 22 took that away**: positional arguments to `--test` became glob
+patterns, so a bare directory is no longer expanded but treated as a file to
+run, and the suite dies with `Cannot find module '…/tests'` before a single test
+starts. Measured, because neither form works on both:
+
+| node | `--test tests/` | `--test "tests/**/*.test.mjs"` |
+| --- | --- | --- |
+| 20.20.2 | ok | fails |
+| 22.21.1 | fails | ok |
+| 24.16.0 | fails | ok |
+| 25.9.0 | fails | ok |
+
+`scripts/test-core.mjs` walks `tests/` and hands Node the files, which works on
+every version and needs no shell glob. The CI pins `node-version: 22`, which
+floats, so this broke on a push that had nothing to do with it. (Node 18 fails
+four of them, and did so before this change too.)
 
 ## Hard constraints, all verified against Slack 4.51 / Electron 43
 
@@ -499,9 +527,10 @@ rely on.
   `none` 29, `under-window` 33, `titlebar` 43. Slack asks for the frostiest of
   them. `api.slack.desktop.setMaterial` is the narrow wrapper: that one method,
   those five names. No mod ships using it today -- the one it was built for was
-  dropped -- but the measurements are why it stays. On a window created opaque it succeeds and does nothing
-  (27.3 before and after), so the preference and its restart are still what make
-  any of it visible. It must be written *before* Slack
+  dropped -- but the measurements are why it stays. On a window created opaque
+  it succeeds and does nothing (27.3 before and after), so the preference and
+  its restart are still what make any of it visible. It must be written *before*
+  Slack
   starts, and re-written at every launch since Slack rewrites that file itself.
   `src/loader/slack-settings.ts` owns the file, keeps one backup of the original
   before its first write, and answers only for the keys in `SLACK_PREFS` --
@@ -833,10 +862,12 @@ to show what *it* is painting. `StyleManager.reattachOrphans` skips a suppressed
 layer, or Slack's next touch of `<head>` puts it straight back.
 
 Laid out like Slack's preferences: a rail of sections, one view at a time, a bar
-of actions along the bottom (`ui.js` holds the primitives, `views/` a file per
-section). A first attempt stacked every tool in one scrolling column and it read
-as a list of controls in the order they were written, which is the thing to
-avoid if this is ever rebuilt again.
+of actions along the bottom (`views/` is a file per section, and the primitives
+come from `api.ui.kit(doc)` + `api.ui.kitCss` -- the builder used to carry its
+own `ui.js` and that is exactly the drift the kit exists to stop). A first
+attempt stacked every tool in one scrolling column and it read as a list of
+controls in the order they were written, which is the thing to avoid if this is
+ever rebuilt again.
 
 **Hovering a colour outlines what it paints**, which is `highlight.js`: the
 stylesheet inverted once into token -> selectors, then queried. Two things that
