@@ -507,27 +507,42 @@ kbd {
 .pg__stage > * { max-width: 100%; }
 .pg__stage, .pg__controls { min-width: 0; }
 
-.pg-knobs {
-  margin-top: 12px;
-  padding: 16px 18px 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.015);
-}
+/*
+ * The knobs, as a list rather than a card.
+ *
+ * They were a bordered box of columns, which cost a frame around something that
+ * needs no framing -- it sits directly under the preview it drives -- and put a
+ * textarea in a 190px track. One control per row, label beside it, input taking
+ * whatever is left: a multi-line default gets the full width, and a page with
+ * four short knobs is still four short rows.
+ */
+.pg-knobs { margin-top: 20px; }
 .pg-knobs__title {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   font: 600 11px/1 var(--sans);
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--muted);
 }
-.pg__controls {
+.pg__controls { display: grid; gap: 10px; }
+.pg__control {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
-  gap: 12px 16px;
+  grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 16px;
+  min-width: 0;
 }
-.pg__control { display: grid; gap: 6px; min-width: 0; }
-.pg__label { font: 500 12px/1 var(--sans); color: var(--muted); }
+.pg__label { font: 500 12.5px/1.4 var(--sans); color: var(--muted); }
+/* A textarea is the exception: a label beside eight rows of CSS floats in the
+   middle of nothing, so it goes above and the field takes the width. */
+.pg__control:has(textarea) { grid-template-columns: minmax(0, 1fr); align-items: start; }
+.pg__control:has(textarea) .pg__label { padding-top: 0; }
+.pg__control > :not(.pg__label):not(.pg__check) { min-width: 0; width: 100%; }
+/* On a phone a 160px label column leaves 170px for the field, so the label
+   goes above it like the textarea's already does. */
+@media (max-width: 620px) {
+  .pg__control { grid-template-columns: minmax(0, 1fr); align-items: start; }
+}
 .pg__check { width: 18px; height: 18px; accent-color: var(--blue); justify-self: start; }
 .pg__watch { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 
