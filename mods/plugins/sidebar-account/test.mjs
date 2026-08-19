@@ -266,3 +266,35 @@ test('re-checks the pills when the window is resized', async () => {
     dom.cleanup();
   }
 });
+
+test('shows your own status, emoji and all', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    web: {
+      selfId: 'U000SELF',
+      users: async (ids) => new Map(ids.map((id) => [id, {
+        id,
+        profile: {
+          display_name: 'Erwan',
+          status_emoji: ':palm_tree:',
+          status_text: 'On holiday',
+        },
+      }])),
+      emoji: async () => new Map([['palm_tree', 'https://emoji.example/palm.png']]),
+    },
+  });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const strip = document.querySelector('.betterslack-me__status');
+    assert.ok(strip, 'the strip has a status line');
+    assert.match(strip.textContent, /On holiday/, 'the sentence someone wrote outranks the presence word');
+    const img = strip.querySelector('.betterslack-status__emoji');
+    assert.ok(img, 'and the emoji beside it');
+    assert.equal(img.getAttribute('src'), 'https://emoji.example/palm.png');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

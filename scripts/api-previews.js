@@ -1118,6 +1118,31 @@ function modRow(mod) {
   return row;
 }
 
+/*
+ * A profile with a status on it, and the workspace emoji that may or may not
+ * know the name in it.
+ *
+ * The custom emoji here is this repository's own picture rather than a Slack
+ * URL: the page fetches nothing from Slack, and a broken image would document
+ * the opposite of what these two entries are about.
+ */
+const STATUS_EMOJI = {
+  palm_tree: 'mark.svg',
+  glitch_crab: 'mark.svg',
+  tada: 'mark.svg',
+};
+
+function statusFixture(v) {
+  const profile = {
+    status_text: v.text ?? '',
+    status_emoji: v.emoji ? `:${v.emoji}:` : '',
+    status_expiration: 0,
+  };
+  const custom = new Map();
+  if (v.known && STATUS_EMOJI[v.emoji]) custom.set(v.emoji, STATUS_EMOJI[v.emoji]);
+  return [profile, custom];
+}
+
 const IMITATED = {
   /* -- Slack's own surface ------------------------------------------------ */
 
@@ -1380,6 +1405,47 @@ const IMITATED = {
           })), null, 2), 'json'),
         stubbed('Without a limit you get Slack’s own default page, which is rarely what a panel wants to draw.'),
       ];
+    },
+  },
+
+  /* -- somebody's status --------------------------------------------------- */
+
+  /*
+   * Both entries draw from the same three sources the runtime does, and the
+   * `known` knob is what makes the third one visible: turn it off and the
+   * workspace no longer has that emoji, so `describeStatus` reports
+   * `imageUrl: null` and `statusNode` draws the sentence alone rather than a
+   * shortcode.
+   */
+  'slack-describestatus': {
+    render: (v) => {
+      const [profile, custom] = statusFixture(v);
+      const status = createSlackApi('demo').describeStatus(profile, custom);
+      return [
+        source(`const custom = await api.slack.web.emoji();\n`
+          + `api.slack.describeStatus(user, custom)\n\n`
+          + JSON.stringify(status, null, 2), 'json'),
+        stubbed(status?.imageUrl
+          ? 'Resolved from the workspace\u2019s own emoji.'
+          : 'Nothing knows that name, so there is no image \u2014 the sentence still draws.'),
+      ];
+    },
+  },
+
+  'slack-statusnode': {
+    render: (v, { stage }) => {
+      const [profile, custom] = statusFixture(v);
+      const slack = createSlackApi('demo');
+      const status = slack.describeStatus(profile, custom);
+      if (!status) return kit.el('span', { class: 'sm-hint' }, ['no status set — nothing to draw']);
+      const row = kit.el('div', { class: 'pg__card' }, [
+        kit.el('span', { class: 'chrome__avatar', 'data-seed': 'U0EXAMPLE1' }),
+        kit.el('div', {}, [
+          kit.el('div', { class: 'chrome__who' }, ['Robin Vasquez']),
+          slack.statusNode(status, profile),
+        ]),
+      ]);
+      return [row, stubbed('The node, its stylesheet and its rules are the shipped ones.')];
     },
   },
 

@@ -328,7 +328,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Une colonne des membres du canal courant à droite du fil, séparée entre en ligne et hors ligne, où cliquer sur quelqu'un ouvre son profil Slack."
       },
-      "version": "1.3.0",
+      "version": "1.4.0",
       "tags": [
         "members",
         "sidebar",
@@ -381,7 +381,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Votre avatar, votre nom et votre disponibilité en bas de la barre latérale, comme Discord et les autres messageries les placent ; un clic ouvre le menu de compte de Slack."
       },
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tags": [
         "sidebar",
         "profile"

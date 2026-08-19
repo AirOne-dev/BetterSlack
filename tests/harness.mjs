@@ -170,6 +170,12 @@ export function createTestApi({
     presence: async () => ({ presence: 'active' }),
     teamInfo: async () => ({ team: { id: 'T0EXAMPLE1' } }),
     dndInfo: async () => ({ dnd_enabled: false }),
+    /*
+     * The workspace's custom emoji, empty unless a test supplies some. Empty is
+     * the honest default: most workspaces have a handful, and a mod that only
+     * works when one is present is a mod that fails on a fresh workspace.
+     */
+    emoji: async () => new Map(),
     ...web,
   };
 
@@ -271,6 +277,61 @@ export function createTestApi({
         return () => {};
       },
       onProfilePane: () => () => {},
+
+      /*
+       * The real status logic, not a stub.
+       *
+       * Two mods draw a status and both go through these, so a test that gets a
+       * different answer here is testing something the client will not do. The
+       * shortcode resolution is the same three-step the runtime does: what
+       * Slack sent with the profile, then the workspace's custom emoji, then
+       * nothing -- there is no page full of drawn emoji to harvest from here.
+       */
+      describeStatus: (who, customEmoji) => {
+        const profile = who && 'profile' in who && who.profile ? who.profile : who;
+        if (!profile) return null;
+        const text = (profile.status_text ?? '').trim();
+        const emoji = (profile.status_emoji ?? '').replace(/^:|:$/g, '').trim() || null;
+        if (!text && !emoji) return null;
+        const sent = (profile.status_emoji_display_info ?? []).find(
+          (entry) => !entry.emoji_name || entry.emoji_name.replace(/^:|:$/g, '') === emoji,
+        );
+        const expiration = Number(profile.status_expiration ?? 0);
+        return {
+          text,
+          emoji,
+          imageUrl: emoji ? (sent?.display_url ?? customEmoji?.get(emoji) ?? null) : null,
+          expiresAt: expiration > 0 ? new Date(expiration * 1000) : null,
+        };
+      },
+      statusNode: (status, profile) => {
+        const node = document.createElement('span');
+        node.className = 'betterslack-status';
+        if (status.emoji) {
+          const unicode = (profile?.status_emoji_display_info ?? []).find((e) => e.unicode)?.unicode;
+          if (status.imageUrl) {
+            const img = document.createElement('img');
+            img.className = 'betterslack-status__emoji';
+            img.src = status.imageUrl;
+            img.alt = status.emoji;
+            node.append(img);
+          } else if (unicode) {
+            const span = document.createElement('span');
+            span.className = 'betterslack-status__emoji betterslack-status__emoji--char';
+            span.textContent = unicode.split('-')
+              .map((point) => String.fromCodePoint(parseInt(point, 16))).join('');
+            node.append(span);
+          }
+        }
+        if (status.text) {
+          const span = document.createElement('span');
+          span.className = 'betterslack-status__text';
+          span.textContent = status.text;
+          node.append(span);
+        }
+        node.title = [status.text, status.emoji ? `:${status.emoji}:` : ''].filter(Boolean).join(' ');
+        return node;
+      },
 
       // The real rule, not a stub: Slack serves avatars as `<base>-<size>`,
       // and anything else is left alone.

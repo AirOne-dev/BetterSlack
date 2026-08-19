@@ -761,6 +761,23 @@ tests fail below it.
   one navigates the window off the client entirely. The way in is Slack's own
   member list — open the details modal and click the row whose avatar URL holds
   the user id (match on the id, not the name beside it).
+- **A status emoji cannot be drawn from its shortcode alone**, and the three
+  things that make it possible were all measured against a live client:
+  `emoji.list` answers with the workspace's **custom** emoji only -- fifteen in
+  the workspace this was measured in, with `coffee` and `tada` absent -- and
+  some of its values are `alias:other-name`, chains that have to be followed.
+  Slack draws every emoji as an `<img>`, standard ones included, from
+  `a.slack-edge.com/production-standard-emoji-assets/16.0/apple-small/<codepoint>@2x.png`
+  -- the **codepoint**, so a name builds no URL. But each of those images
+  carries `data-stringify-emoji`, which *is* the name, so Slack's own DOM is a
+  name-to-image table for the set the workspace actually uses.
+  `api.slack.describeStatus` takes all three in order: what Slack sent with the
+  profile (`status_emoji_display_info`), then `web.emoji()`, then what is on
+  screen. A name none of them knows draws no emoji and keeps its sentence --
+  never the raw `:name:`, which reads as a rendering that failed.
+  `emoji.list` with `include_categories: true` also answers with nine
+  categories of standard **names**, which is a list of what exists and still not
+  a way to draw any of it.
 - **`users.info` takes a comma-separated `users` list** and answers with a
   `users` array. Undocumented, but it is what Slack's own client sends, and it
   turns one request per member into one request. `users.getPresence` has no such

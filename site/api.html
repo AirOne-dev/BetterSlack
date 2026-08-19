@@ -128,7 +128,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">api.helpers</p>
       <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.slack</p>
-      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
+      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.ui</p>
       <ul><li><a href="#ui-confirm">confirm</a></li><li><a href="#ui-kit">kit</a></li><li><a href="#ui-kitcss">kitCss</a></li><li><a href="#ui-menu">menu</a></li><li><a href="#ui-modal">modal</a></li><li><a href="#ui-palette">palette</a></li><li><a href="#ui-toast">toast</a></li><li><a href="#ui-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.dom</p>
@@ -985,6 +985,24 @@ if (api.slack.composer.isEmpty()) api.slack.composer.focus();</code></pre>
 // { element, channelId, ts, permalink, text }</code></pre>
   </div>
 </section>
+<section class="panel" id="p-slack-describestatus" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>describeStatus</code></h1>
+    <p class="api-sig api-sig--big">(who: SlackUser | SlackProfile, customEmoji?: Map&lt;string, string&gt;): SlackStatus | null</p>
+  </header>
+  <div class="panel__body">
+    <p>Somebody's status, ready to draw: the sentence, the emoji name without its colons, an image for that emoji when one could be found, and when it clears. Null when there is no status at all, so a caller can test the result rather than three fields.</p>
+<p>Takes a user or a profile, because callers do not always know which they are holding — <code>users.info</code> gives one and a profile pane read gives the other.</p>
+<p>Drawing the emoji is the hard half, and it takes three sources in order. What Slack sent with the profile (<code>status_emoji_display_info</code>) wins: it is the answer for *this* profile. Then the workspace's custom emoji, which you pass in from <code>api.slack.web.emoji()</code> — held by the caller because it is one request for a whole workspace and a member list redraws constantly. Then anything Slack has already drawn on the page: every emoji Slack renders is an <code>&lt;img&gt;</code> carrying <code>data-stringify-emoji</code>, so its own DOM is a name-to-image table for the set this workspace actually uses.</p>
+<p>A name none of the three knows resolves to <code>imageUrl: null</code>, and the sentence is still there.</p>
+    <div class="api-demo" data-demo="slack-describestatus" data-controls="[{&quot;key&quot;:&quot;text&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;On holiday&quot;,&quot;label&quot;:&quot;status text&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;emoji&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;palm_tree&quot;,&quot;label&quot;:&quot;status emoji&quot;,&quot;options&quot;:[&quot;palm_tree&quot;,&quot;glitch_crab&quot;,&quot;tada&quot;,&quot;no_such_emoji&quot;]},{&quot;key&quot;:&quot;known&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;the workspace knows it&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>const custom = await api.slack.web.emoji();
+const status = api.slack.describeStatus(user, custom);
+if (status) row.append(api.slack.statusNode(status, user.profile));</code></pre>
+  </div>
+</section>
 <section class="panel" id="p-slack-desktop" hidden>
   <header class="panel__head">
     <p class="eyebrow">api.slack</p>
@@ -1147,6 +1165,26 @@ await api.slack.restart();</code></pre>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Opens the conversation, then presses Slack's own start control.
 const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-slack-statusnode" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>statusNode</code></h1>
+    <p class="api-sig api-sig--big">(status: SlackStatus, profile?: SlackProfile): HTMLElement</p>
+  </header>
+  <div class="panel__body">
+    <p>That status as a node, so the two mods that show one draw the same thing. An image when an emoji resolved, the unicode character when Slack sent one, and the sentence beside it.</p>
+<p>Never the raw shortcode. <code>:tada:</code> on screen reads as a rendering that failed, which is also what Slack does with an emoji it cannot draw — the name goes in the element's <code>title</code> instead, so it is still there to be found. The sentence is drawn either way: it is the half carrying the meaning, and an emoji nobody could resolve is no reason to drop it.</p>
+<p>Its stylesheet ships with the runtime rather than with each mod. Two of them show a status, and one that is 15px here and 20px there is exactly the drift this pair exists to stop.</p>
+    <div class="api-demo" data-demo="slack-statusnode" data-controls="[{&quot;key&quot;:&quot;text&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;On holiday&quot;,&quot;label&quot;:&quot;status text&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;emoji&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;palm_tree&quot;,&quot;label&quot;:&quot;status emoji&quot;,&quot;options&quot;:[&quot;palm_tree&quot;,&quot;glitch_crab&quot;,&quot;tada&quot;,&quot;no_such_emoji&quot;]},{&quot;key&quot;:&quot;known&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;the workspace knows it&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>const status = api.slack.describeStatus(user, await api.slack.web.emoji());
+if (status) {
+  const node = api.slack.statusNode(status, user.profile);
+  if (status.expiresAt) node.title += ` (until ${status.expiresAt.toLocaleTimeString()})`;
+  row.append(node);
+}</code></pre>
   </div>
 </section>
 <section class="panel" id="p-slack-useridfrommessage" hidden>

@@ -62,6 +62,7 @@ few keys at the top, prose, and one example.
 - [`composer`](api/slack-composer.md) — The message box. `insertText` types into it as though you had, `insertLink` puts a real hyperlink at the caret, and `focus` puts the caret there in the first place — every insert focuses first, so calling it yourself is only needed when you want the caret and nothing else.
 - [`currentChannelId`](api/slack-currentchannelid.md) — The channel on screen, read out of the URL. Null when what is on screen is not a conversation. Two workspaces can use the same channel id, so compare the team as well when you keep anything per-channel.
 - [`describeMessage`](api/slack-describemessage.md) — Everything about a message that a mod usually wants, read off the element Slack drew: its channel, its timestamp, its permalink and its text.
+- [`describeStatus`](api/slack-describestatus.md) — Somebody's status, ready to draw: the sentence, the emoji name without its colons, an image for that emoji when one could be found, and when it clears. Null when there is no status at all, so a caller can test the result rather than three fields.
 - [`desktop`](api/slack-desktop.md) — Slack's own translucent window, which it ships switched off.
 - [`filesFrom`](api/slack-filesfrom.md) — The files somebody shared, newest first. `limit` caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw.
 - [`hideConversation`](api/slack-hideconversation.md) — Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave.
@@ -73,6 +74,7 @@ few keys at the top, prose, and one example.
 - [`selectors`](api/slack-selectors.md) — The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on `data-qa` attributes rather than class names, which churn with every Slack release.
 - [`setVip`](api/slack-setvip.md) — Add or remove someone from your VIP list, and report the new state.
 - [`startHuddle`](api/slack-starthuddle.md) — Start a huddle with someone: open the conversation, then press Slack's own
+- [`statusNode`](api/slack-statusnode.md) — That status as a node, so the two mods that show one draw the same thing. An image when an emoji resolved, the unicode character when Slack sent one, and the sentence beside it.
 - [`userIdFromMessage`](api/slack-useridfrommessage.md) — The author's id, read off the avatar's URL — Slack writes them as `<team>-<user>-<hash>-<size>`. Null when the message has no avatar to read, which is the case for a consecutive message from the same person.
 - [`vipUsers`](api/slack-vipusers.md) — The workspace's VIP list. VIP is a preference rather than an endpoint: a comma-separated list under `vip_users`.
 - [`web`](api/slack-web.md) — Slack's own web API, as the signed-in user. Reads the session token in one

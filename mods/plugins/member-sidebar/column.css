@@ -171,3 +171,17 @@
   font-size: 12px;
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.55);
 }
+
+/*
+ * The status emoji on a member row.
+ *
+ * Slack's own member list shows the emoji beside the name and keeps the
+ * sentence for the hover, and a 190px row is the reason: a status of any length
+ * would push the name out. The sentence is in the tooltip, with the title.
+ */
+#betterslack-member-column .betterslack-members__status {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 6px;
+  opacity: 0.9;
+}

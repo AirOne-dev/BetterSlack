@@ -96,6 +96,16 @@ export interface WebApi {
    */
   users(userIds: string[]): Promise<Map<string, SlackUser>>;
 
+  /**
+   * The workspace's custom emoji, by name, as image URLs.
+   *
+   * `emoji.list` answers with the custom ones only -- the standard set is not in
+   * it, which is why a shortcode alone is not enough to draw one. Alias chains
+   * (`alias:other-name`) are followed here, so every name in the map points at
+   * an image. Cached per workspace for the same reason the directory is.
+   */
+  emoji(): Promise<Map<string, string>>;
+
   /** users.getPresence. */
   presence(userId: string): Promise<Record<string, unknown>>;
   /** team.info for the current workspace. */
@@ -129,7 +139,23 @@ export interface SlackProfile {
   title?: string;
   phone?: string;
   status_text?: string;
+  /** A shortcode, `:coffee:` -- with the colons. */
   status_emoji?: string;
+  /**
+   * What Slack's own client draws the status emoji from.
+   *
+   * Present when Slack has something better than the name to offer: a
+   * `display_url` for a custom emoji, and the unicode for a standard one. It is
+   * an array because a status emoji can be an alias chain; the first entry is
+   * the one that resolves.
+   */
+  status_emoji_display_info?: Array<{
+    emoji_name?: string;
+    display_url?: string;
+    unicode?: string;
+    display_alias?: string;
+  }>;
+  /** Unix seconds, or 0 for a status with no end. */
   status_expiration?: number;
   image_original?: string;
   image_1024?: string;
@@ -182,6 +208,9 @@ export function createWebApi(): WebApi {
   /** users.info answers for this session, and the workspace they belong to. */
   const directory = new Map<string, SlackUser>();
   let directoryTeam: string | null | undefined;
+  /** emoji.list for this workspace, and the request while it is in flight. */
+  let emojiTeam: string | null | undefined;
+  let emojiMap: Promise<Map<string, string>> | null = null;
   let cached: TeamConfig | null = null;
   const config = () => {
     const team = currentTeamId();
@@ -273,6 +302,44 @@ export function createWebApi(): WebApi {
         if (user) out.set(id, user);
       }
       return out;
+    },
+    emoji() {
+      const team = currentTeamId();
+      if (team !== emojiTeam) {
+        emojiTeam = team;
+        emojiMap = null;
+      }
+      if (emojiMap) return emojiMap;
+
+      emojiMap = (async () => {
+        const out = new Map<string, string>();
+        let raw: Record<string, string> = {};
+        try {
+          const res = await call<{ emoji?: Record<string, string> }>('emoji.list');
+          raw = res.emoji ?? {};
+        } catch {
+          // An emoji nobody can draw is not a reason to fail whatever asked.
+          return out;
+        }
+        /*
+         * `alias:other` points at another name, and the chain can be longer than
+         * one. Followed with a seen-set: a workspace can hold a pair of aliases
+         * that name each other, and a loop here would hang every caller.
+         */
+        for (const name of Object.keys(raw)) {
+          const seen = new Set<string>();
+          let target = name;
+          let value = raw[target];
+          while (typeof value === 'string' && value.startsWith('alias:') && !seen.has(target)) {
+            seen.add(target);
+            target = value.slice('alias:'.length);
+            value = raw[target];
+          }
+          if (typeof value === 'string' && !value.startsWith('alias:')) out.set(name, value);
+        }
+        return out;
+      })();
+      return emojiMap;
     },
     presence: (userId) => call('users.getPresence', { user: userId }),
     teamInfo: () => call('team.info'),

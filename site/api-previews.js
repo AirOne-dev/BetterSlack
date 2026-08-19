@@ -245,6 +245,8 @@
     let cachedTeam;
     const directory = /* @__PURE__ */ new Map();
     let directoryTeam;
+    let emojiTeam;
+    let emojiMap = null;
     let cached = null;
     const config = () => {
       const team = currentTeamId();
@@ -321,6 +323,37 @@
           if (user) out.set(id, user);
         }
         return out;
+      },
+      emoji() {
+        const team = currentTeamId();
+        if (team !== emojiTeam) {
+          emojiTeam = team;
+          emojiMap = null;
+        }
+        if (emojiMap) return emojiMap;
+        emojiMap = (async () => {
+          const out = /* @__PURE__ */ new Map();
+          let raw = {};
+          try {
+            const res = await call("emoji.list");
+            raw = res.emoji ?? {};
+          } catch {
+            return out;
+          }
+          for (const name of Object.keys(raw)) {
+            const seen = /* @__PURE__ */ new Set();
+            let target = name;
+            let value = raw[target];
+            while (typeof value === "string" && value.startsWith("alias:") && !seen.has(target)) {
+              seen.add(target);
+              target = value.slice("alias:".length);
+              value = raw[target];
+            }
+            if (typeof value === "string" && !value.startsWith("alias:")) out.set(name, value);
+          }
+          return out;
+        })();
+        return emojiMap;
       },
       presence: (userId) => call("users.getPresence", { user: userId }),
       teamInfo: () => call("team.info"),
@@ -470,6 +503,59 @@
       cleanup();
       for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
     };
+  }
+  var drawnEmoji = /* @__PURE__ */ new Map();
+  function harvestEmoji() {
+    for (const img of document.querySelectorAll(".c-emoji img[data-stringify-emoji]")) {
+      const name = img.getAttribute("data-stringify-emoji")?.replace(/^:|:$/g, "");
+      if (!name || drawnEmoji.has(name)) continue;
+      if (img.src) drawnEmoji.set(name, img.src);
+    }
+    return drawnEmoji;
+  }
+  function describeStatus(who, customEmoji) {
+    const profile = who && "profile" in who && who.profile ? who.profile : who;
+    if (!profile) return null;
+    const text = (profile.status_text ?? "").trim();
+    const emoji = (profile.status_emoji ?? "").replace(/^:|:$/g, "").trim() || null;
+    if (!text && !emoji) return null;
+    const expiration = Number(profile.status_expiration ?? 0);
+    return {
+      text,
+      emoji,
+      imageUrl: emoji ? imageForEmoji(emoji, profile, customEmoji) : null,
+      // 0 means "no end", which is not the same as the epoch.
+      expiresAt: expiration > 0 ? new Date(expiration * 1e3) : null
+    };
+  }
+  function imageForEmoji(name, profile, customEmoji) {
+    const sent = profile?.status_emoji_display_info?.find(
+      (entry) => !entry.emoji_name || entry.emoji_name.replace(/^:|:$/g, "") === name
+    );
+    if (sent?.display_url) return sent.display_url;
+    return customEmoji?.get(name) ?? harvestEmoji().get(name) ?? null;
+  }
+  function statusNode(status, profile) {
+    const node = h("span", { class: "betterslack-status" });
+    if (status.emoji) {
+      const unicode = profile?.status_emoji_display_info?.find((e) => e.unicode)?.unicode;
+      if (status.imageUrl) {
+        node.append(h("img", {
+          class: "betterslack-status__emoji",
+          src: status.imageUrl,
+          alt: status.emoji,
+          loading: "lazy"
+        }));
+      } else if (unicode) {
+        node.append(h("span", { class: "betterslack-status__emoji betterslack-status__emoji--char" }, [
+          // Slack sends it as codepoints joined by dashes: "1f1eb-1f1f7".
+          unicode.split("-").map((point) => String.fromCodePoint(parseInt(point, 16))).join("")
+        ]));
+      }
+    }
+    if (status.text) node.append(h("span", { class: "betterslack-status__text" }, [status.text]));
+    node.title = [status.text, status.emoji ? `:${status.emoji}:` : ""].filter(Boolean).join(" ");
+    return node;
   }
   var PROFILE_PANE = '[data-qa="member_profile_pane"]';
   var PROFILE_AVATAR = ".p-r_member_profile__avatar__img";
@@ -674,6 +760,8 @@
       },
       describeMessage,
       composer,
+      describeStatus,
+      statusNode,
       avatarUrl: (url, size) => typeof url === "string" && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
       userIdFromMessage: (message) => userIdFromAvatarUrl(
         message.element.querySelector(".c-message_kit__avatar img, .c-avatar img")?.src
@@ -1899,6 +1987,36 @@
 .p-view_header__actions .betterslack-toolbar-button {
   width: 28px;
   height: 28px;
+}
+
+/*
+ * Somebody's status, wherever a mod draws one.
+ *
+ * The node comes from api.slack.statusNode, so its look belongs here rather
+ * than in each mod that shows one -- two of them do, and a status that is 16px
+ * in one and 20px in the other is the drift this API exists to stop. Sized
+ * against Slack's own inline emoji, which is 20px in a message and smaller in
+ * a sidebar row.
+ */
+.betterslack-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.betterslack-status__emoji {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  vertical-align: -2px;
+}
+.betterslack-status__emoji--char { font-size: 14px; line-height: 15px; }
+.betterslack-status__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Slack's unread badge, on our own button: the same pill, the same red, the
@@ -5203,6 +5321,21 @@
     row.append(mod.installed === false ? kit.button("Install", { variant: "primary" }) : toggle);
     return row;
   }
+  var STATUS_EMOJI = {
+    palm_tree: "mark.svg",
+    glitch_crab: "mark.svg",
+    tada: "mark.svg"
+  };
+  function statusFixture(v) {
+    const profile = {
+      status_text: v.text ?? "",
+      status_emoji: v.emoji ? `:${v.emoji}:` : "",
+      status_expiration: 0
+    };
+    const custom = /* @__PURE__ */ new Map();
+    if (v.known && STATUS_EMOJI[v.emoji]) custom.set(v.emoji, STATUS_EMOJI[v.emoji]);
+    return [profile, custom];
+  }
   var IMITATED = {
     /* -- Slack's own surface ------------------------------------------------ */
     "slack-web": {
@@ -5452,6 +5585,43 @@ api.slack.vipUsers()
           })), null, 2), "json"),
           stubbed("Without a limit you get Slack\u2019s own default page, which is rarely what a panel wants to draw.")
         ];
+      }
+    },
+    /* -- somebody's status --------------------------------------------------- */
+    /*
+     * Both entries draw from the same three sources the runtime does, and the
+     * `known` knob is what makes the third one visible: turn it off and the
+     * workspace no longer has that emoji, so `describeStatus` reports
+     * `imageUrl: null` and `statusNode` draws the sentence alone rather than a
+     * shortcode.
+     */
+    "slack-describestatus": {
+      render: (v) => {
+        const [profile, custom] = statusFixture(v);
+        const status = createSlackApi("demo").describeStatus(profile, custom);
+        return [
+          source(`const custom = await api.slack.web.emoji();
+api.slack.describeStatus(user, custom)
+
+` + JSON.stringify(status, null, 2), "json"),
+          stubbed(status?.imageUrl ? "Resolved from the workspace\u2019s own emoji." : "Nothing knows that name, so there is no image \u2014 the sentence still draws.")
+        ];
+      }
+    },
+    "slack-statusnode": {
+      render: (v, { stage }) => {
+        const [profile, custom] = statusFixture(v);
+        const slack = createSlackApi("demo");
+        const status = slack.describeStatus(profile, custom);
+        if (!status) return kit.el("span", { class: "sm-hint" }, ["no status set \u2014 nothing to draw"]);
+        const row = kit.el("div", { class: "pg__card" }, [
+          kit.el("span", { class: "chrome__avatar", "data-seed": "U0EXAMPLE1" }),
+          kit.el("div", {}, [
+            kit.el("div", { class: "chrome__who" }, ["Robin Vasquez"]),
+            slack.statusNode(status, profile)
+          ])
+        ]);
+        return [row, stubbed("The node, its stylesheet and its rules are the shipped ones.")];
       }
     },
     /* -- the loader's side -------------------------------------------------- */

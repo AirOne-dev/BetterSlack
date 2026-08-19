@@ -92,6 +92,22 @@ export default {
 
     /** Latest availability per user id, as api.slack.web reports it. */
     const presence = new Map();
+    /*
+     * The workspace's custom emoji, for the status shortcodes.
+     *
+     * Held rather than awaited per row: it is one request for the whole
+     * workspace, and a member column redraws on every channel change. Null
+     * until it answers -- a status still draws then, from what Slack sent with
+     * the profile or from what it has already put on screen.
+     */
+    let customEmoji = null;
+    const loadEmoji = () => {
+      void api.slack.web
+        .emoji()
+        .then((map) => { customEmoji = map; })
+        .catch(() => { customEmoji = null; });
+    };
+    loadEmoji();
     /** Bumped on every render so a slow response cannot paint over a newer one. */
     let generation = 0;
     /** Stops the presence poll of the channel being left. */
@@ -290,11 +306,27 @@ export default {
       if (secondLine) {
         identity.append(api.dom.h('div', { class: 'betterslack-profile__line' }, [secondLine]));
       }
-      // status_emoji is a shortcode like `:tada:`, and a workspace's custom
-      // ones have no unicode to fall back on, so printing it raw is worse than
-      // leaving it out. The text is the part that carries meaning.
-      if (profile.status_text) {
-        identity.append(api.dom.h('div', { class: 'betterslack-profile__line' }, [profile.status_text]));
+      /*
+       * The status, emoji and all.
+       *
+       * `status_emoji` is a shortcode like `:tada:` and a workspace's custom
+       * ones have no unicode behind them, so the runtime resolves it to an
+       * image: what Slack sent with the profile, then the workspace's custom
+       * emoji, then anything Slack has already drawn on this page.
+       */
+      const status = api.slack.describeStatus(profile, customEmoji);
+      if (status) {
+        const line = api.dom.h('div', { class: 'betterslack-profile__line' }, [
+          api.slack.statusNode(status, profile),
+        ]);
+        if (status.expiresAt) {
+          line.append(api.dom.h('span', { class: 'betterslack-profile__until' }, [
+            ' · ' + t('statusUntil', { time: status.expiresAt.toLocaleTimeString(api.i18n.locale, {
+              hour: '2-digit', minute: '2-digit',
+            }) }),
+          ]));
+        }
+        identity.append(line);
       }
 
       const clock = localTime(user.tz_offset);
@@ -489,6 +521,20 @@ export default {
         api.dom.h('span', { class: 'betterslack-members__figure' }, [avatar, dot]),
         api.dom.h('span', { class: 'betterslack-members__name' }, [name]),
       ]);
+
+      /*
+       * The status emoji beside the name, which is what Slack's own member list
+       * shows -- the sentence is too long for a row this narrow and goes in the
+       * tooltip instead.
+       */
+      const status = api.slack.describeStatus(user, customEmoji);
+      // Only when there is a picture: an emoji nothing resolved draws nothing,
+      // and an empty node would still take the row's spare width.
+      if (status?.imageUrl) {
+        const node = api.slack.statusNode({ ...status, text: '' }, user.profile);
+        node.classList.add('betterslack-members__status');
+        button.append(node);
+      }
       button.dataset.userId = user.id;
       button.addEventListener('click', () => void openProfileDialog(user.id));
 
@@ -496,7 +542,10 @@ export default {
       // would show as well as this, and half a second later.
       // Trimmed before the truthiness test: a profile field holding a single
       // space is truthy, and would render a tooltip subtitle made of nothing.
-      const subtitle = (user.profile?.title || user.profile?.status_text || '').trim() || undefined;
+      const subtitle = [status?.text, user.profile?.title]
+        .map((part) => (part ?? '').trim())
+        .filter(Boolean)
+        .join(' · ') || undefined;
       api.helpers.tooltip(button, name, subtitle);
       return button;
     };
@@ -596,6 +645,10 @@ export default {
         seenTeam = team;
         presence.clear();
         profiles.clear();
+        // A different workspace has different custom emoji, and a status drawn
+        // with the last one's is a picture from somewhere the user has left.
+        customEmoji = null;
+        loadEmoji();
         loadVips();
         // Force the redraw: two workspaces can have the same channel id in the
         // URL, and then nothing below would notice anything had changed.

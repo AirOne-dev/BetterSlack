@@ -1000,6 +1000,36 @@ export const LAUNCHER_CSS = `
   height: 28px;
 }
 
+/*
+ * Somebody's status, wherever a mod draws one.
+ *
+ * The node comes from api.slack.statusNode, so its look belongs here rather
+ * than in each mod that shows one -- two of them do, and a status that is 16px
+ * in one and 20px in the other is the drift this API exists to stop. Sized
+ * against Slack's own inline emoji, which is 20px in a message and smaller in
+ * a sidebar row.
+ */
+.betterslack-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.betterslack-status__emoji {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  vertical-align: -2px;
+}
+.betterslack-status__emoji--char { font-size: 14px; line-height: 15px; }
+.betterslack-status__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Slack's unread badge, on our own button: the same pill, the same red, the
  * same place. Anything else in that strip would read as a Slack control that
  * had gone wrong. */

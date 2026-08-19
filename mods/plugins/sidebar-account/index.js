@@ -280,8 +280,12 @@ export default {
        * but a DND window changes rarely, so it is asked for slowly.
        */
       let dnd = false;
-      /** A status someone set for themselves, which outranks the presence word. */
-      let customStatus = '';
+      /**
+       * The status someone set for themselves, which outranks the presence
+       * word. A node rather than a string: Slack shows the emoji beside the
+       * sentence, and a custom one is an image with no text to fall back on.
+       */
+      let customStatus = null;
       /** True once either source has actually answered about availability. */
       let resolved = false;
       // waitFor resolves whenever Slack gets round to drawing the rail, which
@@ -317,7 +321,14 @@ export default {
         const word = dnd
           ? t('dnd')
           : dot.classList.contains('betterslack-me__dot--active') ? t('available') : t('away');
-        const next = customStatus || (resolved ? word : '');
+        if (customStatus) {
+          // Replaced rather than appended: paintDot runs on every rail
+          // mutation, and appending would stack a status per keystroke of
+          // Slack's own re-rendering.
+          if (status.firstChild !== customStatus) status.replaceChildren(customStatus);
+          return;
+        }
+        const next = resolved ? word : '';
         if (status.textContent !== next) status.textContent = next;
       };
 
@@ -359,9 +370,22 @@ export default {
             const profile = user?.profile ?? {};
             name.textContent =
               profile.display_name || profile.real_name || user?.real_name || user?.name || '';
-            // Slack shows the emoji beside it; the shortcode would read as
-            // ":coffee:", so only the text is taken.
-            customStatus = profile.status_text ?? '';
+            /*
+             * The whole status, emoji included.
+             *
+             * The emoji is a shortcode -- `:coffee:` -- and a workspace's custom
+             * ones have no unicode behind them, so the runtime resolves it: what
+             * Slack sent with the profile first, then the workspace's custom
+             * emoji, then anything Slack has already drawn on screen.
+             */
+            void api.slack.web
+              .emoji()
+              .catch(() => null)
+              .then((custom) => {
+                const described = api.slack.describeStatus(profile, custom);
+                customStatus = described ? api.slack.statusNode(described, profile) : null;
+                paintDot();
+              });
             paintDot();
           })
           .catch((err) => {

@@ -362,6 +362,64 @@ test('never prints a raw emoji shortcode', async () => {
   }
 });
 
+test('draws a custom status emoji as the image the workspace has for it', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  stub.web.userInfo = async (id) => ({
+    id,
+    profile: { display_name: 'Zoe', status_emoji: ':glitch_crab:', status_text: 'On holiday' },
+  });
+  // The workspace's own emoji, which is the only place a custom one can come
+  // from: emoji.list has no standard names in it and a shortcode alone builds
+  // no URL.
+  stub.web.emoji = async () => new Map([['glitch_crab', 'https://emoji.slack-edge.com/T1/glitch_crab/db04.png']]);
+  const { api, recorded } = createApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.betterslack-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const img = recorded.modals[0].body.querySelector('.betterslack-status__emoji');
+    assert.ok(img, 'the status emoji is drawn');
+    assert.equal(img.getAttribute('src'), 'https://emoji.slack-edge.com/T1/glitch_crab/db04.png');
+    assert.match(recorded.modals[0].body.textContent, /On holiday/);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('prefers what Slack sent with the profile over the workspace map', async () => {
+  const dom = installDom();
+  const stub = web({ members: ['U1'] });
+  stub.web.userInfo = async (id) => ({
+    id,
+    profile: {
+      display_name: 'Zoe',
+      status_emoji: ':tada:',
+      status_text: 'Shipping',
+      // What Slack's own client draws from, and it wins: it is the answer for
+      // this profile rather than a lookup that might be a different workspace's.
+      status_emoji_display_info: [{ emoji_name: 'tada', display_url: 'https://a.slack-edge.com/tada.png' }],
+    },
+  });
+  stub.web.emoji = async () => new Map([['tada', 'https://wrong.example/tada.png']]);
+  const { api, recorded } = createApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    document.querySelector('.betterslack-members__row').click();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const img = recorded.modals[0].body.querySelector('.betterslack-status__emoji');
+    assert.equal(img.getAttribute('src'), 'https://a.slack-edge.com/tada.png');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
 test('the copy actions need nothing from Slack', async () => {
   const dom = installDom();
   const stub = web({ members: ['U1'] });

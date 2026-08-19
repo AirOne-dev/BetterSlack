@@ -9,7 +9,7 @@
 import type { Cleanup } from './dom.js';
 import { h, keepMounted, onEach, waitFor } from './dom.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
-import { createWebApi, currentTeamId, userIdFromAvatarUrl, type WebApi } from './web-api.js';
+import { createWebApi, currentTeamId, userIdFromAvatarUrl, type SlackProfile, type WebApi } from './web-api.js';
 
 /** Hover toolbar that appears over a message. */
 const ACTIONS_GROUP = '[data-qa="message-actions"]';
@@ -202,6 +202,132 @@ export function addMessageAction(pluginId: string, action: MessageAction): Clean
     cleanup();
     for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
   };
+}
+
+/* -- somebody's status ----------------------------------------------------- *
+ *
+ * A Slack status is a shortcode and a sentence -- `:coffee:` and "back at 3" --
+ * and drawing the first is the hard half. Measured against a live client:
+ *
+ * - `emoji.list` answers with the workspace's *custom* emoji only. Fifteen of
+ *   them here; `coffee` and `tada` are not in it.
+ * - Slack draws every emoji as an `<img>`, standard ones included, from
+ *   `a.slack-edge.com/production-standard-emoji-assets/16.0/apple-small/
+ *   <codepoint>@2x.png`. The codepoint, not the name -- so a shortcode alone
+ *   does not build that URL.
+ * - Each of those images carries `data-stringify-emoji`, which is the name. So
+ *   Slack's own DOM is a name-to-image table for everything it has drawn, and
+ *   the statuses on screen are drawn from the same small set of emoji the
+ *   workspace actually uses.
+ *
+ * Hence three sources, in order: what Slack sent with the profile, the custom
+ * map, and what Slack has already drawn. A name none of them knows keeps its
+ * colons and is shown as text, which is what Slack does for an emoji it cannot
+ * resolve either.
+ */
+
+export interface SlackStatus {
+  /** The sentence, without the emoji. Empty when there is only an emoji. */
+  text: string;
+  /** The shortcode without its colons, or null when there is no emoji. */
+  emoji: string | null;
+  /** An image for that emoji, when one could be resolved. */
+  imageUrl: string | null;
+  /** When it clears, or null for a status with no end. */
+  expiresAt: Date | null;
+}
+
+/** Names Slack has drawn in this page, to the image it drew them with. */
+const drawnEmoji = new Map<string, string>();
+
+/**
+ * Read Slack's own emoji images for their names.
+ *
+ * Cheap, and worth redoing: it is a `querySelectorAll` over what is on screen,
+ * and what is on screen changes. The map only grows.
+ */
+export function harvestEmoji(): Map<string, string> {
+  for (const img of document.querySelectorAll<HTMLImageElement>('.c-emoji img[data-stringify-emoji]')) {
+    const name = img.getAttribute('data-stringify-emoji')?.replace(/^:|:$/g, '');
+    if (!name || drawnEmoji.has(name)) continue;
+    // The small size is the one Slack uses inline, which is the size a status
+    // wants; a large one scaled down is a bigger request for a worse picture.
+    if (img.src) drawnEmoji.set(name, img.src);
+  }
+  return drawnEmoji;
+}
+
+/**
+ * What somebody's status is, ready to draw.
+ *
+ * Takes a user or a profile so callers do not have to remember which shape they
+ * are holding: `users.info` gives one, a profile pane read gives the other.
+ */
+export function describeStatus(
+  who: { profile?: SlackProfile } | SlackProfile | null | undefined,
+  customEmoji?: Map<string, string> | null,
+): SlackStatus | null {
+  const profile = (who && 'profile' in who && who.profile ? who.profile : who) as SlackProfile | null;
+  if (!profile) return null;
+
+  const text = (profile.status_text ?? '').trim();
+  const emoji = (profile.status_emoji ?? '').replace(/^:|:$/g, '').trim() || null;
+  if (!text && !emoji) return null;
+
+  const expiration = Number(profile.status_expiration ?? 0);
+
+  return {
+    text,
+    emoji,
+    imageUrl: emoji ? imageForEmoji(emoji, profile, customEmoji) : null,
+    // 0 means "no end", which is not the same as the epoch.
+    expiresAt: expiration > 0 ? new Date(expiration * 1000) : null,
+  };
+}
+
+function imageForEmoji(
+  name: string,
+  profile: SlackProfile | null,
+  customEmoji?: Map<string, string> | null,
+): string | null {
+  const sent = profile?.status_emoji_display_info?.find(
+    (entry) => !entry.emoji_name || entry.emoji_name.replace(/^:|:$/g, '') === name,
+  );
+  if (sent?.display_url) return sent.display_url;
+  return customEmoji?.get(name) ?? harvestEmoji().get(name) ?? null;
+}
+
+/**
+ * The status as a node, since both mods that show one draw it the same way.
+ *
+ * An image when one resolved, the unicode character when Slack sent one, and
+ * nothing when neither. Never the raw shortcode: `:tada:` on screen reads as a
+ * rendering that failed, which is also what Slack does with an emoji it cannot
+ * draw. The name goes in the title instead, so it is still there to be found,
+ * and the sentence beside it is drawn either way -- that is the half carrying
+ * the meaning.
+ */
+export function statusNode(status: SlackStatus, profile?: SlackProfile | null): HTMLElement {
+  const node = h('span', { class: 'betterslack-status' });
+  if (status.emoji) {
+    const unicode = profile?.status_emoji_display_info?.find((e) => e.unicode)?.unicode;
+    if (status.imageUrl) {
+      node.append(h('img', {
+        class: 'betterslack-status__emoji',
+        src: status.imageUrl,
+        alt: status.emoji,
+        loading: 'lazy',
+      }));
+    } else if (unicode) {
+      node.append(h('span', { class: 'betterslack-status__emoji betterslack-status__emoji--char' }, [
+        // Slack sends it as codepoints joined by dashes: "1f1eb-1f1f7".
+        unicode.split('-').map((point) => String.fromCodePoint(parseInt(point, 16))).join(''),
+      ]));
+    }
+  }
+  if (status.text) node.append(h('span', { class: 'betterslack-status__text' }, [status.text]));
+  node.title = [status.text, status.emoji ? `:${status.emoji}:` : ''].filter(Boolean).join(' ');
+  return node;
 }
 
 /** The member profile flexpane, and the avatar that identifies whose it is. */
@@ -495,6 +621,16 @@ export interface SlackApi {
   describeMessage(element: HTMLElement): MessageRef;
   /** The message composer. */
   composer: ComposerApi;
+  /**
+   * Somebody's status, ready to draw: the sentence, the emoji name, an image
+   * for it when one resolves, and when it clears.
+   */
+  describeStatus(
+    who: { profile?: SlackProfile } | SlackProfile | null | undefined,
+    customEmoji?: Map<string, string> | null,
+  ): SlackStatus | null;
+  /** That status as a node, so two mods showing one draw the same thing. */
+  statusNode(status: SlackStatus, profile?: SlackProfile | null): HTMLElement;
   /** The channel currently open, read from the client URL. */
   currentChannelId(): string | null;
   /** The author of a message, read from their avatar URL. */
@@ -689,6 +825,8 @@ export function createSlackApi(pluginId: string): SlackApi {
     },
     describeMessage,
     composer,
+    describeStatus,
+    statusNode,
     avatarUrl: (url, size) =>
       typeof url === 'string' && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
     userIdFromMessage: (message) =>
