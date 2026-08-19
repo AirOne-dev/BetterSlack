@@ -5,7 +5,7 @@ title: api.slack
 signature: (userId: string): void
 ---
 
-Show someone's profile in Slack, through the same deep-link scheme.
+Open somebody's profile, through Slack's own deep link — same document, no reload. Not every id has one: an app, or a conversation with yourself, gives a pane that never appears.
 
 ```js
 api.slack.openUserProfile('U0EXAMPLE1');

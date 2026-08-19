@@ -9,7 +9,7 @@ control: variant | select | success |  | info, success, warning, error
 control: action | text | Undo | action label
 ---
 
-Transient message at the bottom of the window.
+A short confirmation in the corner, with an optional action. Toasts live in a shadow root rather than the light DOM: Slack has no toast to borrow from, and an unreadable error message is worse than an off-brand one.
 
 ```js
 api.ui.toast('Theme saved', {

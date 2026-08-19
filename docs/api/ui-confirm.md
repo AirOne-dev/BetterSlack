@@ -9,7 +9,7 @@ control: body | text | Its files go with it.
 control: danger | boolean | true
 ---
 
-Yes/no dialog; resolves false if dismissed.
+A yes/no dialog that resolves to a boolean, so a destructive action reads as a question in the code rather than as a pair of callbacks.
 
 ```js
 const sure = await api.ui.confirm({

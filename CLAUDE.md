@@ -317,7 +317,10 @@ kit.button('Save', { variant: 'primary', onClick: () => save() });
 ```
 ```
 
-- The file name is the slug: `<group>-<name>`, lowercased.
+- The file name is the slug: `<group>-<name>`, lowercased. `group: tools` is
+  the one that is not on `PluginApi` -- the pieces a mod *imports* rather than
+  receives, like the readme renderer and the tokeniser -- and is skipped by the
+  cross-check rather than called an orphan.
 - `name`, `group`, `title` and `signature` are required. So are one paragraph of
   prose and one fenced example -- the parser refuses a file without either,
   because a reference that shows an example for two thirds of what it lists
@@ -331,6 +334,12 @@ kit.button('Save', { variant: 'primary', onClick: () => save() });
 - Deliberately not YAML. Five keys and a repeated line do not need a parser with
   a specification, and a dependency that can only be wrong about indentation is
   a poor trade for a file a person writes by hand.
+
+**A `preview:` must name a renderer, and a renderer must be named.** Both halves
+are checked, because both have failed: a preview naming nothing leaves an empty
+box that reads as a demo which broke, and a renderer nobody names is a demo that
+was written and then quietly lost -- which is what happened to three of the
+helpers the first time this folder was generated.
 
 **Adding a method to the API means adding its file.** The build cross-checks the
 folder against the TypeScript interfaces -- `PluginApi`, `SlackApi`, `Helpers`,

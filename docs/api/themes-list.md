@@ -3,9 +3,10 @@ name: list
 group: themes
 title: api.themes
 signature: (): Array<{ id: string; name: string; description: string; enabled: boolean }>
+preview: themes-list
 ---
 
-The themes the user has, with whether each is on.
+The themes the user has, with whether each is on, for a tool that builds on top of them.
 
 ```js
 for (const theme of api.themes.list()) {

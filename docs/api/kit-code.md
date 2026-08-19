@@ -6,7 +6,7 @@ signature: (options?: CodeEditorOptions): CodeEditor
 preview: kit-code
 ---
 
-A CSS editor that colours what you type.
+A CSS editor that colours what you type: a highlighted `<pre>` under a transparent `<textarea>`. Both have to agree on every metric or the caret drifts from the text, which is why their stylesheet lives beside the tokeniser rather than in each caller.
 
 ```js
 const editor = kit.code({

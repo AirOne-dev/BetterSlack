@@ -5,7 +5,7 @@ title: api.slack
 signature: (channelId: string): Promise<void>
 ---
 
-Remove a conversation from the sidebar. The history is untouched.
+Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave.
 
 ```js
 // Removes it from the sidebar. The history is untouched.

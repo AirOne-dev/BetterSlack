@@ -7,7 +7,7 @@ preview: helpers-badge
 control: value | number | 3
 ---
 
-A small count/dot badge pinned to any element, kept in sync by a getter.
+A small count or dot pinned to any element, kept in sync by a getter rather than by you remembering to redraw it. Return null from the getter and the badge goes away.
 
 ```js
 let unread = 0;

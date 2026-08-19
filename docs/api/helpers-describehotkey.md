@@ -3,9 +3,11 @@ name: describeHotkey
 group: helpers
 title: api.helpers
 signature: (combo: string): string
+preview: helpers-describehotkey
+control: combo | text | mod+shift+f
 ---
 
-Human-readable form of a combo, for tooltips: ⌘⇧F or Ctrl+Shift+F.
+A combo as a person would read it: `mod` becomes ⌘ on a Mac and Ctrl elsewhere, and the modifiers come out in the order that platform writes them. For a tooltip or a menu subtitle.
 
 ```js
 api.helpers.describeHotkey('mod+shift+k');

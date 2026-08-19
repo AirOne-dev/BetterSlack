@@ -8,7 +8,7 @@ control: title | text | More details
 control: rows | text | User ID: U04KY0Z61, Time zone: Europe/Paris
 ---
 
-A section with Slack's own header styling, for panes.
+A titled group of rows in Slack's profile style, for adding a block of detail to a pane Slack drew.
 
 ```js
 pane.append(api.helpers.section('More details', [

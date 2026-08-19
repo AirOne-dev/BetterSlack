@@ -5,7 +5,7 @@ title: api.assets
 signature: (path: string): string
 ---
 
-One file's contents. Throws if the folder has no such file.
+One of the mod's own files, as text. This is what lets a plugin keep its stylesheet in a real `.css` file, with an editor that highlights it, instead of a template literal.
 
 ```js
 api.css(api.assets.text('panel.css'));

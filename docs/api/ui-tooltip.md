@@ -3,9 +3,13 @@ name: tooltip
 group: ui
 title: api.ui
 signature: (element: HTMLElement, options: TooltipOptions): Cleanup
+preview: ui-tooltip
+control: title | text | Channel notes
+control: subtitle | text | ⌘⇧N
+control: placement | select | right |  | right, left, top, bottom
 ---
 
-Slack-style tooltip on any element you built yourself.
+The lower-level tooltip, when you need to say where it goes. `helpers.tooltip` is the two-argument form for the common case.
 
 ```js
 api.ui.tooltip(button, {

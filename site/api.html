@@ -112,7 +112,9 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
     <label class="side__search">
       <input type="search" id="side-filter" placeholder="Filter…" aria-label="Filter the list">
     </label>
-    <nav><ul class="side__list"><li class="side__group"><p class="side__title">Component kit</p>
+    <nav><ul class="side__list"><li class="side__group"><p class="side__title">Tools</p>
+      <ul><li><a href="#tools-highlight">highlight · detect</a></li><li><a href="#tools-markdown">renderMarkdown</a></li><li><a href="#tools-roles">derivePalette</a></li></ul></li>
+<li class="side__group"><p class="side__title">Component kit</p>
       <ul><li><a href="#kit-button">button</a></li><li><a href="#kit-card">card</a></li><li><a href="#kit-checker">CHECKER</a></li><li><a href="#kit-code">code</a></li><li><a href="#kit-confirm">confirm</a></li><li><a href="#kit-copytext">copyText</a></li><li><a href="#kit-el">el</a></li><li><a href="#kit-emptystate">emptyState</a></li><li><a href="#kit-field">field</a></li><li><a href="#kit-hoverable">hoverable</a></li><li><a href="#kit-iconbutton">iconButton</a></li><li><a href="#kit-input">input</a></li><li><a href="#kit-popover">popover</a></li><li><a href="#kit-segmented">segmented</a></li><li><a href="#kit-select">select</a></li><li><a href="#kit-swatch">swatch</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.helpers</p>
       <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
@@ -141,7 +143,62 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">On the api object</p>
       <ul><li><a href="#plugin-css">css</a></li><li><a href="#plugin-id">id</a></li><li><a href="#plugin-manifest">manifest</a></li><li><a href="#plugin-ondispose">onDispose</a></li><li><a href="#plugin-savetheme">saveTheme</a></li><li><a href="#plugin-version">version</a></li></ul></li></ul></nav>
   </aside>
-  <div class="stack" data-first="kit-button"><div class="stack__inner"><section class="panel" id="p-kit-button" hidden>
+  <div class="stack" data-first="tools-highlight"><div class="stack__inner"><section class="panel" id="p-tools-highlight" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Tools</p>
+    <h1><code>highlight · detect</code></h1>
+    <p class="api-sig api-sig--big">highlight(code: string, language: string): string · detect(code: string): string | null</p>
+  </header>
+  <div class="panel__body">
+    <p>Code Highlight's two halves. Slack sends a code block as plain grey text with nothing saying what is in it, so the language is worked out from the code itself — and <code>detect</code> answers null when it is not confident, which leaves the block alone rather than colouring it as the wrong language.</p>
+<p>The lexer is written by hand: Slack's content policy forbids <code>eval</code>, so no off-the-shelf highlighter can run in the page.</p>
+    <div class="api-demo" data-demo="tools-highlight" data-controls="[{&quot;key&quot;:&quot;source&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;select channel, count(*) as messages from events group by channel;&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;language&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:[&quot;javascript&quot;,&quot;typescript&quot;,&quot;python&quot;,&quot;sql&quot;,&quot;json&quot;,&quot;css&quot;,&quot;bash&quot;]}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>import { highlight } from './tokenise.js';
+import { detect } from './detect.js';
+
+const language = detect(block.textContent);
+if (language) block.innerHTML = highlight(block.textContent, language);</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-tools-markdown" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Tools</p>
+    <h1><code>renderMarkdown</code></h1>
+    <p class="api-sig api-sig--big">(source: string, options?: MarkdownOptions): string</p>
+  </header>
+  <div class="panel__body">
+    <p>What the panel runs on a mod's README, and the reason a readme can be rendered at all: it escapes first and drops a <code>javascript:</code> URL, so nothing in a mod's markdown can execute.</p>
+<p>Pictures are resolved through the mod's own folder and nothing else is fetched.</p>
+    <div class="api-demo" data-demo="tools-markdown" data-controls="[{&quot;key&quot;:&quot;source&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;# Midnight\\n\\nA deeper, cooler dark with **design tokens** rather than class names.\\n\\n- one\\n- two\\n\\n[Not a link](javascript:alert(1))&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>import { renderMarkdown } from './markdown.js';
+
+article.innerHTML = renderMarkdown(readme, {
+  // a picture in a readme is a file in the mod's folder, and nothing else
+  resolve: (href) =&gt; manager.asset(mod.id, href),
+});</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-tools-roles" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Tools</p>
+    <h1><code>derivePalette</code></h1>
+    <p class="api-sig api-sig--big">(background: Colour, accent: Colour): Palette</p>
+  </header>
+  <div class="panel__body">
+    <p>Two colours in, the twelve roles a theme is written from out. This is what the theme builder runs before it writes a stylesheet, so a colour chosen here is a colour Slack would be painted with.</p>
+<p>The pairs worth checking are checked: <code>contrast</code> and <code>readability</code> grade the text against the background the app really puts behind it.</p>
+    <div class="api-demo" data-demo="tools-roles" data-controls="[{&quot;key&quot;:&quot;background&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;#1a1a1e&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;accent&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;#536aed&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>import { derivePalette } from './colour.js';
+import { buildThemeCss } from './roles.js';
+
+const palette = derivePalette(parseColour('#1a1a1e'), parseColour('#536aed'));
+api.css(buildThemeCss(palette, 'Midnight'));</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-kit-button" hidden>
   <header class="panel__head">
     <p class="eyebrow">Component kit</p>
     <h1><code>button</code></h1>
@@ -178,8 +235,8 @@ kit.button('Remove', { variant: 'danger', wide: true });</code></pre>
     <p class="api-sig api-sig--big">: string</p>
   </header>
   <div class="panel__body">
-    <p>The checkerboard, so a translucent colour reads as translucent.</p>
-    
+    <p>The checkerboard, as a CSS value. Put it behind a colour and a colour with alpha reads as translucent rather than as a slightly different flat colour.</p>
+    <div class="api-demo" data-demo="kit-checker" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// The checkerboard, so a translucent colour reads as translucent.
 swatch.style.background = `${colour}, ${kit.CHECKER}`;</code></pre>
@@ -192,7 +249,7 @@ swatch.style.background = `${colour}, ${kit.CHECKER}`;</code></pre>
     <p class="api-sig api-sig--big">(options?: CodeEditorOptions): CodeEditor</p>
   </header>
   <div class="panel__body">
-    <p>A CSS editor that colours what you type.</p>
+    <p>A CSS editor that colours what you type: a highlighted <code>&lt;pre&gt;</code> under a transparent <code>&lt;textarea&gt;</code>. Both have to agree on every metric or the caret drifts from the text, which is why their stylesheet lives beside the tokeniser rather than in each caller.</p>
     <div class="api-demo" data-demo="kit-code" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const editor = kit.code({
@@ -323,7 +380,7 @@ kit.iconButton('🗑', { title: 'Delete', danger: true, onClick: () =&gt; remove
     <p class="api-sig api-sig--big">(props?: Record&lt;string, unknown&gt;): HTMLInputElement</p>
   </header>
   <div class="panel__body">
-    <p>A single-line text box, wearing the kit's own focus ring.</p>
+    <p>A single-line text box wearing the kit's own focus ring. Any attribute you pass goes through to the element, so <code>type</code>, <code>placeholder</code> and <code>maxlength</code> all work.</p>
     <div class="api-demo" data-demo="kit-input" data-controls="[{&quot;key&quot;:&quot;value&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Midnight&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;placeholder&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Theme name&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const name = kit.input({ value: theme.name, placeholder: 'Theme name' });
@@ -402,7 +459,7 @@ kit.swatch('rgba(97, 31, 105, 0.35)');</code></pre>
     <p class="api-sig api-sig--big">(selector: string, id: string, value: () =&gt; string | number | null): Cleanup</p>
   </header>
   <div class="panel__body">
-    <p>A small count/dot badge pinned to any element, kept in sync by a getter.</p>
+    <p>A small count or dot pinned to any element, kept in sync by a getter rather than by you remembering to redraw it. Return null from the getter and the badge goes away.</p>
     <div class="api-demo" data-demo="helpers-badge" data-controls="[{&quot;key&quot;:&quot;value&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:3,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>let unread = 0;
@@ -417,7 +474,7 @@ api.helpers.badge('[data-qa=&quot;betterslack_notes_button&quot;]', 'unread', ()
     <p class="api-sig api-sig--big">(text: string, message?: string): Promise&lt;boolean&gt;</p>
   </header>
   <div class="panel__body">
-    <p>Copy text and confirm with a toast, the way three mods were doing by hand.</p>
+    <p>Put text on the clipboard and confirm it with a toast, which is the pair almost every copy button wants. Resolves false if the clipboard refused.</p>
     <div class="api-demo" data-demo="helpers-copy" data-controls="[{&quot;key&quot;:&quot;text&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;https://example.com/releases/2026-08&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>await api.helpers.copy(message.permalink, 'Link copied');</code></pre>
@@ -435,7 +492,7 @@ something do it inside code that has no <code>api</code> to reach for: the palet
 directory search, and Demo Mode's engine, which the screenshot recipe also
 runs outside the runtime. Kept because it is three lines and it is the
 obvious thing to reach for.</p>
-    
+    <div class="api-demo" data-demo="helpers-debounce" data-controls="[{&quot;key&quot;:&quot;ms&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:400,&quot;label&quot;:&quot;milliseconds&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const search = api.helpers.debounce((query) =&gt; run(query), 200);
 box.addEventListener('input', () =&gt; search(box.value));</code></pre>
@@ -448,8 +505,8 @@ box.addEventListener('input', () =&gt; search(box.value));</code></pre>
     <p class="api-sig api-sig--big">(combo: string): string</p>
   </header>
   <div class="panel__body">
-    <p>Human-readable form of a combo, for tooltips: ⌘⇧F or Ctrl+Shift+F.</p>
-    
+    <p>A combo as a person would read it: <code>mod</code> becomes ⌘ on a Mac and Ctrl elsewhere, and the modifiers come out in the order that platform writes them. For a tooltip or a menu subtitle.</p>
+    <div class="api-demo" data-demo="helpers-describehotkey" data-controls="[{&quot;key&quot;:&quot;combo&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;mod+shift+f&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.helpers.describeHotkey('mod+shift+k');
 // '⌘⇧K' on a Mac, 'Ctrl+Shift+K' elsewhere</code></pre>
@@ -478,7 +535,7 @@ and undo it for you when the plugin stops.</p>
     <p class="api-sig api-sig--big">(label: string, value: string | Node): HTMLElement</p>
   </header>
   <div class="panel__body">
-    <p>A labelled row in Slack's profile/field style.</p>
+    <p>A labelled row in Slack's own profile style, so a mod's extra details sit in a profile pane looking like the details Slack put there.</p>
     <div class="api-demo" data-demo="helpers-field" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Time zone&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;value&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Europe/Paris&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>pane.append(api.helpers.field('Time zone', user.tz_label));</code></pre>
@@ -512,7 +569,7 @@ api.helpers.hotkey('escape', () =&gt; zen.set(false), {
     <p class="api-sig api-sig--big">(options: {</p>
   </header>
   <div class="panel__body">
-    <p>Build an icon button wearing Slack's classes for a given surface.</p>
+    <p>An icon button wearing Slack's classes for the surface you name — the control strip, a header, the composer. Getting the classes right is what keeps it 28px instead of 36px.</p>
     <div class="api-demo" data-demo="helpers-iconbutton" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Notes&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;surface&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;header&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:[&quot;strip&quot;,&quot;header&quot;,&quot;composer&quot;]}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const button = api.helpers.iconButton({
@@ -530,7 +587,7 @@ api.helpers.hotkey('escape', () =&gt; zen.set(false), {
     <p class="api-sig api-sig--big">(container: string, id: string, factory: () =&gt; HTMLElement, options?: { before?: string }): Cleanup</p>
   </header>
   <div class="panel__body">
-    <p>Keep an element mounted somewhere, surviving Slack's re-renders.</p>
+    <p>Keep an element in a container across Slack's re-renders, and take it away when the plugin stops. <code>before</code> puts it above an existing button rather than at the end, which is where Slack's own re-renders land.</p>
     <div class="api-demo" data-demo="helpers-mount" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.helpers.mount('.p-control_strip', 'my-button', () =&gt; button, {
@@ -565,7 +622,7 @@ api.helpers.poll(() =&gt; refreshPresence(), 60_000);</code></pre>
     <p class="api-sig api-sig--big">(title: string, children: (Node | string)[]): HTMLElement</p>
   </header>
   <div class="panel__body">
-    <p>A section with Slack's own header styling, for panes.</p>
+    <p>A titled group of rows in Slack's profile style, for adding a block of detail to a pane Slack drew.</p>
     <div class="api-demo" data-demo="helpers-section" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;More details&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;rows&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;User ID: U04KY0Z61, Time zone: Europe/Paris&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>pane.append(api.helpers.section('More details', [
@@ -583,7 +640,7 @@ api.helpers.poll(() =&gt; refreshPresence(), 60_000);</code></pre>
   <div class="panel__body">
     <p>A persisted on/off flag that also drives a class on &lt;html&gt;, so the whole
 behaviour can be pure CSS. This is the shape most &quot;mode&quot; mods want.</p>
-    
+    <div class="api-demo" data-demo="helpers-toggle" data-controls="[{&quot;key&quot;:&quot;className&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;demo-zen&quot;,&quot;label&quot;:&quot;class on &lt;html&gt;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;defaultOn&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:false,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const zen = api.helpers.toggle({
   key: 'on',
@@ -602,7 +659,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="api-sig api-sig--big">(element: HTMLElement, title: string, subtitle?: string): Cleanup</p>
   </header>
   <div class="panel__body">
-    <p>Slack-styled tooltip on anything.</p>
+    <p>Slack's tooltip on any element. Slack's own are React portals a mod cannot register with, so this rebuilds one from Slack's classes — including the ~150ms delay, measured with a real pointer.</p>
     <div class="api-demo" data-demo="helpers-tooltip" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Channel notes&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;subtitle&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;⌘⇧N&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.helpers.tooltip(button, 'Channel notes', '⌘⇧N');</code></pre>
@@ -615,7 +672,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="api-sig api-sig--big">(action: MessageAction): Cleanup</p>
   </header>
   <div class="panel__body">
-    <p>Add a button to the hover toolbar on messages.</p>
+    <p>A button in the toolbar Slack draws while the pointer is over a message. The handler is given the message: its channel, its timestamp, its permalink and its text.</p>
     <div class="api-demo" data-demo="slack-addmessageaction" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Copy link&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.addMessageAction({
@@ -633,7 +690,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="api-sig api-sig--big">(button: ProfileButton): Cleanup</p>
   </header>
   <div class="panel__body">
-    <p>Add a button to the member profile pane.</p>
+    <p>A button in a member's profile pane, given the user id when it is pressed. It appears in anything wearing Slack's profile markup, including a pane another mod drew.</p>
     <div class="api-demo" data-demo="slack-addprofilebutton" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Download picture&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.addProfileButton({
@@ -693,7 +750,7 @@ api.slack.avatarUrl(user.image_48, 192);</code></pre>
     <p class="api-sig api-sig--big">: ComposerApi</p>
   </header>
   <div class="panel__body">
-    <p>The message composer.</p>
+    <p>The message box: <code>insert()</code> types into it as though you had, and <code>focus()</code> puts the caret there. Insert rather than assign — the composer is a Quill editor, and writing to it directly loses everything else in it.</p>
     <div class="api-demo" data-demo="slack-composer" data-controls="[{&quot;key&quot;:&quot;text&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;shipping this afternoon&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.composer.insert(`&lt;${message.permalink}|.&gt;`);
@@ -707,8 +764,8 @@ api.slack.composer.focus();</code></pre>
     <p class="api-sig api-sig--big">(): string | null</p>
   </header>
   <div class="panel__body">
-    <p>The channel currently open, read from the client URL.</p>
-    
+    <p>The channel on screen, read out of the URL. Null when what is on screen is not a conversation. Two workspaces can use the same channel id, so compare the team as well when you keep anything per-channel.</p>
+    <div class="api-demo" data-demo="slack-currentchannelid" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const channel = api.slack.currentChannelId();   // 'C0BFQCYBRAB' or null</code></pre>
   </div>
@@ -720,7 +777,7 @@ api.slack.composer.focus();</code></pre>
     <p class="api-sig api-sig--big">(element: HTMLElement): MessageRef</p>
   </header>
   <div class="panel__body">
-    <p>Read channel, timestamp, permalink and text off a message element.</p>
+    <p>Everything about a message that a mod usually wants, read off the element Slack drew: its channel, its timestamp, its permalink and its text.</p>
     <div class="api-demo" data-demo="slack-describemessage" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const message = api.slack.describeMessage(element);
@@ -754,7 +811,7 @@ if (api.slack.desktop.needsRestart('windowVibrancy')) await api.slack.restart();
     <p class="api-sig api-sig--big">(userId: string, limit?: number): Promise&lt;Array&lt;Record&lt;string, unknown&gt;&gt;&gt;</p>
   </header>
   <div class="panel__body">
-    <p>Files someone shared, newest first.</p>
+    <p>The files somebody shared, newest first. <code>limit</code> caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const files = await api.slack.filesFrom('U0EXAMPLE1', 20);
@@ -768,7 +825,7 @@ for (const file of files) api.log.info(file.name);</code></pre>
     <p class="api-sig api-sig--big">(channelId: string): Promise&lt;void&gt;</p>
   </header>
   <div class="panel__body">
-    <p>Remove a conversation from the sidebar. The history is untouched.</p>
+    <p>Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Removes it from the sidebar. The history is untouched.
@@ -782,7 +839,7 @@ await api.slack.hideConversation('C0BFQCYBRAB');</code></pre>
     <p class="api-sig api-sig--big">(handler: (pane: ProfilePane) =&gt; void): Cleanup</p>
   </header>
   <div class="panel__body">
-    <p>Run a handler each time a member profile pane opens.</p>
+    <p>Run a handler each time a profile pane appears, with the pane and the user id it is showing. Mount per pane rather than once: a single mount fills whichever profile it reaches first and starves the other.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.onProfilePane(({ element, userId }) =&gt; {
@@ -832,7 +889,7 @@ exist makes Slack navigate to it on its own; the deep link covers the rest.</p>
     <p class="api-sig api-sig--big">(userId: string): void</p>
   </header>
   <div class="panel__body">
-    <p>Show someone's profile in Slack, through the same deep-link scheme.</p>
+    <p>Open somebody's profile, through Slack's own deep link — same document, no reload. Not every id has one: an app, or a conversation with yourself, gives a pane that never appears.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.openUserProfile('U0EXAMPLE1');</code></pre>
@@ -863,7 +920,7 @@ await api.slack.restart();</code></pre>
     <p class="api-sig api-sig--big">: Readonly&lt;Record&lt;string, string&gt;&gt;</p>
   </header>
   <div class="panel__body">
-    <p>Stable selectors, for mods that need to go beyond these helpers.</p>
+    <p>The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on <code>data-qa</code> attributes rather than class names, which churn with every Slack release.</p>
     <div class="api-demo" data-demo="slack-selectors" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.selectors.messageText;    // '[data-qa=&quot;message-text&quot;]'
@@ -916,8 +973,8 @@ const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
     <p class="api-sig api-sig--big">(message: MessageRef): string | null</p>
   </header>
   <div class="panel__body">
-    <p>The author of a message, read from their avatar URL.</p>
-    
+    <p>The author's id, read off the avatar's URL — Slack writes them as <code>&lt;team&gt;-&lt;user&gt;-&lt;hash&gt;-&lt;size&gt;</code>. Null when the message has no avatar to read, which is the case for a consecutive message from the same person.</p>
+    <div class="api-demo" data-demo="slack-useridfrommessage" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const userId = api.slack.userIdFromMessage(message);
 // read off the avatar's URL: &lt;team&gt;-&lt;user&gt;-&lt;hash&gt;-&lt;size&gt;</code></pre>
@@ -930,7 +987,7 @@ const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
     <p class="api-sig api-sig--big">(): Promise&lt;string[]&gt;</p>
   </header>
   <div class="panel__body">
-    <p>The people marked VIP, in Slack's own order.</p>
+    <p>The workspace's VIP list. VIP is a preference rather than an endpoint: a comma-separated list under <code>vip_users</code>.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const vips = await api.slack.vipUsers();   // ['U0EXAMPLE1', …]</code></pre>
@@ -964,7 +1021,7 @@ const state = await api.slack.web.availability('U0EXAMPLE1');</code></pre>
     <p class="api-sig api-sig--big">(options: ConfirmOptions): Promise&lt;boolean&gt;</p>
   </header>
   <div class="panel__body">
-    <p>Yes/no dialog; resolves false if dismissed.</p>
+    <p>A yes/no dialog that resolves to a boolean, so a destructive action reads as a question in the code rather than as a pair of callbacks.</p>
     <div class="api-demo" data-demo="ui-confirm" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Remove Midnight?&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;body&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Its files go with it.&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;danger&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const sure = await api.ui.confirm({
@@ -992,7 +1049,7 @@ rather than once per mod.</p>
   kit.card('Palette', [kit.button('Save', { variant: 'primary' })]);</p>
 <p>Everything is prefixed <code>sm-</code>, so the stylesheet is safe to inject into
 the client itself.</p>
-    
+    <div class="api-demo" data-demo="ui-kit" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// A window a mod opens is a blank document: no Slack stylesheet to borrow.
 const kit = api.ui.kit(child.document);
@@ -1006,7 +1063,7 @@ child.document.head.append(styleWith(api.ui.kitCss));</code></pre>
     <p class="api-sig api-sig--big">: string</p>
   </header>
   <div class="panel__body">
-    <p>The kit's stylesheet. Put it in the document the kit is building in.</p>
+    <p>The kit's stylesheet, as text, for the document a mod opened. A window a mod opens is blank — no Slack stylesheet to borrow — so this is what makes the primitives look like anything.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const style = child.document.createElement('style');
@@ -1042,7 +1099,7 @@ room below -- which is always, for a button in the control strip.</p>
     <p class="api-sig api-sig--big">(options: ModalOptions): ModalHandle</p>
   </header>
   <div class="panel__body">
-    <p>A dialog. Returns a handle so you can update or close it later.</p>
+    <p>A dialog wearing Slack's own <code>c-dialog</code> classes, so it follows every theme without BetterSlack owning a second design system. Returns a handle, so it can be updated or closed from outside the callback that opened it.</p>
     <div class="api-demo" data-demo="ui-modal" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Channel notes&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;body&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Kept on this machine only. Nothing is sent anywhere.&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;action&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Save&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;width&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:460,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const dialog = api.ui.modal({
@@ -1086,7 +1143,7 @@ same list.</p>
     <p class="api-sig api-sig--big">(message: string, options?: ToastOptions): ToastHandle</p>
   </header>
   <div class="panel__body">
-    <p>Transient message at the bottom of the window.</p>
+    <p>A short confirmation in the corner, with an optional action. Toasts live in a shadow root rather than the light DOM: Slack has no toast to borrow from, and an unreadable error message is worse than an off-brand one.</p>
     <div class="api-demo" data-demo="ui-toast" data-controls="[{&quot;key&quot;:&quot;message&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Theme saved&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;variant&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;success&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:[&quot;info&quot;,&quot;success&quot;,&quot;warning&quot;,&quot;error&quot;]},{&quot;key&quot;:&quot;action&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Undo&quot;,&quot;label&quot;:&quot;action label&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.ui.toast('Theme saved', {
@@ -1102,8 +1159,8 @@ same list.</p>
     <p class="api-sig api-sig--big">(element: HTMLElement, options: TooltipOptions): Cleanup</p>
   </header>
   <div class="panel__body">
-    <p>Slack-style tooltip on any element you built yourself.</p>
-    
+    <p>The lower-level tooltip, when you need to say where it goes. <code>helpers.tooltip</code> is the two-argument form for the common case.</p>
+    <div class="api-demo" data-demo="ui-tooltip" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Channel notes&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;subtitle&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;⌘⇧N&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;placement&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;right&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:[&quot;right&quot;,&quot;left&quot;,&quot;top&quot;,&quot;bottom&quot;]}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.ui.tooltip(button, {
   title: 'BetterSlack',
@@ -1193,8 +1250,8 @@ if (!composer) return;   // it resolves null rather than throwing</code></pre>
     <p class="api-sig api-sig--big">: string</p>
   </header>
   <div class="panel__body">
-    <p>Its primary subtag, e.g. &quot;fr&quot;. This is what dictionaries are keyed by.</p>
-    
+    <p>The language on its own, without the region: <code>fr</code> for <code>fr-FR</code>. What a translation table is usually keyed by.</p>
+    <div class="api-demo" data-demo="i18n-language" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.i18n.language;   // 'fr'</code></pre>
   </div>
@@ -1226,7 +1283,7 @@ if (!composer) return;   // it resolves null rather than throwing</code></pre>
   });
   t('online', { count: 3 });</p>
 <p>Lookup goes exact locale (&quot;fr-CA&quot;), then language (&quot;fr&quot;), then English.</p>
-    
+    <div class="api-demo" data-demo="i18n-strings" data-controls="[{&quot;key&quot;:&quot;locale&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;en-GB&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:[&quot;en-GB&quot;,&quot;fr-FR&quot;,&quot;de-DE&quot;]},{&quot;key&quot;:&quot;key&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;hello&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:[&quot;hello&quot;,&quot;bye&quot;,&quot;missing&quot;]},{&quot;key&quot;:&quot;name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Ada&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const t = api.i18n.strings({
   en: { title: 'Channel notes', saved: '{count} notes saved' },
@@ -1242,8 +1299,8 @@ t('saved', { count: 3 });</code></pre>
     <p class="api-sig api-sig--big">(): Record&lt;string, unknown&gt;</p>
   </header>
   <div class="panel__body">
-    <p>Everything this mod has stored, as one object.</p>
-    
+    <p>Everything this mod has stored, as one object — for a settings screen that draws them all rather than asking for each.</p>
+    <div class="api-demo" data-demo="settings-all" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const values = api.settings.all();   // everything this mod has stored</code></pre>
   </div>
@@ -1255,7 +1312,7 @@ t('saved', { count: 3 });</code></pre>
     <p class="api-sig api-sig--big">&lt;T = unknown&gt;(key: string, fallback?: T): T | undefined</p>
   </header>
   <div class="panel__body">
-    <p>Read one of this mod's settings, with a fallback for the first run.</p>
+    <p>Read one of this mod's settings, with a fallback for the first run. Synchronous: the values arrive with the plugin.</p>
     <div class="api-demo" data-demo="settings-get" data-controls="[{&quot;key&quot;:&quot;key&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;memberLimit&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;fallback&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:200,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const limit = api.settings.get('memberLimit', 200);</code></pre>
@@ -1273,7 +1330,7 @@ t('saved', { count: 3 });</code></pre>
 after a change, so <code>start</code> simply runs again with the new values. This is
 for the ones where reloading would be visible -- a list that would flicker,
 a window that would close.</p>
-    
+    <div class="api-demo" data-demo="settings-onchange" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.settings.onChange((values) =&gt; {
   redraw(values.memberLimit);
@@ -1301,7 +1358,7 @@ a window that would close.</p>
   </header>
   <div class="panel__body">
     <p>Publish something this mod can do, so it is findable by typing rather than by hunting for a button.</p>
-    
+    <div class="api-demo" data-demo="commands-add" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Channel notes&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;subtitle&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;A scratchpad for this channel&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;icon&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;📝&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.commands.add({
   id: 'open',
@@ -1357,7 +1414,7 @@ side, and it photographs whatever is on screen.</p>
     <p class="api-sig api-sig--big">(): string[]</p>
   </header>
   <div class="panel__body">
-    <p>Every readable file in the folder.</p>
+    <p>Every readable file in the mod's own folder, folder-relative and forward-slashed — the same strings you would import.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.assets.list();   // ['index.js', 'panel.css', 'views/start.js']</code></pre>
@@ -1370,7 +1427,7 @@ side, and it photographs whatever is on screen.</p>
     <p class="api-sig api-sig--big">(path: string): string</p>
   </header>
   <div class="panel__body">
-    <p>One file's contents. Throws if the folder has no such file.</p>
+    <p>One of the mod's own files, as text. This is what lets a plugin keep its stylesheet in a real <code>.css</code> file, with an editor that highlights it, instead of a template literal.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.css(api.assets.text('panel.css'));</code></pre>
@@ -1383,8 +1440,8 @@ side, and it photographs whatever is on screen.</p>
     <p class="api-sig api-sig--big">(): Array&lt;{ id: string; name: string; description: string; enabled: boolean }&gt;</p>
   </header>
   <div class="panel__body">
-    <p>The themes the user has, with whether each is on.</p>
-    
+    <p>The themes the user has, with whether each is on, for a tool that builds on top of them.</p>
+    <div class="api-demo" data-demo="themes-list" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>for (const theme of api.themes.list()) {
   api.log.info(theme.name, theme.enabled ? 'on' : 'off');
@@ -1398,7 +1455,7 @@ side, and it photographs whatever is on screen.</p>
     <p class="api-sig api-sig--big">(id: string): Promise&lt;string&gt;</p>
   </header>
   <div class="panel__body">
-    <p>One theme's stylesheet, as text.</p>
+    <p>One theme's stylesheet as text, so a builder can start from it rather than from nothing.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const css = await api.themes.source('midnight');</code></pre>
@@ -1431,7 +1488,7 @@ api.onDispose(() =&gt; api.themes.suspend(false));</code></pre>
     <p class="api-sig api-sig--big">(): Command[]</p>
   </header>
   <div class="panel__body">
-    <p>What every other mod has registered, so a palette can show them all.</p>
+    <p>What every other mod has registered, so a palette can offer all of them rather than only its own.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const everything = api.app.commands();   // what every other mod registered</code></pre>
@@ -1444,8 +1501,8 @@ api.onDispose(() =&gt; api.themes.suspend(false));</code></pre>
     <p class="api-sig api-sig--big">(): Array&lt;{</p>
   </header>
   <div class="panel__body">
-    <p>Every mod in the catalogue, with what the user has done about it.</p>
-    
+    <p>The catalogue as the panel sees it: what is installed, what is enabled, and how many settings each one declares.</p>
+    <div class="api-demo" data-demo="app-mods" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const mods = api.app.mods();
 const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</code></pre>
@@ -1475,7 +1532,7 @@ less room.</p>
     <p class="api-sig api-sig--big">(tab?: 'themes' | 'plugins' | 'css' | 'about'): void</p>
   </header>
   <div class="panel__body">
-    <p>Open the Mods panel, optionally straight to a tab.</p>
+    <p>Open the Mods panel, optionally on a particular tab. With no argument it opens wherever it was left.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.app.openPanel('themes');   // or no argument for wherever it was</code></pre>
@@ -1488,7 +1545,7 @@ less room.</p>
     <p class="api-sig api-sig--big">(id: string, enabled: boolean): Promise&lt;void&gt;</p>
   </header>
   <div class="panel__body">
-    <p>Switch a mod on or off, as the panel's own toggle does.</p>
+    <p>Switch a mod on or off, exactly as the panel's own toggle does — including writing it to the settings file.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>await api.app.setEnabled('midnight', true);</code></pre>
@@ -1501,7 +1558,7 @@ less room.</p>
     <p class="api-sig api-sig--big">(id: string, installed: boolean): Promise&lt;void&gt;</p>
   </header>
   <div class="panel__body">
-    <p>Install or remove a mod from the user's own folder.</p>
+    <p>Install a mod into the user's own folder, or remove it. Installing is what the Browse shelf does.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>await api.app.setInstalled('aurora', true);</code></pre>
@@ -1514,8 +1571,8 @@ less room.</p>
     <p class="api-sig api-sig--big">: (...args: unknown[]) =&gt; void</p>
   </header>
   <div class="panel__body">
-    <p>The same, at error level.</p>
-    
+    <p>The same, at error level. The loader forwards these to its terminal whatever the verbosity, because an error at boot is the one line you need.</p>
+    <div class="api-demo" data-demo="log-error" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.log.error('failed to save', error);</code></pre>
   </div>
@@ -1542,7 +1599,7 @@ less room.</p>
   </header>
   <div class="panel__body">
     <p>The same, at warning level. The loader forwards these even without BETTERSLACK_VERBOSE.</p>
-    
+    <div class="api-demo" data-demo="log-warn" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.log.warn('could not list members:', error.message);</code></pre>
   </div>
@@ -1554,7 +1611,7 @@ less room.</p>
     <p class="api-sig api-sig--big">(text: string): void</p>
   </header>
   <div class="panel__body">
-    <p>Stylesheet owned by this plugin; replaced wholesale on each call.</p>
+    <p>This plugin's stylesheet, replaced wholesale on each call. That is the contract: a mod that recomputed its CSS on every settings change would otherwise stack copies of it for ever. The helpers write through a node of their own, so using both is safe.</p>
     <div class="api-demo" data-demo="plugin-css" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Replaced wholesale on each call: a mod owns exactly one stylesheet.
@@ -1570,7 +1627,7 @@ api.css(`
     <p class="api-sig api-sig--big">: string</p>
   </header>
   <div class="panel__body">
-    <p>This mod's id: its folder name, and the key its settings are stored under.</p>
+    <p>This mod's id: its folder name, the key its settings are stored under, and the prefix on everything it puts in the DOM.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.id;   // 'channel-notes' — the folder name, and the settings key</code></pre>
@@ -1583,7 +1640,7 @@ api.css(`
     <p class="api-sig api-sig--big">: ModRecord</p>
   </header>
   <div class="panel__body">
-    <p>This mod's own mod.json, as the loader parsed it.</p>
+    <p>This mod's own <code>mod.json</code>, as the loader parsed it — its version, its author, the settings it declares.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.manifest.version;      // '1.2.0'
@@ -1597,7 +1654,7 @@ api.manifest.settings;     // what the panel draws for you</code></pre>
     <p class="api-sig api-sig--big">(fn: Cleanup): void</p>
   </header>
   <div class="panel__body">
-    <p>Register a teardown callback; runs when the plugin is disabled.</p>
+    <p>Register a teardown callback. It runs when the plugin is switched off, which is the moment everything a mod started has to stop: intervals, listeners, anything it put on the page.</p>
     
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const timer = setInterval(tick, 1000);

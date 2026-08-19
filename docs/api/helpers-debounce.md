@@ -3,6 +3,8 @@ name: debounce
 group: helpers
 title: api.helpers
 signature: <T extends (...args: never[]) => void>(fn: T, ms: number): T
+preview: helpers-debounce
+control: ms | number | 400 | milliseconds
 ---
 
 Debounce. No shipped mod calls this today -- the two that debounce

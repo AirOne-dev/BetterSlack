@@ -8,7 +8,7 @@ control: key | text | memberLimit
 control: fallback | number | 200
 ---
 
-Read one of this mod's settings, with a fallback for the first run.
+Read one of this mod's settings, with a fallback for the first run. Synchronous: the values arrive with the plugin.
 
 ```js
 const limit = api.settings.get('memberLimit', 200);

@@ -3,6 +3,9 @@ name: toggle
 group: helpers
 title: api.helpers
 signature: (options: ToggleOptions): Toggle
+preview: helpers-toggle
+control: className | text | demo-zen | class on <html>
+control: defaultOn | boolean | false
 ---
 
 A persisted on/off flag that also drives a class on <html>, so the whole

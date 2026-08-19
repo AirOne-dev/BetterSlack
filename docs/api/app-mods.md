@@ -3,9 +3,10 @@ name: mods
 group: app
 title: api.app
 signature: (): Array<{
+preview: app-mods
 ---
 
-Every mod in the catalogue, with what the user has done about it.
+The catalogue as the panel sees it: what is installed, what is enabled, and how many settings each one declares.
 
 ```js
 const mods = api.app.mods();

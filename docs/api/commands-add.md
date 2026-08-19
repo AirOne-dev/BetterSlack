@@ -3,6 +3,10 @@ name: add
 group: commands
 title: api.commands
 signature: (command: {
+preview: commands-add
+control: title | text | Channel notes
+control: subtitle | text | A scratchpad for this channel
+control: icon | text | 📝
 ---
 
 Publish something this mod can do, so it is findable by typing rather than by hunting for a button.

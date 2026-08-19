@@ -10,7 +10,7 @@ control: action | text | Save
 control: width | number | 460
 ---
 
-A dialog. Returns a handle so you can update or close it later.
+A dialog wearing Slack's own `c-dialog` classes, so it follows every theme without BetterSlack owning a second design system. Returns a handle, so it can be updated or closed from outside the callback that opened it.
 
 ```js
 const dialog = api.ui.modal({

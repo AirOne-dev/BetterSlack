@@ -3,6 +3,7 @@ name: onChange
 group: settings
 title: api.settings
 signature: (handler: (values: Record<string, unknown>) => void): Cleanup
+preview: settings-onchange
 ---
 
 Called when the panel changes one of the declared settings.

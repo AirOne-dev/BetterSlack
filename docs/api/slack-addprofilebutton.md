@@ -7,7 +7,7 @@ preview: slack-addprofilebutton
 control: label | text | Download picture
 ---
 
-Add a button to the member profile pane.
+A button in a member's profile pane, given the user id when it is pressed. It appears in anything wearing Slack's profile markup, including a pane another mod drew.
 
 ```js
 api.slack.addProfileButton({

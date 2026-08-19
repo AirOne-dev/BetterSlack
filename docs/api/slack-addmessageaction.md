@@ -7,7 +7,7 @@ preview: slack-addmessageaction
 control: label | text | Copy link
 ---
 
-Add a button to the hover toolbar on messages.
+A button in the toolbar Slack draws while the pointer is over a message. The handler is given the message: its channel, its timestamp, its permalink and its text.
 
 ```js
 api.slack.addMessageAction({

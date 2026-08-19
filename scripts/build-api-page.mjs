@@ -24,8 +24,18 @@ const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
 const escape = (text) => String(text)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-const ORDER = ['kit', 'helpers', 'slack', 'ui', 'dom', 'i18n', 'settings',
+const ORDER = ['tools', 'kit', 'helpers', 'slack', 'ui', 'dom', 'i18n', 'settings',
   'commands', 'files', 'assets', 'themes', 'app', 'log', 'plugin'];
+
+/*
+ * `tools` is not part of `PluginApi`.
+ *
+ * These are the pieces a mod imports rather than receives -- the readme
+ * renderer, the tokeniser, the palette derivation -- and they are worth a page
+ * each, so the cross-check against the interfaces skips them rather than
+ * calling them orphans.
+ */
+const NOT_ON_THE_API = new Set(['tools']);
 
 /* -- the check against the code ------------------------------------------- */
 
@@ -107,7 +117,9 @@ function fromCode() {
  * method and did not document it, or removed one and left its page behind.
  */
 function crossCheck(groups) {
-  const documented = new Set(groups.flatMap((group) => group.entries.map((entry) => entry.slug)));
+  const documented = new Set(groups
+    .filter((group) => !NOT_ON_THE_API.has(group.key))
+    .flatMap((group) => group.entries.map((entry) => entry.slug)));
   const declared = fromCode();
   const undocumented = [...declared].filter((slug) => !documented.has(slug));
   const orphaned = [...documented].filter((slug) => !declared.has(slug));
@@ -115,6 +127,38 @@ function crossCheck(groups) {
     const parts = [];
     if (undocumented.length) parts.push(`in the code but not in docs/api/: ${undocumented.join(', ')}`);
     if (orphaned.length) parts.push(`in docs/api/ but not in the code: ${orphaned.join(', ')}`);
+    throw new Error(parts.join('\n'));
+  }
+}
+
+/**
+ * A `preview:` has to name a renderer, and a renderer has to be named.
+ *
+ * Both halves matter. A preview naming nothing leaves an empty box under a
+ * heading, which reads as a demo that broke; a renderer nobody names is a demo
+ * that was written and then quietly lost, which is exactly what happened to
+ * three of the helpers when this folder was first written.
+ */
+function crossCheckPreviews(groups) {
+  const source = read('scripts/api-previews.js');
+  const kit = [...source.matchAll(/^  ([a-zA-Z]+): \{$/gm)].map((m) => m[1]);
+  const at = (name) => source.indexOf(`\n  ${name}: {`);
+  const kitAt = source.indexOf('const KIT = {');
+  const helpersAt = source.indexOf('const HELPERS = {');
+  const restAt = source.indexOf('/* -- the Slack-styled widgets');
+  const available = new Set([
+    ...kit.filter((n) => at(n) > kitAt && at(n) < helpersAt).map((n) => `kit-${n.toLowerCase()}`),
+    ...kit.filter((n) => at(n) > helpersAt && at(n) < restAt).map((n) => `helpers-${n.toLowerCase()}`),
+    ...[...source.matchAll(/^  '([a-z0-9-]+)':/gm)].map((m) => m[1]),
+  ]);
+
+  const declared = new Set(groups.flatMap((g) => g.entries).filter((e) => e.preview).map((e) => e.preview));
+  const missing = [...declared].filter((slug) => !available.has(slug));
+  const unused = [...available].filter((slug) => !declared.has(slug));
+  if (missing.length || unused.length) {
+    const parts = [];
+    if (missing.length) parts.push(`preview: names no renderer: ${missing.join(', ')}`);
+    if (unused.length) parts.push(`renderer nobody names: ${unused.join(', ')}`);
     throw new Error(parts.join('\n'));
   }
 }
@@ -198,6 +242,7 @@ function panel(entry) {
 export function buildApiPage() {
   const groups = readEntries(path.join(root, 'docs/api'), ORDER);
   crossCheck(groups);
+  crossCheckPreviews(groups);
 
   const first = groups[0].entries[0].slug;
   const nav = groups.map((group) => `<li class="side__group"><p class="side__title">${escape(group.title)}</p>

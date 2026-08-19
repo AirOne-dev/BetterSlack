@@ -8,7 +8,7 @@ control: value | text | Midnight
 control: placeholder | text | Theme name
 ---
 
-A single-line text box, wearing the kit's own focus ring.
+A single-line text box wearing the kit's own focus ring. Any attribute you pass goes through to the element, so `type`, `placeholder` and `maxlength` all work.
 
 ```js
 const name = kit.input({ value: theme.name, placeholder: 'Theme name' });

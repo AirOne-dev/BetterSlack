@@ -3,6 +3,7 @@ name: kit
 group: ui
 title: api.ui
 signature: (doc?: Document): Kit
+preview: ui-kit
 ---
 
 Slack's design system, as components, bound to a document.

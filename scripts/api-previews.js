@@ -24,6 +24,8 @@ import { PANEL_CSS } from '../src/runtime/ui/styles.js';
 import { openPalette } from '../src/runtime/ui/palette.js';
 import { modal, toast, confirm as slackConfirm } from '../src/runtime/ui/widgets.js';
 import { openMenu } from '../src/runtime/ui/menu.js';
+import { attachTooltip } from '../src/runtime/ui/tooltip.js';
+import { userIdFromAvatarUrl } from '../src/runtime/web-api.js';
 import { h } from '../src/runtime/dom.js';
 import { SLACK_FIXTURE } from '../tests/slack-fixture.mjs';
 import { createKit } from '../src/runtime/ui/kit.js';
@@ -709,101 +711,202 @@ const MORE = {
   },
 };
 
-/* -- i18n ----------------------------------------------------------------- */
 
-function mountI18n() {
-  const locale = $('i18n-locale');
-  const key = $('i18n-key');
-  const name = $('i18n-name');
-  const out = $('i18n-out');
-  if (!locale || !out) return;
+/* -- the last of what can honestly run ------------------------------------ */
 
-  const TABLES = {
-    en: { hello: 'Hi {name}, {count} unread', bye: 'See you' },
-    fr: { hello: 'Salut {name}, {count} non lus' },
-  };
-  const draw = () => {
-    // The real translator: English is required and is the fallback for an
-    // unknown language *and* for a missing key.
-    const t = createI18n(locale.value).strings(TABLES);
-    out.textContent = t(key.value, { name: name.value, count: 3 });
-  };
-  for (const node of [locale, key, name]) node.addEventListener('input', draw);
-  locale.addEventListener('change', draw);
-  draw();
-}
-
-/* -- markdown ------------------------------------------------------------- */
-
-function mountMarkdown() {
-  const source = $('md-source');
-  const out = $('md-out');
-  if (!source || !out) return;
-  const draw = () => { out.innerHTML = renderMarkdown(source.value); };
-  source.addEventListener('input', draw);
-  draw();
-}
-
-/* -- code highlighting ---------------------------------------------------- */
-
-function mountHighlight() {
-  const source = $('hl-source');
-  const out = $('hl-out');
-  const guess = $('hl-guess');
-  const pick = $('hl-lang');
-  if (!source || !out) return;
-
-  if (pick) {
-    pick.replaceChildren(
-      new Option('detect it for me', ''),
-      ...Object.keys(LANGUAGES).sort().map((id) => new Option(id, id)),
-    );
-  }
-  const draw = () => {
-    const chosen = pick && pick.value ? pick.value : detect(source.value);
-    if (guess) {
-      guess.textContent = pick && pick.value
-        ? `forced to ${chosen}`
-        : (chosen ? `detected: ${chosen}` : 'not confident — left alone, which is the point');
-    }
-    out.innerHTML = chosen
-      ? highlight(source.value, chosen)
-      : source.value.replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'));
-  };
-  source.addEventListener('input', draw);
-  pick?.addEventListener('change', draw);
-  draw();
-}
-
-/* -- theme roles ---------------------------------------------------------- */
-
-function mountRoles() {
-  const base = $('role-base');
-  const accent = $('role-accent');
-  const grid = $('role-grid');
-  const out = $('role-css');
-  if (!base || !accent || !grid) return;
-
-  const draw = () => {
-    const palette = derivePalette(parseColour(base.value), parseColour(accent.value));
-    grid.replaceChildren(...ROLES.map((role) => kit.el('div', { class: 'role' }, [
-      kit.swatch(formatCss(palette[role.key]), { size: 'md' }),
-      kit.el('div', { class: 'role__text' }, [
-        kit.el('strong', {}, [role.key + (role.seed ? ' (seed)' : '')]),
-        kit.el('span', { class: 'sm-hint' }, [formatCss(palette[role.key])]),
+const REST = {
+  'kit-checker': {
+    render: () => [
+      kit.el('div', { style: `padding:18px;border-radius:10px;background:${kit.CHECKER}` }, [
+        kit.el('div', { style: 'width:120px;height:56px;border-radius:8px;background:rgba(97,31,105,.45)' }),
       ]),
-    ])));
-    if (out) {
+      kit.el('span', { class: 'sm-hint' }, ['the same colour without it would read as a flat grey-purple']),
+    ],
+  },
+  'slack-useridfrommessage': {
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      focusChrome(frame, '[data-qa="message_container"]');
+      // The fixture's avatar is drawn rather than fetched, so the id is read
+      // from the URL the fixture carries rather than from the drawing.
+      const url = SLACK_FIXTURE.match(/src="([^"]*-U[A-Z0-9]+-[^"]*)"/)?.[1] ?? '';
+      frame.append(kit.el('pre', { class: 'pg__out' }, [
+        `from ${url}`,
+        `      -> ${userIdFromAvatarUrl(url)}`,
+      ]));
+      return undefined;
+    },
+  },
+  'slack-currentchannelid': {
+    render: () => {
+      const slack = createSlackApi('demo');
+      return kit.el('pre', { class: 'pg__out' }, [
+        `location.pathname   ${location.pathname}`,
+        `currentChannelId()  ${slack.currentChannelId()}`,
+        '',
+        'null here, because this page is not a conversation. In Slack it is the',
+        'channel on screen, read out of the URL rather than from the DOM.',
+      ]);
+    },
+  },
+  'ui-tooltip': {
+    render: (v) => {
+      const button = kit.button('hover me');
+      attachTooltip(button, { title: v.title, subtitle: v.subtitle, placement: v.placement });
+      return [button, kit.el('span', { class: 'sm-hint' }, [`placement: ${v.placement}`])];
+    },
+  },
+  'ui-kit': {
+    render: () => [
+      kit.button('Save', { variant: 'primary' }),
+      kit.button('Cancel'),
+      kit.iconButton('✎', { title: 'Rename' }),
+      kit.input({ value: 'Midnight' }),
+      kit.swatch('#611f69'),
+    ],
+  },
+  'i18n-language': {
+    render: () => kit.el('pre', { class: 'pg__out' }, [
+      `locale    ${createI18n().locale}`,
+      `language  ${createI18n().language}`,
+    ]),
+  },
+  'settings-all': {
+    render: () => kit.el('pre', { class: 'pg__out' }, [
+      JSON.stringify(Object.fromEntries(store), null, 2) || '{}',
+    ]),
+  },
+  'settings-onchange': {
+    render: (v) => {
+      const out = kit.el('pre', { class: 'pg__out' }, ['waiting for a change…']);
+      const button = kit.button('set() something', { variant: 'primary' });
+      let n = 0;
+      button.addEventListener('click', () => {
+        n += 1;
+        store.set('ticks', n);
+        out.textContent = `the handler ran with ${JSON.stringify(Object.fromEntries(store))}`;
+      });
+      return [button, out];
+    },
+  },
+  'themes-list': {
+    render: () => kit.el('div', { class: 'pg__rows' }, (window.CATALOGUE?.themes ?? []).map(
+      (theme) => kit.el('div', { class: 'row' }, [`${theme.id} — ${theme.name}`]),
+    )),
+  },
+  'app-mods': {
+    render: () => {
+      const mods = [...(window.CATALOGUE?.themes ?? []), ...(window.CATALOGUE?.plugins ?? [])];
+      return kit.el('pre', { class: 'pg__out' }, [
+        `${mods.length} mods in the catalogue`,
+        '',
+        ...mods.slice(0, 6).map((mod) => `  ${mod.id.padEnd(22)} v${mod.version}`),
+        '  …',
+      ]);
+    },
+  },
+  'log-warn': {
+    render: () => kit.el('pre', { class: 'pg__out' }, [
+      '[betterslack:member-sidebar] presence lookup stopped',
+      '',
+      'The loader forwards warnings that mention betterslack even without',
+      'BETTERSLACK_VERBOSE, so this line reaches the terminal too.',
+    ]),
+  },
+  'log-error': {
+    render: () => kit.el('pre', { class: 'pg__out' }, [
+      '[betterslack:user-inspector] WebApiError: users.info failed: user_not_found',
+      '',
+      'An uncaught one is always forwarded: a mod that threw at boot says so in',
+      'the terminal instead of hiding in a DevTools window nobody opened.',
+    ]),
+  },
+  'commands-add': {
+    render: (v) => kit.el('div', { class: 'betterslack-palette__list' }, [
+      kit.el('div', { class: 'betterslack-palette__row' }, [
+        kit.el('span', { class: 'betterslack-palette__icon betterslack-palette__icon--glyph' }, [v.icon]),
+        kit.el('span', { class: 'betterslack-palette__text' }, [
+          kit.el('span', { class: 'betterslack-palette__title' }, [v.title]),
+          kit.el('span', { class: 'betterslack-palette__sub' }, [v.subtitle]),
+        ]),
+        kit.el('span', { class: 'betterslack-palette__source' }, ['Channel Notes']),
+      ]),
+    ]),
+  },
+};
+
+/* -- the tools, as previews ----------------------------------------------- */
+
+/** A two-column editor: type on the left, watch the right. */
+function split(input, output) {
+  return kit.el('div', { class: 'api-split' }, [input, output]);
+}
+
+const TOOLS = {
+  'i18n-strings': {
+    render: (v) => {
+      const out = kit.el('p', { class: 'api-result' }, ['']);
+      const TABLES = {
+        en: { hello: 'Hi {name}, {count} unread', bye: 'See you' },
+        fr: { hello: 'Salut {name}, {count} non lus' },
+      };
+      // The real translator: English is required and is the fallback for an
+      // unknown language *and* for a missing key.
+      const t = createI18n(v.locale).strings(TABLES);
+      out.textContent = t(v.key, { name: v.name, count: 3 });
+      return out;
+    },
+  },
+  'tools-markdown': {
+    render: (v, { stage }) => {
+      const source = kit.el('textarea', { class: 'api-input', rows: '12', spellcheck: 'false' }, [v.source]);
+      const out = kit.el('div', { class: 'api-output sm-md' });
+      const draw = () => { out.innerHTML = renderMarkdown(source.value); };
+      source.addEventListener('input', draw);
+      draw();
+      return split(source, out);
+    },
+  },
+  'tools-highlight': {
+    render: (v, { stage }) => {
+      const source = kit.el('textarea', { class: 'api-input', rows: '12', spellcheck: 'false' }, [v.source]);
+      const code = kit.el('code', { class: 'betterslack-hl' });
+      const guess = kit.el('p', { class: 'sm-hint' }, ['']);
+      const draw = () => {
+        const chosen = v.language || detect(source.value);
+        guess.textContent = v.language
+          ? `forced to ${chosen}`
+          : (chosen ? `detected: ${chosen}` : 'not confident — left alone, which is the point');
+        code.innerHTML = chosen
+          ? highlight(source.value, chosen)
+          : source.value.replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'));
+      };
+      source.addEventListener('input', draw);
+      draw();
+      return [guess, split(source, kit.el('pre', { class: 'api-output' }, [code]))];
+    },
+  },
+  'tools-roles': {
+    render: (v) => {
+      const palette = derivePalette(parseColour(v.background), parseColour(v.accent));
       const ratio = contrast(palette.text, palette.bg);
       const verdict = readability(ratio);
-      out.textContent = `contrast(text, bg) = ${ratio.toFixed(2)} — ${verdict.grade}`;
-      out.classList.toggle('is-bad', !verdict.ok);
-    }
-  };
-  base.addEventListener('input', draw);
-  accent.addEventListener('input', draw);
-  draw();
-}
+      return [
+        kit.el('div', { class: 'api-roles' }, ROLES.map((role) => kit.el('div', { class: 'role' }, [
+          kit.swatch(formatCss(palette[role.key]), { size: 'md' }),
+          kit.el('div', { class: 'role__text' }, [
+            kit.el('strong', {}, [role.key + (role.seed ? ' (seed)' : '')]),
+            kit.el('span', { class: 'sm-hint' }, [formatCss(palette[role.key])]),
+          ]),
+        ]))),
+        kit.el('p', { class: `sm-hint${verdict.ok ? '' : ' is-bad'}` }, [
+          `contrast(text, bg) = ${ratio.toFixed(2)} — ${verdict.grade}`,
+        ]),
+      ];
+    },
+  },
+};
 
 /* -- go ------------------------------------------------------------------- */
 
@@ -900,7 +1003,7 @@ toasted = (message) => {
 const PREVIEWS = {};
 for (const [name, spec] of Object.entries(KIT)) PREVIEWS[`kit-${name.toLowerCase()}`] = spec.render;
 for (const [name, spec] of Object.entries(HELPERS)) PREVIEWS[`helpers-${name.toLowerCase()}`] = spec.render;
-for (const group of [UI, CHROME, SLACK_HELPERS, MORE]) {
+for (const group of [UI, CHROME, SLACK_HELPERS, MORE, TOOLS, REST]) {
   for (const [slug, spec] of Object.entries(group)) PREVIEWS[slug] = spec.render;
 }
 for (const slot of document.querySelectorAll('[data-demo]')) {
@@ -908,10 +1011,6 @@ for (const slot of document.querySelectorAll('[data-demo]')) {
   if (render) playground(slot.dataset.demo, render);
   else slot.remove();
 }
-mountI18n();
-mountMarkdown();
-mountHighlight();
-mountRoles();
 wireThemePicker();
 router();
 filter();
