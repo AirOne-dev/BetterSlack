@@ -25,7 +25,8 @@
     "test:live": "node scripts/test-live.mjs",
     "site": "node scripts/build-site.mjs",
     "site:dev": "node scripts/site-dev.mjs",
-    "shoot": "node scripts/shoot.mjs"
+    "shoot": "node scripts/shoot.mjs",
+    "shoot:mods": "node scripts/shoot.mjs --mods"
   },
   "engines": {
     "node": ">=18",

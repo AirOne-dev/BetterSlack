@@ -54,6 +54,13 @@ You are not expected to speak every language — two is the bar. If you add
 another, add it to every plugin or none: one plugin speaking German inside an
 otherwise English BetterSlack is worse than consistency.
 
+The same goes for the mod's own page in the panel: `descriptions.fr` beside
+`description`, and `README.fr.md` beside `README.md`. An icon and one
+screenshot are expected too -- `pnpm shoot --mods` takes the picture against a
+real client and files it in your folder, replacing every name, face, message
+and channel on screen before it does. Nothing in this repository is
+photographed as-is.
+
 Do not print emoji shortcodes. `status_emoji` is `:tada:`, and a workspace's
 custom ones have no unicode to fall back on, so show the text without them.
 
@@ -81,6 +88,10 @@ unexplained one is an automatic no.
    mods/themes/<id>/mod.json + <entry>.css
    mods/plugins/<id>/mod.json + <entry>.js
    ```
+
+   Plus, for the panel's page: `icon.svg`, `screenshot.jpg`, `README.md` and
+   `README.fr.md`, each named in the manifest --
+   [docs/getting-started.md](docs/getting-started.md) has the shape.
 
    A mod is a folder, not a file: `entry` is only where the app starts
    reading. Split the rest however you like -- `import './lib/x.js'` in a

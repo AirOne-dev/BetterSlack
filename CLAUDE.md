@@ -38,10 +38,10 @@ more than it is up, which is what happened over one long session here.
 So: write the code first, and let the questions pile up. Answer the ones that
 need no client at all -- unit tests, jsdom, reading Slack's own bundle, reading
 the source -- and batch what genuinely needs a live renderer into a single
-probe that asks everything at once. `pnpm shoot` is the shape to copy: eleven
-screenshots across seven themes and four views, one launch, because the runtime
-can be driven in place through `window.__betterslack` instead of being
-restarted between frames.
+probe that asks everything at once. `pnpm shoot` is the shape to copy: every
+screenshot the site and the README use in one launch, and `pnpm shoot --mods`
+one per mod in another, because the runtime can be driven in place through
+`window.__betterslack` instead of being restarted between frames.
 
 Mods hot-reload into the running client -- edit anything under `mods/` and the
 loader broadcasts it, no restart at all. A mod asking for `api.slack.restart()`
@@ -86,12 +86,30 @@ pnpm site              # regenerate site/data.js from the registry (commit it)
 pnpm site:dev          # serve site/ with live reload (--port, --open)
 ```
 
-`pnpm shoot` retakes every screenshot the site and the README use, in **one**
-Slack launch. It starts the loader with a scratch home -- your own installed and
-enabled mods are untouched -- and hands the client to `scripts/shoot-site.mjs`,
-which switches mods on and off through `window.__betterslack` between frames
-rather than restarting anything. Three rules are baked into that recipe and are
-the reason it exists:
+There are two screenshot recipes, and each takes its whole set in **one** Slack
+launch. Both start the loader with a scratch home -- your own installed and
+enabled mods are untouched -- and switch mods on and off through
+`window.__betterslack` between frames rather than restarting anything.
+
+```bash
+pnpm shoot         # site/shots: the panel, a mod's page, Browse, the palette,
+                   # the palette, Discord Dark with its plugins, the builder
+pnpm shoot --mods  # one frame per mod, filed as mods/<kind>/<id>/screenshot.jpg
+```
+
+`scripts/shoot-site.mjs` photographs the **empty demo workspace** and refuses,
+by team id, to photograph any other: those frames are the hero images and go
+into a public README.
+
+`scripts/shoot-mods.mjs` photographs a **real** workspace, because a mod has
+nothing to show in an empty one, and therefore replaces everything on screen
+first -- see the section below. It walks the workspaces by deep link until it
+finds a conversation with some history, then, per mod, switches that one on,
+puts whatever the mod needs on screen, checks that something of the mod is
+actually there, and files the frame in the mod's own folder. The panel and the
+site both read it from there.
+
+Rules baked into both, each of which cost a set of pictures:
 
 - **Shoot at the size the picture is published at.** Cropping a taller frame
   afterwards takes the crop from the middle, which is how the top bar and the
@@ -99,20 +117,72 @@ the reason it exists:
 - **Force the viewport.** Otherwise every picture depends on how wide whoever
   took it happened to have Slack open, and the catalogue ends up with
   thumbnails that do not match each other.
-- **Only the empty BetterSlack workspace.** These end up in a public README;
-  the recipe refuses to photograph anything else, by team id.
+- **Every frame has to show the mod.** Each entry names a selector that must be
+  on screen -- the member column, the palette's box, the highlighted block --
+  and the run fails if it is not. Without it a message action, which only
+  exists while the pointer is over a message, photographs as an ordinary
+  channel, and fifteen identical pictures go into the catalogue unnoticed.
+
+A recipe is handed `evaluate`, `sleep`, `shoot`, and three things the page
+cannot do for itself:
+
+- `shootWindow(match, name, size)` -- photograph a window a mod opened. It is a
+  separate renderer, so the client's session cannot see it, and `screencapture`
+  misses it because Slack routinely puts it on another Space. Match on
+  `window.name`: a window opened with `window.open('', name)` is `about:blank`
+  with a title in the user's language.
+- `click(selector, index)` and the `hover` argument to `shoot` -- a **real**
+  pointer through `Input.dispatchMouseEvent`. Slack draws the message action
+  toolbar from CSS `:hover`, which no synthetic event reaches.
+- The loader brings the client to the front before the recipe runs: Slack in
+  the background is Slack that is not rendering, and a deep link that should
+  slide a profile in does nothing there.
 
 `BETTERSLACK_SHOT=<dir>` alone still writes a PNG per attached window, which is
-how a window a mod opened -- the theme builder -- gets looked at.
+how a window a mod opened gets looked at outside a recipe.
+
+## Photographing somebody's real Slack
+
+`scripts/redact.js` replaces everything on screen that belongs to anybody
+before `shoot-mods` takes a picture: names, faces, messages, channels, files,
+links, the workspace's name. It substitutes rather than blurs -- a blurred name
+is still a name that was on the screen -- and derives every replacement from a
+hash of the original, so the same person is the same invented person in every
+frame and two runs produce the same picture.
+
+**What makes it safe is not the list of selectors.** A list can always miss
+one. It is that the recipe reads the screen before and after and refuses to
+take the picture if anything survived, and re-checks before *every* frame,
+since Slack keeps rendering. A missed selector is a failed run, which is a bug
+report; it is not a leak. Everything below was found by that check rather than
+by looking:
+
+- The composer's grey prompt carries the channel's name.
+- A link Slack unfurled is a card with somebody's title and author in it.
+- Sidebar section headings are named by the person who made them.
+- Slack narrates every navigation into `.c-aria_live_announcer_api`.
+- `aria-label` on every avatar reads "show X's profile" -- not drawn, but Slack
+  builds a tooltip out of a `title`, and a picture taken with the pointer
+  resting anywhere is a picture with a real name in it.
+- The audit reads what is **drawn**: text nodes that are visible, links and
+  images. Reading `body.textContent` put Slack's own inline `<script>` in it --
+  the word "master" from a bundler path -- and a hidden support link, and both
+  failed runs that were clean.
+- Slack's own vocabulary is not a leak. The words the audit is allowed to see
+  survive are listed, in one place, in `shoot-mods.mjs`, and anything not on
+  that short list still fails the run.
+- A mod that reads the screen once and decorates what it found -- the syntax
+  highlighter -- has to be switched off and on after the sweep, or what it
+  decorated is the text that has since been replaced.
 
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script
 -- nothing fetched from a CDN, so it renders the same whatever else the network
 is doing. Its catalogue is generated from `mods/registry.json`, and the workflow
-fails if the committed `site/data.js` has drifted from it. The screenshots in
-`site/shots/` were taken through CDP against a real client (`Page.captureScreenshot`,
-on the empty demo workspace); `screencapture` photographs the desktop and
-misses a window on another Space.
+fails if the committed `site/data.js` has drifted from it. `pnpm site` also
+copies each mod's `screenshot.jpg` into `site/shots/mods/`, since the page is
+published on its own and cannot reach `mods/`; the catalogue and the panel
+therefore show the same frame, out of the same file.
 
 Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
 `test:core`, `test`, `check-structure`.
@@ -288,6 +358,19 @@ Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
   'hidden'` and the channel-details modal never opens, so anything that drives
   Slack's own UI fails in the background — which is also why measuring by
   clicking through Slack from a terminal is flaky.
+- **`slack://open?team=<id>` switches workspace**, in place, same document --
+  and it is the only way to, from a script. The workspace rail is in the
+  document with every workspace in it and measures **zero by zero** in Slack
+  4.51, so a click aimed at it lands on the window and reports success while
+  nothing moves. The ids are on the rows all the same, in
+  `data-rbd-draggable-id`.
+- **`[data-qa="channel_sidebar_name_button"]` no longer exists.** The sidebar's
+  rows are `[data-qa="channel-sidebar-channel"]`. A selector that matches
+  nothing announces nothing, which is why the redactor's list is checked by an
+  audit rather than trusted.
+- **`slack://user?team=…&id=…` opens a profile**, but not for everyone: an app
+  or a conversation with yourself gives a pane that never appears. Try ids in
+  turn rather than trusting the first.
 - **Slack's deep links are the only navigation that works from a mod**, and
   they work well: assigning `slack://channel?team=…&id=…` or
   `slack://user?team=…&id=…` hands the URL to the desktop app's protocol
@@ -653,6 +736,15 @@ root, reimplementing the look from tokens — which lands close but never right.
 The trade-off is deliberate: a theme that restyles `.c-dialog` restyles them
 too. Toasts stay in a shadow root, since Slack has no toast to borrow from and
 an unreadable error message is worse than an off-brand one.
+
+**Every mod has a page**, reached by clicking its name: its icon, its version
+and author, its description in the reader's language, a screenshot with a
+caption, its README rendered, and its settings. `renderMarkdown` in
+`ui/markdown.ts` escapes first and drops a `javascript:` URL; a picture in a
+README is fetched from the mod's folder through `manager.asset`, one at a time,
+and nothing else is fetched at all. `panel.openMod(id)` -- what `api.app` and
+the palette call -- opens that page rather than the row's settings drawer,
+which is what it used to do when the settings were all there was.
 
 Destructive actions belong behind the row overflow menu, not on the row: a
 Remove button on every line shouted louder than anything else in the dialog.

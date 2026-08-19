@@ -86,6 +86,38 @@ mkdir -p mods/themes/my-theme
 
 `id` must match the folder name.
 
+### The mod's page in the panel
+
+Everything above is the minimum. What turns a row in a list into a page
+somebody reads is optional, and every mod in this repository has all of it:
+
+```json
+{
+  "icon": "icon.svg",
+  "descriptions": { "fr": "Une phrase, dans la langue du lecteur." },
+  "screenshots": [{
+    "file": "screenshot.jpg",
+    "captions": { "en": "What the picture shows.", "fr": "Ce que montre l'image." }
+  }],
+  "readme": "README.md",
+  "readmes": { "fr": "README.fr.md" }
+}
+```
+
+- `icon` is an SVG in the mod's folder. It is inlined into the catalogue, so it
+  costs no request and cannot be missing when the panel draws.
+- `descriptions` and `readmes` are keyed by language. English is what a reader
+  falls back to, so `description` and `readme` stay required.
+- `screenshots` are read one at a time, only when the page is opened.
+- The README is also a file people read in the repository, so it opens with the
+  mod's name and its description; the panel drops both, since they are already
+  the heading and the paragraph above it.
+- `pnpm shoot --mods` takes the picture for you and files it as
+  `screenshot.jpg` in the folder.
+
+Every path must stay inside the mod's folder -- the loader refuses anything
+that climbs out of it -- and `pnpm validate-mods` checks that each file exists.
+
 ### 3. `mods/themes/my-theme/theme.css`
 
 Change Slack's **design tokens**, not its class names — class names churn with

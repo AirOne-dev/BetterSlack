@@ -631,7 +631,7 @@ api.app.mods();     // [{ id, name, description, type, installed, enabled, setti
 await api.app.setEnabled('midnight', true);
 await api.app.setInstalled('aurora', true);
 api.app.openPanel('themes');       // or no argument for wherever it was
-api.app.openMod('channel-notes');  // the panel, on that mod, settings unfolded
+api.app.openMod('channel-notes');  // the panel, on that mod's own page
 api.app.commands();                // what every other mod has registered
 ```
 
@@ -640,7 +640,8 @@ there is nothing to configure. Offer "Configure" only above 0, and only while
 the mod is on: the panel hides a switched-off mod's controls, so the row would
 lead to an empty box. `openMod` points at the panel rather than reimplementing
 it, because the panel is where a manifest's settings are drawn, checked and
-saved.
+saved -- and it opens the mod's own page there: description, screenshot,
+readme and settings, in the reader's language.
 
 Small on purpose, and here rather than on `window`: a mod that wants to list the
 catalogue or open the panel should not be reaching into the page for it. The
