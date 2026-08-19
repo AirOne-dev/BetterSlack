@@ -154,29 +154,87 @@ console.log(`built ${app}`);
  *
  * `dist/` is inside the repository, and if the repository is on the Desktop
  * then so is the app -- which cannot then read its own launcher, let alone the
- * project. Copied to the user's Applications folder it reads itself fine, and
- * the only thing left needing permission is the project, which macOS will ask
- * about once.
- *
- * `~/Applications`, not `/Applications`: the second needs an administrator and
- * this is a per-user launcher for a checkout only that user has. Say which,
- * loudly. Finder does not show `~/Applications` in its sidebar by default, so
- * "installed" followed by a path people read as the system folder is a report
- * of something that looks like it did not happen.
+ * project. Copied into /Applications it reads itself fine, and the only thing
+ * left needing permission is the project, which macOS will ask about once.
  */
-const installed = path.join(homedir(), 'Applications', 'BetterSlack.app');
-if (process.argv.includes('--install')) {
-  await fs.mkdir(path.dirname(installed), { recursive: true });
-  await fs.rm(installed, { recursive: true, force: true });
-  await fs.cp(app, installed, { recursive: true });
-  await run('codesign', ['--force', '--deep', '--sign', '-', installed]).catch(() => undefined);
-  console.log(`\ninstalled ${installed}`);
+const installed = '/Applications/BetterSlack.app';
+
+/*
+ * Two quotings, and both are needed.
+ *
+ * `do shell script` takes an AppleScript string and hands it to /bin/sh, so a
+ * path travels through two parsers. Escaping only the AppleScript literal
+ * leaves the shell to split `/Users/me/my projects/...` into three arguments
+ * and delete something else; quoting only for the shell leaves the AppleScript
+ * literal unterminated. This project's own path has no space in it today, which
+ * is exactly why this would have gone unnoticed.
+ */
+const forShell = (text) => `'${text.replace(/'/g, `'\\''`)}'`;
+const asAppleScript = (text) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+/**
+ * Copy it in, asking for an administrator only if the plain copy is refused.
+ *
+ * /Applications is `root:admin` and `drwxrwxr-x`, so on a Mac whose owner is an
+ * administrator -- which is most of them -- this needs no password at all.
+ * Asking for one up front would be a password prompt for something that does
+ * not need one, so the escalation happens only after the ordinary copy has
+ * actually been refused, and the terminal says what is about to be asked and
+ * why before macOS puts its own dialog on screen.
+ *
+ * Everything the elevated shell does is done there: removing the old bundle,
+ * copying the new one and signing it. Split across the two, the copy would be
+ * root-owned and the signature would then fail as the user.
+ */
+async function install() {
+  /*
+   * The old home, if there is one. This used to install into ~/Applications;
+   * leaving that copy behind means two launchers with the same name, and
+   * Spotlight offering whichever it indexed first -- one of which runs an
+   * older build.
+   */
+  const previous = path.join(homedir(), 'Applications', 'BetterSlack.app');
+  await fs.rm(previous, { recursive: true, force: true }).catch(() => undefined);
+
+  try {
+    await fs.rm(installed, { recursive: true, force: true });
+    await fs.cp(app, installed, { recursive: true });
+    await run('codesign', ['--force', '--deep', '--sign', '-', installed]).catch(() => undefined);
+    console.log(`\ninstalled ${installed}`);
+    return;
+  } catch (err) {
+    const code = err?.code;
+    if (code !== 'EACCES' && code !== 'EPERM' && code !== 'EROFS') throw err;
+  }
+
   console.log(
-    'That is your own Applications folder, not /Applications — Finder hides it\n'
-    + 'from the sidebar, so open it with Go > Go to Folder (⇧⌘G) or just start\n'
-    + 'BetterSlack from Spotlight, which indexes it.',
+    '\n/Applications is owned by root, and this account cannot write to it.'
+    + '\nmacOS is about to ask for your password. It is used for one thing: to'
+    + `\ncopy BetterSlack.app into ${installed} and sign it there.`
+    + '\nNothing else is run with those rights, and nothing outside that folder'
+    + '\nis touched. Cancelling leaves the app in dist/ and changes nothing.',
   );
+
+  const script = [
+    `rm -rf ${forShell(installed)}`,
+    `cp -R ${forShell(app)} ${forShell(installed)}`,
+    `codesign --force --deep --sign - ${forShell(installed)}`,
+  ].join(' && ');
+
+  try {
+    await run('osascript', ['-e', `do shell script ${asAppleScript(script)} with administrator privileges`]);
+    console.log(`\ninstalled ${installed}`);
+  } catch (err) {
+    console.error(
+      `\ncould not install into /Applications: ${err.message.split('\n')[0]}`
+      + `\nThe app is still built at ${app}. Move it yourself, or run`
+      + '\n"pnpm build-app --install" again and allow the prompt.',
+    );
+    process.exitCode = 1;
+  }
 }
+
+if (process.argv.includes('--install')) await install();
 
 const GATED = ['Desktop', 'Documents', 'Downloads'].map((name) => path.join(homedir(), name));
 const gated = GATED.some((dir) => root === dir || root.startsWith(`${dir}${path.sep}`));
@@ -193,7 +251,7 @@ if (!compiled && gated) {
     `\nThis project is in a folder macOS gates per application, so the app cannot be\n`
     + `run from ${path.relative(root, app)} -- it cannot read its own launcher there, and a\n`
     + `double-click does nothing at all. Run "pnpm build-app --install" to put a copy in\n`
-    + `~/Applications and open it from there; macOS will ask once about the project.`,
+    + `/Applications and open it from there; macOS will ask once about the project.`,
   );
 }
 

@@ -52,14 +52,18 @@ from **Browse**.
 pnpm build-app --install
 ```
 
-That puts a **BetterSlack.app** in `~/Applications`, so it starts from
+That puts a **BetterSlack.app** in `/Applications`, so it starts from
 Spotlight, the Dock or your login items.
 
-`~/Applications` is your own Applications folder, not `/Applications`. They are
-two different places, the system one needs an administrator, and Finder keeps
-yours out of the sidebar — so an app that installed correctly looks missing.
-Reach it with **Go → Go to Folder** (⇧⌘G), or type BetterSlack into Spotlight,
-which indexes it. It is a launcher rather than a bundle —
+`/Applications` is owned by root but writable by the `admin` group, so on a Mac
+whose owner is an administrator — most of them — this needs no password at all.
+Where it does, macOS asks for one, and the terminal says beforehand what it is
+for: copying the bundle in and signing it there. Nothing else runs with those
+rights, nothing outside that folder is touched, and cancelling leaves the app in
+`dist/` and changes nothing.
+
+An older copy in `~/Applications` is removed on the way, since two launchers
+with the same name means Spotlight offering whichever it indexed first. It is a launcher rather than a bundle —
 it runs this checkout, so keep the project folder where it is.
 
 Two things it needs. A C compiler at build time (`xcode-select --install`),

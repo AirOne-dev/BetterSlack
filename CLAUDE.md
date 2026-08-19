@@ -93,8 +93,16 @@ bug report before it was written down:
 - **The app cannot live in the gated folder either.** `dist/` is inside the
   repository, so an app built there cannot read its own `launch.sh`, `execl`
   fails, `main` returns, and a double-click does *nothing at all* -- no window,
-  no dialog, no log. `pnpm build-app --install` copies it to `~/Applications`,
-  where it reads itself normally and only the project needs permission.
+  no dialog, no log. `pnpm build-app --install` copies it to `/Applications`,
+  where it reads itself normally and only the project needs permission. That
+  folder is `root:admin` and group-writable, so an administrator needs no
+  password; the elevation is attempted **only after** an ordinary copy has been
+  refused, since asking up front is a password prompt for something that does
+  not need one. When it is needed, the removal, the copy and the signing all
+  happen inside the one elevated shell -- split across the two, the copy would
+  be root-owned and the signature would then fail as the user. And a path
+  travels through two parsers there: `do shell script` takes an AppleScript
+  string and hands it to `/bin/sh`, so it needs quoting for both.
 - **The stub explains rather than dying.** Running another program is not
   gated, only reading a file is, so it can still reach `osascript` even when it
   cannot read its own launcher.

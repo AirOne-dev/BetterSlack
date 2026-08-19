@@ -58,7 +58,7 @@ BETTERSLACK_SLACK_PATH=/path/to/Slack pnpm start
 <summary>Start it without a terminal (macOS)</summary>
 
 ```bash
-pnpm build-app --install    # ~/Applications/BetterSlack.app
+pnpm build-app --install    # /Applications/BetterSlack.app
 ```
 
 A launcher rather than a bundle: it holds the path to this checkout and runs it,
@@ -79,7 +79,7 @@ prompt and nothing to grant.
 **`--install` is not decoration.** `dist/` is inside the project, so if the
 project is in one of those folders then so is the app, and it cannot read even
 its own launcher: exec fails and a double-click does nothing whatsoever. From
-`~/Applications` it reads itself normally, and the only thing left to ask about
+`/Applications` it reads itself normally, and the only thing left to ask about
 is the project — which macOS does, once.
 
 It remembers that answer for as long as the app is not rebuilt. An ad-hoc

@@ -105,10 +105,11 @@ active as long as it does. Nothing is installed on a fresh setup: open the panel
 and install what you want from **Browse**.
 
 On macOS, `pnpm build-app --install` puts a **BetterSlack.app** in
-`~/Applications` so you can start it from Spotlight, the Dock or your login
-items instead of a terminal. That is *your* Applications folder, not
-`/Applications` — Finder keeps it out of the sidebar, so reach it with
-**Go → Go to Folder** (⇧⌘G) or just type BetterSlack into Spotlight. It is a launcher rather than a bundle — it runs
+`/Applications` so you can start it from Spotlight, the Dock or your login items
+instead of a terminal. On a Mac whose owner is an administrator that needs no
+password; on one where it does, macOS asks, and the terminal says beforehand
+what the password is for — copying the bundle in and signing it there, and
+nothing else. It is a launcher rather than a bundle — it runs
 this checkout, so keep the project folder where it is.
 
 Two things it needs. A C compiler at build time (`xcode-select --install`),
