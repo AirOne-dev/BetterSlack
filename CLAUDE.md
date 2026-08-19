@@ -294,30 +294,44 @@ live client rather than assumed:
 it reads the TypeScript interfaces -- `PluginApi`, `SlackApi`, `Helpers`,
 `I18n`, `Kit` -- and their doc comments, and takes the examples from the
 matching `###` headings in `docs/api.md`. Add a method and it appears; delete
-one and it leaves. Writing that list a third time, after the types and the
-reference, is how two of them end up disagreeing.
+one and it leaves.
+
+**One file, one panel at a time.** Every entry is a `<section class="panel">`
+in that single document and the list on the left switches between them; the
+page itself does not scroll. Ninety-eight separate files was the first shape
+and the wrong one: a reference is read by jumping around it, and a jump that
+costs a page load loses the theme you picked, the arguments you set and your
+place in the list.
 
 Its live half is `scripts/api-demos.js`, bundled into `site/api-demos.js`. It
 imports the real modules -- `createKit`, `createHelpers`, `createI18n`,
-`renderMarkdown`, Code Highlight's tokeniser and detector, the theme builder's
-`derivePalette` -- so the page renders what runs in Slack rather than a mock-up
-of it, and the site build fails if one of them stops compiling.
+`renderMarkdown`, `addToolbarButton` and friends, Code Highlight's tokeniser
+and detector, the theme builder's `derivePalette` -- so the page renders what
+runs in Slack, and the site build fails if one of them stops compiling.
 
-**`HelperContext` is five things**, which is why `api.helpers` can run on a web
-page at all: an id, a way to write CSS, a toast, a settings store and a cleanup
-tracker. The site supplies all five against an in-memory map and gets the
-shipped `toggle`, `debounce` and `describeHotkey` rather than an impression of
-them.
+Three things make that possible:
+
+- **`HelperContext` is five things**: an id, a way to write CSS, a toast, a
+  settings store and a cleanup tracker. The site supplies all five against an
+  in-memory map and gets the shipped `toggle`, `debounce` and `describeHotkey`.
+- **`site/slack-context.css` is Slack's stylesheet's understudy** -- the twenty
+  classes the widgets wear (`c-button`, `c-dialog`, `c-menu`, `c-tooltip`) and
+  nothing else, scoped to `.slack-stage`. The widgets deliberately borrow
+  Slack's classes so they follow every theme; that is right in the client and
+  the reason they look like nothing on a web page. The *colours* are not
+  invented: `site/api-themes.css` is generated from `mods/themes/*/theme.css`,
+  so a component here is painted by the tokens that paint it in Slack, and the
+  picker switches between the shipped themes.
+- **`tests/slack-fixture.mjs`** holds the Slack-shaped fragment, so the real
+  `addToolbarButton` and `addMessageAction` have the containers they look for.
+  The page mounts all of it and shows only the part the demo is about, and
+  swaps every avatar for a drawing -- a docs page has no business fetching
+  faces from Slack's CDN. The ids in that fixture are invented for the same
+  reason; they used to be a real team's.
 
 Every demo has the same three parts -- a stage, controls that change the
-arguments, and the call that produced what you are looking at, coloured by Code
-Highlight. Changing a control rebuilds all three; that is the difference
-between a screenshot of an API and an API you can hold.
-
-Anything that needs Slack itself (a toolbar button, a message action, the web
-API) is shown as code and carries an "inside Slack" badge, because
-re-implementing it for a web page would be exactly the second version this
-project keeps avoiding.
+arguments, and the call that produced what you are looking at. Changing a
+control rebuilds all three.
 
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script

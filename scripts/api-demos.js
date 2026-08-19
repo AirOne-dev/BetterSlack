@@ -16,6 +16,11 @@
  * Bundled into site/api-demos.js by scripts/build-api-page.mjs.
  */
 
+import { addMessageAction, addProfileButton, addToolbarButton } from '../src/runtime/slack-api.js';
+import { modal, toast, confirm as slackConfirm } from '../src/runtime/ui/widgets.js';
+import { openMenu } from '../src/runtime/ui/menu.js';
+import { h } from '../src/runtime/dom.js';
+import { SLACK_FIXTURE } from '../tests/slack-fixture.mjs';
 import { createKit } from '../src/runtime/ui/kit.js';
 import { KIT_CSS } from '../src/runtime/ui/kit-css.js';
 import { createHelpers } from '../src/runtime/helpers.js';
@@ -111,7 +116,8 @@ function playground(name, spec) {
   const state = {};
   for (const c of spec.controls ?? []) state[c.key] = c.value;
 
-  const stage = el('div', 'pg__stage');
+  const stage = el('div', 'pg__stage slack-stage');
+  stage.dataset.theme = document.getElementById('stage-theme')?.value ?? 'midnight';
   const code = el('pre', 'pg__code');
   const draw = () => {
     try {
@@ -348,6 +354,248 @@ const HELPERS = {
   },
 };
 
+
+/* -- the Slack-styled widgets, now that the stage wears Slack ------------- */
+
+const ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 6.5v4M10 13.2v.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+const UI = {
+  'ui-toast': {
+    controls: [
+      { key: 'message', type: 'text', value: 'Theme saved' },
+      { key: 'variant', type: 'select', options: ['info', 'success', 'warning', 'error'], value: 'success' },
+      { key: 'action', label: 'action label', type: 'text', value: 'Undo' },
+    ],
+    render: (v) => {
+      const button = kit.button('Show the toast', { variant: 'primary' });
+      button.addEventListener('click', () => toast(v.message, {
+        variant: v.variant,
+        action: v.action ? { label: v.action, onClick: () => {} } : undefined,
+      }));
+      return button;
+    },
+    code: (v) => `api.ui.toast('${v.message}', {\n  variant: '${v.variant}',\n  action: { label: '${v.action}', onClick: () => undo() },\n});`,
+  },
+  'ui-modal': {
+    controls: [
+      { key: 'title', type: 'text', value: 'Channel notes' },
+      { key: 'body', type: 'text', value: 'Kept on this machine only. Nothing is sent anywhere.' },
+      { key: 'action', type: 'text', value: 'Save' },
+      { key: 'width', type: 'number', value: 460 },
+    ],
+    render: (v) => {
+      const button = kit.button('Open the dialog', { variant: 'primary' });
+      button.addEventListener('click', () => {
+        modal({
+          title: v.title,
+          content: h('p', { class: 'betterslack-hint' }, [v.body]),
+          width: v.width,
+          actions: [{ label: v.action, primary: true, onClick: () => true }],
+        });
+      });
+      return button;
+    },
+    code: (v) => `api.ui.modal({\n  title: '${v.title}',\n  content: api.dom.h('p', {}, ['${v.body}']),\n  width: ${v.width},\n  actions: [{ label: '${v.action}', primary: true, onClick: () => true }],\n});`,
+  },
+  'ui-confirm': {
+    controls: [
+      { key: 'title', type: 'text', value: 'Remove Midnight?' },
+      { key: 'body', type: 'text', value: 'Its files go with it.' },
+      { key: 'danger', type: 'boolean', value: true },
+    ],
+    render: (v) => {
+      const button = kit.button('Ask', { variant: v.danger ? 'danger' : 'primary' });
+      const said = kit.el('span', { class: 'sm-hint', style: 'margin-left:10px' }, ['']);
+      button.addEventListener('click', async () => {
+        said.textContent = (await slackConfirm({ title: v.title, body: v.body, danger: v.danger }))
+          ? 'resolved true' : 'resolved false';
+      });
+      return [button, said];
+    },
+    code: (v) => `const sure = await api.ui.confirm({\n  title: '${v.title}',\n  body: '${v.body}',\n  danger: ${v.danger},\n});`,
+  },
+  'ui-menu': {
+    controls: [{ key: 'items', type: 'text', value: 'Rename, Duplicate, Remove' }],
+    render: (v) => {
+      const anchor = kit.button('Open the menu');
+      anchor.addEventListener('click', () => openMenu(anchor, v.items.split(',').map((label, i) => ({
+        label: label.trim(),
+        danger: i === v.items.split(',').length - 1,
+        onSelect: () => {},
+      }))));
+      return anchor;
+    },
+    code: (v) => `api.ui.menu(anchor, [\n${v.items.split(',').map((l, i, a) => `  { label: '${l.trim()}'${i === a.length - 1 ? ', danger: true' : ''}, onSelect: () => {} },`).join('\n')}\n]);`,
+  },
+};
+
+/* -- Slack's chrome, mounted for real ------------------------------------ */
+
+/**
+ * The fixture the tests use, so the real `addToolbarButton` has the container
+ * it looks for. Nothing here is a drawing of Slack: these are the shipped
+ * functions, finding `.p-control_strip` and `[data-qa="message_container"]`
+ * exactly as they do in the client.
+ */
+function slackChrome() {
+  const frame = el('div', 'chrome');
+  frame.innerHTML = SLACK_FIXTURE;
+  /*
+   * Nobody's face, and nothing fetched.
+   *
+   * The fixture carries avatar URLs because `userIdFromAvatarUrl` reads an id
+   * out of one, and its ids are invented -- but a page that asks Slack's CDN
+   * for them would still be a page making requests on a reader's behalf for
+   * pictures that are not ours. Drawn instead, in the ink of whatever theme
+   * the stage is wearing.
+   */
+  for (const img of frame.querySelectorAll('img')) {
+    const avatar = document.createElement('span');
+    avatar.className = img.className;
+    avatar.setAttribute('style', 'display:inline-block;width:36px;height:36px;border-radius:8px;'
+      + 'background:var(--dt_color-content-hgl-1, #7cc4ff);opacity:.5');
+    img.replaceWith(avatar);
+  }
+  return frame;
+}
+
+/**
+ * Mount all of it, show one part of it.
+ *
+ * The functions being demonstrated go looking for their own container, so the
+ * whole fragment has to be in the document -- but a reader wants the strip the
+ * button landed in, not a diagram of a client. Everything else is hidden, and
+ * the chain from the target up to the root is put back.
+ */
+function focusChrome(frame, selector) {
+  const target = frame.querySelector(selector);
+  if (!target) return;
+  for (const node of frame.querySelectorAll('*')) node.classList.add('is-out');
+  for (let node = target; node && node !== frame; node = node.parentElement) node.classList.remove('is-out');
+  for (const node of target.querySelectorAll('*')) node.classList.remove('is-out');
+}
+
+/** Where each toolbar puts a button, in the fragment above. */
+const TOOLBAR_CONTAINER = {
+  controlStrip: '.p-control_strip',
+  composer: '[data-qa="message_input"]',
+  channelHeader: '.p-view_header__actions',
+};
+
+const CHROME = {
+  'slack-addtoolbarbutton': {
+    controls: [
+      { key: 'toolbar', type: 'select', options: ['controlStrip', 'composer', 'channelHeader'], value: 'controlStrip' },
+      { key: 'label', type: 'text', value: 'Channel notes' },
+    ],
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      addToolbarButton('demo', v.toolbar, { id: 'demo', label: v.label, icon: ICON, onClick: () => {} });
+      focusChrome(frame, TOOLBAR_CONTAINER[v.toolbar]);
+      return undefined;
+    },
+    code: (v) => `api.slack.addToolbarButton('${v.toolbar}', {\n  id: 'notes',\n  label: '${v.label}',\n  icon: '<svg viewBox="0 0 20 20">…</svg>',\n  onClick: () => open(),\n});`,
+  },
+  'slack-addmessageaction': {
+    controls: [{ key: 'label', type: 'text', value: 'Copy link' }],
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      addMessageAction('demo', { id: 'demo', label: v.label, icon: ICON, onClick: () => {} });
+      focusChrome(frame, '[data-qa="message_container"]');
+      return undefined;
+    },
+    code: (v) => `api.slack.addMessageAction({\n  id: 'copy-link',\n  label: '${v.label}',\n  icon: '<svg viewBox="0 0 20 20">…</svg>',\n  onClick: (message) => copy(message.permalink),\n});`,
+  },
+  'slack-addprofilebutton': {
+    controls: [{ key: 'label', type: 'text', value: 'Download picture' }],
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      addProfileButton('demo', { id: 'demo', label: v.label, icon: ICON, onClick: () => {} });
+      focusChrome(frame, '[data-qa="member_profile_pane"]');
+      return undefined;
+    },
+    code: (v) => `api.slack.addProfileButton({\n  id: 'download',\n  label: '${v.label}',\n  icon: '<svg viewBox="0 0 20 20">…</svg>',\n  onClick: ({ userId }) => save(userId),\n});`,
+  },
+  'slack-avatarurl': {
+    controls: [
+      { key: 'url', type: 'text', value: 'https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-06c4356b6ae3-48' },
+      { key: 'size', type: 'select', options: ['24', '48', '72', '192', '512'], value: '192' },
+    ],
+    render: (v) => {
+      const at = /-\d+$/.test(v.url) ? v.url.replace(/-\d+$/, `-${v.size}`) : null;
+      return kit.el('code', { class: 'sm-hint', style: 'word-break:break-all' }, [at ?? 'null — not one of Slack\u2019s avatar URLs']);
+    },
+    code: (v) => `api.slack.avatarUrl(\n  '${v.url}',\n  ${v.size},\n);`,
+  },
+  'dom-h': {
+    controls: [
+      { key: 'tag', type: 'select', options: ['div', 'button', 'span'], value: 'button' },
+      { key: 'className', label: 'class', type: 'text', value: 'c-button c-button--primary' },
+      { key: 'text', type: 'text', value: 'Made with api.dom.h' },
+    ],
+    render: (v) => h(v.tag, { class: v.className }, [v.text]),
+    code: (v) => `api.dom.h('${v.tag}', { class: '${v.className}' }, ['${v.text}']);`,
+  },
+};
+
+/* -- helpers that need Slack's classes ----------------------------------- */
+
+const SLACK_HELPERS = {
+  'helpers-iconbutton': {
+    controls: [
+      { key: 'label', type: 'text', value: 'Notes' },
+      { key: 'surface', type: 'select', options: ['strip', 'header', 'composer'], value: 'header' },
+    ],
+    render: (v) => helpers.iconButton({ icon: ICON, label: v.label, surface: v.surface, onClick: () => {} }),
+    code: (v) => `api.helpers.iconButton({\n  icon: '<svg viewBox="0 0 20 20">…</svg>',\n  label: '${v.label}',\n  surface: '${v.surface}',\n  onClick: () => open(),\n});`,
+  },
+  'helpers-field': {
+    controls: [
+      { key: 'label', type: 'text', value: 'Time zone' },
+      { key: 'value', type: 'text', value: 'Europe/Paris' },
+    ],
+    render: (v) => helpers.field(v.label, v.value),
+    code: (v) => `api.helpers.field('${v.label}', '${v.value}');`,
+  },
+  'helpers-section': {
+    controls: [
+      { key: 'title', type: 'text', value: 'More details' },
+      { key: 'rows', type: 'text', value: 'User ID: U04KY0Z61, Time zone: Europe/Paris' },
+    ],
+    render: (v) => helpers.section(v.title, v.rows.split(',').map((row) => {
+      const [label, value] = row.split(':');
+      return helpers.field((label ?? '').trim(), (value ?? '').trim());
+    })),
+    code: (v) => `api.helpers.section('${v.title}', [\n  api.helpers.field('User ID', user.id),\n  api.helpers.field('Time zone', user.tz_label),\n]);`,
+  },
+  'helpers-badge': {
+    controls: [{ key: 'value', type: 'number', value: 3 }],
+    render: (v, { stage }) => {
+      const host = el('div', 'pg__badge-host');
+      host.append(helpers.iconButton({ icon: ICON, label: 'Activity', surface: 'header', onClick: () => {} }));
+      stage.replaceChildren(host);
+      helpers.badge('.pg__badge-host button', 'demo-badge', () => v.value || null);
+      return undefined;
+    },
+    code: (v) => `let unread = ${v.value};\napi.helpers.badge('[data-qa="betterslack_button"]', 'unread', () => unread);`,
+  },
+  'helpers-tooltip': {
+    controls: [
+      { key: 'title', type: 'text', value: 'Channel notes' },
+      { key: 'subtitle', type: 'text', value: '⌘⇧N' },
+    ],
+    render: (v) => {
+      const button = helpers.iconButton({ icon: ICON, label: v.title, surface: 'header', onClick: () => {} });
+      helpers.tooltip(button, v.title, v.subtitle);
+      return [button, kit.el('span', { class: 'sm-hint', style: 'margin-left:10px' }, ['hover it'])];
+    },
+    code: (v) => `api.helpers.tooltip(button, '${v.title}', '${v.subtitle}');`,
+  },
+};
+
 /* -- i18n ----------------------------------------------------------------- */
 
 function mountI18n() {
@@ -447,13 +695,95 @@ function mountRoles() {
 /* -- go ------------------------------------------------------------------- */
 
 installStyles();
+
+/*
+ * One theme for every stage, whichever picker you touch.
+ *
+ * The tokens come from `mods/themes/<id>/theme.css`, scoped to `.slack-stage`
+ * at build time, so switching here is the switch a user makes in the panel --
+ * and a component that looks wrong in one theme looks wrong here too.
+ */
+function wireThemePickers() {
+  const pickers = [...document.querySelectorAll('.stage-theme')];
+  if (!pickers.length) return;
+  const apply = (value) => {
+    for (const stage of document.querySelectorAll('.slack-stage')) stage.dataset.theme = value;
+    for (const other of pickers) other.value = value;
+  };
+  for (const picker of pickers) picker.addEventListener('change', () => apply(picker.value));
+  apply(pickers[0].value);
+}
+
+/*
+ * One panel at a time, and the list on the left never moves.
+ *
+ * A reference is read by jumping around it, and a jump that costs a page load
+ * loses the theme you picked, the arguments you set and your place in the
+ * list. So every entry is a section in this document and exactly one is shown;
+ * the URL still names it, so a link to an entry is still a link.
+ */
+function router() {
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  const stack = document.querySelector('.stack');
+  const links = [...document.querySelectorAll('.side__list a')];
+  if (!stack || !links.length) return;
+
+  const show = (slug) => {
+    const wanted = document.getElementById(`p-${slug}`) ?? stack.querySelector('.panel');
+    for (const panel of stack.querySelectorAll('.panel')) panel.hidden = panel !== wanted;
+    for (const link of links) {
+      const current = link.getAttribute('href') === `#${wanted.id.slice(2)}`;
+      link.toggleAttribute('aria-current', current);
+      if (current) link.scrollIntoView({ block: 'nearest' });
+    }
+    /*
+     * Twice, and the second one matters: a demo that mounts after this -- the
+     * chrome fragment, the code editor -- can scroll its own ancestor into
+     * view as it lays out, and the reader lands halfway down a panel they
+     * have just opened.
+     */
+    stack.scrollTop = 0;
+    requestAnimationFrame(() => {
+      stack.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+    });
+  };
+
+  const fromHash = () => show(location.hash.slice(1) || stack.dataset.first);
+  window.addEventListener('hashchange', fromHash);
+  fromHash();
+}
+
+/** Narrow the list without leaving the page. */
+function filter() {
+  const box = document.getElementById('side-filter');
+  if (!box) return;
+  box.addEventListener('input', () => {
+    const needle = box.value.trim().toLowerCase();
+    for (const group of document.querySelectorAll('.side__group')) {
+      let shown = 0;
+      for (const item of group.querySelectorAll('li')) {
+        const hit = !needle || (item.textContent ?? '').toLowerCase().includes(needle);
+        item.hidden = !hit;
+        if (hit) shown += 1;
+      }
+      group.hidden = shown === 0;
+    }
+  });
+}
 toasted = (message) => {
   const note = $('helpers-toast');
   if (note) note.textContent = `api.ui.toast(${JSON.stringify(message)})`;
 };
-for (const [name, spec] of Object.entries(KIT)) playground(name, spec);
-for (const [name, spec] of Object.entries(HELPERS)) playground(name, spec);
+for (const [name, spec] of Object.entries(KIT)) playground(`kit-${name.toLowerCase()}`, spec);
+for (const [name, spec] of Object.entries(HELPERS)) playground(`helpers-${name.toLowerCase()}`, spec);
+for (const group of [UI, CHROME, SLACK_HELPERS]) {
+  for (const [slug, spec] of Object.entries(group)) playground(slug, spec);
+}
 mountI18n();
 mountMarkdown();
 mountHighlight();
 mountRoles();
+wireThemePickers();
+router();
+filter();

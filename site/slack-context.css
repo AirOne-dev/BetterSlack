@@ -1,0 +1,157 @@
+/*
+ * The host, not the widgets.
+ *
+ * `api.ui.modal`, `api.ui.menu` and the Slack-styled helpers deliberately wear
+ * Slack's own classes — .c-dialog, .c-menu, .c-button — so that they follow
+ * whatever theme the reader has on, without BetterSlack owning a second design
+ * system. That is the right decision inside the client and the reason those
+ * widgets look like nothing on a web page: the classes exist, the stylesheet
+ * behind them does not.
+ *
+ * So this file is Slack's stylesheet's understudy, for the ~20 classes the
+ * widgets actually use, and nothing else. It is a stand-in and says so: the
+ * widget code on this page is the shipped code, unmodified, and only the host
+ * around it is approximate. The colours come from whichever shipped theme the
+ * preview is set to (see site/api-themes.css, generated from mods/themes), so
+ * a component here is painted by the same tokens that paint it in Slack.
+ *
+ * Everything is scoped to .slack-stage. A bare `.c-button` rule would style
+ * the site's own buttons too.
+ */
+
+.slack-stage {
+  color: var(--dt_color-content-pry, #e7e9ee);
+  background: var(--dt_color-base-pry, #0f1219);
+  font-family: Lato, "Slack-Lato", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  line-height: 1.46668;
+}
+
+/* Buttons ---------------------------------------------------------------- */
+
+.slack-stage .c-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font: 900 15px/1.2 inherit;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+}
+.slack-stage .c-button--primary {
+  background: var(--dt_color-content-hgl-2, #007a5a);
+  color: #fff;
+}
+.slack-stage .c-button--primary:hover { filter: brightness(1.08); }
+.slack-stage .c-button--outline {
+  border-color: var(--dt_color-otl-sec, rgba(228, 233, 242, 0.3));
+  color: inherit;
+}
+.slack-stage .c-button--outline:hover { background: var(--dt_color-base-pry-hover, rgba(255, 255, 255, 0.06)); }
+.slack-stage .c-button--danger { background: var(--dt_color-content-imp, #e01e5a); color: #fff; }
+
+.slack-stage .c-icon_button,
+.slack-stage .c-message_actions__button,
+.slack-stage .p-control_strip__circle_button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dt_color-content-sec, #a4abb8);
+  cursor: pointer;
+}
+.slack-stage .c-icon_button--size_medium { width: 36px; height: 36px; }
+.slack-stage .c-icon_button:hover,
+.slack-stage .c-message_actions__button:hover {
+  background: var(--dt_color-base-pry-hover, rgba(255, 255, 255, 0.06));
+  color: var(--dt_color-content-pry, #e7e9ee);
+}
+.slack-stage .p-control_strip__circle_button { width: 36px; height: 36px; border-radius: 50%; }
+.slack-stage .c-icon_button svg,
+.slack-stage .c-message_actions__button svg { width: 20px; height: 20px; }
+
+/* Dialog ----------------------------------------------------------------- */
+
+.slack-stage .c-dialog {
+  border-radius: 8px;
+  background: var(--dt_color-base-pry, #0f1219);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.14));
+  overflow: hidden;
+  max-width: 100%;
+}
+.slack-stage .c-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 6px;
+}
+.slack-stage .c-dialog__title { font: 900 22px/1.2 inherit; margin: 0; }
+.slack-stage .c-dialog__body,
+.slack-stage .c-dialog__content { padding: 8px 22px 18px; }
+.slack-stage .c-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--dt_color-otl-ter, rgba(228, 233, 242, 0.08));
+}
+
+/* Menu ------------------------------------------------------------------- */
+
+.slack-stage .c-menu {
+  min-width: 200px;
+  padding: 8px 0;
+  border-radius: 6px;
+  background: var(--dt_color-base-sec, #151924);
+  border: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.14));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.slack-stage .c-menu__items { list-style: none; margin: 0; padding: 0; }
+.slack-stage .c-menu_item__button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 22px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: 400 15px/1.46 inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.slack-stage .c-menu_item__button:hover {
+  background: var(--dt_color-content-hgl-1, #7cc4ff);
+  color: var(--dt_color-base-pry, #0f1219);
+}
+.slack-stage .c-menu_item__icon { display: inline-grid; place-items: center; width: 20px; }
+
+/* Popover and tooltip ---------------------------------------------------- */
+
+.slack-stage .c-popover__content {
+  border-radius: 6px;
+  background: var(--dt_color-base-sec, #151924);
+  border: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.14));
+}
+.slack-stage .c-tooltip__tip {
+  position: relative;
+  max-width: 260px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--dt_color-base-ter, #1c2130);
+  color: var(--dt_color-content-pry, #e7e9ee);
+  font: 400 13px/1.4 inherit;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.slack-stage .c-tooltip__subtitle { display: block; color: var(--dt_color-content-sec, #a4abb8); font-size: 12px; }
+.slack-stage .c-tooltip__tip__arrow { display: none; }

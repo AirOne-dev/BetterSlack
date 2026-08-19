@@ -220,7 +220,7 @@ test('prefers the Navigation API, which fires before Slack repaints', async () =
     await plugin.start(harness.api);
     const pane = document.querySelector('.p-view_contents--primary');
 
-    window.history.pushState({}, '', '/client/T025V5WN2/C0OTHERONE');
+    window.history.pushState({}, '', '/client/T0EXAMPLE1/C0OTHERONE');
     for (const fn of listeners) fn();
     assert.ok(
       pane.classList.contains('betterslack-motion-enter'),
@@ -230,7 +230,7 @@ test('prefers the Navigation API, which fires before Slack repaints', async () =
     // A thread opening beside the conversation is not the conversation being
     // replaced, and must not dip the whole column.
     pane.classList.remove('betterslack-motion-enter');
-    window.history.pushState({}, '', '/client/T025V5WN2/C0OTHERONE/thread/C0OTHERONE-1786386808.130969');
+    window.history.pushState({}, '', '/client/T0EXAMPLE1/C0OTHERONE/thread/C0OTHERONE-1786386808.130969');
     for (const fn of listeners) fn();
     assert.equal(pane.classList.contains('betterslack-motion-enter'), false, 'threads are left alone');
   } finally {
@@ -247,7 +247,7 @@ test('changing conversation stamps the pane, and the stamp clears itself', async
     assert.ok(pane, 'the fixture has the column this animates');
     assert.equal(pane.classList.contains('betterslack-motion-enter'), false);
 
-    window.history.pushState({}, '', '/client/T025V5WN2/C0OTHERONE');
+    window.history.pushState({}, '', '/client/T0EXAMPLE1/C0OTHERONE');
     await new Promise((resolve) => setTimeout(resolve, 400));
     assert.ok(pane.classList.contains('betterslack-motion-enter'), 'stamped on the way in');
 
@@ -346,7 +346,7 @@ test('offers its settings to the palette', async () => {
 test('switching it off leaves the document exactly as it was found', async () => {
   const { recorded, unmount } = await mount();
   try {
-    window.history.pushState({}, '', '/client/T025V5WN2/C0OTHERONE');
+    window.history.pushState({}, '', '/client/T0EXAMPLE1/C0OTHERONE');
     await new Promise((resolve) => setTimeout(resolve, 400));
 
     for (const dispose of recorded.disposers) dispose();

@@ -206,7 +206,7 @@ test('reports what is still real rather than claiming success', () => {
     // Something Slack drew after the sweep, which is the case the strip in the
     // corner cannot help with.
     const late = document.createElement('img');
-    late.src = 'https://ca.slack-edge.com/T025V5WN2-U9-real-48';
+    late.src = 'https://ca.slack-edge.com/T0EXAMPLE1-U9-real-48';
     document.querySelector('[data-qa="message_container"]').append(late);
 
     const left = redaction.remaining();

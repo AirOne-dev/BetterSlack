@@ -17,7 +17,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { bundleDemos, buildApiPage } from './build-api-page.mjs';
+import { bundleDemos, buildApiPage, buildThemeTokens } from './build-api-page.mjs';
 import { stripFrom } from '../mods/plugins/theme-builder/read-theme.js';
 import { formatCss } from '../mods/plugins/theme-builder/colour.js';
 
@@ -105,5 +105,7 @@ console.log(`site/data.js: ${themes.length} theme(s), ${plugins.length} plugin(s
  * and so the page cannot be forgotten when the catalogue is regenerated.
  */
 await bundleDemos();
+// Tokens first: the page's theme picker is built from what this returns.
+buildThemeTokens();
 const api = buildApiPage();
-console.log(`site/api.html: ${api.entries} entries across ${api.groups} namespaces, ${api.kit} kit primitives`);
+console.log(`site/api: ${api.pages} pages, ${api.entries} entries`);

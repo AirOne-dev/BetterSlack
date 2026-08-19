@@ -9,7 +9,7 @@ test('has the shape the runtime loads', () => assertPluginShape(assert, plugin))
 test('mounts at the foot of the sidebar and fills in the looked-up name', async () => {
   const dom = installDom();
   const { api, recorded } = createTestApi({
-    web: { userInfo: async () => ({ id: 'U041KF85GP5', profile: { display_name: 'Erwan' } }) },
+    web: { userInfo: async () => ({ id: 'U0EXAMPLE1', profile: { display_name: 'Erwan' } }) },
   });
   try {
     await plugin.start(api);
@@ -41,7 +41,7 @@ test('reads the user id from the avatar URL, not the localised label', async () 
   try {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.equal(asked, 'U041KF85GP5');
+    assert.equal(asked, 'U0EXAMPLE1');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { assertPluginShape, createTestApi, installDom } from '../../../tests/harness.mjs';
 import plugin from './index.js';
 
-/** The fixture URL is /client/T025V5WN2/C0BFQCYBRAB. */
+/** The fixture URL is /client/T0EXAMPLE1/C0BFQCYBRAB. */
 const CHANNEL = 'C0BFQCYBRAB';
 
 async function mount(settings = {}) {

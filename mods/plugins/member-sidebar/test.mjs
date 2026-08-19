@@ -196,13 +196,13 @@ test('User Inspector fills in the dialog without knowing it exists', async () =>
   const dom = installDom();
   const stub = web({ members: ['U1'] });
   const user = {
-    id: 'U041KF85GP5',
+    id: 'U0EXAMPLE1',
     name: 'zoe',
     profile: {
       display_name: 'Zoe',
       // The id User Inspector reads comes off this URL, so it has to be a real
       // Slack avatar URL rather than a placeholder.
-      image_512: 'https://ca.slack-edge.com/T025V5WN2-U041KF85GP5-abc-512',
+      image_512: 'https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-abc-512',
     },
   };
   stub.web.userInfo = async () => user;

@@ -4,7 +4,7 @@ import { assertPluginShape, createTestApi, installDom } from '../../../tests/har
 import plugin, { avatarSizes, buildRows, rolesOf } from './index.js';
 
 const USER = {
-  id: 'U018V4TL14N',
+  id: 'U0EXAMPLE2',
   name: 'jean',
   real_name: 'Jean Picard',
   is_admin: true,
@@ -57,7 +57,7 @@ test('lists only the roles a user actually has', () => {
 
 test('builds rows from the API response', () => {
   const rows = Object.fromEntries(buildRows(DATA));
-  assert.equal(rows['User ID'], 'U018V4TL14N');
+  assert.equal(rows['User ID'], 'U0EXAMPLE2');
   assert.equal(rows.Username, 'jean');
   assert.equal(rows.Title, 'Capitaine');
   assert.equal(rows.Roles, 'Admin');
@@ -117,7 +117,7 @@ test('shows the data once it arrives', async () => {
   const { dom } = await mount();
   try {
     const text = host().textContent;
-    assert.match(text, /U018V4TL14N/);
+    assert.match(text, /U0EXAMPLE2/);
     assert.match(text, /Capitaine/);
     assert.match(text, /Deck 1/);
     assert.match(text, /Admin/);
@@ -147,7 +147,7 @@ test('still renders when presence and dnd are unavailable', async () => {
     dndInfo: async () => { throw new Error('not permitted'); },
   });
   try {
-    assert.match(host().textContent, /U018V4TL14N/);
+    assert.match(host().textContent, /U0EXAMPLE2/);
   } finally {
     dom.cleanup();
   }

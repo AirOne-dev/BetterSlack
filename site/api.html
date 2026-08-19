@@ -4,76 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BetterSlack — the plugin API</title>
-<meta name="description" content="Every entry in the BetterSlack plugin API, with examples, and the component kit rendered live on the page.">
+<meta name="description" content="Every entry in the BetterSlack plugin API, most of them running in the browser.">
 <link rel="icon" href="mark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
-<style>/*
- * The colours, from Slack's own tokens wherever one fits.
- *
- * A code block sits inside a message, in whatever theme is on, so naming
- * colours outright would make this the one rectangle that ignores the theme.
- * Where Slack has no token for what a highlighter needs -- it has no idea what
- * a string literal is -- the fallback is a hue that reads on both a light and a
- * dark surface, checked against the shipped themes rather than picked.
- */
-
-/*
- * The original stays in the DOM and is hidden, never removed.
- *
- * Those children belong to React. Taking them out and putting our own in their
- * place is how a mod gets a "removeChild on a node that is not a child" the
- * next time Slack re-renders that message. Hiding them costs a line of CSS and
- * cannot throw.
- */
-pre.c-mrkdwn__pre[data-betterslack-lang] > *:not(.betterslack-hl) {
-  display: none !important;
-}
-
-.betterslack-hl {
-  display: block;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: Monaco, Menlo, Consolas, 'Courier New', monospace;
-  tab-size: 2;
-}
-
-/* The language, in the corner, faint. It is also the only way to tell a block
-   the mod understood from one it left alone. */
-pre.c-mrkdwn__pre[data-betterslack-lang] {
-  position: relative;
-}
-pre.c-mrkdwn__pre[data-betterslack-lang]::after {
-  content: attr(data-betterslack-lang);
-  position: absolute;
-  top: 2px;
-  right: 6px;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.35;
-  pointer-events: none;
-  user-select: none;
-}
-
-.bshl-comment { color: var(--dt_color-content-sec, #9a9b9d); font-style: italic; }
-.bshl-string { color: #6cc06c; }
-.bshl-number { color: #d19a66; }
-.bshl-keyword { color: #c678dd; font-weight: 700; }
-.bshl-builtin { color: #56b6c2; }
-.bshl-fn { color: var(--dt_color-content-hgl-1, #4a9eff); }
-.bshl-variable { color: #e06c75; }
-.bshl-property { color: #61afef; }
-.bshl-selector { color: #e5c07b; }
-.bshl-tag { color: #e06c75; }
-.bshl-attr { color: #d19a66; }
-.bshl-punct { color: var(--dt_color-content-sec, #9a9b9d); }
-
-/* A diff is the one place where the colour carries meaning rather than
-   grammar, so it gets a background as well as a foreground. */
-.bshl-added { color: #7ec699; background: rgba(126, 198, 153, 0.10); display: inline-block; width: 100%; }
-.bshl-removed { color: #e88; background: rgba(238, 136, 136, 0.10); display: inline-block; width: 100%; }
-.bshl-meta { color: #61afef; }
-</style>
+<link rel="stylesheet" href="slack-context.css">
+<link rel="stylesheet" href="api-themes.css">
 </head>
 <body class="api-page">
 
@@ -85,7 +20,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
     <span>BetterSlack</span>
   </a>
   <nav class="nav__links">
-    <a href="api.html" aria-current="page" data-en="API" data-fr="API">API</a>
+    <a href="api.html" aria-current="page">API</a>
   </nav>
   <div class="nav__actions">
     <button class="lang" type="button" id="lang" aria-label="Français">FR</button>
@@ -94,191 +29,49 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 </header>
 
 <main id="main" class="api">
-  <aside class="api-nav" aria-label="API contents">
-    <p class="api-nav__title" data-en="Reference" data-fr="Référence">Reference</p>
-    <ul>
-      <li><a href="#playground" data-en="Live" data-fr="En direct">Live</a>
-        <ul>
-          <li><a href="#kit">component kit</a></li>
-          <li><a href="#i18n-live">i18n fallbacks</a></li>
-          <li><a href="#markdown">markdown</a></li>
-          <li><a href="#highlighting">highlighting</a></li>
-          <li><a href="#roles">theme roles</a></li>
-        </ul>
-      </li>
-      <li><a href="#helpers">api.helpers</a>
-    <ul><li><a href="#entry-toggle-1">toggle</a></li><li><a href="#entry-hotkey-2">hotkey</a></li><li><a href="#entry-describeHotkey-3">describeHotkey</a></li><li><a href="#entry-poll-4">poll</a></li><li><a href="#entry-badge-5">badge</a></li><li><a href="#entry-each-6">each</a></li><li><a href="#entry-mount-7">mount</a></li><li><a href="#entry-tooltip-8">tooltip</a></li><li><a href="#entry-copy-9">copy</a></li><li><a href="#entry-iconButton-10">iconButton</a></li><li><a href="#entry-field-11">field</a></li><li><a href="#entry-section-12">section</a></li><li><a href="#entry-debounce-13">debounce</a></li></ul></li>
-<li><a href="#slack">api.slack</a>
-    <ul><li><a href="#entry-addMessageAction-14">addMessageAction</a></li><li><a href="#entry-addToolbarButton-15">addToolbarButton</a></li><li><a href="#entry-addProfileButton-16">addProfileButton</a></li><li><a href="#entry-onProfilePane-17">onProfilePane</a></li><li><a href="#entry-openConversation-18">openConversation</a></li><li><a href="#entry-openDirectMessage-19">openDirectMessage</a></li><li><a href="#entry-openUserProfile-20">openUserProfile</a></li><li><a href="#entry-hideConversation-21">hideConversation</a></li><li><a href="#entry-filesFrom-22">filesFrom</a></li><li><a href="#entry-startHuddle-23">startHuddle</a></li><li><a href="#entry-vipUsers-24">vipUsers</a></li><li><a href="#entry-setVip-25">setVip</a></li><li><a href="#entry-web-26">web</a></li><li><a href="#entry-describeMessage-27">describeMessage</a></li><li><a href="#entry-composer-28">composer</a></li><li><a href="#entry-currentChannelId-29">currentChannelId</a></li><li><a href="#entry-userIdFromMessage-30">userIdFromMessage</a></li><li><a href="#entry-avatarUrl-31">avatarUrl</a></li><li><a href="#entry-desktop-32">desktop</a></li><li><a href="#entry-restart-33">restart</a></li><li><a href="#entry-selectors-34">selectors</a></li></ul></li>
-<li><a href="#ui">api.ui</a>
-    <ul><li><a href="#entry-toast-35">toast</a></li><li><a href="#entry-modal-36">modal</a></li><li><a href="#entry-confirm-37">confirm</a></li><li><a href="#entry-tooltip-38">tooltip</a></li><li><a href="#entry-menu-39">menu</a></li><li><a href="#entry-kit-40">kit</a></li><li><a href="#entry-kitCss-41">kitCss</a></li><li><a href="#entry-palette-42">palette</a></li></ul></li>
-<li><a href="#dom">api.dom</a>
-    <ul><li><a href="#entry-waitFor-43">waitFor</a></li><li><a href="#entry-keepMounted-44">keepMounted</a></li><li><a href="#entry-onEach-45">onEach</a></li><li><a href="#entry-onShortcut-46">onShortcut</a></li><li><a href="#entry-h-47">h</a></li></ul></li>
-<li><a href="#i18n">api.i18n</a>
-    <ul><li><a href="#entry-locale-48">locale</a></li><li><a href="#entry-language-49">language</a></li><li><a href="#entry-strings-50">strings</a></li></ul></li>
-<li><a href="#settings">api.settings</a>
-    <ul><li><a href="#entry-get-51">get</a></li><li><a href="#entry-set-52">set</a></li><li><a href="#entry-all-53">all</a></li><li><a href="#entry-onChange-54">onChange</a></li></ul></li>
-<li><a href="#commands">api.commands</a>
-    <ul><li><a href="#entry-add-55">add</a></li></ul></li>
-<li><a href="#files">api.files</a>
-    <ul><li><a href="#entry-save-56">save</a></li><li><a href="#entry-screenshot-57">screenshot</a></li></ul></li>
-<li><a href="#assets">api.assets</a>
-    <ul><li><a href="#entry-list-58">list</a></li><li><a href="#entry-text-59">text</a></li></ul></li>
-<li><a href="#themes">api.themes</a>
-    <ul><li><a href="#entry-list-60">list</a></li><li><a href="#entry-source-61">source</a></li><li><a href="#entry-suspend-62">suspend</a></li></ul></li>
-<li><a href="#app">api.app</a>
-    <ul><li><a href="#entry-mods-63">mods</a></li><li><a href="#entry-setEnabled-64">setEnabled</a></li><li><a href="#entry-setInstalled-65">setInstalled</a></li><li><a href="#entry-openPanel-66">openPanel</a></li><li><a href="#entry-openMod-67">openMod</a></li><li><a href="#entry-commands-68">commands</a></li></ul></li>
-<li><a href="#log">api.log</a>
-    <ul><li><a href="#entry-info-69">info</a></li><li><a href="#entry-warn-70">warn</a></li><li><a href="#entry-error-71">error</a></li></ul></li>
-      <li><a href="#plugin" data-en="On the api itself" data-fr="Sur l’objet api">On the api itself</a></li>
-    </ul>
+  <aside class="side" aria-label="API contents">
+    <label class="side__search">
+      <input type="search" id="side-filter" placeholder="Filter…" aria-label="Filter the list">
+    </label>
+    <nav><ul class="side__list"><li class="side__group"><p class="side__title" data-en="Tools" data-fr="Outils">Tools</p>
+      <ul><li><a href="#tool-markdown">renderMarkdown</a></li><li><a href="#tool-highlight">highlight · detect</a></li><li><a href="#tool-i18n">i18n fallbacks</a></li><li><a href="#tool-roles">derivePalette</a></li></ul></li>
+<li class="side__group"><p class="side__title">Component kit</p>
+      <ul><li><a href="#kit-el">el</a></li><li><a href="#kit-button">button</a></li><li><a href="#kit-iconbutton">iconButton</a></li><li><a href="#kit-field">field</a></li><li><a href="#kit-input">input</a></li><li><a href="#kit-select">select</a></li><li><a href="#kit-segmented">segmented</a></li><li><a href="#kit-card">card</a></li><li><a href="#kit-emptystate">emptyState</a></li><li><a href="#kit-swatch">swatch</a></li><li><a href="#kit-popover">popover</a></li><li><a href="#kit-confirm">confirm</a></li><li><a href="#kit-copytext">copyText</a></li><li><a href="#kit-hoverable">hoverable</a></li><li><a href="#kit-code">code</a></li><li><a href="#kit-checker">CHECKER</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.helpers</p>
+      <ul><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-tooltip">tooltip</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-debounce">debounce</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.slack</p>
+      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-web">web</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.ui</p>
+      <ul><li><a href="#ui-toast">toast</a></li><li><a href="#ui-modal">modal</a></li><li><a href="#ui-confirm">confirm</a></li><li><a href="#ui-tooltip">tooltip</a></li><li><a href="#ui-menu">menu</a></li><li><a href="#ui-kit">kit</a></li><li><a href="#ui-kitcss">kitCss</a></li><li><a href="#ui-palette">palette</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.dom</p>
+      <ul><li><a href="#dom-waitfor">waitFor</a></li><li><a href="#dom-keepmounted">keepMounted</a></li><li><a href="#dom-oneach">onEach</a></li><li><a href="#dom-onshortcut">onShortcut</a></li><li><a href="#dom-h">h</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.i18n</p>
+      <ul><li><a href="#i18n-locale">locale</a></li><li><a href="#i18n-language">language</a></li><li><a href="#i18n-strings">strings</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.settings</p>
+      <ul><li><a href="#settings-get">get</a></li><li><a href="#settings-set">set</a></li><li><a href="#settings-all">all</a></li><li><a href="#settings-onchange">onChange</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.commands</p>
+      <ul><li><a href="#commands-add">add</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.files</p>
+      <ul><li><a href="#files-save">save</a></li><li><a href="#files-screenshot">screenshot</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.assets</p>
+      <ul><li><a href="#assets-list">list</a></li><li><a href="#assets-text">text</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.themes</p>
+      <ul><li><a href="#themes-list">list</a></li><li><a href="#themes-source">source</a></li><li><a href="#themes-suspend">suspend</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.app</p>
+      <ul><li><a href="#app-mods">mods</a></li><li><a href="#app-setenabled">setEnabled</a></li><li><a href="#app-setinstalled">setInstalled</a></li><li><a href="#app-openpanel">openPanel</a></li><li><a href="#app-openmod">openMod</a></li><li><a href="#app-commands">commands</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.log</p>
+      <ul><li><a href="#log-info">info</a></li><li><a href="#log-warn">warn</a></li><li><a href="#log-error">error</a></li></ul></li>
+<li class="side__group"><p class="side__title">On the api object</p>
+      <ul><li><a href="#plugin-id">id</a></li><li><a href="#plugin-manifest">manifest</a></li><li><a href="#plugin-version">version</a></li><li><a href="#plugin-css">css</a></li><li><a href="#plugin-savetheme">saveTheme</a></li><li><a href="#plugin-ondispose">onDispose</a></li></ul></li></ul></nav>
   </aside>
-
-  <div class="api-body">
-    <section class="api-intro">
-      <p class="eyebrow" data-en="Plugin API" data-fr="API des plugins">Plugin API</p>
-      <h1 data-en="Everything a mod is handed" data-fr="Tout ce qu’un mod reçoit">Everything a mod is handed</h1>
-      <p class="lede"
-         data-en="A plugin is an ES module that exports start(api). This page lists all 77 entries on that object, read straight from the TypeScript, so it cannot fall behind the code. Everything that can run in a browser runs here on the page; everything that needs Slack says so."
-         data-fr="Un plugin est un module ES qui exporte start(api). Cette page liste les 77 entrées de cet objet, lues directement dans le TypeScript : elle ne peut donc pas prendre de retard sur le code. Tout ce qui peut tourner dans un navigateur tourne ici même ; le reste indique qu’il lui faut Slack.">
-        A plugin is an ES module that exports start(api). This page lists all 77 entries on that object, read straight from the TypeScript, so it cannot fall behind the code. Everything that can run in a browser runs here on the page; everything that needs Slack says so.
-      </p>
-      <div class="snippet snippet--wide" data-copy>
-        <code>export default {
-  start(api) {
-    api.ui.toast('Hello from a mod');
-  },
-};</code>
-        <button class="snippet__copy" type="button" data-en="Copy" data-fr="Copier">Copy</button>
-      </div>
-    </section>
-
-    <section class="api-group" id="playground">
-      <h3 data-en="Live on this page" data-fr="En direct sur cette page">Live on this page</h3>
-      <p class="section__lede"
-         data-en="These are not mock-ups. The page imports the same modules a mod imports — the component kit, the readme renderer, Code Highlight's tokeniser, the theme builder's role derivation — so what you see is what runs inside Slack."
-         data-fr="Ce ne sont pas des maquettes. La page importe les mêmes modules qu’un mod — le kit de composants, le rendu des readme, l’analyseur de Code Highlight, la dérivation des rôles du constructeur de thèmes — donc ce que vous voyez est ce qui tourne dans Slack.">
-        These are not mock-ups. The page imports the same modules a mod imports — the component kit, the readme renderer, Code Highlight's tokeniser, the theme builder's role derivation — so what you see is what runs inside Slack.
-      </p>
-
-      <h4 id="kit"><code>api.ui.kit(document)</code></h4>
-      <p data-en="Thirteen primitives, prefixed sm- so the stylesheet is safe anywhere. This is what a mod uses in a window of its own, where there is no Slack stylesheet to borrow from."
-         data-fr="Treize primitives, préfixées sm- pour que la feuille de style soit sûre partout. C’est ce qu’un mod utilise dans une fenêtre à lui, où il n’y a aucune feuille de style Slack à emprunter.">
-        Thirteen primitives, prefixed sm- so the stylesheet is safe anywhere. This is what a mod uses in a window of its own, where there is no Slack stylesheet to borrow from.
-      </p>
-      <div class="api-kit">
-        <article class="api-entry">
-  <h4><code>kit.el</code><span class="api-sig">(tag: string, props?: Record&lt;string, unknown&gt;, children?: Child[]): HTMLElement</span></h4>
-  
-  <div class="api-demo" data-demo="el"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.button</code><span class="api-sig">(label: string, options?: ButtonOptions): HTMLButtonElement</span></h4>
-  
-  <div class="api-demo" data-demo="button"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.iconButton</code><span class="api-sig">(glyph: string, options?: IconButtonOptions): HTMLButtonElement</span></h4>
-  
-  <div class="api-demo" data-demo="iconButton"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.field</code><span class="api-sig">(label: string, control: HTMLElement, hint?: string): HTMLElement</span></h4>
-  
-  <div class="api-demo" data-demo="field"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.input</code><span class="api-sig">(props?: Record&lt;string, unknown&gt;): HTMLInputElement</span></h4>
-  
-  <div class="api-demo" data-demo="input"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.select</code><span class="api-sig">(options: Option[], config?: SelectOptions): HTMLSelectElement</span></h4>
-  
-  <div class="api-demo" data-demo="select"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.segmented</code><span class="api-sig">(options: Option[], config?: SegmentedOptions): Segmented</span></h4>
-  
-  <div class="api-demo" data-demo="segmented"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.card</code><span class="api-sig">(title: string | null, children: Child[], options?: CardOptions): HTMLElement</span></h4>
-  
-  <div class="api-demo" data-demo="card"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.emptyState</code><span class="api-sig">(title: string, body: string, action?: HTMLElement): HTMLElement</span></h4>
-  
-  <div class="api-demo" data-demo="emptyState"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.swatch</code><span class="api-sig">(css: string, options?: { size?: 'sm' | 'md' | 'lg' }): HTMLElement</span></h4>
-  
-  <div class="api-demo" data-demo="swatch"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.popover</code><span class="api-sig">(content: HTMLElement, anchor: HTMLElement, options?: { onClose?: () =&gt; void }): Popover</span></h4>
-  
-  <div class="api-demo" data-demo="popover"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.confirm</code><span class="api-sig">(options: ConfirmOptions): Promise&lt;boolean&gt;</span></h4>
-  
-  <div class="api-demo" data-demo="confirm"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.copyText</code><span class="api-sig">(text: string): Promise&lt;boolean&gt;</span></h4>
-  
-  <div class="api-demo" data-demo="copyText"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.hoverable</code><span class="api-sig">&lt;T extends HTMLElement&gt;(node: T, handlers: HoverHandlers): T</span></h4>
-  
-  <p class="note">No live demo: this one only makes sense against something already on screen.</p>
-</article>
-<article class="api-entry">
-  <h4><code>kit.code</code><span class="api-sig">(options?: CodeEditorOptions): CodeEditor</span></h4>
-  <p>A CSS editor that colours what you type.</p>
-  <div class="api-demo" data-demo="code"></div>
-</article>
-<article class="api-entry">
-  <h4><code>kit.CHECKER</code><span class="api-sig">: string</span></h4>
-  <p>The checkerboard, so a translucent colour reads as translucent.</p>
-  <p class="note">No live demo: this one only makes sense against something already on screen.</p>
-</article>
-      </div>
-
-      <h4 id="i18n-live"><code>api.i18n.strings({ en, fr })</code></h4>
-      <p data-en="English is required, and is what an unknown language and a missing key both fall back to. Change the locale to fr and watch bye fall back; change it to de and watch both."
-         data-fr="L’anglais est obligatoire, et c’est ce vers quoi retombent une langue inconnue comme une clé manquante. Passez la locale à fr et regardez bye retomber ; passez-la à de et regardez les deux.">
-        English is required, and is what an unknown language and a missing key both fall back to. Change the locale to fr and watch <code>bye</code> fall back; change it to de and watch both.
-      </p>
-      <div class="api-toolbar">
-        <label for="i18n-locale" data-en="Locale" data-fr="Locale">Locale</label>
-        <select id="i18n-locale" class="api-select">
-          <option value="en-GB">en-GB</option>
-          <option value="fr-FR">fr-FR</option>
-          <option value="de-DE">de-DE</option>
-        </select>
-        <label for="i18n-key" data-en="Key" data-fr="Clé">Key</label>
-        <select id="i18n-key" class="api-select">
-          <option value="hello">hello</option>
-          <option value="bye">bye</option>
-          <option value="missing">missing</option>
-        </select>
-        <label for="i18n-name" data-en="name" data-fr="name">name</label>
-        <input id="i18n-name" class="api-select" value="Ada" size="8">
-      </div>
-      <p id="i18n-out" class="api-result"></p>
-
-      <h4 id="markdown"><code>renderMarkdown(source)</code></h4>
-      <p data-en="What the panel runs on a mod's README. It escapes first and drops a javascript: URL, which is why a readme can be rendered at all."
-         data-fr="Ce que le panneau exécute sur le README d’un mod. Il échappe d’abord et supprime toute URL javascript:, ce qui est la raison pour laquelle un readme peut être rendu du tout.">
-        What the panel runs on a mod's README. It escapes first and drops a javascript: URL, which is why a readme can be rendered at all.
-      </p>
-      <div class="api-split">
-        <textarea id="md-source" class="api-input" rows="9" spellcheck="false"># Midnight
+  <div class="stack" data-first="tool-markdown"><section class="panel" id="p-tool-markdown" hidden>
+  <header class="panel__head">
+    <p class="eyebrow" data-en="Tools" data-fr="Outils">Tools</p>
+    <h1><code>renderMarkdown</code></h1>
+    <p class="lede">What the panel runs on a mod’s README.</p>
+  </header>
+  <div class="panel__body"><div class="api-split">
+  <textarea id="md-source" class="api-input" rows="14" spellcheck="false"># Midnight
 
 A deeper, cooler dark. Overrides Slack's **design tokens** rather than its class
 names, so it survives a client update.
@@ -289,56 +82,507 @@ names, so it survives a client update.
 `--dt_color-base-pry: #0b0d12;`
 
 [Not a link](javascript:alert(1))</textarea>
-        <div id="md-out" class="api-output sm-md"></div>
-      </div>
-
-      <h4 id="highlighting"><code>highlight(code, language)</code> · <code>detect(code)</code></h4>
-      <p data-en="Code Highlight's own two functions. Slack sends a code block as plain grey text with nothing saying what is in it, so the language is worked out from the code — and left alone when the guess is not confident."
-         data-fr="Les deux fonctions de Code Highlight. Slack envoie un bloc de code en gris, sans rien qui dise ce qu’il contient : le langage est donc déduit du code — et le bloc est laissé tel quel quand la détection n’est pas sûre.">
-        Code Highlight's own two functions. Slack sends a code block as plain grey text with nothing saying what is in it, so the language is worked out from the code — and left alone when the guess is not confident.
-      </p>
-      <div class="api-toolbar">
-        <label for="hl-lang" data-en="Language" data-fr="Langage">Language</label>
-        <select id="hl-lang" class="api-select"></select>
-        <span id="hl-guess" class="note"></span>
-      </div>
-      <div class="api-split">
-        <textarea id="hl-source" class="api-input" rows="9" spellcheck="false">select channel, count(*) as messages
+  <div id="md-out" class="api-output sm-md"></div>
+</div></div>
+</section>
+<section class="panel" id="p-tool-highlight" hidden>
+  <header class="panel__head">
+    <p class="eyebrow" data-en="Tools" data-fr="Outils">Tools</p>
+    <h1><code>highlight · detect</code></h1>
+    <p class="lede">Colour a code block, and work out its language first.</p>
+  </header>
+  <div class="panel__body"><div class="api-toolbar">
+  <label for="hl-lang" data-en="Language" data-fr="Langage">Language</label>
+  <select id="hl-lang" class="api-select"></select>
+  <span id="hl-guess" class="note"></span>
+</div>
+<div class="api-split">
+  <textarea id="hl-source" class="api-input" rows="14" spellcheck="false">select channel, count(*) as messages
 from events
 where sent_at > now() - interval '7 days'
 group by channel
 order by messages desc
 limit 10;</textarea>
-        <pre class="api-output"><code id="hl-out" class="betterslack-hl"></code></pre>
-      </div>
-
-      <h4 id="roles"><code>derivePalette(background, accent)</code></h4>
-      <p data-en="Two colours in, twelve roles out — the derivation the theme builder runs before it writes a stylesheet. Drag either one and watch the rest move."
-         data-fr="Deux couleurs en entrée, douze rôles en sortie — la dérivation que lance le constructeur de thèmes avant d’écrire une feuille de style. Bougez l’une ou l’autre et regardez le reste suivre.">
-        Two colours in, twelve roles out — the derivation the theme builder runs before it writes a stylesheet. Drag either one and watch the rest move.
-      </p>
-      <div class="api-toolbar">
-        <label for="role-base" data-en="Background" data-fr="Fond">Background</label>
-        <input type="color" id="role-base" value="#1a1a1e">
-        <label for="role-accent" data-en="Accent" data-fr="Accent">Accent</label>
-        <input type="color" id="role-accent" value="#536aed">
-        <span id="role-css" class="note"></span>
-      </div>
-      <div id="role-grid" class="api-roles"></div>
-    </section>
-
-    <section class="api-group" id="helpers">
-  <h3>api.helpers</h3>
-  <p class="section__lede">Higher-level shortcuts for the shapes most mods need: a persisted toggle,
-a hotkey, a badge, a copy-and-confirm, Slack-styled buttons, fields and
-sections. All of it is built on the rest of this API, and all of it is
-torn down with the plugin.</p>
-  <article class="api-entry" id="entry-toggle-1">
-  <h4><code>toggle</code><span class="api-sig">(options: ToggleOptions): Toggle</span><span class="api-badge api-badge--live">live below</span></h4>
-  <p>A persisted on/off flag that also drives a class on &lt;html&gt;, so the whole
-behaviour can be pure CSS. This is the shape most "mode" mods want.</p>
-  <div class="api-demo" data-demo="toggle"></div>
-  <pre class="api-code"><code>const zen = api.helpers.toggle({
+  <pre class="api-output"><code id="hl-out" class="betterslack-hl"></code></pre>
+</div></div>
+</section>
+<section class="panel" id="p-tool-i18n" hidden>
+  <header class="panel__head">
+    <p class="eyebrow" data-en="Tools" data-fr="Outils">Tools</p>
+    <h1><code>i18n fallbacks</code></h1>
+    <p class="lede">English is the fallback for an unknown language and a missing key.</p>
+  </header>
+  <div class="panel__body"><div class="api-toolbar">
+  <label for="i18n-locale">locale</label>
+  <select id="i18n-locale" class="api-select">
+    <option value="en-GB">en-GB</option>
+    <option value="fr-FR">fr-FR</option>
+    <option value="de-DE">de-DE</option>
+  </select>
+  <label for="i18n-key">key</label>
+  <select id="i18n-key" class="api-select">
+    <option value="hello">hello</option>
+    <option value="bye">bye</option>
+    <option value="missing">missing</option>
+  </select>
+  <label for="i18n-name">name</label>
+  <input id="i18n-name" class="api-select" value="Ada" size="8">
+</div>
+<p id="i18n-out" class="api-result"></p>
+<pre class="api-code"><code>const t = api.i18n.strings({
+  en: { hello: 'Hi {name}, {count} unread', bye: 'See you' },
+  fr: { hello: 'Salut {name}, {count} non lus' },
+});
+t('hello', { name: 'Ada', count: 3 });</code></pre></div>
+</section>
+<section class="panel" id="p-tool-roles" hidden>
+  <header class="panel__head">
+    <p class="eyebrow" data-en="Tools" data-fr="Outils">Tools</p>
+    <h1><code>derivePalette</code></h1>
+    <p class="lede">Two colours in, the twelve theme roles out.</p>
+  </header>
+  <div class="panel__body"><div class="api-toolbar">
+  <label for="role-base" data-en="Background" data-fr="Fond">Background</label>
+  <input type="color" id="role-base" value="#1a1a1e">
+  <label for="role-accent" data-en="Accent" data-fr="Accent">Accent</label>
+  <input type="color" id="role-accent" value="#536aed">
+  <span id="role-css" class="note"></span>
+</div>
+<div id="role-grid" class="api-roles"></div></div>
+</section>
+<section class="panel" id="p-kit-el" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>el</code></h1>
+    <p class="api-sig api-sig--big">(tag: string, props?: Record&lt;string, unknown&gt;, children?: Child[]): HTMLElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-el" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-el" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-el"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-button" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>button</code></h1>
+    <p class="api-sig api-sig--big">(label: string, options?: ButtonOptions): HTMLButtonElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-button" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-button" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-button"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-iconbutton" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>iconButton</code></h1>
+    <p class="api-sig api-sig--big">(glyph: string, options?: IconButtonOptions): HTMLButtonElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-iconbutton" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-iconbutton" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-iconbutton"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const button = api.helpers.iconButton({
+  icon: '&lt;svg viewBox=&quot;0 0 20 20&quot;&gt;…&lt;/svg&gt;',
+  label: 'Pin',
+  description: 'Keep this at the top',
+  surface: 'header',        // 'composer' | 'header' | 'strip' | 'message'
+  onClick: () =&gt; pin(),
+});</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-field" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>field</code></h1>
+    <p class="api-sig api-sig--big">(label: string, control: HTMLElement, hint?: string): HTMLElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-field" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-field" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-field"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const { field, section } = api.helpers;
+pane.append(section('More details', [
+  field('User ID', user.id),
+  field('Time zone', user.tz_label),
+]));</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-input" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>input</code></h1>
+    <p class="api-sig api-sig--big">(props?: Record&lt;string, unknown&gt;): HTMLInputElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-input" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-input" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-input"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-select" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>select</code></h1>
+    <p class="api-sig api-sig--big">(options: Option[], config?: SelectOptions): HTMLSelectElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-select" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-select" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-select"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-segmented" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>segmented</code></h1>
+    <p class="api-sig api-sig--big">(options: Option[], config?: SegmentedOptions): Segmented</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-segmented" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-segmented" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-segmented"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-card" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>card</code></h1>
+    <p class="api-sig api-sig--big">(title: string | null, children: Child[], options?: CardOptions): HTMLElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-card" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-card" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-card"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-emptystate" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>emptyState</code></h1>
+    <p class="api-sig api-sig--big">(title: string, body: string, action?: HTMLElement): HTMLElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-emptystate" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-emptystate" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-emptystate"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-swatch" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>swatch</code></h1>
+    <p class="api-sig api-sig--big">(css: string, options?: { size?: 'sm' | 'md' | 'lg' }): HTMLElement</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-swatch" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-swatch" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-swatch"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-popover" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>popover</code></h1>
+    <p class="api-sig api-sig--big">(content: HTMLElement, anchor: HTMLElement, options?: { onClose?: () =&gt; void }): Popover</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-popover" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-popover" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-popover"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-confirm" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>confirm</code></h1>
+    <p class="api-sig api-sig--big">(options: ConfirmOptions): Promise&lt;boolean&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-confirm" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-confirm" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-confirm"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const sure = await api.ui.confirm({
+  title: 'Delete these notes?',
+  message: 'This cannot be undone.',
+  confirmLabel: 'Delete',
+  danger: true,
+});</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-copytext" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>copyText</code></h1>
+    <p class="api-sig api-sig--big">(text: string): Promise&lt;boolean&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-kit-copytext" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-copytext" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-copytext"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-hoverable" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>hoverable</code></h1>
+    <p class="api-sig api-sig--big">&lt;T extends HTMLElement&gt;(node: T, handlers: HoverHandlers): T</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-kit-code" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>code</code></h1>
+    <p class="api-sig api-sig--big">(options?: CodeEditorOptions): CodeEditor</p>
+  </header>
+  <div class="panel__body">
+    <p>A CSS editor that colours what you type.</p>
+    <div class="stage-bar">
+  <label for="theme-kit-code" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-kit-code" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="kit-code"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-kit-checker" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Component kit</p>
+    <h1><code>CHECKER</code></h1>
+    <p class="api-sig api-sig--big">: string</p>
+  </header>
+  <div class="panel__body">
+    <p>The checkerboard, so a translucent colour reads as translucent.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-helpers-toggle" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>toggle</code></h1>
+    <p class="api-sig api-sig--big">(options: ToggleOptions): Toggle</p>
+  </header>
+  <div class="panel__body">
+    <p>A persisted on/off flag that also drives a class on &lt;html&gt;, so the whole
+behaviour can be pure CSS. This is the shape most &quot;mode&quot; mods want.</p>
+    <div class="stage-bar">
+  <label for="theme-helpers-toggle" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-helpers-toggle" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="helpers-toggle"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const zen = api.helpers.toggle({
   key: 'on',                       // settings key it persists under
   className: 'my-zen',             // optional; defaults to betterslack-&lt;plugin&gt;-&lt;key&gt;
   defaultOn: false,
@@ -352,157 +596,403 @@ behaviour can be pure CSS. This is the shape most "mode" mods want.</p>
 zen.on;              // boolean
 await zen.set(true);
 await zen.toggle();  // returns the new state</code></pre>
-</article>
-<article class="api-entry" id="entry-hotkey-2">
-  <h4><code>hotkey</code><span class="api-sig">(combo: string, handler: () =&gt; void, options?: { when?: () =&gt; boolean }): Cleanup</span></h4>
-  <p>Bind a keyboard shortcut in the platform's idiom: <code>mod+shift+f</code>.</p>
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-hotkey" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>hotkey</code></h1>
+    <p class="api-sig api-sig--big">(combo: string, handler: () =&gt; void, options?: { when?: () =&gt; boolean }): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Bind a keyboard shortcut in the platform's idiom: <code>mod+shift+f</code>.</p>
 <p><code>when</code> gates the *match*, not the handler: a shortcut that does not apply
 must not swallow the key, or a mod binding Escape would break Slack's own
 dialogs.</p>
-  
-  <pre class="api-code"><code>api.helpers.hotkey('mod+shift+k', () =&gt; api.ui.toast('Hi'));
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.helpers.hotkey('mod+shift+k', () =&gt; api.ui.toast('Hi'));
 
 // Escape, but only when we are the ones who should handle it
 api.helpers.hotkey('escape', () =&gt; zen.set(false), {
   when: () =&gt; zen.on &amp;&amp; !document.querySelector('.ReactModal__Content'),
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-describeHotkey-3">
-  <h4><code>describeHotkey</code><span class="api-sig">(combo: string): string</span><span class="api-badge api-badge--live">live below</span></h4>
-  <p>Human-readable form of a combo, for tooltips: ⌘⇧F or Ctrl+Shift+F.</p>
-  <div class="api-demo" data-demo="describeHotkey"></div>
-  <pre class="api-code"><code>api.helpers.describeHotkey('mod+shift+k');  // '⌘⇧K' or 'Ctrl+Shift+K'</code></pre>
-</article>
-<article class="api-entry" id="entry-poll-4">
-  <h4><code>poll</code><span class="api-sig">(handler: () =&gt; void | Promise&lt;void&gt;, everyMs: number): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Run something every so often, and stop while nobody is looking.</p>
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-describehotkey" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>describeHotkey</code></h1>
+    <p class="api-sig api-sig--big">(combo: string): string</p>
+  </header>
+  <div class="panel__body">
+    <p>Human-readable form of a combo, for tooltips: ⌘⇧F or Ctrl+Shift+F.</p>
+    <div class="stage-bar">
+  <label for="theme-helpers-describehotkey" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-helpers-describehotkey" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="helpers-describehotkey"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.helpers.describeHotkey('mod+shift+k');  // '⌘⇧K' or 'Ctrl+Shift+K'</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-poll" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>poll</code></h1>
+    <p class="api-sig api-sig--big">(handler: () =&gt; void | Promise&lt;void&gt;, everyMs: number): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Run something every so often, and stop while nobody is looking.</p>
 <p>Slack does not render while its window is hidden, so a poll that keeps
 going in the background is requests nobody will see the result of -- and
 for anything hitting Slack's API, requests against a rate limit that is
 shared with the client itself. This runs once immediately, then on the
 interval, and pauses whenever the document is hidden, catching up as soon
 as it comes back. Stops with the plugin.</p>
-  
-  <pre class="api-code"><code>api.helpers.poll(() =&gt; refreshPresence(), 60_000);</code></pre>
-</article>
-<article class="api-entry" id="entry-badge-5">
-  <h4><code>badge</code><span class="api-sig">(selector: string, id: string, value: () =&gt; string | number | null): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>A small count/dot badge pinned to any element, kept in sync by a getter.</p>
-  
-  <pre class="api-code"><code>let unread = 0;
-api.helpers.badge('[data-qa="betterslack_button"]', 'unread', () =&gt; unread);</code></pre>
-</article>
-<article class="api-entry" id="entry-each-6">
-  <h4><code>each</code><span class="api-sig">&lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Run a handler for every element matching a selector, now and in future,
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.helpers.poll(() =&gt; refreshPresence(), 60_000);</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-badge" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>badge</code></h1>
+    <p class="api-sig api-sig--big">(selector: string, id: string, value: () =&gt; string | number | null): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>A small count/dot badge pinned to any element, kept in sync by a getter.</p>
+    <div class="stage-bar">
+  <label for="theme-helpers-badge" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-helpers-badge" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="helpers-badge"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>let unread = 0;
+api.helpers.badge('[data-qa=&quot;betterslack_button&quot;]', 'unread', () =&gt; unread);</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-each" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>each</code></h1>
+    <p class="api-sig api-sig--big">&lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Run a handler for every element matching a selector, now and in future,
 and undo it for you when the plugin stops.</p>
-  
-  <pre class="api-code"><code>api.helpers.each('[data-qa="message_container"]', (message) =&gt; {
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.helpers.each('[data-qa=&quot;message_container&quot;]', (message) =&gt; {
   message.dataset.seen = 'true';
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-mount-7">
-  <h4><code>mount</code><span class="api-sig">(container: string, id: string, factory: () =&gt; HTMLElement, options?: { before?: string }): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Keep an element mounted somewhere, surviving Slack's re-renders.</p>
-  
-  <pre class="api-code"><code>api.helpers.mount('[data-qa="message_input"]', 'my-counter', () =&gt;
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-mount" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>mount</code></h1>
+    <p class="api-sig api-sig--big">(container: string, id: string, factory: () =&gt; HTMLElement, options?: { before?: string }): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Keep an element mounted somewhere, surviving Slack's re-renders.</p>
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.helpers.mount('[data-qa=&quot;message_input&quot;]', 'my-counter', () =&gt;
   api.dom.h('div', { class: 'my-counter' }, ['0']));
 
 // sit above an existing button rather than after it
 api.helpers.mount('.p-control_strip', 'my-button', makeButton, {
   before: '#betterslack-control-button',
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-tooltip-8">
-  <h4><code>tooltip</code><span class="api-sig">(element: HTMLElement, title: string, subtitle?: string): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Slack-styled tooltip on anything.</p>
-  
-  <pre class="api-code"><code>api.ui.tooltip(el, { title: 'BetterSlack', subtitle: '⌘⇧M', placement: 'right' });</code></pre>
-</article>
-<article class="api-entry" id="entry-copy-9">
-  <h4><code>copy</code><span class="api-sig">(text: string, message?: string): Promise&lt;boolean&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Copy text and confirm with a toast, the way three mods were doing by hand.</p>
-  
-  <pre class="api-code"><code>await api.helpers.copy(message.permalink, 'Link copied');</code></pre>
-</article>
-<article class="api-entry" id="entry-iconButton-10">
-  <h4><code>iconButton</code><span class="api-sig">(options: {</span><span class="api-badge">inside Slack</span></h4>
-  <p>Build an icon button wearing Slack's classes for a given surface.</p>
-  
-  <pre class="api-code"><code>const button = api.helpers.iconButton({
-  icon: '&lt;svg viewBox="0 0 20 20"&gt;…&lt;/svg&gt;',
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-tooltip" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>tooltip</code></h1>
+    <p class="api-sig api-sig--big">(element: HTMLElement, title: string, subtitle?: string): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Slack-styled tooltip on anything.</p>
+    <div class="stage-bar">
+  <label for="theme-helpers-tooltip" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-helpers-tooltip" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="helpers-tooltip"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.ui.tooltip(el, { title: 'BetterSlack', subtitle: '⌘⇧M', placement: 'right' });</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-copy" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>copy</code></h1>
+    <p class="api-sig api-sig--big">(text: string, message?: string): Promise&lt;boolean&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Copy text and confirm with a toast, the way three mods were doing by hand.</p>
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>await api.helpers.copy(message.permalink, 'Link copied');</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-iconbutton" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>iconButton</code></h1>
+    <p class="api-sig api-sig--big">(options: {</p>
+  </header>
+  <div class="panel__body">
+    <p>Build an icon button wearing Slack's classes for a given surface.</p>
+    <div class="stage-bar">
+  <label for="theme-helpers-iconbutton" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-helpers-iconbutton" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="helpers-iconbutton"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const button = api.helpers.iconButton({
+  icon: '&lt;svg viewBox=&quot;0 0 20 20&quot;&gt;…&lt;/svg&gt;',
   label: 'Pin',
   description: 'Keep this at the top',
   surface: 'header',        // 'composer' | 'header' | 'strip' | 'message'
   onClick: () =&gt; pin(),
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-field-11">
-  <h4><code>field</code><span class="api-sig">(label: string, value: string | Node): HTMLElement</span><span class="api-badge">inside Slack</span></h4>
-  <p>A labelled row in Slack's profile/field style.</p>
-  
-  <pre class="api-code"><code>const { field, section } = api.helpers;
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-field" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>field</code></h1>
+    <p class="api-sig api-sig--big">(label: string, value: string | Node): HTMLElement</p>
+  </header>
+  <div class="panel__body">
+    <p>A labelled row in Slack's profile/field style.</p>
+    <div class="stage-bar">
+  <label for="theme-helpers-field" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-helpers-field" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="helpers-field"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const { field, section } = api.helpers;
 pane.append(section('More details', [
   field('User ID', user.id),
   field('Time zone', user.tz_label),
 ]));</code></pre>
-</article>
-<article class="api-entry" id="entry-section-12">
-  <h4><code>section</code><span class="api-sig">(title: string, children: (Node | string)[]): HTMLElement</span><span class="api-badge">inside Slack</span></h4>
-  <p>A section with Slack's own header styling, for panes.</p>
-  
-  <pre class="api-code"><code>const { field, section } = api.helpers;
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-section" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>section</code></h1>
+    <p class="api-sig api-sig--big">(title: string, children: (Node | string)[]): HTMLElement</p>
+  </header>
+  <div class="panel__body">
+    <p>A section with Slack's own header styling, for panes.</p>
+    <div class="stage-bar">
+  <label for="theme-helpers-section" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-helpers-section" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="helpers-section"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const { field, section } = api.helpers;
 pane.append(section('More details', [
   field('User ID', user.id),
   field('Time zone', user.tz_label),
 ]));</code></pre>
-</article>
-<article class="api-entry" id="entry-debounce-13">
-  <h4><code>debounce</code><span class="api-sig">&lt;T extends (...args: never[]) =&gt; void&gt;(fn: T, ms: number): T</span><span class="api-badge api-badge--live">live below</span></h4>
-  <p>Debounce. No shipped mod calls this today -- the two that debounce
+    
+  </div>
+</section>
+<section class="panel" id="p-helpers-debounce" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>debounce</code></h1>
+    <p class="api-sig api-sig--big">&lt;T extends (...args: never[]) =&gt; void&gt;(fn: T, ms: number): T</p>
+  </header>
+  <div class="panel__body">
+    <p>Debounce. No shipped mod calls this today -- the two that debounce
 something do it inside code that has no <code>api</code> to reach for: the palette's
 directory search, and Demo Mode's engine, which the screenshot recipe also
 runs outside the runtime. Kept because it is three lines and it is the
 obvious thing to reach for.</p>
-  <div class="api-demo" data-demo="debounce"></div>
-  <pre class="api-code"><code>const search = api.helpers.debounce((q) =&gt; run(q), 200);</code></pre>
-</article>
+    <div class="stage-bar">
+  <label for="theme-helpers-debounce" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-helpers-debounce" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="helpers-debounce"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const search = api.helpers.debounce((q) =&gt; run(q), 200);</code></pre>
+    
+  </div>
 </section>
-<section class="api-group" id="slack">
-  <h3>api.slack</h3>
-  <p class="section__lede">Slack-aware helpers: toolbars, message actions, permalinks, the composer.</p>
-  <article class="api-entry" id="entry-addMessageAction-14">
-  <h4><code>addMessageAction</code><span class="api-sig">(action: MessageAction): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Add a button to the hover toolbar on messages.</p>
-  
-  <pre class="api-code"><code>api.slack.addMessageAction({
+<section class="panel" id="p-slack-addmessageaction" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>addMessageAction</code></h1>
+    <p class="api-sig api-sig--big">(action: MessageAction): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Add a button to the hover toolbar on messages.</p>
+    <div class="stage-bar">
+  <label for="theme-slack-addmessageaction" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-slack-addmessageaction" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="slack-addmessageaction"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.slack.addMessageAction({
   id: 'copy-link',
   label: 'Copy link to message',
-  icon: '&lt;svg viewBox="0 0 20 20"&gt;…&lt;/svg&gt;',
+  icon: '&lt;svg viewBox=&quot;0 0 20 20&quot;&gt;…&lt;/svg&gt;',
   onClick: (message) =&gt; api.helpers.copy(message.permalink),
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-addToolbarButton-15">
-  <h4><code>addToolbarButton</code><span class="api-sig">(toolbar: ToolbarName, button: ToolbarButton): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Add a button to one of Slack's toolbars:
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-addtoolbarbutton" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>addToolbarButton</code></h1>
+    <p class="api-sig api-sig--big">(toolbar: ToolbarName, button: ToolbarButton): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Add a button to one of Slack's toolbars:
   <code>controlStrip</code>  – the bottom of the rail, next to your avatar
   <code>composer</code>      – the formatting row under the message box
   <code>channelHeader</code> – the right-hand side of the channel header</p>
-  
-  <pre class="api-code"><code>api.slack.addToolbarButton('controlStrip', {
+    <div class="stage-bar">
+  <label for="theme-slack-addtoolbarbutton" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-slack-addtoolbarbutton" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="slack-addtoolbarbutton"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.slack.addToolbarButton('controlStrip', {
   id: 'notes',
   label: 'Notes',
   description: 'A scratchpad for this channel',   // second tooltip line
-  icon: '&lt;svg viewBox="0 0 20 20"&gt;…&lt;/svg&gt;',
+  icon: '&lt;svg viewBox=&quot;0 0 20 20&quot;&gt;…&lt;/svg&gt;',
   before: '#betterslack-control-button',             // optional: sit above it
   onClick: () =&gt; open(),
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-addProfileButton-16">
-  <h4><code>addProfileButton</code><span class="api-sig">(button: ProfileButton): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Add a button to the member profile pane.</p>
-  
-  <pre class="api-code"><code>api.slack.addProfileButton({
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-addprofilebutton" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>addProfileButton</code></h1>
+    <p class="api-sig api-sig--big">(button: ProfileButton): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Add a button to the member profile pane.</p>
+    <div class="stage-bar">
+  <label for="theme-slack-addprofilebutton" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-slack-addprofilebutton" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="slack-addprofilebutton"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.slack.addProfileButton({
   id: 'details',
   label: 'Details',
   onClick: (pane) =&gt; show(pane.userId),
@@ -511,12 +1001,20 @@ obvious thing to reach for.</p>
 api.slack.onProfilePane(({ element, userId }) =&gt; {
   element.append(api.helpers.section('Extra', [api.helpers.field('ID', userId)]));
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-onProfilePane-17">
-  <h4><code>onProfilePane</code><span class="api-sig">(handler: (pane: ProfilePane) =&gt; void): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Run a handler each time a member profile pane opens.</p>
-  
-  <pre class="api-code"><code>api.slack.addProfileButton({
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-onprofilepane" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>onProfilePane</code></h1>
+    <p class="api-sig api-sig--big">(handler: (pane: ProfilePane) =&gt; void): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Run a handler each time a member profile pane opens.</p>
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.slack.addProfileButton({
   id: 'details',
   label: 'Details',
   onClick: (pane) =&gt; show(pane.userId),
@@ -525,48 +1023,90 @@ api.slack.onProfilePane(({ element, userId }) =&gt; {
 api.slack.onProfilePane(({ element, userId }) =&gt; {
   element.append(api.helpers.section('Extra', [api.helpers.field('ID', userId)]));
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-openConversation-18">
-  <h4><code>openConversation</code><span class="api-sig">(channelId: string): void</span><span class="api-badge">inside Slack</span></h4>
-  <p>Move the client to a conversation, without a page load.</p>
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-openconversation" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>openConversation</code></h1>
+    <p class="api-sig api-sig--big">(channelId: string): void</p>
+  </header>
+  <div class="panel__body">
+    <p>Move the client to a conversation, without a page load.</p>
 <p>Slack's own navigation lives in a private closure: its router state is
 pushed with history.pushState and nothing outside reacts to a synthetic
 popstate, there is no exposed React Router instance, and an &lt;a&gt; to
 /archives/&lt;id&gt; leaves the client entirely. What does work is Slack's own
 documented deep-link scheme, which the desktop app handles in place --
 measured against 4.51: same document, no reload, view follows.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-openDirectMessage-19">
-  <h4><code>openDirectMessage</code><span class="api-sig">(userId: string): Promise&lt;string | null&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Open the direct message with someone, creating it if there is none.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-slack-opendirectmessage" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>openDirectMessage</code></h1>
+    <p class="api-sig api-sig--big">(userId: string): Promise&lt;string | null&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Open the direct message with someone, creating it if there is none.</p>
 <p><code>conversations.open</code> returns the IM's id, and opening one that did not
 exist makes Slack navigate to it on its own; the deep link covers the rest.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-openUserProfile-20">
-  <h4><code>openUserProfile</code><span class="api-sig">(userId: string): void</span><span class="api-badge">inside Slack</span></h4>
-  <p>Show someone's profile in Slack, through the same deep-link scheme.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-hideConversation-21">
-  <h4><code>hideConversation</code><span class="api-sig">(channelId: string): Promise&lt;void&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Remove a conversation from the sidebar. The history is untouched.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-filesFrom-22">
-  <h4><code>filesFrom</code><span class="api-sig">(userId: string, limit?: number): Promise&lt;Array&lt;Record&lt;string, unknown&gt;&gt;&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Files someone shared, newest first.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-startHuddle-23">
-  <h4><code>startHuddle</code><span class="api-sig">(userId: string): Promise&lt;boolean&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Start a huddle with someone: open the conversation, then press Slack's own
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-slack-openuserprofile" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>openUserProfile</code></h1>
+    <p class="api-sig api-sig--big">(userId: string): void</p>
+  </header>
+  <div class="panel__body">
+    <p>Show someone's profile in Slack, through the same deep-link scheme.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-slack-hideconversation" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>hideConversation</code></h1>
+    <p class="api-sig api-sig--big">(channelId: string): Promise&lt;void&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Remove a conversation from the sidebar. The history is untouched.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-slack-filesfrom" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>filesFrom</code></h1>
+    <p class="api-sig api-sig--big">(userId: string, limit?: number): Promise&lt;Array&lt;Record&lt;string, unknown&gt;&gt;&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Files someone shared, newest first.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-slack-starthuddle" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>startHuddle</code></h1>
+    <p class="api-sig api-sig--big">(userId: string): Promise&lt;boolean&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Start a huddle with someone: open the conversation, then press Slack's own
 start control.</p>
 <p>This one really is a press, and there is no way around it -- measured:
 <code>rooms.join</code> provisions a room that rings nobody, there is no
@@ -574,94 +1114,176 @@ start control.</p>
 separate window that no web API exposes. A plain element.click() reaches
 it, so at least no trusted gesture is needed.</p>
 <p>Resolves false when Slack shows no huddle control for that conversation.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-vipUsers-24">
-  <h4><code>vipUsers</code><span class="api-sig">(): Promise&lt;string[]&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>The people marked VIP, in Slack's own order.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-setVip-25">
-  <h4><code>setVip</code><span class="api-sig">(userId: string, isVip: boolean): Promise&lt;boolean&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Add or remove someone from your VIP list, and report the new state.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-slack-vipusers" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>vipUsers</code></h1>
+    <p class="api-sig api-sig--big">(): Promise&lt;string[]&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>The people marked VIP, in Slack's own order.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-slack-setvip" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>setVip</code></h1>
+    <p class="api-sig api-sig--big">(userId: string, isVip: boolean): Promise&lt;boolean&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Add or remove someone from your VIP list, and report the new state.</p>
 <p>VIP is a user preference, not an endpoint of its own: Slack keeps it in
 <code>vip_users</code> as a comma-separated list. Read, edit, write -- which also
 means two windows editing it at once can clobber each other, exactly as
 they would in Slack itself.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-web-26">
-  <h4><code>web</code><span class="api-sig">: WebApi</span><span class="api-badge">inside Slack</span></h4>
-  <p>Slack's own web API, as the signed-in user. Reads the session token in one
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-slack-web" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>web</code></h1>
+    <p class="api-sig api-sig--big">: WebApi</p>
+  </header>
+  <div class="panel__body">
+    <p>Slack's own web API, as the signed-in user. Reads the session token in one
 audited place so mods never touch localStorage themselves; requests can
 only reach Slack's own origin. See src/runtime/web-api.ts.</p>
-  
-  <pre class="api-code"><code>if (api.slack.web.available) {
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>if (api.slack.web.available) {
   const user = await api.slack.web.userInfo('U0123');
   const { presence } = await api.slack.web.presence('U0123');
   const team = await api.slack.web.teamInfo();
   const dnd  = await api.slack.web.dndInfo('U0123');
   const any  = await api.slack.web.call('conversations.info', { channel: 'C0123' });
 }</code></pre>
-</article>
-<article class="api-entry" id="entry-describeMessage-27">
-  <h4><code>describeMessage</code><span class="api-sig">(element: HTMLElement): MessageRef</span><span class="api-badge">inside Slack</span></h4>
-  <p>Read channel, timestamp, permalink and text off a message element.</p>
-  
-  <pre class="api-code"><code>const message = api.slack.describeMessage(el);
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-describemessage" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>describeMessage</code></h1>
+    <p class="api-sig api-sig--big">(element: HTMLElement): MessageRef</p>
+  </header>
+  <div class="panel__body">
+    <p>Read channel, timestamp, permalink and text off a message element.</p>
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const message = api.slack.describeMessage(el);
 const author  = api.slack.userIdFromMessage(message);   // 'U0123…'
 const channel = api.slack.currentChannelId();           // 'C0123…'</code></pre>
-</article>
-<article class="api-entry" id="entry-composer-28">
-  <h4><code>composer</code><span class="api-sig">: ComposerApi</span><span class="api-badge">inside Slack</span></h4>
-  <p>The message composer.</p>
-  
-  <pre class="api-code"><code>const c = api.slack.composer;
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-composer" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>composer</code></h1>
+    <p class="api-sig api-sig--big">: ComposerApi</p>
+  </header>
+  <div class="panel__body">
+    <p>The message composer.</p>
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const c = api.slack.composer;
 c.element();                       // the contenteditable, or null
 c.isEmpty();
 c.focus();
 c.caretToEnd();
 c.insertText(' hello');
 c.insertLink('https://…', '.');    // a real hyperlink, http(s) only</code></pre>
-</article>
-<article class="api-entry" id="entry-currentChannelId-29">
-  <h4><code>currentChannelId</code><span class="api-sig">(): string | null</span><span class="api-badge">inside Slack</span></h4>
-  <p>The channel currently open, read from the client URL.</p>
-  
-  <pre class="api-code"><code>const message = api.slack.describeMessage(el);
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-currentchannelid" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>currentChannelId</code></h1>
+    <p class="api-sig api-sig--big">(): string | null</p>
+  </header>
+  <div class="panel__body">
+    <p>The channel currently open, read from the client URL.</p>
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const message = api.slack.describeMessage(el);
 const author  = api.slack.userIdFromMessage(message);   // 'U0123…'
 const channel = api.slack.currentChannelId();           // 'C0123…'</code></pre>
-</article>
-<article class="api-entry" id="entry-userIdFromMessage-30">
-  <h4><code>userIdFromMessage</code><span class="api-sig">(message: MessageRef): string | null</span><span class="api-badge">inside Slack</span></h4>
-  <p>The author of a message, read from their avatar URL.</p>
-  
-  <pre class="api-code"><code>const message = api.slack.describeMessage(el);
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-useridfrommessage" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>userIdFromMessage</code></h1>
+    <p class="api-sig api-sig--big">(message: MessageRef): string | null</p>
+  </header>
+  <div class="panel__body">
+    <p>The author of a message, read from their avatar URL.</p>
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const message = api.slack.describeMessage(el);
 const author  = api.slack.userIdFromMessage(message);   // 'U0123…'
 const channel = api.slack.currentChannelId();           // 'C0123…'</code></pre>
-</article>
-<article class="api-entry" id="entry-avatarUrl-31">
-  <h4><code>avatarUrl</code><span class="api-sig">(url: string | null | undefined, size: number): string | null</span><span class="api-badge">inside Slack</span></h4>
-  <p>The same avatar at another size.</p>
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-avatarurl" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>avatarUrl</code></h1>
+    <p class="api-sig api-sig--big">(url: string | null | undefined, size: number): string | null</p>
+  </header>
+  <div class="panel__body">
+    <p>The same avatar at another size.</p>
 <p>Slack serves them as <code>&lt;base&gt;-&lt;size&gt;</code>, so asking for a bigger one is a
 string edit rather than another request -- the rail renders a 48 and a
 profile wants a 72, and every mod that shows a face was doing this by hand.
 Returns null for anything that is not one of Slack's avatar URLs, which is
 what a custom image or a data URI will be.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-desktop-32">
-  <h4><code>desktop</code><span class="api-sig">: {</span><span class="api-badge">inside Slack</span></h4>
-  <p>Slack's own translucent window, which it ships switched off.</p>
+    <div class="stage-bar">
+  <label for="theme-slack-avatarurl" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-slack-avatarurl" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="slack-avatarurl"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-desktop" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>desktop</code></h1>
+    <p class="api-sig api-sig--big">: {</p>
+  </header>
+  <div class="panel__body">
+    <p>Slack's own translucent window, which it ships switched off.</p>
 <p><code>set</code> takes effect the next time Slack starts: the window's material is
 chosen when the window is created, and nothing in the page can restart it.
 Tell the user so rather than leaving them to wonder why nothing happened.</p>
-  
-  <pre class="api-code"><code>const { desktop } = api.slack;
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const { desktop } = api.slack;
 if (desktop.supported) {                       // false where there is no such file
   desktop.get('windowVibrancy');               // what the file says now
   desktop.launched('windowVibrancy');          // what this Slack was started with
@@ -673,15 +1295,23 @@ if (desktop.supported) {                       // false where there is no such f
 }
 
 desktop.keys();  // every preference this API will touch, with a note on each</code></pre>
-</article>
-<article class="api-entry" id="entry-restart-33">
-  <h4><code>restart</code><span class="api-sig">(): Promise&lt;void&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Stop Slack and start it again, with the loader still driving.</p>
+    
+  </div>
+</section>
+<section class="panel" id="p-slack-restart" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>restart</code></h1>
+    <p class="api-sig api-sig--big">(): Promise&lt;void&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Stop Slack and start it again, with the loader still driving.</p>
 <p>For settings that are read when a window is created, so they can never
 take effect in place. This tears down the page that called it: do nothing
 after it but let go, and never call it without asking first.</p>
-  
-  <pre class="api-code"><code>const { desktop } = api.slack;
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const { desktop } = api.slack;
 if (desktop.supported) {                       // false where there is no such file
   desktop.get('windowVibrancy');               // what the file says now
   desktop.launched('windowVibrancy');          // what this Slack was started with
@@ -693,34 +1323,77 @@ if (desktop.supported) {                       // false where there is no such f
 }
 
 desktop.keys();  // every preference this API will touch, with a note on each</code></pre>
-</article>
-<article class="api-entry" id="entry-selectors-34">
-  <h4><code>selectors</code><span class="api-sig">: Readonly&lt;Record&lt;string, string&gt;&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Stable selectors, for mods that need to go beyond these helpers.</p>
-  
-  
-</article>
+    
+  </div>
 </section>
-<section class="api-group" id="ui">
-  <h3>api.ui</h3>
-  <p class="section__lede">Ready-made widgets, so a mod never has to write its own CSS for common UI.
-They live in shadow roots (a broken theme cannot make them unusable) and
-read Slack's design tokens, so they follow the active theme.</p>
-  <article class="api-entry" id="entry-toast-35">
-  <h4><code>toast</code><span class="api-sig">(message: string, options?: ToastOptions): ToastHandle</span><span class="api-badge">inside Slack</span></h4>
-  <p>Transient message at the bottom of the window.</p>
-  
-  <pre class="api-code"><code>api.ui.toast('Saved', { variant: 'success' });   // info | success | warning | error
+<section class="panel" id="p-slack-selectors" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>selectors</code></h1>
+    <p class="api-sig api-sig--big">: Readonly&lt;Record&lt;string, string&gt;&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Stable selectors, for mods that need to go beyond these helpers.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-ui-toast" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.ui</p>
+    <h1><code>toast</code></h1>
+    <p class="api-sig api-sig--big">(message: string, options?: ToastOptions): ToastHandle</p>
+  </header>
+  <div class="panel__body">
+    <p>Transient message at the bottom of the window.</p>
+    <div class="stage-bar">
+  <label for="theme-ui-toast" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-ui-toast" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="ui-toast"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.ui.toast('Saved', { variant: 'success' });   // info | success | warning | error
 const t = api.ui.toast('Working…', { duration: 0 });
 t.dismiss();
 
 api.ui.toast('Deleted', { action: { label: 'Undo', onClick: () =&gt; restore() } });</code></pre>
-</article>
-<article class="api-entry" id="entry-modal-36">
-  <h4><code>modal</code><span class="api-sig">(options: ModalOptions): ModalHandle</span><span class="api-badge">inside Slack</span></h4>
-  <p>A dialog. Returns a handle so you can update or close it later.</p>
-  
-  <pre class="api-code"><code>const dialog = api.ui.modal({
+    
+  </div>
+</section>
+<section class="panel" id="p-ui-modal" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.ui</p>
+    <h1><code>modal</code></h1>
+    <p class="api-sig api-sig--big">(options: ModalOptions): ModalHandle</p>
+  </header>
+  <div class="panel__body">
+    <p>A dialog. Returns a handle so you can update or close it later.</p>
+    <div class="stage-bar">
+  <label for="theme-ui-modal" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-ui-modal" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="ui-modal"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const dialog = api.ui.modal({
   title: 'Channel notes',
   subtitle: 'Stored on this machine only.',
   content: textarea,          // a string or any Node
@@ -736,37 +1409,93 @@ api.ui.toast('Deleted', { action: { label: 'Undo', onClick: () =&gt; restore() }
 
 dialog.body;     // the element holding `content`, for live updates
 dialog.close();</code></pre>
-</article>
-<article class="api-entry" id="entry-confirm-37">
-  <h4><code>confirm</code><span class="api-sig">(options: ConfirmOptions): Promise&lt;boolean&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Yes/no dialog; resolves false if dismissed.</p>
-  
-  <pre class="api-code"><code>const sure = await api.ui.confirm({
+    
+  </div>
+</section>
+<section class="panel" id="p-ui-confirm" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.ui</p>
+    <h1><code>confirm</code></h1>
+    <p class="api-sig api-sig--big">(options: ConfirmOptions): Promise&lt;boolean&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Yes/no dialog; resolves false if dismissed.</p>
+    <div class="stage-bar">
+  <label for="theme-ui-confirm" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-ui-confirm" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="ui-confirm"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const sure = await api.ui.confirm({
   title: 'Delete these notes?',
   message: 'This cannot be undone.',
   confirmLabel: 'Delete',
   danger: true,
 });</code></pre>
-</article>
-<article class="api-entry" id="entry-tooltip-38">
-  <h4><code>tooltip</code><span class="api-sig">(element: HTMLElement, options: TooltipOptions): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Slack-style tooltip on any element you built yourself.</p>
-  
-  <pre class="api-code"><code>api.ui.tooltip(el, { title: 'BetterSlack', subtitle: '⌘⇧M', placement: 'right' });</code></pre>
-</article>
-<article class="api-entry" id="entry-menu-39">
-  <h4><code>menu</code><span class="api-sig">(anchor: HTMLElement, items: MenuItem[], options?: MenuOptions): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Slack's overflow menu, against an anchor you give it.</p>
+    
+  </div>
+</section>
+<section class="panel" id="p-ui-tooltip" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.ui</p>
+    <h1><code>tooltip</code></h1>
+    <p class="api-sig api-sig--big">(element: HTMLElement, options: TooltipOptions): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Slack-style tooltip on any element you built yourself.</p>
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>api.ui.tooltip(el, { title: 'BetterSlack', subtitle: '⌘⇧M', placement: 'right' });</code></pre>
+    
+  </div>
+</section>
+<section class="panel" id="p-ui-menu" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.ui</p>
+    <h1><code>menu</code></h1>
+    <p class="api-sig api-sig--big">(anchor: HTMLElement, items: MenuItem[], options?: MenuOptions): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Slack's overflow menu, against an anchor you give it.</p>
 <p>Borrowed rather than drawn: it wears <code>c-menu</code>, so it follows every theme,
 including one being edited. One menu is open at a time, Escape and a
 click outside close it, and it flips above the anchor when there is no
 room below -- which is always, for a button in the control strip.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-kit-40">
-  <h4><code>kit</code><span class="api-sig">(doc?: Document): Kit</span><span class="api-badge api-badge--live">live below</span></h4>
-  <p>Slack's design system, as components, bound to a document.</p>
+    <div class="stage-bar">
+  <label for="theme-ui-menu" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-ui-menu" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="ui-menu"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-ui-kit" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.ui</p>
+    <h1><code>kit</code></h1>
+    <p class="api-sig api-sig--big">(doc?: Document): Kit</p>
+  </header>
+  <div class="panel__body">
+    <p>Slack's design system, as components, bound to a document.</p>
 <p>Inside the client, Slack's own classes are the right answer -- the Mods
 panel wears <code>.c-dialog</code> and follows every theme for free. They are not
 available anywhere else: a mod that opens a window of its own gets a
@@ -777,10 +1506,9 @@ rather than once per mod.</p>
   kit.card('Palette', [kit.button('Save', { variant: 'primary' })]);</p>
 <p>Everything is prefixed <code>sm-</code>, so the stylesheet is safe to inject into
 the client itself.</p>
-  <div class="api-demo api-demo--flat"><p class="note">Every primitive is below, in
-    <a href="#kit">the component gallery</a> — rendered by the same
-    <code>createKit</code> a mod is handed.</p></div>
-  <pre class="api-code"><code>const editor = kit.code({
+    
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+<pre class="api-code"><code>const editor = kit.code({
   value: current,
   rows: 12,
   placeholder: ':root { --dt_color-content-pry: #e8e8ea; }',
@@ -789,310 +1517,540 @@ the client itself.</p>
 container.append(editor.node);
 editor.value();          // what is in it
 editor.set(text);        // replace it</code></pre>
-</article>
-<article class="api-entry" id="entry-kitCss-41">
-  <h4><code>kitCss</code><span class="api-sig">: string</span></h4>
-  <p>The kit's stylesheet. Put it in the document the kit is building in.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-palette-42">
-  <h4><code>palette</code><span class="api-sig">(source: PaletteSource, labels: PaletteLabels): PaletteHandle</span><span class="api-badge">inside Slack</span></h4>
-  <p>The command palette, as a component.</p>
+    
+  </div>
+</section>
+<section class="panel" id="p-ui-kitcss" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.ui</p>
+    <h1><code>kitCss</code></h1>
+    <p class="api-sig api-sig--big">: string</p>
+  </header>
+  <div class="panel__body">
+    <p>The kit's stylesheet. Put it in the document the kit is building in.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-ui-palette" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.ui</p>
+    <h1><code>palette</code></h1>
+    <p class="api-sig api-sig--big">(source: PaletteSource, labels: PaletteLabels): PaletteHandle</p>
+  </header>
+  <div class="panel__body">
+    <p>The command palette, as a component.</p>
 <p>The list is yours: this draws it, ranks it as you type, moves with the
 arrow keys and closes on Escape. Nothing about what belongs in it is
 decided here -- the mod that opens it decides, which is what lets one
 plugin put Slack's own conversations and BetterSlack's actions in the
 same list.</p>
-  
-  
-</article>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="dom">
-  <h3>api.dom</h3>
-  <p class="section__lede">DOM helpers that are safe against Slack's re-renders.</p>
-  <article class="api-entry" id="entry-waitFor-43">
-  <h4><code>waitFor</code><span class="api-sig">: typeof waitFor</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-keepMounted-44">
-  <h4><code>keepMounted</code><span class="api-sig">: (containerSelector: string, nodeId: string, factory: () =&gt; HTMLElement, position?: 'append' | 'prepend') =&gt; Cleanup</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-onEach-45">
-  <h4><code>onEach</code><span class="api-sig">: &lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void) =&gt; Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-onShortcut-46">
-  <h4><code>onShortcut</code><span class="api-sig">: (match: (event: KeyboardEvent) =&gt; boolean, handler: (event: KeyboardEvent) =&gt; void) =&gt; Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-h-47">
-  <h4><code>h</code><span class="api-sig">: typeof h</span></h4>
-  
-  
-  
-</article>
+<section class="panel" id="p-dom-waitfor" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.dom</p>
+    <h1><code>waitFor</code></h1>
+    <p class="api-sig api-sig--big">: typeof waitFor</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="i18n">
-  <h3>api.i18n</h3>
-  <p class="section__lede">The app's language, and translations for your own strings.</p>
-  <article class="api-entry" id="entry-locale-48">
-  <h4><code>locale</code><span class="api-sig">: string</span></h4>
-  <p>The app's language tag, e.g. "fr-FR". Use it for toLocaleString and friends.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-language-49">
-  <h4><code>language</code><span class="api-sig">: string</span></h4>
-  <p>Its primary subtag, e.g. "fr". This is what dictionaries are keyed by.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-strings-50">
-  <h4><code>strings</code><span class="api-sig">&lt;T extends Dictionary&gt;(tables: Tables&lt;T&gt;): Translate&lt;T&gt;</span></h4>
-  <p>Build a translator.</p>
+<section class="panel" id="p-dom-keepmounted" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.dom</p>
+    <h1><code>keepMounted</code></h1>
+    <p class="api-sig api-sig--big">: (containerSelector: string, nodeId: string, factory: () =&gt; HTMLElement, position?: 'append' | 'prepend') =&gt; Cleanup</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-dom-oneach" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.dom</p>
+    <h1><code>onEach</code></h1>
+    <p class="api-sig api-sig--big">: &lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void) =&gt; Cleanup</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-dom-onshortcut" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.dom</p>
+    <h1><code>onShortcut</code></h1>
+    <p class="api-sig api-sig--big">: (match: (event: KeyboardEvent) =&gt; boolean, handler: (event: KeyboardEvent) =&gt; void) =&gt; Cleanup</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-dom-h" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.dom</p>
+    <h1><code>h</code></h1>
+    <p class="api-sig api-sig--big">: typeof h</p>
+  </header>
+  <div class="panel__body">
+    
+    <div class="stage-bar">
+  <label for="theme-dom-h" data-en="Theme" data-fr="Thème">Theme</label>
+  <select id="theme-dom-h" class="stage-theme api-select">
+    <option value="aurora" selected>Aurora</option>
+    <option value="cocoa">Cocoa</option>
+    <option value="discord-dark">Discord Dark</option>
+    <option value="discord-light">Discord Light</option>
+    <option value="focus-rings">Focus Rings</option>
+    <option value="midnight">Midnight</option>
+    <option value="terminal">Terminal</option>
+  </select>
+  <span class="note" data-en="the same tokens that paint it in Slack" data-fr="les mêmes jetons qui le peignent dans Slack">the same tokens that paint it in Slack</span>
+</div>
+<div class="api-demo" data-demo="dom-h"></div>
+    
+    
+  </div>
+</section>
+<section class="panel" id="p-i18n-locale" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.i18n</p>
+    <h1><code>locale</code></h1>
+    <p class="api-sig api-sig--big">: string</p>
+  </header>
+  <div class="panel__body">
+    <p>The app's language tag, e.g. &quot;fr-FR&quot;. Use it for toLocaleString and friends.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-i18n-language" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.i18n</p>
+    <h1><code>language</code></h1>
+    <p class="api-sig api-sig--big">: string</p>
+  </header>
+  <div class="panel__body">
+    <p>Its primary subtag, e.g. &quot;fr&quot;. This is what dictionaries are keyed by.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-i18n-strings" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.i18n</p>
+    <h1><code>strings</code></h1>
+    <p class="api-sig api-sig--big">&lt;T extends Dictionary&gt;(tables: Tables&lt;T&gt;): Translate&lt;T&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Build a translator.</p>
 <p>  const t = api.i18n.strings({
     en: { members: 'Members', online: '{count} online' },
     fr: { members: 'Membres', online: '{count} en ligne' },
   });
   t('online', { count: 3 });</p>
-<p>Lookup goes exact locale ("fr-CA"), then language ("fr"), then English.</p>
-  
-  
-</article>
+<p>Lookup goes exact locale (&quot;fr-CA&quot;), then language (&quot;fr&quot;), then English.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="settings">
-  <h3>api.settings</h3>
-  <p class="section__lede">Per-plugin persisted settings, stored by the loader in ~/.betterslack.</p>
-  <article class="api-entry" id="entry-get-51">
-  <h4><code>get</code><span class="api-sig">&lt;T = unknown&gt;(key: string, fallback?: T): T | undefined</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-set-52">
-  <h4><code>set</code><span class="api-sig">(key: string, value: unknown): Promise&lt;void&gt;</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-all-53">
-  <h4><code>all</code><span class="api-sig">(): Record&lt;string, unknown&gt;</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-onChange-54">
-  <h4><code>onChange</code><span class="api-sig">(handler: (values: Record&lt;string, unknown&gt;) =&gt; void): Cleanup</span><span class="api-badge">inside Slack</span></h4>
-  <p>Called when the panel changes one of the declared settings.</p>
+<section class="panel" id="p-settings-get" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.settings</p>
+    <h1><code>get</code></h1>
+    <p class="api-sig api-sig--big">&lt;T = unknown&gt;(key: string, fallback?: T): T | undefined</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-settings-set" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.settings</p>
+    <h1><code>set</code></h1>
+    <p class="api-sig api-sig--big">(key: string, value: unknown): Promise&lt;void&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-settings-all" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.settings</p>
+    <h1><code>all</code></h1>
+    <p class="api-sig api-sig--big">(): Record&lt;string, unknown&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-settings-onchange" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.settings</p>
+    <h1><code>onChange</code></h1>
+    <p class="api-sig api-sig--big">(handler: (values: Record&lt;string, unknown&gt;) =&gt; void): Cleanup</p>
+  </header>
+  <div class="panel__body">
+    <p>Called when the panel changes one of the declared settings.</p>
 <p>A plugin that does nothing here is still correct: the runtime reloads it
 after a change, so <code>start</code> simply runs again with the new values. This is
 for the ones where reloading would be visible -- a list that would flicker,
 a window that would close.</p>
-  
-  
-</article>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="commands">
-  <h3>api.commands</h3>
-  <p class="section__lede">Things this mod can do, findable by typing.</p>
-  <article class="api-entry" id="entry-add-55">
-  <h4><code>add</code><span class="api-sig">(command: {</span><span class="api-badge">inside Slack</span></h4>
-  
-  
-  
-</article>
+<section class="panel" id="p-commands-add" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.commands</p>
+    <h1><code>add</code></h1>
+    <p class="api-sig api-sig--big">(command: {</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="files">
-  <h3>api.files</h3>
-  <p class="section__lede">Ask the loader to fetch a URL and save it to the download folder.
-The renderer cannot do this itself for Slack's CDN, which serves without
-CORS headers. https only; the file name is sanitised loader-side.</p>
-  <article class="api-entry" id="entry-save-56">
-  <h4><code>save</code><span class="api-sig">(url: string, filename: string): Promise&lt;{ path: string; bytes: number }&gt;</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-screenshot-57">
-  <h4><code>screenshot</code><span class="api-sig">(options?: { size?: string; filename?: string }):</span></h4>
-  <p>Photograph the Slack window and put the picture in the download folder.</p>
+<section class="panel" id="p-files-save" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.files</p>
+    <h1><code>save</code></h1>
+    <p class="api-sig api-sig--big">(url: string, filename: string): Promise&lt;{ path: string; bytes: number }&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-files-screenshot" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.files</p>
+    <h1><code>screenshot</code></h1>
+    <p class="api-sig api-sig--big">(options?: { size?: string; filename?: string }):</p>
+  </header>
+  <div class="panel__body">
+    <p>Photograph the Slack window and put the picture in the download folder.</p>
 <p>A page cannot photograph itself, so the loader does it over CDP. <code>size</code>
-is "&lt;width&gt;x&lt;height&gt;" and forces the viewport first, which is the only
+is &quot;&lt;width&gt;x&lt;height&gt;&quot; and forces the viewport first, which is the only
 way to get a frame that needs no cropping afterwards -- cropping takes
 from the middle, and the top bar and the composer go missing. Defaults
 to 1600x1000, the size every mod's picture in the catalogue uses.</p>
 <p>Anything of your own that should not be in the picture has to be hidden
 before you call this and put back after: the shutter is on the loader's
 side, and it photographs whatever is on screen.</p>
-  
-  
-</article>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="assets">
-  <h3>api.assets</h3>
-  <p class="section__lede">The plugin's own files, as shipped in its folder.</p>
-  <article class="api-entry" id="entry-list-58">
-  <h4><code>list</code><span class="api-sig">(): string[]</span></h4>
-  <p>Every readable file in the folder.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-text-59">
-  <h4><code>text</code><span class="api-sig">(path: string): string</span></h4>
-  <p>One file's contents. Throws if the folder has no such file.</p>
-  
-  
-</article>
+<section class="panel" id="p-assets-list" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.assets</p>
+    <h1><code>list</code></h1>
+    <p class="api-sig api-sig--big">(): string[]</p>
+  </header>
+  <div class="panel__body">
+    <p>Every readable file in the folder.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="themes">
-  <h3>api.themes</h3>
-  <p class="section__lede">The themes the user has, for tools that build on top of them.</p>
-  <article class="api-entry" id="entry-list-60">
-  <h4><code>list</code><span class="api-sig">(): Array&lt;{ id: string; name: string; description: string; enabled: boolean }&gt;</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-source-61">
-  <h4><code>source</code><span class="api-sig">(id: string): Promise&lt;string&gt;</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-suspend-62">
-  <h4><code>suspend</code><span class="api-sig">(on: boolean): void</span></h4>
-  <p>Hold every enabled theme back, or let them through again.</p>
+<section class="panel" id="p-assets-text" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.assets</p>
+    <h1><code>text</code></h1>
+    <p class="api-sig api-sig--big">(path: string): string</p>
+  </header>
+  <div class="panel__body">
+    <p>One file's contents. Throws if the folder has no such file.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-themes-list" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.themes</p>
+    <h1><code>list</code></h1>
+    <p class="api-sig api-sig--big">(): Array&lt;{ id: string; name: string; description: string; enabled: boolean }&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-themes-source" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.themes</p>
+    <h1><code>source</code></h1>
+    <p class="api-sig api-sig--big">(id: string): Promise&lt;string&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-themes-suspend" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.themes</p>
+    <h1><code>suspend</code></h1>
+    <p class="api-sig api-sig--big">(on: boolean): void</p>
+  </header>
+  <div class="panel__body">
+    <p>Hold every enabled theme back, or let them through again.</p>
 <p>For a tool that has to show the app without them for a while -- a theme
 editor working on top of a chosen base cannot show its own work while
 whatever is switched on is still painting. Nothing is enabled or disabled
 by this: the settings are untouched and the stylesheets come straight
 back. Undone automatically when the plugin stops.</p>
-  
-  
-</article>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="app">
-  <h3>api.app</h3>
-  <p class="section__lede">BetterSlack itself, for the mods that extend it rather than Slack.</p>
-  <article class="api-entry" id="entry-mods-63">
-  <h4><code>mods</code><span class="api-sig">(): Array&lt;{</span></h4>
-  <p>Every mod in the catalogue, with what the user has done about it.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-setEnabled-64">
-  <h4><code>setEnabled</code><span class="api-sig">(id: string, enabled: boolean): Promise&lt;void&gt;</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-setInstalled-65">
-  <h4><code>setInstalled</code><span class="api-sig">(id: string, installed: boolean): Promise&lt;void&gt;</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-openPanel-66">
-  <h4><code>openPanel</code><span class="api-sig">(tab?: 'themes' | 'plugins' | 'css' | 'about'): void</span><span class="api-badge">inside Slack</span></h4>
-  <p>Open the Mods panel, optionally straight to a tab.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-openMod-67">
-  <h4><code>openMod</code><span class="api-sig">(id: string): void</span><span class="api-badge">inside Slack</span></h4>
-  <p>Open the panel on one mod, with its settings unfolded.</p>
+<section class="panel" id="p-app-mods" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.app</p>
+    <h1><code>mods</code></h1>
+    <p class="api-sig api-sig--big">(): Array&lt;{</p>
+  </header>
+  <div class="panel__body">
+    <p>Every mod in the catalogue, with what the user has done about it.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-app-setenabled" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.app</p>
+    <h1><code>setEnabled</code></h1>
+    <p class="api-sig api-sig--big">(id: string, enabled: boolean): Promise&lt;void&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-app-setinstalled" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.app</p>
+    <h1><code>setInstalled</code></h1>
+    <p class="api-sig api-sig--big">(id: string, installed: boolean): Promise&lt;void&gt;</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-app-openpanel" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.app</p>
+    <h1><code>openPanel</code></h1>
+    <p class="api-sig api-sig--big">(tab?: 'themes' | 'plugins' | 'css' | 'about'): void</p>
+  </header>
+  <div class="panel__body">
+    <p>Open the Mods panel, optionally straight to a tab.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-app-openmod" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.app</p>
+    <h1><code>openMod</code></h1>
+    <p class="api-sig api-sig--big">(id: string): void</p>
+  </header>
+  <div class="panel__body">
+    <p>Open the panel on one mod, with its settings unfolded.</p>
 <p>The panel is where a setting is drawn from the manifest, checked and
 saved; this points at the mod's own page there -- description, picture,
 readme, settings -- rather than reimplementing any of it somewhere with
 less room.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-commands-68">
-  <h4><code>commands</code><span class="api-sig">(): Command[]</span><span class="api-badge">inside Slack</span></h4>
-  <p>What every other mod has registered, so a palette can show them all.</p>
-  
-  
-</article>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-<section class="api-group" id="log">
-  <h3>api.log</h3>
-  
-  <article class="api-entry" id="entry-info-69">
-  <h4><code>info</code><span class="api-sig">: (...args: unknown[]) =&gt; void</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-warn-70">
-  <h4><code>warn</code><span class="api-sig">: (...args: unknown[]) =&gt; void</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-error-71">
-  <h4><code>error</code><span class="api-sig">: (...args: unknown[]) =&gt; void</span></h4>
-  
-  
-  
-</article>
+<section class="panel" id="p-app-commands" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.app</p>
+    <h1><code>commands</code></h1>
+    <p class="api-sig api-sig--big">(): Command[]</p>
+  </header>
+  <div class="panel__body">
+    <p>What every other mod has registered, so a palette can show them all.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
 </section>
-
-    <section class="api-group" id="plugin">
-      <h3 data-en="On the api object itself" data-fr="Sur l’objet api lui-même">On the api object itself</h3>
-      <article class="api-entry" id="entry-id-72">
-  <h4><code>id</code><span class="api-sig">: string</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-manifest-73">
-  <h4><code>manifest</code><span class="api-sig">: ModRecord</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-version-74">
-  <h4><code>version</code><span class="api-sig">: string</span></h4>
-  
-  
-  
-</article>
-<article class="api-entry" id="entry-css-75">
-  <h4><code>css</code><span class="api-sig">(text: string): void</span><span class="api-badge">inside Slack</span></h4>
-  <p>Stylesheet owned by this plugin; replaced wholesale on each call.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-saveTheme-76">
-  <h4><code>saveTheme</code><span class="api-sig">(options: { id: string; name: string; description: string; css: string }): Promise&lt;void&gt;</span><span class="api-badge">inside Slack</span></h4>
-  <p>Write a theme into the user's own mods folder, where it appears in the
+<section class="panel" id="p-log-info" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.log</p>
+    <h1><code>info</code></h1>
+    <p class="api-sig api-sig--big">: (...args: unknown[]) =&gt; void</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-log-warn" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.log</p>
+    <h1><code>warn</code></h1>
+    <p class="api-sig api-sig--big">: (...args: unknown[]) =&gt; void</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-log-error" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.log</p>
+    <h1><code>error</code></h1>
+    <p class="api-sig api-sig--big">: (...args: unknown[]) =&gt; void</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-plugin-id" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">On the api object</p>
+    <h1><code>id</code></h1>
+    <p class="api-sig api-sig--big">: string</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-plugin-manifest" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">On the api object</p>
+    <h1><code>manifest</code></h1>
+    <p class="api-sig api-sig--big">: ModRecord</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-plugin-version" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">On the api object</p>
+    <h1><code>version</code></h1>
+    <p class="api-sig api-sig--big">: string</p>
+  </header>
+  <div class="panel__body">
+    
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-plugin-css" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">On the api object</p>
+    <h1><code>css</code></h1>
+    <p class="api-sig api-sig--big">(text: string): void</p>
+  </header>
+  <div class="panel__body">
+    <p>Stylesheet owned by this plugin; replaced wholesale on each call.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section>
+<section class="panel" id="p-plugin-savetheme" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">On the api object</p>
+    <h1><code>saveTheme</code></h1>
+    <p class="api-sig api-sig--big">(options: { id: string; name: string; description: string; css: string }): Promise&lt;void&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Write a theme into the user's own mods folder, where it appears in the
 panel like any other and survives a restart.</p>
 <p>Deliberately themes only. A theme is CSS and the loader re-validates the
 manifest it is handed, so the worst a mod can do here is add an ugly
 stylesheet the user can switch off -- which is not true of plugins, and is
 why there is no equivalent for them.</p>
-  
-  
-</article>
-<article class="api-entry" id="entry-onDispose-77">
-  <h4><code>onDispose</code><span class="api-sig">(fn: Cleanup): void</span><span class="api-badge">inside Slack</span></h4>
-  <p>Register a teardown callback; runs when the plugin is disabled.</p>
-  
-  
-</article>
-    </section>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
   </div>
+</section>
+<section class="panel" id="p-plugin-ondispose" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">On the api object</p>
+    <h1><code>onDispose</code></h1>
+    <p class="api-sig api-sig--big">(fn: Cleanup): void</p>
+  </header>
+  <div class="panel__body">
+    <p>Register a teardown callback; runs when the plugin is disabled.</p>
+    
+    
+    <p class="note" data-en="No example yet — the signature above is the whole of it." data-fr="Pas encore d’exemple — la signature ci-dessus dit tout.">No example yet — the signature above is the whole of it.</p>
+  </div>
+</section></div>
 </main>
 
 <footer class="footer">
@@ -1102,15 +2060,10 @@ why there is no equivalent for them.</p>
   </div>
   <nav class="footer__links">
     <a href="index.html">Home</a>
+    <a href="api.html">API</a>
     <a href="https://github.com/AirOne-dev/BetterSlack">GitHub</a>
     <a href="https://github.com/AirOne-dev/BetterSlack/blob/master/docs/getting-started.md" data-en="Getting started" data-fr="Démarrer">Getting started</a>
-    <a href="https://github.com/AirOne-dev/BetterSlack/blob/master/docs/api.md" data-en="API reference" data-fr="Référence de l’API">API reference</a>
   </nav>
-  <p class="footer__note"
-     data-en="Not affiliated with Slack Technologies. Slack is a trademark of Salesforce, Inc."
-     data-fr="Sans affiliation avec Slack Technologies. Slack est une marque de Salesforce, Inc.">
-    Not affiliated with Slack Technologies. Slack is a trademark of Salesforce, Inc.
-  </p>
 </footer>
 
 <script src="data.js"></script>

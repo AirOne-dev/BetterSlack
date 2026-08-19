@@ -1,5 +1,397 @@
 "use strict";
 (() => {
+  // src/runtime/dom.ts
+  var REMOUNT_LIMIT = 25;
+  var REMOUNT_WINDOW_MS = 2e3;
+  var mountCounts = /* @__PURE__ */ new Map();
+  function keepMounted(containerSelector, nodeId, factory, options = {}) {
+    const { position = "append", before } = typeof options === "string" ? { position: options, before: void 0 } : options;
+    let disposed = false;
+    let attempts = [];
+    const countAttempt = () => {
+      const now = Date.now();
+      attempts = attempts.filter((t) => now - t < REMOUNT_WINDOW_MS);
+      attempts.push(now);
+      if (attempts.length <= REMOUNT_LIMIT) return true;
+      disposed = true;
+      observer.disconnect();
+      console.error(
+        `[betterslack] giving up on "${nodeId}": it moved or was re-added ${attempts.length} times in ${REMOUNT_WINDOW_MS}ms, so something else owns "${containerSelector}". Anchor it with \`before\` or pick another container.`
+      );
+      document.getElementById(nodeId)?.remove();
+      return false;
+    };
+    const mount = () => {
+      if (disposed) return;
+      const container = document.querySelector(containerSelector);
+      if (!container) return;
+      const anchor = before ? container.querySelector(before) : null;
+      const current = document.getElementById(nodeId);
+      if (current && container.contains(current)) {
+        const misplaced = anchor !== null && anchor !== current && (current.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING) === 0;
+        if (misplaced && countAttempt()) anchor.before(current);
+        return;
+      }
+      if (!countAttempt()) return;
+      mountCounts.set(nodeId, (mountCounts.get(nodeId) ?? 0) + 1);
+      current?.remove();
+      const node = factory();
+      node.id = nodeId;
+      if (anchor) anchor.before(node);
+      else if (position === "prepend") container.prepend(node);
+      else container.append(node);
+    };
+    mount();
+    const observer = new MutationObserver(() => mount());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      document.getElementById(nodeId)?.remove();
+    };
+  }
+  function onEach(selector, handler) {
+    const seen = /* @__PURE__ */ new WeakSet();
+    const scan = () => {
+      for (const element of document.querySelectorAll(selector)) {
+        if (seen.has(element)) continue;
+        seen.add(element);
+        try {
+          handler(element);
+        } catch (err) {
+          console.error("[betterslack] onEach handler threw", err);
+        }
+      }
+    };
+    scan();
+    const observer = new MutationObserver(scan);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }
+  function onShortcut(match, handler) {
+    const listener = (event) => {
+      if (!match(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handler(event);
+    };
+    window.addEventListener("keydown", listener, true);
+    return () => window.removeEventListener("keydown", listener, true);
+  }
+  function h(tag, attrs = {}, children = []) {
+    const element = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key === "class") element.className = value;
+      else element.setAttribute(key, value);
+    }
+    for (const child of children) {
+      element.append(typeof child === "string" ? document.createTextNode(child) : child);
+    }
+    return element;
+  }
+
+  // src/runtime/ui/tooltip.ts
+  var SHOW_DELAY_MS = 150;
+  var EDGE_OVERLAP = 4;
+  var VIEWPORT_MARGIN = 8;
+  function attachTooltip(trigger, options) {
+    const { title, subtitle, placement = "right", delayMs = SHOW_DELAY_MS } = options;
+    trigger.removeAttribute("title");
+    trigger.setAttribute("aria-label", subtitle ? `${title}. ${subtitle}` : title);
+    let layer = null;
+    let timer;
+    const build = () => {
+      const tip = h("div", {
+        class: `c-tooltip__tip c-tooltip__tip--${placement} c-tooltip__tip--small`,
+        "data-qa": "tooltip-tip",
+        "data-sk": "tooltip"
+      }, [h("div", {}, [title])]);
+      if (subtitle) tip.append(h("div", { class: "c-tooltip__subtitle" }, [subtitle]));
+      tip.append(h("div", { class: "c-tooltip__tip__arrow", "data-qa": "tooltip-tip-arrow" }));
+      return h("div", {
+        class: "betterslack-tooltip",
+        role: "tooltip",
+        "data-qa": "tooltip-popover",
+        style: "position: fixed; top: 0; left: 0; z-index: 1001; pointer-events: none; will-change: transform; transition: opacity 80ms ease;"
+      }, [h("div", { role: "presentation" }, [tip])]);
+    };
+    const position = (node) => {
+      const t = trigger.getBoundingClientRect();
+      const { width: w, height: hgt } = node.getBoundingClientRect();
+      let left;
+      let top;
+      switch (placement) {
+        case "left":
+          left = t.left - w + EDGE_OVERLAP;
+          top = t.top + t.height / 2 - hgt / 2;
+          break;
+        case "top":
+          left = t.left + t.width / 2 - w / 2;
+          top = t.top - hgt + EDGE_OVERLAP;
+          break;
+        case "bottom":
+          left = t.left + t.width / 2 - w / 2;
+          top = t.bottom - EDGE_OVERLAP;
+          break;
+        default:
+          left = t.right - EDGE_OVERLAP;
+          top = t.top + t.height / 2 - hgt / 2;
+      }
+      left = Math.min(Math.max(left, VIEWPORT_MARGIN), window.innerWidth - w - VIEWPORT_MARGIN);
+      top = Math.min(Math.max(top, VIEWPORT_MARGIN), window.innerHeight - hgt - VIEWPORT_MARGIN);
+      node.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+    };
+    const show = () => {
+      if (layer || !trigger.isConnected) return;
+      layer = build();
+      layer.style.visibility = "hidden";
+      document.body.append(layer);
+      position(layer);
+      layer.style.visibility = "";
+    };
+    const hide = () => {
+      clearTimeout(timer);
+      timer = void 0;
+      layer?.remove();
+      layer = null;
+    };
+    const scheduleShow = (immediate = false) => {
+      if (layer) return;
+      clearTimeout(timer);
+      timer = setTimeout(show, immediate ? 0 : delayMs);
+    };
+    const onEnter = () => scheduleShow();
+    const onLeave = () => hide();
+    const onFocus = (event) => {
+      if (trigger.matches(":focus-visible")) scheduleShow(true);
+      else ;
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") hide();
+    };
+    trigger.addEventListener("mouseenter", onEnter);
+    trigger.addEventListener("mouseleave", onLeave);
+    trigger.addEventListener("mousedown", onLeave);
+    trigger.addEventListener("click", onLeave);
+    trigger.addEventListener("focus", onFocus);
+    trigger.addEventListener("blur", onLeave);
+    document.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("scroll", onLeave, true);
+    window.addEventListener("resize", onLeave);
+    return () => {
+      hide();
+      trigger.removeEventListener("mouseenter", onEnter);
+      trigger.removeEventListener("mouseleave", onLeave);
+      trigger.removeEventListener("mousedown", onLeave);
+      trigger.removeEventListener("click", onLeave);
+      trigger.removeEventListener("focus", onFocus);
+      trigger.removeEventListener("blur", onLeave);
+      document.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("scroll", onLeave, true);
+      window.removeEventListener("resize", onLeave);
+    };
+  }
+
+  // src/runtime/web-api.ts
+  function userIdFromAvatarUrl(url) {
+    if (!url) return null;
+    const match = url.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i);
+    return match ? match[1].toUpperCase() : null;
+  }
+
+  // src/runtime/slack-api.ts
+  var ACTIONS_GROUP = '[data-qa="message-actions"]';
+  var ACTIONS_ITEM_CLASS = "c-message_actions__overflow_item c-message_actions__overflow_item--button";
+  var MORE_ACTIONS = '[data-qa="more_message_actions"]';
+  var MESSAGE = '[data-qa="message_container"]';
+  var TOOLBARS = {
+    /** Bottom strip of the rail: "Créer un nouveau", focus mode, avatar. */
+    controlStrip: {
+      container: ".p-control_strip",
+      buttonClass: "c-button-unstyled p-control_strip__circle_button",
+      /*
+       * Anchored on BetterSlack's own launcher, not on Slack's coachmark wrapper.
+       *
+       * Inserting next to `.c-coachmark-anchor:has([data-qa="user-button"])`
+       * freezes the renderer solid -- grey window, no error, no console, Slack
+       * has to be killed. Slack's coachmark code evidently reacts to changes
+       * around that node and ends up in a loop with whatever put them there.
+       * Bisected against a running client: the same button anchored here is fine,
+       * anchored there hangs every time.
+       */
+      before: "#betterslack-control-button",
+      placement: "right"
+    },
+    /**
+     * Formatting row under the message box: bold, italic, link…
+     * Anchored on whatever element holds the bold button, rather than on the
+     * composer body, so the button lands beside its peers and not at the end of
+     * an unrelated container.
+     */
+    composer: {
+      container: '*:has(> [data-qa="bold-composer-button"])',
+      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_smedium p-composer__button c-icon_button--default",
+      before: void 0,
+      placement: "top"
+    },
+    /**
+     * Right-hand end of the top bar, beside Slack's own help and account
+     * controls. The place for a switch that belongs to the whole client rather
+     * than to the conversation on screen.
+     *
+     * The container is a direct child on purpose: `display_flex` and
+     * `align_items_center` are utility classes that appear all over Slack's
+     * markup, and matching them anywhere under the right container would put the
+     * button in whichever one happened to come first.
+     */
+    topNav: {
+      container: ".p-ia4_top_nav__right_container > .display_flex.align_items_center",
+      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default",
+      before: void 0,
+      placement: "bottom"
+    },
+    /** Right-hand side of the channel header: huddle, search, more. */
+    channelHeader: {
+      container: ".p-view_header__actions",
+      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default",
+      before: void 0,
+      placement: "bottom"
+    }
+  };
+  var cachedHost = null;
+  function rememberHost(url) {
+    try {
+      cachedHost = new URL(url).origin;
+    } catch {
+    }
+  }
+  function describeMessage(element) {
+    const channelId = element.getAttribute("data-msg-channel-id");
+    const ts = element.getAttribute("data-msg-ts");
+    let permalink = null;
+    const timestampLink = element.querySelector("a.c-timestamp");
+    if (timestampLink?.href) {
+      permalink = timestampLink.href;
+      rememberHost(permalink);
+    } else if (cachedHost && channelId && ts) {
+      permalink = `${cachedHost}/archives/${channelId}/p${ts.replace(".", "")}`;
+    }
+    const body = element.querySelector('[data-qa="message-text"]');
+    return {
+      element,
+      channelId,
+      ts,
+      permalink,
+      text: (body?.textContent ?? element.textContent ?? "").trim()
+    };
+  }
+  function addMessageAction(pluginId, action) {
+    const nodeId = `betterslack-action-${pluginId}-${action.id}`;
+    const cleanup = onEach(ACTIONS_GROUP, (group) => {
+      if (group.querySelector(`#${CSS.escape(nodeId)}`)) return;
+      const message = group.closest(MESSAGE) ?? document.querySelector(".c-message_kit__hover--hovered")?.closest(MESSAGE) ?? null;
+      if (!message) return;
+      const button = h("button", {
+        class: "c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button betterslack-action",
+        type: "button",
+        "aria-label": action.label,
+        "data-qa": `betterslack_${pluginId}_${action.id}`
+      });
+      button.innerHTML = action.icon;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        action.onClick(describeMessage(message), event);
+      });
+      attachTooltip(button, {
+        title: action.label,
+        subtitle: action.description,
+        placement: "top"
+      });
+      const item = h("div", { class: ACTIONS_ITEM_CLASS, id: nodeId }, [button]);
+      const more = group.querySelector(MORE_ACTIONS)?.closest(`.c-message_actions__overflow_item`);
+      if (more) more.before(item);
+      else group.append(item);
+    });
+    return () => {
+      cleanup();
+      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
+    };
+  }
+  var PROFILE_PANE = '[data-qa="member_profile_pane"]';
+  var PROFILE_AVATAR = ".p-r_member_profile__avatar__img";
+  function addProfileButton(pluginId, button) {
+    const nodeId = `betterslack-profile-${pluginId}-${button.id}`;
+    const cleanup = onEach(PROFILE_PANE, (pane) => {
+      if (pane.querySelector(`#${CSS.escape(nodeId)}`)) return;
+      const element = h("button", {
+        class: "c-button c-button--outline c-button--medium betterslack-profile-button",
+        type: "button",
+        id: nodeId,
+        "data-qa": `betterslack_${pluginId}_${button.id}`
+      });
+      if (button.icon) element.innerHTML = button.icon;
+      element.append(h("span", {}, [button.label]));
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const avatar = pane.querySelector(PROFILE_AVATAR);
+        button.onClick({ element: pane, userId: userIdFromAvatarUrl(avatar?.src) });
+      });
+      const container = pane.querySelector(".p-r_member_profile__container") ?? pane;
+      container.append(h("div", { class: "betterslack-profile-row" }, [element]));
+    });
+    return () => {
+      cleanup();
+      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) {
+        node.closest(".betterslack-profile-row")?.remove();
+        node.remove();
+      }
+    };
+  }
+  function addToolbarButton(pluginId, toolbar, button) {
+    const spec2 = TOOLBARS[toolbar];
+    const nodeId = `betterslack-tb-${pluginId}-${button.id}`;
+    const unmount = keepMounted(
+      spec2.container,
+      nodeId,
+      () => {
+        const element = h("button", {
+          class: `${spec2.buttonClass} betterslack-toolbar-button`,
+          type: "button",
+          "aria-label": button.label,
+          "data-qa": `betterslack_${pluginId}_${button.id}`
+        });
+        element.innerHTML = button.icon;
+        element.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          button.onClick(event);
+        });
+        attachTooltip(element, {
+          title: button.label,
+          subtitle: button.description,
+          placement: spec2.placement
+        });
+        return element;
+      },
+      // Prepend rather than append when the anchor is missing: the end of a
+      // container is where the app's own re-renders land.
+      { before: button.before ?? spec2.before, position: "prepend" }
+    );
+    return () => {
+      unmount();
+      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
+    };
+  }
+  var WINDOW_MATERIALS = Object.freeze([
+    "hud",
+    "fullscreen-ui",
+    "under-window",
+    "titlebar",
+    "none"
+  ]);
+
   // src/runtime/ui/code.ts
   var ESCAPES = {
     "&": "&amp;",
@@ -230,6 +622,1142 @@
 .sm-tok-punct { color: #7d8286; }
 `;
 
+  // src/runtime/ui/styles.ts
+  var PANEL_CSS = CODE_CSS + `
+/* .c-dialog ships opacity:0 and is faded in by Slack's own transition. */
+#betterslack-panel.c-dialog { opacity: 1; }
+
+.betterslack-content {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, calc(100% - 32px));
+  max-width: min(880px, calc(100% - 32px));
+  height: min(620px, calc(100% - 64px));
+  max-height: min(620px, calc(100% - 64px));
+  opacity: 1;
+}
+
+.betterslack-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px 12px;
+}
+.betterslack-close { margin-left: auto; flex: 0 0 auto; }
+
+.betterslack-layout { display: flex; flex: 1; min-height: 0; }
+
+/* Left rail, in the shape Slack's Preferences dialog uses. */
+.betterslack-nav {
+  flex: 0 0 176px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 16px 16px;
+  overflow-y: auto;
+}
+.betterslack-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1.46667;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  text-align: left;
+  cursor: pointer;
+}
+.betterslack-nav__item:hover { background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08); }
+.betterslack-nav__item[aria-selected="true"] {
+  background: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  color: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+  font-weight: var(--custom-font-weight-bold, 700);
+}
+.betterslack-nav__item[aria-selected="true"] .betterslack-count {
+  background: rgba(255, 255, 255, 0.24);
+  color: inherit;
+}
+
+.betterslack-count {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+
+.betterslack-body { flex: 1; min-width: 0; padding-bottom: 20px; }
+
+/* How BetterSlack's own interface moves, inside the client.
+ *
+ * The same six tokens api.ui.kit declares for the documents a mod opens, with
+ * the same defaults, so the app and the components it hands out share one
+ * tempo. Declared on :root and not on the elements that read them, which is
+ * what lets a mod override them from html.<its-class> -- a rule on the element
+ * itself would outrank anything inherited and the dials would do nothing.
+ */
+:root {
+  --sm-motion-base: 200ms;
+  --sm-motion-ease: cubic-bezier(.2, .9, .25, 1);
+  --sm-motion-shift: 8px;
+}
+
+/* Reduced motion drops the travel and keeps the fade, which is what it asks
+ * for. Also on :root, and for the same reason: someone who installs a motion
+ * mod and tells it to animate anyway has said what they want, and that has to
+ * be able to win.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root { --sm-motion-shift: 0px; }
+}
+
+/* Switching tab.
+ *
+ * Stamped by panel.ts, and only when the tab really changed: the panel rebuilds
+ * itself on every change and one toggle causes several renders in a frame, so a
+ * rule that fired on mount alone would flicker instead of transition.
+ */
+@keyframes betterslack-tab-enter {
+  from { opacity: 0; transform: translateX(var(--sm-motion-shift)); }
+  to { opacity: 1; transform: none; }
+}
+.betterslack-body--enter {
+  animation: betterslack-tab-enter var(--sm-motion-base) var(--sm-motion-ease);
+}
+
+.betterslack-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* A column, not a row.
+   *
+   * The shelves and the search field shared a line, the field taking whatever
+   * the three shelf pills left over. On a narrow dialog that is a stub of an
+   * input pinned to the right edge with the tabs crowding it, and on a wide one
+   * it is a field stretched across half the dialog for no reason. Measured at
+   * 316px against 330px of shelves. Its own line is the same width every time,
+   * lines up with the rows underneath, and reads as what it is: a filter on the
+   * shelf above it.
+   */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 0 14px;
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+}
+.betterslack-shelves { display: flex; gap: 2px; flex-wrap: wrap; }
+.betterslack-shelf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+  cursor: pointer;
+}
+.betterslack-shelf:hover { background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08); }
+.betterslack-shelf[aria-selected="true"] {
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  font-weight: var(--custom-font-weight-bold, 700);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
+}
+
+.betterslack-search {
+  /* Fills its line rather than fighting for the remainder of one. */
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.46667;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  background: transparent;
+  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
+}
+.betterslack-search:focus {
+  outline: none;
+  border-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  box-shadow: 0 0 0 1px rgba(var(--sk_highlight, 18, 100, 163), 1);
+}
+/* The CSS box is api.ui's code editor. It brings its own metrics -- the painted
+ * copy and the textarea have to agree on every one of them -- so only the
+ * colours are set here, from Slack's tokens, which is what makes it follow the
+ * theme like the rest of the panel. Written without backticks, as everything in
+ * this file must be. */
+.sm-code {
+  border-color: rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
+  background: rgba(var(--sk_foreground_min, 29, 28, 29), 0.04);
+}
+.sm-code:focus-within {
+  border-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  box-shadow: 0 0 0 1px rgba(var(--sk_highlight, 18, 100, 163), 1);
+}
+.sm-code__paint { color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.9); }
+.sm-code__input { caret-color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1); }
+.sm-code__input::placeholder { color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.5); }
+
+/* The update notice: the same row as everything else, marked by an accent edge
+ * rather than a colour of its own, so it reads as important without shouting. */
+.betterslack-row--notice {
+  border-left: 3px solid rgba(var(--sk_highlight, 18, 100, 163), 1);
+  padding-left: 12px;
+}
+
+/* A mod and its settings read as one block, with the settings indented under
+ * the row they belong to rather than floating beside it. */
+/* The palette, in Raycast's shape.
+ *
+ * What makes that shape legible is not decoration: every row carries a picture
+ * of what it is, rows are grouped under headings, the category sits on the
+ * right so the left can stay short, and a footer keeps saying which key does
+ * what. A flat list of identical rows reads as a wall, which is what this was.
+ */
+.betterslack-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+.betterslack-palette__box {
+  width: min(680px, calc(100vw - 48px));
+  max-height: min(560px, 70vh);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.betterslack-palette__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.16);
+}
+.betterslack-palette__search_icon {
+  font-size: 15px;
+  opacity: 0.45;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+.betterslack-palette__input {
+  flex: 1 1 auto;
+  border: 0;
+  padding: 16px 0;
+  font-size: 17px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  background: transparent;
+  outline: none;
+}
+
+/* The mode you are in, in front of the field rather than in your memory. */
+.betterslack-palette__chip {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.9);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.16);
+}
+.betterslack-palette__chip[hidden] { display: none; }
+
+/* What the prefixes do, shown when there is nothing else to show -- a palette
+   whose shortcuts are only in the documentation has no shortcuts. */
+.betterslack-palette__modes[hidden] { display: none; }
+.betterslack-palette__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.16);
+}
+.betterslack-palette__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.75);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
+}
+.betterslack-palette__mode kbd {
+  font-family: inherit;
+  font-weight: 700;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.18);
+}
+
+.betterslack-palette__list { overflow-y: auto; padding: 6px; flex: 1 1 auto; min-height: 140px; }
+.betterslack-palette__section {
+  padding: 10px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.45);
+}
+
+.betterslack-palette__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  cursor: pointer;
+}
+.betterslack-palette__row[aria-selected="true"] {
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.14);
+}
+
+/* One size for every kind of icon -- an avatar, an emoji, a glyph or a letter
+   -- so the titles line up whatever the row happens to be. */
+.betterslack-palette__icon {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.14);
+}
+.betterslack-palette__icon--glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.75);
+}
+
+.betterslack-palette__text { flex: 1 1 auto; min-width: 0; display: block; }
+.betterslack-palette__title {
+  display: block;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.betterslack-palette__sub {
+  display: block;
+  font-size: 12px;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.betterslack-palette__source {
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.6);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
+}
+
+.betterslack-palette__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.16);
+  font-size: 12px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.55);
+}
+
+/* Aligned with everything else. These chips carried 20px of padding of their
+ * own on top of the dialog body's 24px, so the one row of the panel that is a
+ * filter started further right than the rows it filters. */
+.betterslack-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 0 12px;
+}
+.betterslack-filter {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.7);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
+  cursor: pointer;
+}
+.betterslack-filter:hover { color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1); }
+.betterslack-filter[aria-pressed="true"] {
+  background: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  color: #fff;
+}
+
+/* The one tag that is a warning rather than a label. */
+.betterslack-tag--error {
+  background: rgba(var(--sk_highlight_accent, 224, 30, 90), 0.16);
+  color: rgba(var(--sk_highlight_accent, 224, 30, 90), 1);
+}
+
+.betterslack-settings {
+  padding: 4px 0 12px 16px;
+  border-left: 2px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  margin: 0 0 8px 8px;
+}
+.betterslack-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+  /* A control and its explanation share a line until there is no room for
+     both, and then the control takes one of its own rather than shrinking to
+     nothing. */
+  flex-wrap: wrap;
+}
+.betterslack-settings__meta { min-width: 0; flex: 1 1 260px; }
+
+/*
+ * Wide enough to read what is in it.
+ *
+ * A max-width of 200px was left over from when these were all short numbers;
+ * a select showing a sentence -- the palette's shortcut was one -- came out
+ * clipped to a few characters with no way to see the rest. The width now
+ * follows the content, within bounds, and the row wraps before it starves.
+ */
+.betterslack-settings__input {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 220px;
+  max-width: 100%;
+}
+.betterslack-row__actions:has(> .betterslack-settings__input) { flex: 1 1 240px; }
+.betterslack-row__actions > .betterslack-settings__input { width: 100%; }
+.betterslack-row__group { display: block; }
+
+/* ---- a mod's mark, and its page ---- */
+
+/*
+ * Every mod gets a shape, drawn or derived.
+ *
+ * A list of names is a table; a list of marks is a shelf, and this panel is a
+ * shop before it is a settings screen. A mod that ships no icon.svg gets its
+ * initial on a colour derived from its id -- its own, stable, and never a hole
+ * where the others have something.
+ */
+.betterslack-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.10);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.9);
+}
+.betterslack-icon--sm { width: 34px; height: 34px; }
+.betterslack-icon--lg { width: 64px; height: 64px; border-radius: 14px; }
+.betterslack-icon svg { width: 62%; height: 62%; display: block; }
+.betterslack-icon--letter {
+  font-weight: 900;
+  background: hsl(var(--betterslack-icon-hue, 210) 45% 42%);
+  color: #fff;
+}
+.betterslack-icon--sm.betterslack-icon--letter { font-size: 15px; }
+.betterslack-icon--lg.betterslack-icon--letter { font-size: 27px; }
+
+/* The name is what you press to open the page, so it has to look pressable
+   without turning the list into a wall of links. */
+.betterslack-row__open {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+}
+.betterslack-row__open:hover { text-decoration: underline; }
+
+.betterslack-back {
+  display: inline-block;
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+  cursor: pointer;
+}
+.betterslack-detail__head { display: flex; align-items: flex-start; gap: 16px; }
+.betterslack-detail__title { flex: 1 1 auto; min-width: 0; }
+.betterslack-detail__name { margin: 0 0 2px; font-size: 22px; font-weight: 900; }
+.betterslack-detail__lede {
+  margin: 14px 0 18px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.85);
+}
+.betterslack-detail__section { margin: 22px 0 8px; font-size: 15px; font-weight: 900; }
+
+/* Screenshots scroll sideways rather than stacking: a mod has two or three,
+   and three tall pictures push the readme off the screen. */
+.betterslack-shots {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+}
+/* One picture fills the column -- a mod's shot is a whole Slack window, and at
+   420px the thing it is meant to show is a few pixels tall. Two or more go back
+   to a strip you push sideways. */
+.betterslack-shot { flex: 0 0 auto; width: min(420px, 78%); margin: 0; }
+.betterslack-shots:has(> :only-child) .betterslack-shot { width: 100%; }
+.betterslack-shot img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  display: block;
+}
+.betterslack-shot figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+
+/* ---- a readme, rendered ---- */
+
+.sm-md { font-size: 14px; line-height: 1.55; }
+.sm-md__h1, .sm-md__h2, .sm-md__h3, .sm-md__h4 {
+  margin: 20px 0 8px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+.sm-md__h1 { font-size: 19px; }
+.sm-md__h2 { font-size: 17px; }
+.sm-md__h3 { font-size: 15px; }
+.sm-md__h4 { font-size: 14px; }
+.sm-md p { margin: 0 0 12px; }
+.sm-md__list { margin: 0 0 12px; padding-left: 22px; }
+.sm-md__list li { margin: 3px 0; }
+.sm-md__link { color: rgba(var(--sk_highlight, 18, 100, 163), 1); }
+.sm-md__img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  margin: 6px 0 14px;
+}
+.sm-md__quote {
+  margin: 0 0 12px;
+  padding-left: 12px;
+  border-left: 3px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.75);
+}
+.sm-md__rule {
+  border: none;
+  border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
+  margin: 18px 0;
+}
+.sm-md__code, .sm-md__pre code {
+  font-family: Monaco, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+.sm-md__code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
+}
+.sm-md__pre {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.10);
+}
+
+.betterslack-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.13);
+}
+.betterslack-row:last-child { border-bottom: none; }
+.betterslack-row__meta { flex: 1; min-width: 0; }
+.betterslack-row__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+.betterslack-row__desc {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.46;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.betterslack-row__sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.55);
+}
+.betterslack-row__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.betterslack-row__more { opacity: 0; transition: opacity 80ms ease; }
+.betterslack-row:hover .betterslack-row__more,
+.betterslack-row__more:focus-visible { opacity: 1; }
+
+.betterslack-tag {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.1);
+}
+
+/* A theme's required plugins, on its row and in the dialog. */
+.betterslack-row__requires {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+.betterslack-row__requires--missing {
+  color: var(--dt_color-content-warn, #b8730a);
+  font-weight: var(--custom-font-weight-bold, 700);
+}
+.betterslack-row__review {
+  color: var(--dt_color-content-link, #1264a3);
+  font-size: 12px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#betterslack-requires.c-dialog { opacity: 1; z-index: 1101; }
+.betterslack-content--narrow {
+  width: min(520px, calc(100% - 32px));
+  max-width: min(520px, calc(100% - 32px));
+  height: auto;
+  max-height: min(560px, calc(100% - 64px));
+}
+.betterslack-requires { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.betterslack-require {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  /* A tinted card rather than a warning triangle: this is a choice to make,
+     not an error the user is being blamed for. */
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.08);
+}
+.betterslack-require__title {
+  font-size: 15px;
+  font-weight: var(--custom-font-weight-bold, 700);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+.betterslack-require__detail {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.betterslack-actions--dialog {
+  justify-content: flex-end;
+  padding: 4px 24px 20px;
+  margin-top: 0;
+}
+
+/* Slack has no reusable switch class, so this is built from its variables. */
+.betterslack-switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; cursor: pointer; }
+.betterslack-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.betterslack-switch__track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(var(--sk_foreground_max, 29, 28, 29), 0.4);
+  transition: background 120ms ease;
+}
+.betterslack-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 120ms ease;
+}
+.betterslack-switch input:checked + .betterslack-switch__track {
+  background: var(--dt_color-content-hgl-2, #007a5a);
+}
+.betterslack-switch input:checked + .betterslack-switch__track .betterslack-switch__thumb {
+  transform: translateX(16px);
+}
+.betterslack-switch input:focus-visible + .betterslack-switch__track {
+  box-shadow: 0 0 0 2px rgba(var(--sk_highlight, 18, 100, 163), 1);
+}
+
+.betterslack-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+.betterslack-hint {
+  margin: 4px 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.betterslack-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+
+/* Installing from a URL.
+ *
+ * This block had no rules of its own, which is not the same as having no
+ * design: the row stayed display:block, so the field fell back to the browser
+ * default of 174px -- a stub next to a full-height button -- and the whole
+ * thing sat flush against the toolbar above it with nothing to separate them.
+ */
+.betterslack-remote {
+  padding: 0 0 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.13);
+}
+.betterslack-remote__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.betterslack-remote__row .betterslack-search { flex: 1 1 auto; width: auto; }
+.betterslack-remote__row .c-button { flex: 0 0 auto; }
+.betterslack-status {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.betterslack-status { font-size: 13px; color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
+.betterslack-danger { color: var(--dt_color-content-imp, #c01343); }
+
+.betterslack-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 16px 0 0;
+  font-size: 13px;
+}
+.betterslack-info dt { color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
+.betterslack-info dd {
+  margin: 0;
+  font-family: Monaco, Menlo, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+}
+
+/* Dialogs opened by mods through api.ui.modal: the same Slack shell, sized to
+   the content rather than to a fixed panel height. */
+/*
+ * Slack ships .c-dialog at opacity 0 and fades it in with its own transition,
+ * which never runs for a dialog we built. The panel has carried this override
+ * since it moved into the light DOM; api.ui.modal did not, so every dialog a
+ * mod opened was in the document, focusable, and completely invisible.
+ */
+.betterslack-widget_dialog { z-index: 1014; opacity: 1; }
+.betterslack-widget_content { height: auto; max-height: min(640px, calc(100% - 64px)); }
+.betterslack-widget_content .betterslack-body { flex: 0 1 auto; padding-bottom: 8px; }
+.betterslack-widget_titles { flex: 1; min-width: 0; }
+.betterslack-widget_subtitle { margin: 4px 0 0; }
+.betterslack-widget_footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px 20px;
+}
+
+/* Slack pins the top offset on .c-popover__content, so this layer is ours. */
+.betterslack-menu_layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1013;
+  will-change: transform;
+}
+.betterslack-menu_layer .c-menu {
+  min-width: 180px;
+  border-radius: 6px;
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+  box-shadow: 0 0 0 1px rgba(var(--sk_foreground_low, 29, 28, 29), 0.13),
+    0 4px 12px 0 rgba(0, 0, 0, 0.12);
+}
+`;
+  var WIDGET_CSS = `
+:host { all: initial; }
+* { box-sizing: border-box; }
+
+:host, .toast-stack {
+  --w-bg: var(--dt_color-base-pry, #ffffff);
+  --w-raised: var(--dt_color-base-sec, #f8f8f8);
+  --w-text: var(--dt_color-content-pry, #1d1c1d);
+  --w-dim: var(--dt_color-content-sec, #454447);
+  --w-border: var(--dt_color-otl-sec, rgba(94, 93, 96, 0.45));
+  --w-green: var(--dt_color-content-hgl-2, #007a5a);
+  --w-danger: var(--dt_color-content-imp, #c01343);
+  --w-warn: var(--dt_color-content-hgl-3, #6b5000);
+  --w-info: var(--dt_color-content-hgl-1, #1264a3);
+  --w-font: Lato, Slack-Lato, appleLogo, sans-serif;
+}
+
+/* ---- toasts ---- */
+.toast-stack {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 2147482000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+  font-family: var(--w-font);
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(560px, 86vw);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: #1d1c1d;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: auto;
+}
+.toast[data-shown="true"] { opacity: 1; transform: translateY(0); }
+.toast[data-leaving="true"] { opacity: 0; transform: translateY(6px); }
+.toast--success { background: var(--w-green); }
+.toast--error { background: var(--w-danger); }
+.toast--warning { background: var(--w-warn); }
+.toast--info { background: var(--w-info); }
+.toast__text { min-width: 0; }
+.toast__action {
+  all: unset;
+  cursor: pointer;
+  font-weight: 900;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.toast__action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: none; }
+}
+`;
+
+  // src/runtime/ui/widgets.ts
+  var TOAST_HOST_ID = "betterslack-toast-host";
+  function makeHost(id) {
+    const existing = document.getElementById(id);
+    if (existing?.shadowRoot) return { host: existing, root: existing.shadowRoot };
+    const host = h("div", { id });
+    const root = host.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = WIDGET_CSS;
+    root.append(style);
+    document.body.append(host);
+    return { host, root };
+  }
+  function toast(message, options = {}) {
+    const { variant = "info", duration = 2200, action } = options;
+    const { root } = makeHost(TOAST_HOST_ID);
+    let stack = root.querySelector(".toast-stack");
+    if (!stack) {
+      stack = h("div", { class: "toast-stack", role: "status", "aria-live": "polite" });
+      root.append(stack);
+    }
+    const node = h("div", { class: `toast toast--${variant}` }, [
+      h("span", { class: "toast__text" }, [message])
+    ]);
+    let timer;
+    const dismiss = () => {
+      clearTimeout(timer);
+      node.dataset.leaving = "true";
+      setTimeout(() => node.remove(), 160);
+    };
+    if (action) {
+      const button = h("button", { class: "toast__action", type: "button" }, [action.label]);
+      button.addEventListener("click", () => {
+        action.onClick();
+        dismiss();
+      });
+      node.append(button);
+    }
+    stack.append(node);
+    requestAnimationFrame(() => {
+      node.dataset.shown = "true";
+    });
+    if (duration > 0) timer = setTimeout(dismiss, duration);
+    return { dismiss };
+  }
+  function modal(options) {
+    const {
+      title,
+      subtitle,
+      content,
+      actions = [],
+      width = 520,
+      dismissible = true,
+      onClose
+    } = options;
+    const host = h("div", {
+      class: "c-dialog betterslack-dialog betterslack-widget_dialog",
+      role: "presentation"
+    });
+    document.body.append(host);
+    const body = h("div", { class: "c-dialog__body betterslack-body" });
+    if (typeof content === "string") body.append(h("p", { class: "betterslack-hint" }, [content]));
+    else if (content) body.append(content);
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener("keydown", onKeyDown, true);
+      host.remove();
+      onClose?.();
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape" && dismissible) {
+        event.stopPropagation();
+        close();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    const closeButton = h("button", {
+      class: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default betterslack-close",
+      type: "button",
+      "aria-label": "Close"
+    });
+    closeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" style="--s:20px"><path fill="currentColor" d="M5.72 5.72a.75.75 0 0 1 1.06 0L10 8.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L11.06 10l3.22 3.22a.75.75 0 1 1-1.06 1.06L10 11.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L8.94 10 5.72 6.78a.75.75 0 0 1 0-1.06Z"/></svg>';
+    closeButton.addEventListener("click", close);
+    const titles = h("div", { class: "betterslack-widget_titles" }, [
+      h("h1", { class: "c-dialog__title" }, [title]),
+      ...subtitle ? [h("p", { class: "betterslack-hint betterslack-widget_subtitle" }, [subtitle])] : []
+    ]);
+    const header = h("div", { class: "c-dialog__header betterslack-header" }, [titles]);
+    if (dismissible) header.append(closeButton);
+    const footer = h("div", { class: "c-dialog__footer betterslack-widget_footer" });
+    for (const action of actions) {
+      const variant = action.variant === "primary" ? "c-button--primary" : action.variant === "danger" ? "c-button--danger" : "c-button--outline";
+      const button = h("button", {
+        class: `c-button ${variant} c-button--medium`,
+        type: "button"
+      }, [action.label]);
+      button.addEventListener("click", async () => {
+        const keepOpen = await action.onClick?.() === false;
+        if (!keepOpen) close();
+      });
+      footer.append(button);
+    }
+    const content_ = h("div", {
+      class: "c-dialog__content betterslack-content betterslack-widget_content",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-label": title,
+      style: `width: min(${width}px, calc(100% - 32px)); max-width: min(${width}px, calc(100% - 32px));`
+    }, [header, body, ...actions.length > 0 ? [footer] : []]);
+    host.append(content_);
+    if (dismissible) {
+      host.addEventListener("mousedown", (event) => {
+        if (event.target === host) close();
+      });
+    }
+    queueMicrotask(() => host.querySelector(".c-button, .betterslack-close")?.focus());
+    return { close, body };
+  }
+  function confirm(options) {
+    const { title, message, confirmLabel = "Confirm", cancelLabel = "Cancel", danger = false } = options;
+    return new Promise((resolve) => {
+      let answered = false;
+      const settle = (value) => {
+        if (answered) return;
+        answered = true;
+        resolve(value);
+      };
+      modal({
+        title,
+        content: message,
+        width: 420,
+        actions: [
+          { label: cancelLabel, variant: "default", onClick: () => settle(false) },
+          { label: confirmLabel, variant: danger ? "danger" : "primary", onClick: () => settle(true) }
+        ],
+        onClose: () => settle(false)
+      });
+    });
+  }
+
+  // src/runtime/ui/menu.ts
+  var LAYER_ID = "betterslack-menu-layer";
+  var MARGIN = 8;
+  function closeMenu() {
+    document.getElementById(LAYER_ID)?.remove();
+  }
+  function openMenu(anchor, items, options = {}) {
+    closeMenu();
+    const doc = anchor.ownerDocument;
+    let arming;
+    const close = () => {
+      clearTimeout(arming);
+      doc.removeEventListener("mousedown", onDown, true);
+      doc.removeEventListener("keydown", onKey, true);
+      doc.getElementById(LAYER_ID)?.remove();
+      options.onClose?.();
+    };
+    const onDown = (event) => {
+      const layer2 = doc.getElementById(LAYER_ID);
+      if (layer2 && !layer2.contains(event.target)) close();
+    };
+    const onKey = (event) => {
+      if (event.key === "Escape") close();
+    };
+    const list = h("div", { class: "c-menu__items", role: "menu", tabindex: "-1" });
+    for (const item of items) {
+      const button = h("button", {
+        class: "c-button-unstyled c-menu_item__button",
+        role: "menuitem",
+        type: "button",
+        ...item.disabled ? { disabled: "disabled", "aria-disabled": "true" } : {}
+      }, [
+        item.icon ? h("span", { class: "c-menu_item__icon" }) : null,
+        h("div", { class: `c-menu_item__label${item.danger ? " betterslack-danger" : ""}` }, [item.label])
+      ].filter(Boolean));
+      if (item.icon) {
+        const icon = button.querySelector(".c-menu_item__icon");
+        if (icon) icon.innerHTML = item.icon;
+      }
+      if (!item.disabled) {
+        button.addEventListener("click", () => {
+          close();
+          item.onSelect();
+        });
+      }
+      list.append(h("div", { class: "c-menu_item__li", "data-qa": "menu_item_button-wrapper" }, [button]));
+    }
+    const layer = h("div", { id: LAYER_ID, class: "betterslack-menu_layer" }, [
+      h("div", { class: "c-menu" }, [h("div", { class: "c-menu__items_scroller" }, [list])])
+    ]);
+    doc.body.append(layer);
+    const view = doc.defaultView ?? window;
+    const rect = anchor.getBoundingClientRect();
+    const { width, height } = layer.getBoundingClientRect();
+    const edge = options.align === "left" ? rect.left : rect.right - width;
+    const left = Math.max(MARGIN, Math.min(edge, view.innerWidth - width - MARGIN));
+    const top = rect.bottom + height > view.innerHeight ? rect.top - height - 4 : rect.bottom + 4;
+    layer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+    arming = setTimeout(() => {
+      doc.addEventListener("mousedown", onDown, true);
+      doc.addEventListener("keydown", onKey, true);
+    }, 0);
+    return close;
+  }
+
+  // tests/slack-fixture.mjs
+  var SLACK_FIXTURE = `
+<div class="p-client_container">
+  <div class="p-view_header__actions">
+    <button data-qa="avatar_stack" aria-label="View all members"></button>
+  </div>
+  <div class="p-control_strip">
+    <div class="c-coachmark-anchor">
+      <button data-qa="user-button">
+        <span class="c-avatar" data-mask="mask__base-member">
+          <img src="https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-480e63356723-48">
+          <!-- Where Slack keeps your own availability, and swaps the modifier
+               the moment it changes. Measured against Slack 4.51. -->
+          <span class="c-avatar__presence c-presence c-presence--active block"></span>
+        </span>
+        <svg data-qa="presence_indicator" aria-label="Active"></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="p-tab_rail p-tab_rail__desktop" data-qa="tab_rail_desktop">
+    <div class="p-tab_rail__tab_container" data-qa="tabs_full_height_class">
+      <div class="p-tab_rail__tab_menu" data-qa="tabs_full_width_class">
+        <button class="p-tab_rail__button p-tab_rail__button--active" data-qa="tab_rail_home_button">
+          <div class="p-tab_rail__button__icon"></div>
+          <div class="p-tab_rail__button__label">Home</div>
+        </button>
+        <button class="p-tab_rail__button" data-qa="tab_rail_dms_button">
+          <div class="p-tab_rail__button__icon"></div>
+          <div class="p-tab_rail__button__label">DMs</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-channel_sidebar" data-qa="channel-sidebar">
+    <div class="p-ia4_sidebar_header p-ia4_home_header">
+      <div class="p-ia4_sidebar_header__title">Acme</div>
+      <div class="p-ia4_sidebar_header__controls"></div>
+    </div>
+    <div class="p-channel_sidebar__list"></div>
+  </div>
+
+  <div class="p-view_contents p-view_contents--primary">
+    <div class="p-message_pane">
+      <div data-qa="message_container"
+           data-msg-ts="1786386808.130969"
+           data-msg-channel-id="C0BFQCYBRAB">
+        <div class="c-message_kit__avatar">
+          <img src="https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE2-dc5119d9e23c-48">
+        </div>
+        <a class="c-timestamp" href="https://acme.slack.com/archives/C0BFQCYBRAB/p1786386808130969"></a>
+        <div data-qa="message-text">hello world</div>
+        <div data-qa="message-actions"></div>
+      </div>
+
+      <div data-qa="message_input">
+        <div class="ql-editor"><p><br></p></div>
+        <div><button data-qa="bold-composer-button"></button></div>
+      </div>
+    </div>
+  </div>
+
+  <div data-qa="member_profile_pane">
+    <div class="p-r_member_profile__container">
+      <img class="p-r_member_profile__avatar__img"
+           src="https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE2-dc5119d9e23c-512">
+    </div>
+  </div>
+</div>`;
+
   // src/runtime/ui/kit.ts
   function createKit(doc = document) {
     const el2 = (tag, props = {}, children = []) => {
@@ -384,7 +1912,7 @@
       doc.defaultView.addEventListener("resize", place);
       return { node, close, place };
     };
-    const confirm = ({ title, body, action, cancel: cancelLabel, danger }) => new Promise((resolve) => {
+    const confirm2 = ({ title, body, action, cancel: cancelLabel, danger }) => new Promise((resolve) => {
       const scrim = el2("div", { class: "sm-scrim" });
       const cancel = button(cancelLabel, { variant: "ghost" });
       const go = button(action, { variant: danger ? "danger" : "primary" });
@@ -438,7 +1966,7 @@
       emptyState,
       swatch,
       popover,
-      confirm,
+      confirm: confirm2,
       copyText,
       hoverable,
       CHECKER,
@@ -719,198 +2247,6 @@
 
 
 ` + CODE_CSS;
-
-  // src/runtime/dom.ts
-  var REMOUNT_LIMIT = 25;
-  var REMOUNT_WINDOW_MS = 2e3;
-  var mountCounts = /* @__PURE__ */ new Map();
-  function keepMounted(containerSelector, nodeId, factory, options = {}) {
-    const { position = "append", before } = typeof options === "string" ? { position: options, before: void 0 } : options;
-    let disposed = false;
-    let attempts = [];
-    const countAttempt = () => {
-      const now = Date.now();
-      attempts = attempts.filter((t) => now - t < REMOUNT_WINDOW_MS);
-      attempts.push(now);
-      if (attempts.length <= REMOUNT_LIMIT) return true;
-      disposed = true;
-      observer.disconnect();
-      console.error(
-        `[betterslack] giving up on "${nodeId}": it moved or was re-added ${attempts.length} times in ${REMOUNT_WINDOW_MS}ms, so something else owns "${containerSelector}". Anchor it with \`before\` or pick another container.`
-      );
-      document.getElementById(nodeId)?.remove();
-      return false;
-    };
-    const mount = () => {
-      if (disposed) return;
-      const container = document.querySelector(containerSelector);
-      if (!container) return;
-      const anchor = before ? container.querySelector(before) : null;
-      const current = document.getElementById(nodeId);
-      if (current && container.contains(current)) {
-        const misplaced = anchor !== null && anchor !== current && (current.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING) === 0;
-        if (misplaced && countAttempt()) anchor.before(current);
-        return;
-      }
-      if (!countAttempt()) return;
-      mountCounts.set(nodeId, (mountCounts.get(nodeId) ?? 0) + 1);
-      current?.remove();
-      const node = factory();
-      node.id = nodeId;
-      if (anchor) anchor.before(node);
-      else if (position === "prepend") container.prepend(node);
-      else container.append(node);
-    };
-    mount();
-    const observer = new MutationObserver(() => mount());
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    return () => {
-      disposed = true;
-      observer.disconnect();
-      document.getElementById(nodeId)?.remove();
-    };
-  }
-  function onEach(selector, handler) {
-    const seen = /* @__PURE__ */ new WeakSet();
-    const scan = () => {
-      for (const element of document.querySelectorAll(selector)) {
-        if (seen.has(element)) continue;
-        seen.add(element);
-        try {
-          handler(element);
-        } catch (err) {
-          console.error("[betterslack] onEach handler threw", err);
-        }
-      }
-    };
-    scan();
-    const observer = new MutationObserver(scan);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }
-  function onShortcut(match, handler) {
-    const listener = (event) => {
-      if (!match(event)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      handler(event);
-    };
-    window.addEventListener("keydown", listener, true);
-    return () => window.removeEventListener("keydown", listener, true);
-  }
-  function h(tag, attrs = {}, children = []) {
-    const element = document.createElement(tag);
-    for (const [key, value] of Object.entries(attrs)) {
-      if (key === "class") element.className = value;
-      else element.setAttribute(key, value);
-    }
-    for (const child of children) {
-      element.append(typeof child === "string" ? document.createTextNode(child) : child);
-    }
-    return element;
-  }
-
-  // src/runtime/ui/tooltip.ts
-  var SHOW_DELAY_MS = 150;
-  var EDGE_OVERLAP = 4;
-  var VIEWPORT_MARGIN = 8;
-  function attachTooltip(trigger, options) {
-    const { title, subtitle, placement = "right", delayMs = SHOW_DELAY_MS } = options;
-    trigger.removeAttribute("title");
-    trigger.setAttribute("aria-label", subtitle ? `${title}. ${subtitle}` : title);
-    let layer = null;
-    let timer;
-    const build = () => {
-      const tip = h("div", {
-        class: `c-tooltip__tip c-tooltip__tip--${placement} c-tooltip__tip--small`,
-        "data-qa": "tooltip-tip",
-        "data-sk": "tooltip"
-      }, [h("div", {}, [title])]);
-      if (subtitle) tip.append(h("div", { class: "c-tooltip__subtitle" }, [subtitle]));
-      tip.append(h("div", { class: "c-tooltip__tip__arrow", "data-qa": "tooltip-tip-arrow" }));
-      return h("div", {
-        class: "betterslack-tooltip",
-        role: "tooltip",
-        "data-qa": "tooltip-popover",
-        style: "position: fixed; top: 0; left: 0; z-index: 1001; pointer-events: none; will-change: transform; transition: opacity 80ms ease;"
-      }, [h("div", { role: "presentation" }, [tip])]);
-    };
-    const position = (node) => {
-      const t = trigger.getBoundingClientRect();
-      const { width: w, height: hgt } = node.getBoundingClientRect();
-      let left;
-      let top;
-      switch (placement) {
-        case "left":
-          left = t.left - w + EDGE_OVERLAP;
-          top = t.top + t.height / 2 - hgt / 2;
-          break;
-        case "top":
-          left = t.left + t.width / 2 - w / 2;
-          top = t.top - hgt + EDGE_OVERLAP;
-          break;
-        case "bottom":
-          left = t.left + t.width / 2 - w / 2;
-          top = t.bottom - EDGE_OVERLAP;
-          break;
-        default:
-          left = t.right - EDGE_OVERLAP;
-          top = t.top + t.height / 2 - hgt / 2;
-      }
-      left = Math.min(Math.max(left, VIEWPORT_MARGIN), window.innerWidth - w - VIEWPORT_MARGIN);
-      top = Math.min(Math.max(top, VIEWPORT_MARGIN), window.innerHeight - hgt - VIEWPORT_MARGIN);
-      node.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
-    };
-    const show = () => {
-      if (layer || !trigger.isConnected) return;
-      layer = build();
-      layer.style.visibility = "hidden";
-      document.body.append(layer);
-      position(layer);
-      layer.style.visibility = "";
-    };
-    const hide = () => {
-      clearTimeout(timer);
-      timer = void 0;
-      layer?.remove();
-      layer = null;
-    };
-    const scheduleShow = (immediate = false) => {
-      if (layer) return;
-      clearTimeout(timer);
-      timer = setTimeout(show, immediate ? 0 : delayMs);
-    };
-    const onEnter = () => scheduleShow();
-    const onLeave = () => hide();
-    const onFocus = (event) => {
-      if (trigger.matches(":focus-visible")) scheduleShow(true);
-      else ;
-    };
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") hide();
-    };
-    trigger.addEventListener("mouseenter", onEnter);
-    trigger.addEventListener("mouseleave", onLeave);
-    trigger.addEventListener("mousedown", onLeave);
-    trigger.addEventListener("click", onLeave);
-    trigger.addEventListener("focus", onFocus);
-    trigger.addEventListener("blur", onLeave);
-    document.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("scroll", onLeave, true);
-    window.addEventListener("resize", onLeave);
-    return () => {
-      hide();
-      trigger.removeEventListener("mouseenter", onEnter);
-      trigger.removeEventListener("mouseleave", onLeave);
-      trigger.removeEventListener("mousedown", onLeave);
-      trigger.removeEventListener("click", onLeave);
-      trigger.removeEventListener("focus", onFocus);
-      trigger.removeEventListener("blur", onLeave);
-      document.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("scroll", onLeave, true);
-      window.removeEventListener("resize", onLeave);
-    };
-  }
 
   // src/runtime/helpers.ts
   var BUTTON_CLASSES = {
@@ -2306,7 +3642,8 @@
     if (!slot) return;
     const state = {};
     for (const c of spec2.controls ?? []) state[c.key] = c.value;
-    const stage = el("div", "pg__stage");
+    const stage = el("div", "pg__stage slack-stage");
+    stage.dataset.theme = document.getElementById("stage-theme")?.value ?? "midnight";
     const code = el("pre", "pg__code");
     const draw = () => {
       try {
@@ -2572,6 +3909,257 @@ await zen.toggle();`
 box.addEventListener('input', () => search(box.value));`
     }
   };
+  var ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 6.5v4M10 13.2v.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  var UI = {
+    "ui-toast": {
+      controls: [
+        { key: "message", type: "text", value: "Theme saved" },
+        { key: "variant", type: "select", options: ["info", "success", "warning", "error"], value: "success" },
+        { key: "action", label: "action label", type: "text", value: "Undo" }
+      ],
+      render: (v) => {
+        const button = kit.button("Show the toast", { variant: "primary" });
+        button.addEventListener("click", () => toast(v.message, {
+          variant: v.variant,
+          action: v.action ? { label: v.action, onClick: () => {
+          } } : void 0
+        }));
+        return button;
+      },
+      code: (v) => `api.ui.toast('${v.message}', {
+  variant: '${v.variant}',
+  action: { label: '${v.action}', onClick: () => undo() },
+});`
+    },
+    "ui-modal": {
+      controls: [
+        { key: "title", type: "text", value: "Channel notes" },
+        { key: "body", type: "text", value: "Kept on this machine only. Nothing is sent anywhere." },
+        { key: "action", type: "text", value: "Save" },
+        { key: "width", type: "number", value: 460 }
+      ],
+      render: (v) => {
+        const button = kit.button("Open the dialog", { variant: "primary" });
+        button.addEventListener("click", () => {
+          modal({
+            title: v.title,
+            content: h("p", { class: "betterslack-hint" }, [v.body]),
+            width: v.width,
+            actions: [{ label: v.action, primary: true, onClick: () => true }]
+          });
+        });
+        return button;
+      },
+      code: (v) => `api.ui.modal({
+  title: '${v.title}',
+  content: api.dom.h('p', {}, ['${v.body}']),
+  width: ${v.width},
+  actions: [{ label: '${v.action}', primary: true, onClick: () => true }],
+});`
+    },
+    "ui-confirm": {
+      controls: [
+        { key: "title", type: "text", value: "Remove Midnight?" },
+        { key: "body", type: "text", value: "Its files go with it." },
+        { key: "danger", type: "boolean", value: true }
+      ],
+      render: (v) => {
+        const button = kit.button("Ask", { variant: v.danger ? "danger" : "primary" });
+        const said = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
+        button.addEventListener("click", async () => {
+          said.textContent = await confirm({ title: v.title, body: v.body, danger: v.danger }) ? "resolved true" : "resolved false";
+        });
+        return [button, said];
+      },
+      code: (v) => `const sure = await api.ui.confirm({
+  title: '${v.title}',
+  body: '${v.body}',
+  danger: ${v.danger},
+});`
+    },
+    "ui-menu": {
+      controls: [{ key: "items", type: "text", value: "Rename, Duplicate, Remove" }],
+      render: (v) => {
+        const anchor = kit.button("Open the menu");
+        anchor.addEventListener("click", () => openMenu(anchor, v.items.split(",").map((label, i) => ({
+          label: label.trim(),
+          danger: i === v.items.split(",").length - 1,
+          onSelect: () => {
+          }
+        }))));
+        return anchor;
+      },
+      code: (v) => `api.ui.menu(anchor, [
+${v.items.split(",").map((l, i, a) => `  { label: '${l.trim()}'${i === a.length - 1 ? ", danger: true" : ""}, onSelect: () => {} },`).join("\n")}
+]);`
+    }
+  };
+  function slackChrome() {
+    const frame = el("div", "chrome");
+    frame.innerHTML = SLACK_FIXTURE;
+    for (const img of frame.querySelectorAll("img")) {
+      const avatar = document.createElement("span");
+      avatar.className = img.className;
+      avatar.setAttribute("style", "display:inline-block;width:36px;height:36px;border-radius:8px;background:var(--dt_color-content-hgl-1, #7cc4ff);opacity:.5");
+      img.replaceWith(avatar);
+    }
+    return frame;
+  }
+  function focusChrome(frame, selector) {
+    const target = frame.querySelector(selector);
+    if (!target) return;
+    for (const node of frame.querySelectorAll("*")) node.classList.add("is-out");
+    for (let node = target; node && node !== frame; node = node.parentElement) node.classList.remove("is-out");
+    for (const node of target.querySelectorAll("*")) node.classList.remove("is-out");
+  }
+  var TOOLBAR_CONTAINER = {
+    controlStrip: ".p-control_strip",
+    composer: '[data-qa="message_input"]',
+    channelHeader: ".p-view_header__actions"
+  };
+  var CHROME = {
+    "slack-addtoolbarbutton": {
+      controls: [
+        { key: "toolbar", type: "select", options: ["controlStrip", "composer", "channelHeader"], value: "controlStrip" },
+        { key: "label", type: "text", value: "Channel notes" }
+      ],
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        addToolbarButton("demo", v.toolbar, { id: "demo", label: v.label, icon: ICON, onClick: () => {
+        } });
+        focusChrome(frame, TOOLBAR_CONTAINER[v.toolbar]);
+        return void 0;
+      },
+      code: (v) => `api.slack.addToolbarButton('${v.toolbar}', {
+  id: 'notes',
+  label: '${v.label}',
+  icon: '<svg viewBox="0 0 20 20">\u2026</svg>',
+  onClick: () => open(),
+});`
+    },
+    "slack-addmessageaction": {
+      controls: [{ key: "label", type: "text", value: "Copy link" }],
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        addMessageAction("demo", { id: "demo", label: v.label, icon: ICON, onClick: () => {
+        } });
+        focusChrome(frame, '[data-qa="message_container"]');
+        return void 0;
+      },
+      code: (v) => `api.slack.addMessageAction({
+  id: 'copy-link',
+  label: '${v.label}',
+  icon: '<svg viewBox="0 0 20 20">\u2026</svg>',
+  onClick: (message) => copy(message.permalink),
+});`
+    },
+    "slack-addprofilebutton": {
+      controls: [{ key: "label", type: "text", value: "Download picture" }],
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        addProfileButton("demo", { id: "demo", label: v.label, icon: ICON, onClick: () => {
+        } });
+        focusChrome(frame, '[data-qa="member_profile_pane"]');
+        return void 0;
+      },
+      code: (v) => `api.slack.addProfileButton({
+  id: 'download',
+  label: '${v.label}',
+  icon: '<svg viewBox="0 0 20 20">\u2026</svg>',
+  onClick: ({ userId }) => save(userId),
+});`
+    },
+    "slack-avatarurl": {
+      controls: [
+        { key: "url", type: "text", value: "https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-06c4356b6ae3-48" },
+        { key: "size", type: "select", options: ["24", "48", "72", "192", "512"], value: "192" }
+      ],
+      render: (v) => {
+        const at = /-\d+$/.test(v.url) ? v.url.replace(/-\d+$/, `-${v.size}`) : null;
+        return kit.el("code", { class: "sm-hint", style: "word-break:break-all" }, [at ?? "null \u2014 not one of Slack\u2019s avatar URLs"]);
+      },
+      code: (v) => `api.slack.avatarUrl(
+  '${v.url}',
+  ${v.size},
+);`
+    },
+    "dom-h": {
+      controls: [
+        { key: "tag", type: "select", options: ["div", "button", "span"], value: "button" },
+        { key: "className", label: "class", type: "text", value: "c-button c-button--primary" },
+        { key: "text", type: "text", value: "Made with api.dom.h" }
+      ],
+      render: (v) => h(v.tag, { class: v.className }, [v.text]),
+      code: (v) => `api.dom.h('${v.tag}', { class: '${v.className}' }, ['${v.text}']);`
+    }
+  };
+  var SLACK_HELPERS = {
+    "helpers-iconbutton": {
+      controls: [
+        { key: "label", type: "text", value: "Notes" },
+        { key: "surface", type: "select", options: ["strip", "header", "composer"], value: "header" }
+      ],
+      render: (v) => helpers.iconButton({ icon: ICON, label: v.label, surface: v.surface, onClick: () => {
+      } }),
+      code: (v) => `api.helpers.iconButton({
+  icon: '<svg viewBox="0 0 20 20">\u2026</svg>',
+  label: '${v.label}',
+  surface: '${v.surface}',
+  onClick: () => open(),
+});`
+    },
+    "helpers-field": {
+      controls: [
+        { key: "label", type: "text", value: "Time zone" },
+        { key: "value", type: "text", value: "Europe/Paris" }
+      ],
+      render: (v) => helpers.field(v.label, v.value),
+      code: (v) => `api.helpers.field('${v.label}', '${v.value}');`
+    },
+    "helpers-section": {
+      controls: [
+        { key: "title", type: "text", value: "More details" },
+        { key: "rows", type: "text", value: "User ID: U04KY0Z61, Time zone: Europe/Paris" }
+      ],
+      render: (v) => helpers.section(v.title, v.rows.split(",").map((row) => {
+        const [label, value] = row.split(":");
+        return helpers.field((label ?? "").trim(), (value ?? "").trim());
+      })),
+      code: (v) => `api.helpers.section('${v.title}', [
+  api.helpers.field('User ID', user.id),
+  api.helpers.field('Time zone', user.tz_label),
+]);`
+    },
+    "helpers-badge": {
+      controls: [{ key: "value", type: "number", value: 3 }],
+      render: (v, { stage }) => {
+        const host = el("div", "pg__badge-host");
+        host.append(helpers.iconButton({ icon: ICON, label: "Activity", surface: "header", onClick: () => {
+        } }));
+        stage.replaceChildren(host);
+        helpers.badge(".pg__badge-host button", "demo-badge", () => v.value || null);
+        return void 0;
+      },
+      code: (v) => `let unread = ${v.value};
+api.helpers.badge('[data-qa="betterslack_button"]', 'unread', () => unread);`
+    },
+    "helpers-tooltip": {
+      controls: [
+        { key: "title", type: "text", value: "Channel notes" },
+        { key: "subtitle", type: "text", value: "\u2318\u21E7N" }
+      ],
+      render: (v) => {
+        const button = helpers.iconButton({ icon: ICON, label: v.title, surface: "header", onClick: () => {
+        } });
+        helpers.tooltip(button, v.title, v.subtitle);
+        return [button, kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, ["hover it"])];
+      },
+      code: (v) => `api.helpers.tooltip(button, '${v.title}', '${v.subtitle}');`
+    }
+  };
   function mountI18n() {
     const locale = $("i18n-locale");
     const key = $("i18n-key");
@@ -2650,14 +4238,69 @@ box.addEventListener('input', () => search(box.value));`
     draw();
   }
   installStyles();
+  function wireThemePickers() {
+    const pickers = [...document.querySelectorAll(".stage-theme")];
+    if (!pickers.length) return;
+    const apply = (value) => {
+      for (const stage of document.querySelectorAll(".slack-stage")) stage.dataset.theme = value;
+      for (const other of pickers) other.value = value;
+    };
+    for (const picker of pickers) picker.addEventListener("change", () => apply(picker.value));
+    apply(pickers[0].value);
+  }
+  function router() {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    const stack = document.querySelector(".stack");
+    const links = [...document.querySelectorAll(".side__list a")];
+    if (!stack || !links.length) return;
+    const show = (slug) => {
+      const wanted = document.getElementById(`p-${slug}`) ?? stack.querySelector(".panel");
+      for (const panel of stack.querySelectorAll(".panel")) panel.hidden = panel !== wanted;
+      for (const link of links) {
+        const current = link.getAttribute("href") === `#${wanted.id.slice(2)}`;
+        link.toggleAttribute("aria-current", current);
+        if (current) link.scrollIntoView({ block: "nearest" });
+      }
+      stack.scrollTop = 0;
+      requestAnimationFrame(() => {
+        stack.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+      });
+    };
+    const fromHash = () => show(location.hash.slice(1) || stack.dataset.first);
+    window.addEventListener("hashchange", fromHash);
+    fromHash();
+  }
+  function filter() {
+    const box = document.getElementById("side-filter");
+    if (!box) return;
+    box.addEventListener("input", () => {
+      const needle = box.value.trim().toLowerCase();
+      for (const group of document.querySelectorAll(".side__group")) {
+        let shown = 0;
+        for (const item of group.querySelectorAll("li")) {
+          const hit = !needle || (item.textContent ?? "").toLowerCase().includes(needle);
+          item.hidden = !hit;
+          if (hit) shown += 1;
+        }
+        group.hidden = shown === 0;
+      }
+    });
+  }
   toasted = (message) => {
     const note = $("helpers-toast");
     if (note) note.textContent = `api.ui.toast(${JSON.stringify(message)})`;
   };
-  for (const [name, spec2] of Object.entries(KIT)) playground(name, spec2);
-  for (const [name, spec2] of Object.entries(HELPERS)) playground(name, spec2);
+  for (const [name, spec2] of Object.entries(KIT)) playground(`kit-${name.toLowerCase()}`, spec2);
+  for (const [name, spec2] of Object.entries(HELPERS)) playground(`helpers-${name.toLowerCase()}`, spec2);
+  for (const group of [UI, CHROME, SLACK_HELPERS]) {
+    for (const [slug, spec2] of Object.entries(group)) playground(slug, spec2);
+  }
   mountI18n();
   mountMarkdown();
   mountHighlight();
   mountRoles();
+  wireThemePickers();
+  router();
+  filter();
 })();
