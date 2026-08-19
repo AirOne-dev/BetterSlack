@@ -34,18 +34,26 @@ const RAIL_BUTTON_CLASS =
 /*
  * The mark.
  *
- * BetterDiscord's idiom: a solid rounded square with the monogram knocked out
- * of it, rather than a line drawing. That is deliberate here too -- it sits in
- * a strip of Slack's own outline icons, and the one button that is not Slack's
- * should not pretend to be.
+ * The mark itself, in its own colours, rather than a monogram taking
+ * `currentColor` from the strip it lands in. It sits among Slack's own outline
+ * icons and the one button that is not Slack's should not pretend to be -- and
+ * the four colours are saturated enough to read on a light theme and a dark
+ * one, which a single tint would not be.
  *
- * Drawn as a single even-odd path so the counter shapes inside the B are holes
- * rather than a second colour: it takes `currentColor` from whatever strip it
- * lands in, and follows every theme with no work.
+ * The trade-off is deliberate and worth writing down: it no longer dims and
+ * brightens with the icons beside it on hover, because there is no one colour
+ * to dim. The opacity in LAUNCHER_CSS does that instead.
  */
 const ICON = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" aria-hidden="true" data-qa="betterslack-mark">
-  <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M5 1.5h10A3.5 3.5 0 0 1 18.5 5v10a3.5 3.5 0 0 1-3.5 3.5H5A3.5 3.5 0 0 1 1.5 15V5A3.5 3.5 0 0 1 5 1.5Zm1.75 3.75a.75.75 0 0 0-.75.75v8a.75.75 0 0 0 .75.75h3.4a3.1 3.1 0 0 0 1.86-5.58 2.85 2.85 0 0 0-1.98-3.92H6.75Zm.75 1.5v2.5h2.4a1.25 1.25 0 0 0 0-2.5H7.5Zm0 4v3h2.65a1.5 1.5 0 0 0 0-3H7.5Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 848 848" aria-hidden="true" data-qa="betterslack-mark">
+  <rect x="139" y="289" width="121" height="421" rx="60.5" fill="#E01858"/>
+  <path d="M288 499C288 465.587 315.087 438 348.5 438H410V499.5C410 532.913 382.413 560 349 560V560C315.587 560 288 532.413 288 499V499Z" fill="#E01858"/>
+  <rect x="560" y="139" width="121" height="421" rx="60.5" transform="rotate(90 560 139)" fill="#30C0F0"/>
+  <path d="M349 288C382.413 288 410 315.087 410 348.5L410 410L348.5 410C315.087 410 288 382.413 288 349V349C288 315.587 315.587 288 349 288V288Z" fill="#30C0F0"/>
+  <rect x="709" y="560" width="121" height="421" rx="60.5" transform="rotate(-180 709 560)" fill="#28B078"/>
+  <path d="M560 349C560 382.413 532.913 410 499.5 410L438 410L438 348.5C438 315.087 465.587 288 499 288V288C532.413 288 560 315.587 560 349V349Z" fill="#28B078"/>
+  <rect x="288" y="710" width="121" height="421" rx="60.5" transform="rotate(-90 288 710)" fill="#E8B028"/>
+  <path d="M499 560C465.587 560 438 532.913 438 499.5L438 438L499.5 438C532.913 438 560 465.587 560 499V499C560 532.413 532.413 560 499 560V560Z" fill="#E8B028"/>
 </svg>`;
 
 export interface LauncherOptions {

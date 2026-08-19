@@ -2112,7 +2112,17 @@
 /* Slack's unread badge, on our own button: the same pill, the same red, the
  * same place. Anything else in that strip would read as a Slack control that
  * had gone wrong. */
-.betterslack-launcher { position: relative; }
+/*
+ * The launcher dims and brightens with the icons beside it.
+ *
+ * Slack's rail icons do that by taking a colour from the strip; the mark has
+ * four of its own and cannot, so opacity stands in for the tint it does not
+ * have. Without this it would be the one button in the column that does not
+ * react to a pointer.
+ */
+.betterslack-launcher { position: relative; opacity: 0.82; transition: opacity 80ms ease; }
+.betterslack-launcher:hover,
+.betterslack-launcher:focus-visible { opacity: 1; }
 .betterslack-launcher__badge {
   position: absolute;
   top: -2px;

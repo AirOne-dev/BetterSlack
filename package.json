@@ -24,7 +24,8 @@
     "test:live": "node scripts/test-live.mjs",
     "site": "node scripts/build-site.mjs",
     "site:dev": "node scripts/site-dev.mjs",
-    "shoot": "node scripts/shoot.mjs"
+    "shoot": "node scripts/shoot.mjs",
+    "icon": "node scripts/build-icon.mjs"
   },
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || >=24.0.0",
