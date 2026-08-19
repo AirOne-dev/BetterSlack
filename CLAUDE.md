@@ -210,10 +210,9 @@ which is how a window a mod opened gets looked at outside a recipe.
 writes the format directly, so there is no conversion step and no external tool
 in the pipeline at all -- which matters, because the two `sips` calls it
 replaced are macOS-only and `sips` cannot write WebP anyway (it reads it; the
-format is not listed Writable). Measured on one frame: 472 kB as PNG, 132 kB as
-the 1400-wide JPEG this project used to publish, 160 kB as WebP at the full
-3200x2000. The retina resolution costs 28 kB, so the downscale is gone too and
-every picture is now 2x. Quality 78 is measured as well -- 70 starts showing on
+format is not listed Writable). Measured on one frame: 472 kB as PNG, 132 kB as a
+1400-wide JPEG, 160 kB as WebP at the full 3200x2000. The retina resolution
+costs 28 kB, so there is no downscale and every picture is 2x. Quality 78 is measured as well -- 70 starts showing on
 Slack's text, 85 costs 28 kB for nothing visible.
 
 ## Photographing somebody's real Slack
@@ -226,11 +225,11 @@ original, so the same person is the same invented person in every frame and two
 runs produce the same picture.
 
 **It is a mod, and the recipe bundles it.** `shoot-mods.mjs` builds that file
-with esbuild and evaluates it in the page. It used to be a copy in `scripts/`,
-which is the shape this repository refuses everywhere else: two implementations
-of one idea, and the one users run would have been the one nothing checks. Now
-the recipe is Demo Mode's test against a real Slack, and anybody taking their
-own screenshots hides exactly what the repository's hide.
+with esbuild and evaluates it in the page, rather than keeping a copy in
+`scripts/`: two implementations of one idea means the one users run is the one
+nothing checks. The recipe is therefore Demo Mode's test against a real Slack,
+and anybody taking their own screenshots hides exactly what the repository's
+hide.
 
 **What makes it safe is not the list of selectors.** A list can always miss
 one. It is that the recipe reads the screen before and after and refuses to
@@ -268,7 +267,7 @@ a command. Everything below was found by it rather than by looking:
   that short list still fails the run.
 - A mod that reads the screen once and decorates what it found -- the syntax
   highlighter -- has to be switched off and on after the sweep, or what it
-  decorated is the text that has since been replaced.
+  decorated is the text the sweep has replaced.
 
 It also carries the camera. `api.files.screenshot({ size })` is the loader
 photographing the renderer that asked -- a page cannot photograph itself -- and
@@ -405,8 +404,8 @@ Three things make that possible:
     and vh; on a 90px box holding one button it is a flat wash, and every widget
     preview came out lilac.
   - `LAUNCHER_CSS` is installed alongside `PANEL_CSS`. It is the only place a
-    toolbar button's icon is given a size, and without it every `addToolbarButton`
-    preview drew its SVG at 300x150 -- the same omission that once shipped.
+    toolbar button's icon is given a size. Without it an SVG with no intrinsic
+    size lays out at 300x150, in the client as on this page.
 - **`tests/slack-fixture.mjs`** holds the Slack-shaped fragment, so the real
   `addToolbarButton` and `addMessageAction` have the containers they look for.
   It stays a flat list of empty containers, which is all jsdom needs; the page
@@ -430,8 +429,8 @@ Three things make that possible:
   the frame became a fifth grid item: it landed in the 64px rail column, over
   the control strip, cut off by the frame's `overflow: hidden`.
   `describeMessage` printed its channel id into a sliver. Demos append to the
-  stage, and the layout no longer punishes them for forgetting. Nothing in the
-  rail may `flex-shrink` either, or a second button in the strip squashes the
+  stage, and the layout does not punish them for forgetting. Nothing in the rail
+  may `flex-shrink` either, or a second button in the strip squashes the
   first.
 - **Anything mounted into the fake client wears Slack's classes**, never
   `kit.button`. The kit is for a window a mod opens, where there is no
@@ -452,11 +451,10 @@ language reaches the page as `data-lang` and is coloured by Code Highlight's
 tokeniser -- the same one running in Slack -- so a `json` manifest is coloured
 as JSON rather than as JavaScript that happens to parse. Aliases are resolved at
 build time (`js` -> `javascript`, `yml` -> `yaml`) and **an unknown one fails the
-build**: it used to mean the block was skipped and rendered as flat grey text,
-which reads like a block that has no highlighting rather than like a mistake, so
-five JavaScript examples went out uncoloured and nothing said so. The label above
-the block keeps what the writer typed, since `JS` reads better than
-`JAVASCRIPT`.
+build**, because the alternative is silent: a skipped block renders as flat grey
+text, which reads like a block that has no highlighting rather than like a
+mistake. The label above the block keeps what the writer typed, since `JS` reads
+better than `JAVASCRIPT`.
 
 **The guide comes first and the page opens on it.** Landing somebody on
 `tools.highlight` was an accident of the ordering, not a decision: a reference
@@ -465,20 +463,19 @@ the bar says *Doc* for the same reason.
 
 **One file, one panel at a time.** Every entry is a `<section class="panel">` in
 that single document and the list on the left switches between them; the page
-itself does not scroll. Ninety-eight separate files was an earlier shape and the
-wrong one: a reference is read by jumping around it, and a jump that costs a
-page load loses the theme you picked, the arguments you set and your place in
-the list.
+itself does not scroll. One file per entry would be the wrong shape: a reference
+is read by jumping around it, and a jump that costs a page load loses the theme
+you picked, the arguments you set and your place in the list.
 
-**The Pages job installs the dependencies**, and its comment said the opposite
-for a while: it was true when `build-site.mjs` only read the repository and
-wrote one file, and stopped being true the moment the API page arrived, since
-bundling `site/api-previews.js` is esbuild. Every push then failed on
-`Cannot find package 'esbuild'`. Its `paths:` filter had gone stale the same
-way -- it listed `site/**` and `mods/**` only, so a change to `docs/api/`, to
-the preview renderers or to the TypeScript they are checked against did not
-trigger the job at all, and the drift check did not run for the one change it
-exists to catch.
+**The Pages job installs the dependencies**, because bundling
+`site/api-previews.js` is esbuild. Without them every push fails on
+`Cannot find package 'esbuild'`.
+
+**Its `paths:` filter has to cover everything the page is generated from** --
+`docs/api/`, `docs/guide/`, the preview renderers and the TypeScript they are
+cross-checked against, not just `site/**` and `mods/**`. A filter that misses
+one of those does not run the job at all for that change, so the drift check
+below is silent for exactly the change it exists to catch.
 
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script
@@ -497,16 +494,18 @@ before the site, which reads it. It regenerates `mods/registry.json` and
 `site/data.js` on the way through, both of which are committed, so a dirty tree
 afterwards means one of them had drifted and the fix is to commit it.
 
-`pnpm test:core` finds its own files rather than being handed a list. It used
-to name all eight in `package.json`, which meant a new test file ran nowhere
-until somebody remembered to add it -- and checking that by hand is not a thing
-to rely on.
+`pnpm test:core` is `scripts/test-core.mjs`, which walks `tests/` and hands Node
+the files it finds. Two reasons it is a script rather than a line in
+`package.json`.
 
-It was `node --test tests/` for a while, which is the same idea in one line, and
-**Node 22 took that away**: positional arguments to `--test` became glob
-patterns, so a bare directory is no longer expanded but treated as a file to
-run, and the suite dies with `Cannot find module '…/tests'` before a single test
-starts. Measured, because neither form works on both:
+A list of filenames means a new test file runs nowhere until somebody remembers
+to add it, and checking that by hand is not a thing to rely on.
+
+And there is no one-liner that works everywhere. Positional arguments to
+`--test` are glob patterns from Node 22 on, so a bare directory is not expanded
+but treated as a file to run, and the suite dies with
+`Cannot find module '…/tests'` before a single test starts. Neither form works
+on both:
 
 | node | `--test tests/` | `--test "tests/**/*.test.mjs"` |
 | --- | --- | --- |
@@ -515,10 +514,13 @@ starts. Measured, because neither form works on both:
 | 24.16.0 | fails | ok |
 | 25.9.0 | fails | ok |
 
-`scripts/test-core.mjs` walks `tests/` and hands Node the files, which works on
-every version and needs no shell glob. The CI pins `node-version: 22`, which
-floats, so this broke on a push that had nothing to do with it. (Node 18 fails
-four of them, and did so before this change too.)
+An explicit list of files works on every version and needs no shell glob, which
+is what the script produces. The CI pins `node-version: 22`, which floats -- so
+a change in Node breaks the build on a push that has nothing to do with it.
+
+**The floor is Node 20.19+, 22.13+ or 24+**, and it is jsdom's: the harness uses
+it, and it `require()`s an ES module. `package.json` states that range. Four
+tests fail below it.
 
 ## Hard constraints, all verified against Slack 4.51 / Electron 43
 
@@ -629,16 +631,17 @@ four of them, and did so before this change too.)
   and container, rather than looping forever. A missing button is a bug report;
   a frozen Slack is not.
 - **Two mods anchored on the same neighbour froze Slack**, and this is the
-  second freeze of exactly that shape. `keepMounted` used to ask its node to be
-  the anchor's *immediate previous sibling*; every control-strip button defaults
-  to `before: '#betterslack-control-button'`, so with two of them each shoved the
-  other aside, forever, inside a MutationObserver callback. Being anywhere
-  before the anchor satisfies both. Every DOM touch -- move as well as insert --
-  now counts toward the give-up limit, so no branch of that callback can spin.
+  second freeze of exactly that shape. `keepMounted` asks only that its node be
+  *somewhere before* the anchor, never that it be the immediate previous
+  sibling: every control-strip button defaults to
+  `before: '#betterslack-control-button'`, and with two of them the strict form
+  has each shoving the other aside, forever, inside a MutationObserver callback.
+  Every DOM touch -- move as well as insert -- counts toward the give-up limit,
+  so no branch of that callback can spin.
   Covered by `tests/mount.test.mjs`.
 - **When Slack freezes, `Debugger.pause` names the loop** -- but only if
   `Debugger.enable` was sent *before* the thread got busy; enabling it
-  afterwards never takes, and the first attempt at this came back empty.
+  afterwards never takes, and comes back empty.
   `BETTERSLACK_DIAGNOSE=1` does both, and prints what the client looks like at 3s,
   8s and 16s. `BETTERSLACK_NO_BOOTSCRIPT=1` forces the runtime in against a
   finished document, which is what made the freeze reproducible every time
@@ -647,9 +650,9 @@ four of them, and did so before this change too.)
 - **Plugins start only once `.p-client_container` exists** (`waitForClient` in
   `manager.ts`); themes go in immediately, since CSS cannot loop. The runtime is
   injected at document-start on a fresh navigation *or* straight into a page the
-  loader caught mid-boot, and in that second case mods used to start against a
-  half-built DOM -- mount observers firing on every node Slack adds while it
-  renders, with the microtask queue never draining. The renderer blocks outright:
+  loader caught mid-boot. In that second case mods must not start against a
+  half-built DOM: mount observers fire on every node Slack adds while it
+  renders, and the microtask queue never drains. The renderer blocks outright:
   grey window, no error, `Runtime.evaluate` never returning. It is intermittent,
   it depends on when the attach loop finds the target, and it looks exactly like
   the coachmark freeze, so check both.
@@ -698,7 +701,7 @@ four of them, and did so before this change too.)
   4.51, so a click aimed at it lands on the window and reports success while
   nothing moves. The ids are on the rows all the same, in
   `data-rbd-draggable-id`.
-- **`[data-qa="channel_sidebar_name_button"]` no longer exists.** The sidebar's
+- **There is no `[data-qa="channel_sidebar_name_button"]`.** The sidebar's
   rows are `[data-qa="channel-sidebar-channel"]`. A selector that matches
   nothing announces nothing, which is why the redactor's list is checked by an
   audit rather than trusted.
@@ -727,12 +730,12 @@ four of them, and did so before this change too.)
   `Input.dispatchMouseEvent`.) So do not offer a Huddle button; offer
   `openUserProfile`, which puts Slack's own one click away.
 - **When a trusted click seems to do nothing, check what is on top of it.** A
-  leftover `ReactModal__Overlay` (z-index 1053) from Slack's own dialog swallowed
-  every click aimed at the profile pane, and made "trusted clicks do not work"
-  look true for a while. `document.elementFromPoint(x, y).closest('[data-qa]')`
-  before clicking says whether the point reaches what you think it does. The
-  harness can now dispatch a trusted Escape, which is what dismisses that
-  overlay -- a synthetic one does not.
+  leftover `ReactModal__Overlay` (z-index 1053) from Slack's own dialog swallows
+  every click aimed at the profile pane, which reads as "trusted clicks do not
+  work". `document.elementFromPoint(x, y).closest('[data-qa]')` before clicking
+  says whether the point reaches what you think it does. The harness can
+  dispatch a trusted Escape, which is what dismisses that overlay -- a synthetic
+  one does not.
 - **A huddle does start, from the channel header.** `member_profile_huddle_btn`
   in the profile pane is only a menu trigger (both halves open it, and its
   entry does nothing); the control that works is
@@ -771,10 +774,10 @@ four of them, and did so before this change too.)
   it reported away for up to a minute while the app plainly said available.
   `sidebar-account` was doing exactly that. Do-not-disturb is *not* in that
   class, so it still comes from the API, slowly. The word beside the dot is
-  painted from the same reading -- it used to be read once at mount, from
-  Slack's screen-reader label, and never again, so it kept saying whatever was
-  true when the strip happened to be built. A green dot next to "Absent(e)" is
-  worse than either being wrong alone.
+  painted from the same reading, on every change. Read once at mount from
+  Slack's screen-reader label, it says whatever was true when the strip happened
+  to be built -- and a green dot next to "Absent(e)" is worse than either being
+  wrong alone.
 - **Timings for anything that animates a view change**, measured from the click
   on a channel in the sidebar: `navigation.currententrychange` fires at **9ms**
   (same tick as `history.pushState`), the conversation column starts repainting
@@ -840,16 +843,14 @@ Shape of it:
 plugin's stylesheet whole -- that is the contract, and it is right, since a mod
 that recomputes its CSS on a settings change would otherwise stack copies of it
 for ever. `helpers.toggle({ whenOn })`, `helpers.badge` and `helpers.tooltip`
-write CSS too, and they used to write it through that same node, so a mod using
-both kept only whichever went last. A shipped mod went out that way: it put its
-class on `<html>`, drew its indicator, and folded nothing away, because its
-indicator stylesheet had overwritten the rules that hide the sidebar. Its tests
-passed the whole time -- they asserted on every call the mod made, and the bug
-is that only one of those calls survives. The helpers now own
-`plugin:<id>:helpers`, covered by `tests/styles.test.mjs`, which carries that
-shape as a fixture rather than importing the mod: the mod has since been
-dropped, and a regression test that can be deleted along with its subject is not
-covering the runtime.
+write CSS too, so **the helpers own a node of their own**, `plugin:<id>:helpers`.
+Sharing one node means a mod using both keeps only whichever wrote last -- it
+puts its class on `<html>`, draws its indicator, and folds nothing away, because
+the indicator stylesheet has overwritten the rules that hide the sidebar. Tests
+that assert on every call the mod makes pass throughout, since the bug is that
+only one of those calls survives. `tests/styles.test.mjs` covers it, and carries
+that shape as a fixture rather than importing a mod: a regression test that can
+be deleted along with its subject is not covering the runtime.
 
 When two mods want the same block, it belongs in the API, and the mods get
 refactored onto it in the same change. Five things were lifted that way after an
@@ -869,10 +870,9 @@ audit of all eleven plugins, and each one had been written two or three times:
 ## The theme builder
 
 `mods/plugins/theme-builder` opens a window of its own and paints the client
-live through `api.css`, so **the preview is Slack**. It used to draw fragments
-of Slack inside its own window as well; they were a worse copy of what was
-already on screen and took half the width. The window is one narrow column of
-controls now, deliberately.
+live through `api.css`, so **the preview is Slack**. Its window is one narrow
+column of controls, deliberately: fragments of Slack drawn inside it would be a
+worse copy of what is already on screen, for half the width.
 
 Its own chrome is fixed, not themed: a workbench repainted by the work becomes
 unreadable exactly when you have just written something wrong. `window.css`
@@ -901,11 +901,10 @@ layer, or Slack's next touch of `<head>` puts it straight back.
 
 Laid out like Slack's preferences: a rail of sections, one view at a time, a bar
 of actions along the bottom (`views/` is a file per section, and the primitives
-come from `api.ui.kit(doc)` + `api.ui.kitCss` -- the builder used to carry its
-own `ui.js` and that is exactly the drift the kit exists to stop). A first
-attempt stacked every tool in one scrolling column and it read as a list of
-controls in the order they were written, which is the thing to avoid if this is
-ever rebuilt again.
+come from `api.ui.kit(doc)` + `api.ui.kitCss`, never a `ui.js` of its own --
+that drift is what the kit exists to stop). Do not stack every tool in one
+scrolling column: it reads as a list of controls in the order they were
+written.
 
 **Hovering a colour outlines what it paints**, which is `highlight.js`: the
 stylesheet inverted once into token -> selectors, then queried. Two things that
@@ -987,9 +986,9 @@ loader injection into the same live page both found it empty, both built a
 Bridge, and both started every plugin -- the second receiver on `window` won and
 the first runtime's plugins were left with a bridge nothing answers: every
 request timed out after fifteen seconds while their buttons sat there looking
-fine. `boot()` now claims `window.__BETTERSLACK_BOOTING__` synchronously. Found
-through a theme gallery that came up blank, with six answers delivered by the
-loader and six timeouts in the page.
+fine. `boot()` therefore claims `window.__BETTERSLACK_BOOTING__` synchronously.
+The symptom is a theme gallery that comes up blank, with the answers delivered
+by the loader and the same number of timeouts in the page.
 
 **Nothing may touch the document while a module is being evaluated.** The
 runtime is injected at document-start, before Slack's markup exists, so
@@ -1086,10 +1085,9 @@ hand-edited settings file cannot produce an enabled-but-not-installed state.
 
 The panel and `api.ui.modal` render into the **light DOM** wearing Slack's own
 `c-dialog` / `c-menu` / `c-button` classes, so Slack's stylesheet styles them
-directly and they follow every theme exactly. They used to live in a shadow
-root, reimplementing the look from tokens — which lands close but never right.
-The trade-off is deliberate: a theme that restyles `.c-dialog` restyles them
-too. Toasts stay in a shadow root, since Slack has no toast to borrow from and
+directly and they follow every theme exactly. A shadow root reimplementing the
+look from tokens lands close but never right. The trade-off is deliberate: a
+theme that restyles `.c-dialog` restyles them too. Toasts stay in a shadow root, since Slack has no toast to borrow from and
 an unreadable error message is worse than an off-brand one.
 
 **Every mod has a page**, reached by clicking its name: its icon, its version
@@ -1098,8 +1096,7 @@ caption, its README rendered, and its settings. `renderMarkdown` in
 `ui/markdown.ts` escapes first and drops a `javascript:` URL; a picture in a
 README is fetched from the mod's folder through `manager.asset`, one at a time,
 and nothing else is fetched at all. `panel.openMod(id)` -- what `api.app` and
-the palette call -- opens that page rather than the row's settings drawer,
-which is what it used to do when the settings were all there was.
+the palette call -- opens that page, not the row's settings drawer.
 
 Destructive actions belong behind the row overflow menu, not on the row: a
 Remove button on every line shouted louder than anything else in the dialog.
@@ -1113,16 +1110,32 @@ by an earlier render in the same frame.
 
 - Comments explain *why*, especially where the code looks odd because Slack
   forced it. Several of the strangest lines here are load-bearing.
+- **Every change updates the documentation in the same commit.** A change that
+  leaves `CLAUDE.md`, `docs/`, a mod's README or the site describing something
+  else is an incomplete change, not a change plus a follow-up.
+- **Documentation describes the current state, and only that.** No "it used to
+  be", no "this was moved", no before-and-after. A reader wants to know how the
+  thing works now; what it was last month is what `git log` is for, and every
+  sentence spent on it is a sentence they have to decide is irrelevant.
+
+  The line to hold: **a constraint keeps its evidence, a change does not keep
+  its story.** "Never anchor next to `.c-coachmark-anchor` -- it freezes the
+  renderer solid, bisected against a running client" is current, and the
+  measurement is why it is believable. "The update notice used to be a stripe
+  and is now a card" is a changelog entry in the wrong file. When a trap is only
+  visible through the failure it causes, name the failure -- "a backtick here
+  closes the string and the runtime throws at boot" -- not the times it
+  happened.
 - **Never put a backtick inside `PANEL_CSS`**, comments included. It is a
   template literal, so a backticked `.c-dialog` in a comment closes the string
   and the rest parses as JavaScript — `.c - dialog` — which builds cleanly and
   then throws `ReferenceError: dialog is not defined` at boot, taking the whole
-  runtime down with no styling on the failure. This has happened **three times**,
-  and every time it was a comment explaining a CSS property by naming it in
-  backticks. Write the property in words instead: "sets display flex", not the
-  backticked declaration. `tests/requires.test.mjs` fails if a backtick appears
-  in there, and typecheck usually gets there first with a baffling
-  `',' expected` pointing at the middle of a sentence.
+  runtime down with no styling on the failure. The way it happens is always the
+  same: a comment explaining a CSS property by naming it in backticks. Write the
+  property in words instead -- "sets display flex", not the backticked
+  declaration. `tests/requires.test.mjs` fails if a backtick appears in there,
+  and typecheck usually gets there first with a baffling `',' expected` pointing
+  at the middle of a sentence.
 - Mods are distributed through pull requests and reviewed by a human; that
   review is the security model, since plugins run unsandboxed in an
   authenticated Slack tab. `CONTRIBUTING.md` lists what gets rejected.

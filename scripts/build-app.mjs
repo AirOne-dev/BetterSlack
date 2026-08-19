@@ -154,8 +154,15 @@ console.log(`built ${app}`);
  *
  * `dist/` is inside the repository, and if the repository is on the Desktop
  * then so is the app -- which cannot then read its own launcher, let alone the
- * project. Copied to ~/Applications it reads itself fine, and the only thing
- * left needing permission is the project, which macOS will ask about once.
+ * project. Copied to the user's Applications folder it reads itself fine, and
+ * the only thing left needing permission is the project, which macOS will ask
+ * about once.
+ *
+ * `~/Applications`, not `/Applications`: the second needs an administrator and
+ * this is a per-user launcher for a checkout only that user has. Say which,
+ * loudly. Finder does not show `~/Applications` in its sidebar by default, so
+ * "installed" followed by a path people read as the system folder is a report
+ * of something that looks like it did not happen.
  */
 const installed = path.join(homedir(), 'Applications', 'BetterSlack.app');
 if (process.argv.includes('--install')) {
@@ -163,7 +170,12 @@ if (process.argv.includes('--install')) {
   await fs.rm(installed, { recursive: true, force: true });
   await fs.cp(app, installed, { recursive: true });
   await run('codesign', ['--force', '--deep', '--sign', '-', installed]).catch(() => undefined);
-  console.log(`installed ${installed}`);
+  console.log(`\ninstalled ${installed}`);
+  console.log(
+    'That is your own Applications folder, not /Applications — Finder hides it\n'
+    + 'from the sidebar, so open it with Go > Go to Folder (⇧⌘G) or just start\n'
+    + 'BetterSlack from Spotlight, which indexes it.',
+  );
 }
 
 const GATED = ['Desktop', 'Documents', 'Downloads'].map((name) => path.join(homedir(), name));

@@ -166,7 +166,8 @@ pnpm start</code></pre>
 <p>Nothing is installed on a fresh setup. The repository is a catalogue, not a set of pre-installed mods: open the panel with <strong>⌘⇧M</strong> and install what you want from <strong>Browse</strong>.</p>
 <h2>On macOS, without a terminal</h2>
 <pre class="api-code" data-lang="bash" data-label="bash"><code>pnpm build-app --install</code></pre>
-<p>That puts a <strong>BetterSlack.app</strong> in <code>~/Applications</code>, so it starts from Spotlight, the Dock or your login items. It is a launcher rather than a bundle — it runs this checkout, so keep the project folder where it is.</p>
+<p>That puts a <strong>BetterSlack.app</strong> in <code>~/Applications</code>, so it starts from Spotlight, the Dock or your login items.</p>
+<p><code>~/Applications</code> is your own Applications folder, not <code>/Applications</code>. They are two different places, the system one needs an administrator, and Finder keeps yours out of the sidebar — so an app that installed correctly looks missing. Reach it with <strong>Go → Go to Folder</strong> (⇧⌘G), or type BetterSlack into Spotlight, which indexes it. It is a launcher rather than a bundle — it runs this checkout, so keep the project folder where it is.</p>
 <p>Two things it needs. A C compiler at build time (<code>xcode-select --install</code>), because the bundle's executable has to be a real binary: macOS gates Desktop, Documents and Downloads per application, and an app whose executable is a shell script is not an application as far as that gate is concerned — the process it sees is <code>/bin/bash</code>. And, if the project lives in one of those three folders, macOS asks once for permission to read it. Say yes.</p>
 <p>Do not run the copy left in <code>dist/</code>. An app inside a gated folder cannot read even its own launcher, and a double-click does nothing at all.</p>
 <h2>If something goes wrong</h2>
