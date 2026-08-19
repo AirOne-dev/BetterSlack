@@ -12,9 +12,11 @@ Then: [test it](#test-your-mod) and [ship it](#ship-it).
 
 ## Just run it
 
-Requires Node 18+, pnpm, and the Slack desktop app — Node 22+ if pnpm comes
-from Corepack, because pnpm 11 refuses to run on anything older when Node is
-what runs it. `corepack enable` gets you pnpm; `npm i -g pnpm` and Homebrew's
+Requires **Node 20.19+, 22.13+ or 24+**, pnpm, and the Slack desktop app. That
+floor is jsdom's, which the test harness uses — it `require()`s an ES module and
+needs a Node that allows it — and `package.json` states the same range. Node 22+
+if pnpm comes from Corepack, because pnpm 11 refuses to run on anything older
+when Node is what runs it. `corepack enable` gets you pnpm; `npm i -g pnpm` and Homebrew's
 standalone binary work too. It has to be pnpm — esbuild fetches its platform
 binary in an install script, and `pnpm-workspace.yaml` is what allows that
 script to run.

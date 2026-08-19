@@ -9,10 +9,21 @@ name: Site
 on:
   push:
     branches: [master]
+    # The API page is generated from docs/api/, from the preview renderers and
+    # from the TypeScript the build cross-checks them against, so a change to
+    # any of those makes the committed page stale. Leaving them off this list
+    # meant the drift check below simply did not run for an API change, which is
+    # the one change it exists to catch.
     paths:
       - 'site/**'
       - 'mods/**'
+      - 'docs/api/**'
+      - 'src/**'
+      - 'tests/slack-fixture.mjs'
       - 'scripts/build-site.mjs'
+      - 'scripts/build-api-page.mjs'
+      - 'scripts/api-doc.mjs'
+      - 'scripts/api-previews.js'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -30,13 +41,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Node only, and no dependency cache: this job installs nothing —
-      # build-site.mjs reads the repository and writes one file. Asking
-      # setup-node to cache pnpm's store made the post-job step fail on a store
-      # that was never created.
+      # This job used to install nothing, because build-site.mjs only read the
+      # repository and wrote one file. It stopped being true when the API page
+      # arrived: bundling site/api-previews.js is esbuild, so the job needs the
+      # dependencies like every other one. pnpm before setup-node, so the cache
+      # key can be the lockfile.
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
 
       - name: the generated site files are up to date
         run: |

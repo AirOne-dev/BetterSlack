@@ -77,7 +77,9 @@ shows the tokens behind it. It writes ordinary CSS you can commit.
 
 ## Install
 
-Requires Node 18+ and pnpm — Node 22+ if you get pnpm through Corepack, since
+Requires **Node 20.19+, 22.13+ or 24+** and pnpm. That floor is jsdom's, which
+the test harness uses: it `require()`s an ES module, so it needs a Node that
+allows that. Node 22+ if you get pnpm through Corepack, since
 pnpm 11 refuses to run on anything older when it is Node that runs it. Corepack
 ships with Node, so `corepack enable` is enough; `npm i -g pnpm` and Homebrew's
 standalone binary work too. It has to be pnpm: esbuild fetches its platform
