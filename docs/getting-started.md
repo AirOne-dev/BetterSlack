@@ -397,7 +397,7 @@ themeChecks(test, assert, import.meta.url);
 Run it:
 
 ```bash
-pnpm test:mod -- my-plugin     # one mod
+pnpm test -- my-plugin     # one mod
 pnpm test                      # all of them
 pnpm check-structure -- my-plugin
 ```

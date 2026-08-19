@@ -80,6 +80,7 @@ esbuild fetches its platform binary in one, so a fresh checkout fails on every
 command that touches the bundler without it.
 
 ```bash
+pnpm check             # the whole gate, in one command -- run this before pushing
 pnpm install           # once; pnpm, and the lockfile is committed
 pnpm new-mod plugin my-plugin "What a user gets"   # a mod that already passes
 pnpm release patch     # bumps, writes CHANGELOG.md from the commits, tags
@@ -88,7 +89,7 @@ pnpm build             # both bundles + dist/download.mjs
 pnpm build-app         # macOS: dist/BetterSlack.app, a launcher for this checkout
 pnpm start             # launch Slack with mods
 pnpm test              # every mod's tests
-pnpm test:mod -- <id>  # one mod
+pnpm test -- <id>  # one mod
 pnpm test:core         # loader and runtime unit tests
 pnpm check-structure   # is every mod loadable
 pnpm validate-mods     # manifests
@@ -265,8 +266,18 @@ copies each mod's `screenshot.webp` into `site/shots/mods/`, since the page is
 published on its own and cannot reach `mods/`; the catalogue and the panel
 therefore show the same frame, out of the same file.
 
-Full gate before pushing: `typecheck`, `build`, `validate-mods`, `registry`,
-`test:core`, `test`, `check-structure`.
+**`pnpm check` is the gate**, and it is one command because seven remembered in
+the right order is not a gate. It runs typecheck, build, validate-mods,
+registry, site, test:core, test and check-structure, in that order -- build
+before the tests, since the harness imports the built runtime, and the registry
+before the site, which reads it. It regenerates `mods/registry.json` and
+`site/data.js` on the way through, both of which are committed, so a dirty tree
+afterwards means one of them had drifted and the fix is to commit it.
+
+`pnpm test:core` is `node --test tests/` rather than a list of files. It used to
+name all eight in `package.json`, which meant a new test file ran nowhere until
+somebody remembered to add it -- and checking that by hand is not a thing to
+rely on.
 
 ## Hard constraints, all verified against Slack 4.51 / Electron 43
 

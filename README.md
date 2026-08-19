@@ -206,10 +206,11 @@ in a theme) from inside its own folder.
 ## Development
 
 ```bash
+pnpm check                        # everything below that CI would run, in one go
 pnpm dev                          # rebuild on change
 pnpm new-mod plugin my-plugin "What a user gets"   # a mod that already passes
 pnpm test                         # every mod's tests
-pnpm test:mod -- <id>             # one mod
+pnpm test -- <id>                 # one mod
 pnpm test:core                    # loader and runtime unit tests
 pnpm test:live                    # boot the real Slack and grade what loaded
 pnpm check-structure              # is each mod loadable

@@ -101,7 +101,7 @@ unexplained one is an automatic no.
    that climbs out of the folder or a cycle.
 
 2. `pnpm validate-mods` passes.
-3. **A `test.mjs` next to your `mod.json`, and `pnpm test:mod -- <id>`
+3. **A `test.mjs` next to your `mod.json`, and `pnpm test -- <id>`
    passes.** Every mod ships tests. There is no way to opt out: a mod with no
    `test.mjs` fails the structure check immediately.
 4. `pnpm registry` has been run and `mods/registry.json` is committed.
@@ -126,7 +126,7 @@ cannot block theirs:
 | Workflow | Per changed mod | Checks |
 | --- | --- | --- |
 | **Mod structure** | `node scripts/check-structure.mjs <id>` | manifest, entry file exists and imports, a real `start()` export, every relative import lands on a file that is there, CSS parses, `test.mjs` present, registry entry current |
-| **Mod tests** | `pnpm test:mod -- <id>` | your own tests |
+| **Mod tests** | `pnpm test -- <id>` | your own tests |
 
 Each mod gets its own job, so a failure names the mod at fault. Both workflows
 end in a job with a stable name (`mod structure`, `mod tests`) — those are the
@@ -142,8 +142,12 @@ Run the same thing locally before pushing:
 ```bash
 node scripts/changed-mods.mjs           # what CI will pick up
 pnpm check-structure -- <id>
-pnpm test:mod -- <id>
+pnpm test -- <id>
 ```
+
+Or `pnpm check`, which runs the whole gate — typecheck, build, manifests,
+registry, site, core tests, every mod's tests, structure — in the order the
+pieces depend on each other.
 
 ### Writing the tests
 

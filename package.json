@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "check": "pnpm typecheck && pnpm build && pnpm validate-mods && pnpm registry && pnpm site && pnpm test:core && pnpm test && pnpm check-structure",
     "build-app": "node scripts/build.mjs && node scripts/build-app.mjs",
     "dev": "node scripts/build.mjs --watch",
     "start": "node bin/betterslack.mjs",
@@ -16,17 +17,14 @@
     "typecheck": "tsc --noEmit",
     "validate-mods": "node scripts/validate-mods.mjs",
     "test": "node scripts/test-mods.mjs",
-    "test:mod": "node scripts/test-mods.mjs",
     "check-structure": "node scripts/check-structure.mjs",
-    "changed-mods": "node scripts/changed-mods.mjs",
-    "test:core": "node --test tests/download.test.mjs tests/requires.test.mjs tests/i18n.test.mjs tests/mod-files.test.mjs tests/markdown.test.mjs tests/mount.test.mjs tests/styles.test.mjs tests/update.test.mjs",
+    "test:core": "node --test tests/",
     "new-mod": "node scripts/new-mod.mjs",
     "release": "node scripts/release.mjs",
     "test:live": "node scripts/test-live.mjs",
     "site": "node scripts/build-site.mjs",
     "site:dev": "node scripts/site-dev.mjs",
-    "shoot": "node scripts/shoot.mjs",
-    "shoot:mods": "node scripts/shoot.mjs --mods"
+    "shoot": "node scripts/shoot.mjs"
   },
   "engines": {
     "node": ">=18",
