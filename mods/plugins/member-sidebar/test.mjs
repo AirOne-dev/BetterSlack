@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { assertPluginShape, createTestApi, installDom, readModFiles } from '../../../tests/harness.mjs';
+import { assertPluginShape, createTestApi, installDom, readModFiles, switchWorkspace } from '../../../tests/harness.mjs';
 import plugin from './index.js';
 
 // The plugin reads its stylesheet with api.assets.text('column.css'), so the
@@ -606,7 +606,7 @@ test('forgets a workspace’s people when the workspace changes', async () => {
     assert.equal(lookups, 1);
 
     // Same channel id, different team: the cached people belong to the old one.
-    dom.dom.reconfigure({ url: 'https://app.slack.com/client/T999OTHER/C0BFQCYBRAB' });
+    switchWorkspace(dom, 'T999OTHER');
     await new Promise((resolve) => setTimeout(resolve, 1300));
     document.getElementById('betterslack-member-column').replaceChildren();
     await new Promise((resolve) => setTimeout(resolve, 1300));
@@ -653,14 +653,53 @@ test('a render answered after the workspace moved is not painted', async () => {
     await plugin.start(api);
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    // The workspace moves while the request is in flight.
-    window.history.pushState({}, '', '/client/T0OTHER/C0BQ8AG3771');
+    // The workspace moves while the request is in flight -- URL and drawing
+    // together, which is what Slack does.
+    switchWorkspace(dom, 'T0OTHER', 'C0BQ8AG3771');
     release();
     await new Promise((resolve) => setTimeout(resolve, 40));
 
     const column = document.getElementById('betterslack-member-column');
     assert.equal(column.querySelectorAll('.betterslack-members__row').length, 0,
       'the answer belongs to a workspace the user has left, so it is dropped');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('lists the conversation Slack is showing, not the one the URL still names', async () => {
+  /*
+   * Measured at a cold start with three workspaces signed in: the URL read
+   * `/client/T0BQ89Z4L4F/C0BQ8AG3771` while the client had drawn thirty-seven
+   * avatars from `T025V5WN2` and a conversation from it. Slack restores the
+   * view before it settles the address. Reading the URL then listed the members
+   * of a channel in the workspace the user had left -- one row, themselves,
+   * because they are the only member of it the other workspace admits to.
+   */
+  const dom = installDom();
+  dom.dom.reconfigure({ url: 'https://app.slack.com/client/T0STALE/C0STALE' });
+
+  const asked = [];
+  const stub = web({ members: ['U1', 'U2'] });
+  stub.web.call = async (method, params) => {
+    if (method === 'conversations.members') {
+      asked.push(params.channel);
+      return { ok: true, members: ['U1', 'U2'] };
+    }
+    if (method === 'users.info') {
+      return { ok: true, users: [{ id: 'U1', profile: {} }, { id: 'U2', profile: {} }] };
+    }
+    return { ok: true };
+  };
+  const { api, recorded } = createApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    assert.deepEqual(asked, ['C0BFQCYBRAB'],
+      'the channel Slack drew, not the stale one in the address');
+    assert.equal(document.querySelectorAll('.betterslack-members__row').length, 2);
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

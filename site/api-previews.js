@@ -226,8 +226,33 @@
     }
   };
   function currentTeamId() {
-    const match = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i);
-    return match ? match[1] : null;
+    const fromUrl = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i)?.[1] ?? null;
+    const drawn = drawnTeams();
+    if (drawn.size === 0) return fromUrl;
+    if (fromUrl && drawn.has(fromUrl)) return fromUrl;
+    let best = null;
+    let bestCount = 0;
+    for (const [team, count] of drawn) {
+      if (count > bestCount) {
+        best = team;
+        bestCount = count;
+      }
+    }
+    return best ?? fromUrl;
+  }
+  function drawnTeams() {
+    const seen = /* @__PURE__ */ new Map();
+    const client = document.querySelector(".p-client_container");
+    if (!client) return seen;
+    for (const image of client.querySelectorAll("img")) {
+      const team = /\/(T[A-Z0-9]+)-U[A-Z0-9]+-/i.exec(image.src)?.[1];
+      if (team) seen.set(team, (seen.get(team) ?? 0) + 1);
+    }
+    return seen;
+  }
+  function drawnChannelId() {
+    const message = document.querySelector('[data-qa="message_container"][data-msg-channel-id]');
+    return message?.getAttribute("data-msg-channel-id") ?? null;
   }
   function readTeamConfig() {
     const teamId = currentTeamId();
@@ -781,9 +806,10 @@
         message.element.querySelector(".c-message_kit__avatar img, .c-avatar img")?.src
       ),
       currentChannelId: () => {
-        const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
-        return match ? match[1].toUpperCase() : null;
+        const fromUrl = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i)?.[1]?.toUpperCase() ?? null;
+        return drawnChannelId()?.toUpperCase() ?? fromUrl;
       },
+      currentTeamId: () => currentTeamId(),
       /*
        * Filled in by `createPluginApi`, which is where the settings live. Left
        * inert here so `createSlackApi` still satisfies the type on its own, and

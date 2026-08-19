@@ -43,10 +43,61 @@ interface TeamConfig {
   user_id?: string;
 }
 
-/** Team id from the client URL: /client/<team>/<channel>. */
+/**
+ * Which workspace the client is *showing*, which is not always what the URL
+ * says.
+ *
+ * Measured at a cold start, with three workspaces signed in: the URL read
+ * `/client/T0BQ89Z4L4F/C0BQ8AG3771` while the client had drawn thirty-seven
+ * avatars belonging to `T025V5WN2` and a conversation from it. Slack restores
+ * the view before it settles the address, and until you navigate by hand the
+ * two disagree -- so every call went out with the wrong workspace's token and
+ * answered about a channel nobody was looking at. The member column showed the
+ * one member of a channel in the workspace you had *left*: yourself.
+ *
+ * The URL is trusted whenever it can be. It is only overruled when its
+ * workspace appears nowhere in what the client has drawn *and* another one
+ * does, which is exactly the stale case and nothing else. Avatar URLs carry the
+ * workspace -- `<host>/T…-U…-<hash>-<size>` -- which makes the page its own
+ * witness.
+ */
 export function currentTeamId(): string | null {
-  const match = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i);
-  return match ? match[1]! : null;
+  const fromUrl = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i)?.[1] ?? null;
+  const drawn = drawnTeams();
+  if (drawn.size === 0) return fromUrl;
+  if (fromUrl && drawn.has(fromUrl)) return fromUrl;
+
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [team, count] of drawn) {
+    if (count > bestCount) { best = team; bestCount = count; }
+  }
+  return best ?? fromUrl;
+}
+
+/** Workspaces the client has drawn an avatar for, and how many of each. */
+function drawnTeams(): Map<string, number> {
+  const seen = new Map<string, number>();
+  const client = document.querySelector('.p-client_container');
+  if (!client) return seen;
+  for (const image of client.querySelectorAll<HTMLImageElement>('img')) {
+    const team = /\/(T[A-Z0-9]+)-U[A-Z0-9]+-/i.exec(image.src)?.[1];
+    if (team) seen.set(team, (seen.get(team) ?? 0) + 1);
+  }
+  return seen;
+}
+
+/**
+ * The conversation the client is showing, from what it has drawn.
+ *
+ * Slack stamps the channel on every message it renders, which is a fact about
+ * the screen rather than about the address bar -- and at a cold start those two
+ * disagree. Null when nothing has been drawn yet, so a caller can fall back to
+ * the URL.
+ */
+export function drawnChannelId(): string | null {
+  const message = document.querySelector('[data-qa="message_container"][data-msg-channel-id]');
+  return message?.getAttribute('data-msg-channel-id') ?? null;
 }
 
 function readTeamConfig(): TeamConfig | null {

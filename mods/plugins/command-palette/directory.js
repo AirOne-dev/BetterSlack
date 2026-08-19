@@ -49,11 +49,6 @@ function peopleFromMpim(name) {
     .join(', ');
 }
 
-function currentTeam() {
-  const match = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i);
-  return match ? match[1] : null;
-}
-
 /**
  * A live index of conversations and of the wider directory.
  *
@@ -61,6 +56,12 @@ function currentTeam() {
  * paint again -- the palette stays responsive because nothing waits for this.
  */
 export function createDirectory(api, { onResults }) {
+  /*
+   * The workspace the client is showing, not the one in the URL. At a cold
+   * start Slack restores the view before it settles the address, and reading
+   * the URL then keys the whole directory to a workspace the user has left.
+   */
+  const currentTeam = () => api.slack.currentTeamId();
   let team = currentTeam();
   /** Conversations you are in: channels, groups and DMs, with people resolved. */
   let conversations = [];

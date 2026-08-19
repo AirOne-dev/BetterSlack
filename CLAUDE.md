@@ -580,6 +580,23 @@ tests fail below it.
 - **Slack's CDN has no CORS headers.** `fetch('https://ca.slack-edge.com/…')`
   from the renderer always fails; downloads go through `api.files.save`, which
   the loader performs.
+- **At a cold start the URL names a workspace the client is not showing.**
+  Measured with three workspaces signed in: `location.pathname` read
+  `/client/T0BQ89Z4L4F/C0BQ8AG3771` while the client had drawn thirty-seven
+  avatars belonging to `T025V5WN2` and a conversation from it, and the two
+  stayed apart until the user navigated by hand. Slack restores the view before
+  it settles the address, so anything reading the URL at boot works against the
+  workspace the user *left*: the wrong token, and a member list showing the one
+  person that workspace admits to -- yourself.
+
+  The page is its own witness. An avatar URL carries the workspace
+  (`<host>/T…-U…-<hash>-<size>`), and every message Slack renders carries its
+  channel in `data-msg-channel-id`. `currentTeamId()` in `web-api.ts` trusts the
+  URL whenever it can and overrules it only when its workspace appears nowhere
+  in what has been drawn *and* another one does -- exactly the stale case and
+  nothing else. `api.slack.currentChannelId()` prefers the drawn channel the
+  same way. **No mod should parse that URL itself**; three did, and all three
+  were wrong at boot.
 - **Switching workspace does not reload the client.** Same page, same mods,
   same api objects, new team id in the URL. Anything a mod cached at boot then
   belongs to the workspace the user has left. `web-api.ts` keys its config on

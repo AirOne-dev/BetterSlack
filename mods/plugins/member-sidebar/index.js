@@ -57,18 +57,6 @@ const MEMBER_LIMIT_DEFAULT = 100;
 const PRESENCE_LIMIT_DEFAULT = 50;
 const PRESENCE_INTERVAL_MS = 60_000;
 
-/** Team id from the client URL: /client/<team>/<channel>. */
-function currentTeamId() {
-  const match = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i);
-  return match ? match[1].toUpperCase() : null;
-}
-
-/** Channel id from the client URL: /client/<team>/<channel>. */
-function currentChannelId() {
-  const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
-  return match ? match[1].toUpperCase() : null;
-}
-
 function displayName(user) {
   const profile = user.profile ?? {};
   return profile.display_name || profile.real_name || user.real_name || user.name || user.id;
@@ -76,6 +64,18 @@ function displayName(user) {
 
 export default {
   async start(api) {
+    /*
+     * Both from the API, not from the URL.
+     *
+     * At a cold start Slack restores the view before it settles the address:
+     * the URL named a channel in a workspace the user had left while the
+     * messages on screen belonged to another. Reading the URL here listed the
+     * one member of that other channel -- yourself -- a second after the right
+     * people had appeared. The runtime reads what the client has drawn.
+     */
+    const currentTeamId = () => api.slack.currentTeamId();
+    const currentChannelId = () => api.slack.currentChannelId();
+
     api.css(api.assets.text('column.css'));
     const t = api.i18n.strings(STRINGS);
 

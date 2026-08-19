@@ -23,6 +23,24 @@ import { SLACK_FIXTURE } from './slack-fixture.mjs';
  * Install a DOM as globals. Returns a cleanup that puts the globals back, so a
  * failing test cannot leak into the next one.
  */
+/**
+ * Move the client to another workspace, the way Slack does.
+ *
+ * Not just the URL: Slack redraws the conversation, and the runtime reads the
+ * workspace off what it has drawn precisely because the URL lags at a cold
+ * start. A test that changed only the address was testing a state the client is
+ * never in, and would have gone on passing while the fix for that lag broke it.
+ */
+export function switchWorkspace(dom, teamId, channelId = 'C0BFQCYBRAB') {
+  dom.dom.reconfigure({ url: `https://app.slack.com/client/${teamId}/${channelId}` });
+  for (const image of document.querySelectorAll('.p-client_container img')) {
+    const src = image.getAttribute('src') ?? '';
+    image.setAttribute('src', src.replace(/\/T[A-Z0-9]+-/i, `/${teamId}-`));
+  }
+  const message = document.querySelector('[data-qa="message_container"]');
+  if (message) message.setAttribute('data-msg-channel-id', channelId);
+}
+
 export function installDom(html = SLACK_FIXTURE) {
   const dom = new JSDOM(`<!doctype html><html><body>${html}</body></html>`, {
     url: 'https://app.slack.com/client/T0EXAMPLE1/C0BFQCYBRAB',
@@ -385,9 +403,31 @@ export function createTestApi({
         const m = src?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i);
         return m ? m[1].toUpperCase() : null;
       },
+      /*
+       * The same rule the runtime follows: what the client has drawn wins over
+       * the URL. Slack stamps the channel on every message it renders, and at a
+       * cold start the two disagree -- a test that read only the URL would pass
+       * on behaviour the client does not have.
+       */
       currentChannelId: () => {
+        const drawn = document.querySelector('[data-qa="message_container"][data-msg-channel-id]');
+        if (drawn) return drawn.getAttribute('data-msg-channel-id').toUpperCase();
         const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
         return match ? match[1].toUpperCase() : null;
+      },
+      currentTeamId: () => {
+        const fromUrl = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i)?.[1] ?? null;
+        const seen = new Map();
+        for (const image of document.querySelectorAll('.p-client_container img')) {
+          const team = /\/(T[A-Z0-9]+)-U[A-Z0-9]+-/i.exec(image.src ?? '')?.[1];
+          if (team) seen.set(team, (seen.get(team) ?? 0) + 1);
+        }
+        if (seen.size === 0) return fromUrl;
+        if (fromUrl && seen.has(fromUrl)) return fromUrl;
+        let best = null;
+        let bestCount = 0;
+        for (const [team, count] of seen) if (count > bestCount) { best = team; bestCount = count; }
+        return best ?? fromUrl;
       },
       selectors: {},
     },

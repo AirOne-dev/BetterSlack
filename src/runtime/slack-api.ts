@@ -9,7 +9,7 @@
 import type { Cleanup } from './dom.js';
 import { h, keepMounted, onEach, waitFor } from './dom.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
-import { createWebApi, currentTeamId, userIdFromAvatarUrl, type SlackProfile, type WebApi } from './web-api.js';
+import { createWebApi, currentTeamId, drawnChannelId, userIdFromAvatarUrl, type SlackProfile, type WebApi } from './web-api.js';
 
 /** Hover toolbar that appears over a message. */
 const ACTIONS_GROUP = '[data-qa="message-actions"]';
@@ -246,7 +246,7 @@ const drawnEmoji = new Map<string, string>();
  * Cheap, and worth redoing: it is a `querySelectorAll` over what is on screen,
  * and what is on screen changes. The map only grows.
  */
-export function harvestEmoji(): Map<string, string> {
+function harvestEmoji(): Map<string, string> {
   for (const img of document.querySelectorAll<HTMLImageElement>('.c-emoji img[data-stringify-emoji]')) {
     const name = img.getAttribute('data-stringify-emoji')?.replace(/^:|:$/g, '');
     if (!name || drawnEmoji.has(name)) continue;
@@ -642,6 +642,14 @@ export interface SlackApi {
   statusNode(status: SlackStatus, profile?: SlackProfile | null): HTMLElement;
   /** The channel currently open, read from the client URL. */
   currentChannelId(): string | null;
+  /**
+   * The workspace the client is showing.
+   *
+   * Not simply the URL: at a cold start Slack restores the view before it
+   * settles the address, and reading the URL then answers with the workspace
+   * the user has left.
+   */
+  currentTeamId(): string | null;
   /** The author of a message, read from their avatar URL. */
   userIdFromMessage(message: MessageRef): string | null;
 
@@ -862,9 +870,21 @@ export function createSlackApi(pluginId: string): SlackApi {
         message.element.querySelector<HTMLImageElement>('.c-message_kit__avatar img, .c-avatar img')?.src,
       ),
     currentChannelId: () => {
-      const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
-      return match ? match[1]!.toUpperCase() : null;
+      /*
+       * What the client has drawn, when the URL disagrees with it.
+       *
+       * At a cold start Slack restores the view before it settles the address:
+       * the URL named a channel in one workspace while the messages on screen
+       * belonged to another. Every message Slack renders carries its channel,
+       * so the screen is its own witness; the URL is used when nothing has been
+       * drawn yet, and while the two agree it makes no difference which is
+       * read.
+       */
+      const fromUrl = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i)?.[1]?.toUpperCase()
+        ?? null;
+      return drawnChannelId()?.toUpperCase() ?? fromUrl;
     },
+    currentTeamId: () => currentTeamId(),
     /*
      * Filled in by `createPluginApi`, which is where the settings live. Left
      * inert here so `createSlackApi` still satisfies the type on its own, and
