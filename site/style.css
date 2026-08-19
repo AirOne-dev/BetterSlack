@@ -479,42 +479,19 @@ kbd {
 
 /* The playground -------------------------------------------------------- *
  *
- * A card with two tabs: what the call made, and the call. Changing a control
- * rebuilds both, and switching tabs never rebuilds anything -- the panel you
- * are not looking at is hidden, not thrown away.
+ * Two cards: what the call made, and the arguments that made it. They were one
+ * card with tabs, and the tabs cost a click to see a thing that fits on the
+ * screen anyway. The call itself is the Example below, which every entry has.
  */
 
 .pg {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: var(--panel);
+  box-shadow: var(--shadow);
   overflow: hidden;
+  padding: 18px;
 }
-.pg__tabs {
-  display: flex;
-  gap: 2px;
-  padding: 6px 6px 0;
-  border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.02);
-}
-.pg__tab {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: 600 13px/1 var(--sans);
-  padding: 9px 14px;
-  border-radius: 8px 8px 0 0;
-  cursor: pointer;
-}
-.pg__tab:hover { color: var(--text); }
-.pg__tab[aria-selected="true"] {
-  color: var(--text);
-  background: var(--panel);
-  box-shadow: inset 0 -1px 0 var(--panel), 0 1px 0 var(--panel);
-}
-.pg__panel { padding: 18px; position: relative; }
-.pg__panel[hidden] { display: none; }
-
 .pg__stage {
   display: flex;
   flex-wrap: wrap;
@@ -528,34 +505,33 @@ kbd {
     repeating-conic-gradient(rgba(255, 255, 255, 0.028) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
 }
 .pg__stage > * { max-width: 100%; }
-.pg__stage, .pg__code, .pg__controls { min-width: 0; }
+.pg__stage, .pg__controls { min-width: 0; }
 
+.pg-knobs {
+  margin-top: 12px;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.015);
+}
+.pg-knobs__title {
+  margin: 0 0 12px;
+  font: 600 11px/1 var(--sans);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 .pg__controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
   gap: 12px 16px;
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
 }
 .pg__control { display: grid; gap: 6px; min-width: 0; }
-.pg__label {
-  font: 500 12px/1 var(--sans);
-  letter-spacing: 0.01em;
-  color: var(--muted);
-}
+.pg__label { font: 500 12px/1 var(--sans); color: var(--muted); }
 .pg__check { width: 18px; height: 18px; accent-color: var(--blue); justify-self: start; }
-
-.pg__code {
-  margin: 0;
-  overflow-x: auto;
-  font: 12.5px/1.7 var(--mono);
-  color: #d5d5e2;
-  white-space: pre;
-}
 .pg__watch { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 
-.pg__copy, .api-code .pg__copy {
+.pg__copy {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -568,20 +544,19 @@ kbd {
   cursor: pointer;
 }
 .pg__copy:hover { color: var(--text); border-color: var(--line-strong); }
-.api-code { position: relative; }
 
-.api-badge {
-  margin-left: auto;
-  font: 600 10.5px/1 var(--sans);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
+/* The written example, in the same kind of card as the preview. */
+.api-code {
+  position: relative;
+  margin: 0;
+  padding: 18px 20px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px 9px;
-  white-space: nowrap;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  overflow-x: auto;
 }
-.api-badge--live { color: var(--blue); border-color: rgba(54, 197, 240, 0.4); }
+.api-code code { font: 12.5px/1.75 var(--mono); color: #d5d5e2; }
 
 .api-result {
   margin: 0;
@@ -591,18 +566,6 @@ kbd {
   background: rgba(0, 0, 0, 0.35);
   font: 600 16px/1.5 var(--sans);
   color: var(--text);
-}
-
-/* The stage's theme picker ---------------------------------------------- */
-
-.stage-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin: 22px 0 10px;
-  font-size: 14px;
-  color: var(--muted);
 }
 
 /* Slack's chrome, mounted so a button has somewhere to land. Everything the
@@ -670,12 +633,24 @@ body.api-page .footer { display: none; }
   gap: 0;
 }
 
+/*
+ * The reading column is centred in what is left of the window.
+ *
+ * With the list pinned at 264px, a panel that simply starts after it sits off
+ * to the right on a wide screen and reads as though the page is leaning. The
+ * measure is capped and the rest of the room is split either side.
+ */
+.stack__inner {
+  width: min(880px, 100%);
+  margin-inline: auto;
+}
+
 .side {
   display: flex;
   flex-direction: column;
   min-height: 0;
   border-right: 1px solid var(--line);
-  background: var(--bg-soft);
+  background: linear-gradient(180deg, rgba(97, 31, 105, 0.10), transparent 220px), var(--bg-soft);
 }
 .side__search { padding: 14px 16px 10px; }
 .side__search input {
@@ -724,10 +699,39 @@ body.api-page .footer { display: none; }
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: clamp(24px, 3.5vw, 44px) clamp(18px, 4vw, 56px) 56px;
-  max-width: 1080px;
+  padding: clamp(28px, 4vw, 56px) clamp(18px, 4vw, 40px) 72px;
 }
-.panel__head { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 8px; }
+/* The landing page's own furniture, brought over: a soft glow behind the
+   heading, the same rounded panels and the same aubergine-to-red accent. */
+.panel__head {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+  margin-bottom: 10px;
+}
+.panel__head::before {
+  content: '';
+  position: absolute;
+  inset: -70px -120px auto -120px;
+  height: 240px;
+  background:
+    radial-gradient(42% 60% at 18% 30%, rgba(97, 31, 105, 0.4), transparent 70%),
+    radial-gradient(34% 55% at 62% 10%, rgba(54, 197, 240, 0.13), transparent 72%);
+  filter: blur(18px);
+  pointer-events: none;
+  z-index: -1;
+}
+.panel__head .eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--muted);
+}
+.panel__head h1 code {
+  background: linear-gradient(120deg, var(--text), #c9a6ff 60%, var(--blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .panel__head h1 { font-size: clamp(26px, 3.4vw, 40px); margin-bottom: 6px; }
 .panel__head h1 code { font-family: var(--mono); }
 .panel__body h2 { font-size: 19px; margin: 30px 0 10px; }
@@ -812,3 +816,20 @@ body.api-page .footer { display: none; }
 @media (max-width: 900px) {
   .api-split { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Panes a few demos print into. */
+.pg__out {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  font: 12.5px/1.7 var(--mono);
+  color: var(--muted);
+  white-space: pre-wrap;
+  width: 100%;
+}
+.pg__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pg__table td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.pg__table td:first-child { color: var(--muted); white-space: nowrap; }
+.pg__rows { display: grid; gap: 6px; width: 100%; }
+.pg__rows .row { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }

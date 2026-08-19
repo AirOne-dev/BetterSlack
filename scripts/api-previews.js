@@ -16,7 +16,12 @@
  * Bundled into site/api-demos.js by scripts/build-api-page.mjs.
  */
 
-import { addMessageAction, addProfileButton, addToolbarButton } from '../src/runtime/slack-api.js';
+import {
+  addMessageAction, addProfileButton, addToolbarButton, createSlackApi, describeMessage,
+} from '../src/runtime/slack-api.js';
+import { keepMounted, onEach, onShortcut, waitFor } from '../src/runtime/dom.js';
+import { PANEL_CSS } from '../src/runtime/ui/styles.js';
+import { openPalette } from '../src/runtime/ui/palette.js';
 import { modal, toast, confirm as slackConfirm } from '../src/runtime/ui/widgets.js';
 import { openMenu } from '../src/runtime/ui/menu.js';
 import { h } from '../src/runtime/dom.js';
@@ -63,7 +68,16 @@ function installStyles() {
   const style = document.createElement('style');
   style.id = 'sm-kit-css';
   style.textContent = KIT_CSS;
-  document.head.append(style, helperCss);
+  /*
+   * BetterSlack's own panel stylesheet, so the palette and anything else that
+   * wears `betterslack-` classes looks exactly as it does in the client. This
+   * one is ours, unlike the Slack classes next door, so it is the real file
+   * rather than an understudy.
+   */
+  const panel = document.createElement('style');
+  panel.id = 'betterslack-panel-css';
+  panel.textContent = PANEL_CSS;
+  document.head.append(style, panel, helperCss);
 }
 
 /* -- the playground ------------------------------------------------------- *
@@ -105,63 +119,46 @@ function control(spec, state, draw) {
   input.id = id;
   const label = el('label', 'pg__label');
   label.htmlFor = id;
-  label.textContent = spec.label ?? spec.key;
+  // `||`, not `??`: a control with no label carries an empty string, not null.
+  label.textContent = spec.label || spec.key;
   return el('div', 'pg__control', [label, input]);
 }
 
-function playground(name, spec) {
+function playground(name, render) {
   const slot = document.querySelector(`[data-demo="${name}"]`);
   if (!slot) return;
 
+  /*
+   * The knobs are declared in `docs/api/<slug>.md` and arrive as JSON on the
+   * slot. A preview is code and has to be; everything a writer writes about it
+   * is not, and lives in the markdown.
+   */
+  let controls = [];
+  try { controls = JSON.parse(slot.dataset.controls || '[]'); } catch { controls = []; }
+
   const state = {};
-  for (const c of spec.controls ?? []) state[c.key] = c.value;
+  for (const c of controls) state[c.key] = c.value;
 
   const stage = el('div', 'pg__stage slack-stage');
-  stage.dataset.theme = document.querySelector('.stage-theme')?.value ?? 'midnight';
-  const code = el('pre', 'pg__code');
-  const controls = el('div', 'pg__controls');
+  stage.dataset.theme = document.getElementById('stage-theme')?.value ?? 'midnight';
 
   const draw = () => {
     try {
-      const made = spec.render(state, { stage });
+      const made = render(state, { stage });
       if (made !== undefined) stage.replaceChildren(...[].concat(made).filter(Boolean));
-      code.innerHTML = highlight(spec.code(state), 'javascript');
     } catch (err) {
       stage.textContent = `this demo threw: ${err.message}`;
     }
   };
 
-  if (spec.controls?.length) {
-    controls.replaceChildren(...spec.controls.map((c) => control(c, state, draw)));
+  const parts = [el('div', 'pg', [stage])];
+  if (controls.length) {
+    parts.push(el('div', 'pg-knobs', [
+      el('p', 'pg-knobs__title', [document.documentElement.lang === 'fr' ? 'Paramètres' : 'Props']),
+      el('div', 'pg__controls', controls.map((c) => control(c, state, draw))),
+    ]));
   }
-
-  /*
-   * Preview and Code, one at a time.
-   *
-   * Both are always in the document -- switching tabs must not rebuild a demo
-   * you have just set up -- so the hidden one is hidden, not removed.
-   */
-  const preview = el('div', 'pg__panel', spec.controls?.length ? [stage, controls] : [stage]);
-  const source = el('div', 'pg__panel', [code, copyButton(() => code.textContent)]);
-  source.hidden = true;
-
-  const tabs = el('div', 'pg__tabs');
-  const tab = (label, panel, on) => {
-    const button = el('button', 'pg__tab');
-    button.type = 'button';
-    button.textContent = label;
-    button.setAttribute('aria-selected', String(on));
-    button.addEventListener('click', () => {
-      for (const other of tabs.querySelectorAll('.pg__tab')) other.setAttribute('aria-selected', 'false');
-      button.setAttribute('aria-selected', 'true');
-      preview.hidden = panel !== preview;
-      source.hidden = panel !== source;
-    });
-    return button;
-  };
-  tabs.append(tab('Preview', preview, true), tab('Code', source, false));
-
-  slot.replaceChildren(el('div', 'pg', [tabs, preview, source]));
+  slot.replaceChildren(...parts);
   draw();
 }
 
@@ -182,65 +179,27 @@ function copyButton(text) {
 
 const KIT = {
   el: {
-    controls: [
-      { key: 'tag', type: 'select', options: ['div', 'p', 'strong', 'span'], value: 'p' },
-      { key: 'text', type: 'text', value: 'Built with the same maker as everything below.' },
-      { key: 'className', label: 'class', type: 'text', value: 'sm-hint' },
-    ],
     render: (v) => kit.el(v.tag, { class: v.className }, [v.text]),
-    code: (v) => `kit.el('${v.tag}', { class: '${v.className}' }, ['${v.text}'])`,
   },
   button: {
-    controls: [
-      { key: 'label', type: 'text', value: 'Save' },
-      { key: 'variant', type: 'select', options: ['default', 'primary', 'ghost', 'danger'], value: 'primary' },
-      { key: 'wide', type: 'boolean', value: false },
-      { key: 'title', label: 'tooltip', type: 'text', value: 'Write the theme to disk' },
-    ],
     render: (v) => kit.button(v.label, { variant: v.variant, wide: v.wide, title: v.title }),
-    code: (v) => `kit.button('${v.label}', {\n  variant: '${v.variant}',\n  wide: ${v.wide},\n  title: '${v.title}',\n})`,
   },
   iconButton: {
-    controls: [
-      { key: 'glyph', type: 'text', value: '✎' },
-      { key: 'title', type: 'text', value: 'Rename' },
-      { key: 'danger', type: 'boolean', value: false },
-    ],
     render: (v) => kit.iconButton(v.glyph, { title: v.title, danger: v.danger }),
-    code: (v) => `kit.iconButton('${v.glyph}', { title: '${v.title}', danger: ${v.danger} })`,
   },
   input: {
-    controls: [
-      { key: 'value', type: 'text', value: 'Midnight' },
-      { key: 'placeholder', type: 'text', value: 'Theme name' },
-    ],
     render: (v) => kit.input({ value: v.value, placeholder: v.placeholder }),
-    code: (v) => `kit.input({ value: '${v.value}', placeholder: '${v.placeholder}' })`,
   },
   field: {
-    controls: [
-      { key: 'label', type: 'text', value: 'Theme name' },
-      { key: 'hint', type: 'text', value: 'Shown in the panel and in the palette.' },
-    ],
     render: (v) => kit.field(v.label, kit.input({ value: 'Midnight' }), v.hint),
-    code: (v) => `kit.field('${v.label}', kit.input({ value: 'Midnight' }),\n  '${v.hint}')`,
   },
   select: {
-    controls: [
-      { key: 'options', type: 'text', value: 'dark, light, follow the system' },
-      { key: 'value', type: 'text', value: 'dark' },
-    ],
     render: (v) => kit.select(
       v.options.split(',').map((o) => ({ value: o.trim(), label: o.trim() })),
       { value: v.value.trim() },
     ),
-    code: (v) => `kit.select([\n${v.options.split(',').map((o) => `  { value: '${o.trim()}', label: '${o.trim()}' },`).join('\n')}\n], { value: '${v.value.trim()}' })`,
   },
   segmented: {
-    controls: [
-      { key: 'labels', type: 'text', value: 'Colours, CSS, Inspect' },
-      { key: 'count', label: 'badge on the first', type: 'number', value: 12 },
-    ],
     render: (v) => kit.segmented(
       v.labels.split(',').map((label, i) => ({
         value: label.trim().toLowerCase(),
@@ -249,38 +208,19 @@ const KIT = {
       })),
       { value: v.labels.split(',')[0].trim().toLowerCase() },
     ).node,
-    code: (v) => `kit.segmented([\n${v.labels.split(',').map((l, i) => `  { value: '${l.trim().toLowerCase()}', label: '${l.trim()}'${i === 0 && v.count ? `, count: ${v.count}` : ''} },`).join('\n')}\n], { value: '${v.labels.split(',')[0].trim().toLowerCase()}' }).node`,
   },
   card: {
-    controls: [
-      { key: 'title', type: 'text', value: 'Palette' },
-      { key: 'subtitle', type: 'text', value: 'Two colours, ten derived' },
-      { key: 'action', label: 'action button', type: 'text', value: 'Reset' },
-    ],
     render: (v) => kit.card(v.title, [kit.el('p', { class: 'sm-hint' }, [v.subtitle])], {
       actions: v.action ? [kit.button(v.action, { variant: 'ghost' })] : [],
     }),
-    code: (v) => `kit.card('${v.title}', [\n  kit.el('p', { class: 'sm-hint' }, ['${v.subtitle}']),\n], { actions: [kit.button('${v.action}', { variant: 'ghost' })] })`,
   },
   emptyState: {
-    controls: [
-      { key: 'title', type: 'text', value: 'No themes yet' },
-      { key: 'body', type: 'text', value: 'Build one and it appears here.' },
-      { key: 'action', label: 'button', type: 'text', value: 'New theme' },
-    ],
     render: (v) => kit.emptyState(v.title, v.body, v.action ? kit.button(v.action, { variant: 'primary' }) : undefined),
-    code: (v) => `kit.emptyState('${v.title}', '${v.body}',\n  kit.button('${v.action}', { variant: 'primary' }))`,
   },
   swatch: {
-    controls: [
-      { key: 'colour', type: 'text', value: 'rgba(97, 31, 105, 0.55)' },
-      { key: 'size', type: 'select', options: ['sm', 'md', 'lg'], value: 'lg' },
-    ],
     render: (v) => kit.swatch(v.colour, { size: v.size }),
-    code: (v) => `// a translucent colour reads as translucent: the checkerboard is kit.CHECKER\nkit.swatch('${v.colour}', { size: '${v.size}' })`,
   },
   popover: {
-    controls: [{ key: 'label', type: 'text', value: 'Open a popover' }],
     render: (v) => {
       const anchor = kit.button(v.label);
       anchor.addEventListener('click', () => {
@@ -291,15 +231,8 @@ const KIT = {
       });
       return anchor;
     },
-    code: (v) => `const anchor = kit.button('${v.label}');\nanchor.addEventListener('click', () => {\n  kit.popover(content, anchor);\n});`,
   },
   confirm: {
-    controls: [
-      { key: 'title', type: 'text', value: 'Delete Midnight?' },
-      { key: 'body', type: 'text', value: 'The stylesheet goes with it. This cannot be undone.' },
-      { key: 'action', type: 'text', value: 'Delete' },
-      { key: 'danger', type: 'boolean', value: true },
-    ],
     render: (v) => {
       const trigger = kit.button(v.action, { variant: v.danger ? 'danger' : 'primary' });
       const said = kit.el('span', { class: 'sm-hint', style: 'margin-left:10px' }, ['']);
@@ -311,10 +244,8 @@ const KIT = {
       });
       return [trigger, said];
     },
-    code: (v) => `const yes = await kit.confirm({\n  title: '${v.title}',\n  body: '${v.body}',\n  action: '${v.action}',\n  cancel: 'Keep it',\n  danger: ${v.danger},\n});`,
   },
   copyText: {
-    controls: [{ key: 'text', type: 'text', value: '#611f69' }],
     render: (v) => {
       const button = kit.button(`Copy ${v.text}`);
       const said = kit.el('span', { class: 'sm-hint', style: 'margin-left:10px' }, ['']);
@@ -323,14 +254,9 @@ const KIT = {
       });
       return [button, said];
     },
-    code: (v) => `const ok = await kit.copyText('${v.text}');`,
   },
   code: {
-    controls: [
-      { key: 'value', type: 'text', value: ':root { --dt_color-base-pry: #0b0d12; }' },
-    ],
     render: (v) => kit.code({ value: v.value }).node,
-    code: (v) => `const editor = kit.code({ value: '${v.value}' });\ndocument.body.append(editor.node);\neditor.value(); // what is in it now`,
   },
 };
 
@@ -338,10 +264,6 @@ const KIT = {
 
 const HELPERS = {
   toggle: {
-    controls: [
-      { key: 'className', label: 'class on <html>', type: 'text', value: 'demo-zen' },
-      { key: 'defaultOn', type: 'boolean', value: false },
-    ],
     render: (v) => {
       for (const name of [...document.documentElement.classList]) {
         if (name.startsWith('demo-') || name.startsWith('betterslack-api-page')) {
@@ -369,15 +291,11 @@ const HELPERS = {
       paint();
       return watch;
     },
-    code: (v) => `const zen = api.helpers.toggle({\n  key: 'on',\n  className: '${v.className}',\n  defaultOn: ${v.defaultOn},\n  whenOn: '& .p-channel_sidebar { display: none !important; }',\n});\nawait zen.toggle();`,
   },
   describeHotkey: {
-    controls: [{ key: 'combo', type: 'text', value: 'mod+shift+f' }],
     render: (v) => kit.el('strong', { style: 'font-size:20px' }, [helpers.describeHotkey(v.combo)]),
-    code: (v) => `api.helpers.describeHotkey('${v.combo}')\n// ⌘⇧F on a Mac, Ctrl+Shift+F elsewhere`,
   },
   debounce: {
-    controls: [{ key: 'ms', label: 'milliseconds', type: 'number', value: 400 }],
     render: (v, { stage }) => {
       const out = kit.el('p', { class: 'sm-hint' }, ['type below']);
       let typed = 0;
@@ -390,7 +308,6 @@ const HELPERS = {
       box.addEventListener('input', () => { typed += 1; run(); });
       return [box, out];
     },
-    code: (v) => `const search = api.helpers.debounce((q) => run(q), ${v.ms});\nbox.addEventListener('input', () => search(box.value));`,
   },
 };
 
@@ -401,11 +318,6 @@ const ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10
 
 const UI = {
   'ui-toast': {
-    controls: [
-      { key: 'message', type: 'text', value: 'Theme saved' },
-      { key: 'variant', type: 'select', options: ['info', 'success', 'warning', 'error'], value: 'success' },
-      { key: 'action', label: 'action label', type: 'text', value: 'Undo' },
-    ],
     render: (v) => {
       const button = kit.button('Show the toast', { variant: 'primary' });
       button.addEventListener('click', () => toast(v.message, {
@@ -414,15 +326,8 @@ const UI = {
       }));
       return button;
     },
-    code: (v) => `api.ui.toast('${v.message}', {\n  variant: '${v.variant}',\n  action: { label: '${v.action}', onClick: () => undo() },\n});`,
   },
   'ui-modal': {
-    controls: [
-      { key: 'title', type: 'text', value: 'Channel notes' },
-      { key: 'body', type: 'text', value: 'Kept on this machine only. Nothing is sent anywhere.' },
-      { key: 'action', type: 'text', value: 'Save' },
-      { key: 'width', type: 'number', value: 460 },
-    ],
     render: (v) => {
       const button = kit.button('Open the dialog', { variant: 'primary' });
       button.addEventListener('click', () => {
@@ -435,14 +340,8 @@ const UI = {
       });
       return button;
     },
-    code: (v) => `api.ui.modal({\n  title: '${v.title}',\n  content: api.dom.h('p', {}, ['${v.body}']),\n  width: ${v.width},\n  actions: [{ label: '${v.action}', primary: true, onClick: () => true }],\n});`,
   },
   'ui-confirm': {
-    controls: [
-      { key: 'title', type: 'text', value: 'Remove Midnight?' },
-      { key: 'body', type: 'text', value: 'Its files go with it.' },
-      { key: 'danger', type: 'boolean', value: true },
-    ],
     render: (v) => {
       const button = kit.button('Ask', { variant: v.danger ? 'danger' : 'primary' });
       const said = kit.el('span', { class: 'sm-hint', style: 'margin-left:10px' }, ['']);
@@ -452,10 +351,8 @@ const UI = {
       });
       return [button, said];
     },
-    code: (v) => `const sure = await api.ui.confirm({\n  title: '${v.title}',\n  body: '${v.body}',\n  danger: ${v.danger},\n});`,
   },
   'ui-menu': {
-    controls: [{ key: 'items', type: 'text', value: 'Rename, Duplicate, Remove' }],
     render: (v) => {
       const anchor = kit.button('Open the menu');
       anchor.addEventListener('click', () => openMenu(anchor, v.items.split(',').map((label, i) => ({
@@ -465,7 +362,6 @@ const UI = {
       }))));
       return anchor;
     },
-    code: (v) => `api.ui.menu(anchor, [\n${v.items.split(',').map((l, i, a) => `  { label: '${l.trim()}'${i === a.length - 1 ? ', danger: true' : ''}, onSelect: () => {} },`).join('\n')}\n]);`,
   },
 };
 
@@ -524,10 +420,6 @@ const TOOLBAR_CONTAINER = {
 
 const CHROME = {
   'slack-addtoolbarbutton': {
-    controls: [
-      { key: 'toolbar', type: 'select', options: ['controlStrip', 'composer', 'channelHeader'], value: 'controlStrip' },
-      { key: 'label', type: 'text', value: 'Channel notes' },
-    ],
     render: (v, { stage }) => {
       const frame = slackChrome();
       stage.replaceChildren(frame);
@@ -535,10 +427,8 @@ const CHROME = {
       focusChrome(frame, TOOLBAR_CONTAINER[v.toolbar]);
       return undefined;
     },
-    code: (v) => `api.slack.addToolbarButton('${v.toolbar}', {\n  id: 'notes',\n  label: '${v.label}',\n  icon: '<svg viewBox="0 0 20 20">…</svg>',\n  onClick: () => open(),\n});`,
   },
   'slack-addmessageaction': {
-    controls: [{ key: 'label', type: 'text', value: 'Copy link' }],
     render: (v, { stage }) => {
       const frame = slackChrome();
       stage.replaceChildren(frame);
@@ -546,10 +436,8 @@ const CHROME = {
       focusChrome(frame, '[data-qa="message_container"]');
       return undefined;
     },
-    code: (v) => `api.slack.addMessageAction({\n  id: 'copy-link',\n  label: '${v.label}',\n  icon: '<svg viewBox="0 0 20 20">…</svg>',\n  onClick: (message) => copy(message.permalink),\n});`,
   },
   'slack-addprofilebutton': {
-    controls: [{ key: 'label', type: 'text', value: 'Download picture' }],
     render: (v, { stage }) => {
       const frame = slackChrome();
       stage.replaceChildren(frame);
@@ -557,27 +445,12 @@ const CHROME = {
       focusChrome(frame, '[data-qa="member_profile_pane"]');
       return undefined;
     },
-    code: (v) => `api.slack.addProfileButton({\n  id: 'download',\n  label: '${v.label}',\n  icon: '<svg viewBox="0 0 20 20">…</svg>',\n  onClick: ({ userId }) => save(userId),\n});`,
   },
   'slack-avatarurl': {
-    controls: [
-      { key: 'url', type: 'text', value: 'https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-06c4356b6ae3-48' },
-      { key: 'size', type: 'select', options: ['24', '48', '72', '192', '512'], value: '192' },
-    ],
     render: (v) => {
       const at = /-\d+$/.test(v.url) ? v.url.replace(/-\d+$/, `-${v.size}`) : null;
       return kit.el('code', { class: 'sm-hint', style: 'word-break:break-all' }, [at ?? 'null — not one of Slack\u2019s avatar URLs']);
     },
-    code: (v) => `api.slack.avatarUrl(\n  '${v.url}',\n  ${v.size},\n);`,
-  },
-  'dom-h': {
-    controls: [
-      { key: 'tag', type: 'select', options: ['div', 'button', 'span'], value: 'button' },
-      { key: 'className', label: 'class', type: 'text', value: 'c-button c-button--primary' },
-      { key: 'text', type: 'text', value: 'Made with api.dom.h' },
-    ],
-    render: (v) => h(v.tag, { class: v.className }, [v.text]),
-    code: (v) => `api.dom.h('${v.tag}', { class: '${v.className}' }, ['${v.text}']);`,
   },
 };
 
@@ -585,34 +458,18 @@ const CHROME = {
 
 const SLACK_HELPERS = {
   'helpers-iconbutton': {
-    controls: [
-      { key: 'label', type: 'text', value: 'Notes' },
-      { key: 'surface', type: 'select', options: ['strip', 'header', 'composer'], value: 'header' },
-    ],
     render: (v) => helpers.iconButton({ icon: ICON, label: v.label, surface: v.surface, onClick: () => {} }),
-    code: (v) => `api.helpers.iconButton({\n  icon: '<svg viewBox="0 0 20 20">…</svg>',\n  label: '${v.label}',\n  surface: '${v.surface}',\n  onClick: () => open(),\n});`,
   },
   'helpers-field': {
-    controls: [
-      { key: 'label', type: 'text', value: 'Time zone' },
-      { key: 'value', type: 'text', value: 'Europe/Paris' },
-    ],
     render: (v) => helpers.field(v.label, v.value),
-    code: (v) => `api.helpers.field('${v.label}', '${v.value}');`,
   },
   'helpers-section': {
-    controls: [
-      { key: 'title', type: 'text', value: 'More details' },
-      { key: 'rows', type: 'text', value: 'User ID: U04KY0Z61, Time zone: Europe/Paris' },
-    ],
     render: (v) => helpers.section(v.title, v.rows.split(',').map((row) => {
       const [label, value] = row.split(':');
       return helpers.field((label ?? '').trim(), (value ?? '').trim());
     })),
-    code: (v) => `api.helpers.section('${v.title}', [\n  api.helpers.field('User ID', user.id),\n  api.helpers.field('Time zone', user.tz_label),\n]);`,
   },
   'helpers-badge': {
-    controls: [{ key: 'value', type: 'number', value: 3 }],
     render: (v, { stage }) => {
       const host = el('div', 'pg__badge-host');
       host.append(helpers.iconButton({ icon: ICON, label: 'Activity', surface: 'header', onClick: () => {} }));
@@ -620,19 +477,235 @@ const SLACK_HELPERS = {
       helpers.badge('.pg__badge-host button', 'demo-badge', () => v.value || null);
       return undefined;
     },
-    code: (v) => `let unread = ${v.value};\napi.helpers.badge('[data-qa="betterslack_button"]', 'unread', () => unread);`,
   },
   'helpers-tooltip': {
-    controls: [
-      { key: 'title', type: 'text', value: 'Channel notes' },
-      { key: 'subtitle', type: 'text', value: '⌘⇧N' },
-    ],
     render: (v) => {
       const button = helpers.iconButton({ icon: ICON, label: v.title, surface: 'header', onClick: () => {} });
       helpers.tooltip(button, v.title, v.subtitle);
       return [button, kit.el('span', { class: 'sm-hint', style: 'margin-left:10px' }, ['hover it'])];
     },
-    code: (v) => `api.helpers.tooltip(button, '${v.title}', '${v.subtitle}');`,
+  },
+};
+
+
+/* -- more of the surface, running ---------------------------------------- */
+
+/** A console pane, for the calls whose whole output is a line of text. */
+function say(stage, lines) {
+  return kit.el('pre', { class: 'pg__out' }, [lines.join('\n')]);
+}
+
+const MORE = {
+  'slack-selectors': {
+    render: () => {
+      const slack = createSlackApi('demo');
+      return kit.el('table', { class: 'pg__table' }, Object.entries(slack.selectors).map(
+        ([name, value]) => kit.el('tr', {}, [
+          kit.el('td', {}, [name]),
+          kit.el('td', {}, [kit.el('code', {}, [value])]),
+        ]),
+      ));
+    },
+  },
+  'slack-describemessage': {
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      focusChrome(frame, '[data-qa="message_container"]');
+      const message = describeMessage(frame.querySelector('[data-qa="message_container"]'));
+      frame.append(say(stage, [
+        `channelId: ${message.channelId}`,
+        `ts:        ${message.ts}`,
+        `text:      ${message.text}`,
+        `permalink: ${message.permalink}`,
+      ]));
+      return undefined;
+    },
+  },
+  'slack-composer': {
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      focusChrome(frame, '[data-qa="message_input"]');
+      const slack = createSlackApi('demo');
+      const button = kit.button('insert()', { variant: 'primary' });
+      button.addEventListener('click', () => {
+        slack.composer.insert(v.text);
+        slack.composer.focus();
+      });
+      frame.append(button);
+      return undefined;
+    },
+  },
+  'helpers-each': {
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      focusChrome(frame, '[data-qa="message_container"]');
+      const seen = kit.el('span', { class: 'sm-hint' }, ['']);
+      helpers.each('[data-qa="message_container"]', (message) => {
+        message.style.outline = '2px solid var(--dt_color-content-hgl-1, #7cc4ff)';
+        seen.textContent = 'the handler ran on every match, and will run on new ones';
+      });
+      frame.append(seen);
+      return undefined;
+    },
+  },
+  'helpers-mount': {
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      focusChrome(frame, '.p-control_strip');
+      helpers.mount('.p-control_strip', 'demo-mounted', () => {
+        const node = kit.button('mounted');
+        return node;
+      });
+      return undefined;
+    },
+  },
+  'helpers-hotkey': {
+    render: (v, { stage }) => {
+      const out = kit.el('p', { class: 'sm-hint' }, [`press ${helpers.describeHotkey(v.combo)} with this page focused`]);
+      let count = 0;
+      helpers.hotkey(v.combo, () => {
+        count += 1;
+        out.textContent = `${helpers.describeHotkey(v.combo)} fired ${count}×`;
+      });
+      return out;
+    },
+  },
+  'helpers-poll': {
+    render: (v) => {
+      const out = kit.el('p', { class: 'sm-hint' }, ['…']);
+      let ticks = 0;
+      helpers.poll(() => {
+        ticks += 1;
+        out.textContent = `${ticks} tick${ticks === 1 ? '' : 's'} — and it stops while this tab is hidden`;
+      }, Math.max(250, v.ms));
+      return out;
+    },
+  },
+  'helpers-copy': {
+    render: (v) => {
+      const button = kit.button('copy()', { variant: 'primary' });
+      const out = kit.el('span', { class: 'sm-hint', style: 'margin-left:10px' }, ['']);
+      toasted = (message) => { out.textContent = `api.ui.toast(${JSON.stringify(message)})`; };
+      button.addEventListener('click', () => helpers.copy(v.text, 'Link copied'));
+      return [button, out];
+    },
+  },
+  'kit-hoverable': {
+    render: () => {
+      const out = kit.el('span', { class: 'sm-hint', style: 'margin-left:10px' }, ['not hovered']);
+      const row = kit.button('hover me');
+      kit.hoverable(row, {
+        enter: () => { out.textContent = 'enter'; },
+        leave: () => { out.textContent = 'leave'; },
+      });
+      return [row, out];
+    },
+  },
+  'dom-h': {
+    render: (v) => h(v.tag, { class: v.className }, [v.text]),
+  },
+  'dom-waitfor': {
+    render: (v, { stage }) => {
+      const out = kit.el('p', { class: 'sm-hint' }, ['looking for .late-arrival…']);
+      const late = document.createElement('div');
+      late.className = 'late-arrival';
+      waitFor('.late-arrival', 4000).then((found) => {
+        out.textContent = found ? 'found it — resolved with the element' : 'timed out — resolved null, it does not throw';
+      });
+      setTimeout(() => stage.append(late), 900);
+      return out;
+    },
+  },
+  'dom-keepmounted': {
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      focusChrome(frame, '.p-control_strip');
+      const out = kit.el('p', { class: 'sm-hint' }, ['']);
+      keepMounted('.p-control_strip', 'demo-keep', () => kit.button('kept'));
+      const remove = kit.button('remove it', { variant: 'danger' });
+      remove.addEventListener('click', () => {
+        frame.querySelector('#demo-keep')?.remove();
+        out.textContent = 'taken out — and put straight back';
+      });
+      frame.append(remove, out);
+      return undefined;
+    },
+  },
+  'dom-oneach': {
+    render: (v, { stage }) => {
+      const list = kit.el('div', { class: 'pg__rows' }, []);
+      const out = kit.el('p', { class: 'sm-hint' }, ['0 rows seen']);
+      let seen = 0;
+      onEach('.pg__rows > .row', (row) => {
+        seen += 1;
+        row.style.color = 'var(--dt_color-content-hgl-1, #7cc4ff)';
+        out.textContent = `${seen} rows seen — including the ones added later`;
+      });
+      const add = kit.button('add a row', { variant: 'primary' });
+      add.addEventListener('click', () => list.append(kit.el('div', { class: 'row' }, ['a new row'])));
+      list.append(kit.el('div', { class: 'row' }, ['a row that was already here']));
+      return [list, add, out];
+    },
+  },
+  'dom-onshortcut': {
+    render: () => {
+      const out = kit.el('p', { class: 'sm-hint' }, ['press F1 with this page focused']);
+      onShortcut((event) => event.key === 'F1', () => { out.textContent = 'F1 — the match ran'; });
+      return out;
+    },
+  },
+  'settings-set': {
+    render: (v, { stage }) => {
+      const out = kit.el('pre', { class: 'pg__out' }, [JSON.stringify(Object.fromEntries(store), null, 2)]);
+      const button = kit.button('set()', { variant: 'primary' });
+      button.addEventListener('click', async () => {
+        store.set(v.key, v.value);
+        out.textContent = JSON.stringify(Object.fromEntries(store), null, 2);
+      });
+      return [button, out];
+    },
+  },
+  'settings-get': {
+    render: (v) => kit.el('pre', { class: 'pg__out' }, [
+      String(store.has(v.key) ? store.get(v.key) : v.fallback),
+    ]),
+  },
+  'plugin-css': {
+    render: (v, { stage }) => {
+      const style = document.createElement('style');
+      style.textContent = v.css;
+      return [style, kit.el('p', { class: 'pg__paint' }, ['this line is painted by the CSS beside it'])];
+    },
+  },
+  'log-info': {
+    render: (v) => say(null, [
+      `[betterslack:my-plugin] ${v.message}`,
+      '',
+      'and the same line in the loader’s terminal, which is where',
+      'a mod that failed at boot says so.',
+    ]),
+  },
+  'i18n-locale': {
+    render: () => say(null, [`locale:   ${createI18n().locale}`, `language: ${createI18n().language}`]),
+  },
+  'ui-palette': {
+    render: () => {
+      const button = kit.button('Open the palette', { variant: 'primary' });
+      button.addEventListener('click', () => openPalette(
+        (query) => [
+          { id: 'a', title: 'Go to #releases', subtitle: 'channel', source: 'Slack', run: () => {} },
+          { id: 'b', title: 'Open BetterSlack', subtitle: '⌘⇧M', source: 'BetterSlack', run: () => {} },
+          { id: 'c', title: 'Change the shortcuts', source: 'Command Palette', run: () => {} },
+        ].filter((row) => row.title.toLowerCase().includes(query.toLowerCase())),
+        { placeholder: 'Jump to…', empty: 'Nothing matches' },
+      ));
+      return button;
+    },
   },
 };
 
@@ -743,15 +816,23 @@ installStyles();
  * at build time, so switching here is the switch a user makes in the panel --
  * and a component that looks wrong in one theme looks wrong here too.
  */
-function wireThemePickers() {
-  const pickers = [...document.querySelectorAll('.stage-theme')];
-  if (!pickers.length) return;
-  const apply = (value) => {
-    for (const stage of document.querySelectorAll('.slack-stage')) stage.dataset.theme = value;
-    for (const other of pickers) other.value = value;
+/*
+ * One picker, in the bar, for the whole page.
+ *
+ * It used to sit above each preview, which meant choosing a theme and then
+ * losing it at the next entry. Remembered too, so it survives a reload.
+ */
+function wireThemePicker() {
+  const picker = document.getElementById('stage-theme');
+  if (!picker) return;
+  const saved = localStorage.getItem('betterslack-api-theme');
+  if (saved && [...picker.options].some((o) => o.value === saved)) picker.value = saved;
+  const apply = () => {
+    for (const stage of document.querySelectorAll('.slack-stage')) stage.dataset.theme = picker.value;
+    localStorage.setItem('betterslack-api-theme', picker.value);
   };
-  for (const picker of pickers) picker.addEventListener('change', () => apply(picker.value));
-  apply(pickers[0].value);
+  picker.addEventListener('change', apply);
+  apply();
 }
 
 /*
@@ -815,20 +896,33 @@ toasted = (message) => {
   const note = $('helpers-toast');
   if (note) note.textContent = `api.ui.toast(${JSON.stringify(message)})`;
 };
-for (const [name, spec] of Object.entries(KIT)) playground(`kit-${name.toLowerCase()}`, spec);
-for (const [name, spec] of Object.entries(HELPERS)) playground(`helpers-${name.toLowerCase()}`, spec);
-for (const group of [UI, CHROME, SLACK_HELPERS]) {
-  for (const [slug, spec] of Object.entries(group)) playground(slug, spec);
+/** Every preview, by the slug the markdown names in its `preview:` line. */
+const PREVIEWS = {};
+for (const [name, spec] of Object.entries(KIT)) PREVIEWS[`kit-${name.toLowerCase()}`] = spec.render;
+for (const [name, spec] of Object.entries(HELPERS)) PREVIEWS[`helpers-${name.toLowerCase()}`] = spec.render;
+for (const group of [UI, CHROME, SLACK_HELPERS, MORE]) {
+  for (const [slug, spec] of Object.entries(group)) PREVIEWS[slug] = spec.render;
+}
+for (const slot of document.querySelectorAll('[data-demo]')) {
+  const render = PREVIEWS[slot.dataset.demo];
+  if (render) playground(slot.dataset.demo, render);
+  else slot.remove();
 }
 mountI18n();
 mountMarkdown();
 mountHighlight();
 mountRoles();
-wireThemePickers();
+wireThemePicker();
 router();
 filter();
 
-// The examples the generator wrote, given the same affordance as the live ones.
+/*
+ * The written examples, coloured by the same tokeniser the live ones use, and
+ * given the same copy button. They were plain grey text until now, which made
+ * the page look like it had two kinds of code in it.
+ */
 for (const block of document.querySelectorAll('.api-code')) {
-  block.append(copyButton(() => block.querySelector('code')?.textContent ?? ''));
+  const code = block.querySelector('code');
+  if (code) code.innerHTML = highlight(code.textContent ?? '', 'javascript');
+  block.append(copyButton(() => code?.textContent ?? ''));
 }

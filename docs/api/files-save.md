@@ -1,0 +1,13 @@
+---
+name: save
+group: files
+title: api.files
+signature: (url: string, filename: string): Promise<{ path: string; bytes: number }>
+---
+
+Fetch a URL and save it to the download folder. The renderer cannot do this for Slack's CDN, which serves without CORS headers.
+
+```js
+// The loader fetches it: Slack's CDN serves without CORS headers.
+const { path } = await api.files.save(avatarUrl, 'jean-original.jpg');
+```

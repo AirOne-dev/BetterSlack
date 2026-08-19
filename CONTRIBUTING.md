@@ -145,6 +145,13 @@ pnpm check-structure -- <id>
 pnpm test -- <id>
 ```
 
+If your mod adds anything to the plugin API, add its file to `docs/api/` in the
+same change — one file per entry, and the build fails if the folder and the
+TypeScript disagree about what exists. The format is in
+[CLAUDE.md](CLAUDE.md#the-api-documentation-format); the page at
+`site/api.html` is built from those files, so documenting an entry is what puts
+it on the site.
+
 Or `pnpm check`, which runs the whole gate — typecheck, build, manifests,
 registry, site, core tests, every mod's tests, structure — in the order the
 pieces depend on each other.

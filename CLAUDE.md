@@ -290,48 +290,86 @@ live client rather than assumed:
   there when the demo started is somebody's words; what you type during the
   demo is your own.
 
-`site/api.html` is **generated from the API**, by `scripts/build-api-page.mjs`:
-it reads the TypeScript interfaces -- `PluginApi`, `SlackApi`, `Helpers`,
-`I18n`, `Kit` -- and their doc comments, and takes the examples from the
-matching `###` headings in `docs/api.md`. Add a method and it appears; delete
-one and it leaves.
+## The API documentation format
 
-**One file, one panel at a time.** Every entry is a `<section class="panel">`
-in that single document and the list on the left switches between them; the
-page itself does not scroll. Ninety-eight separate files was the first shape
-and the wrong one: a reference is read by jumping around it, and a jump that
-costs a page load loses the theme you picked, the arguments you set and your
-place in the list.
+**Every entry in the plugin API is one file in `docs/api/`, and that file is the
+source.** `site/api.html` and `docs/api.md` are both built from the folder, so
+nothing about an entry is written twice and nothing about an entry can disagree
+with itself. `scripts/api-doc.mjs` is the parser; `scripts/build-api-page.mjs`
+turns the folder into the page.
 
-Its live half is `scripts/api-demos.js`, bundled into `site/api-demos.js`. It
-imports the real modules -- `createKit`, `createHelpers`, `createI18n`,
-`renderMarkdown`, `addToolbarButton` and friends, Code Highlight's tokeniser
-and detector, the theme builder's `derivePalette` -- so the page renders what
-runs in Slack, and the site build fails if one of them stops compiling.
+```md
+---
+name: button
+group: kit
+title: Component kit
+signature: (label: string, options?: ButtonOptions): HTMLButtonElement
+preview: kit-button
+control: label | text | Save
+control: variant | select | primary | | default, primary, ghost, danger
+control: wide | boolean | false
+---
+
+Slack's button, in its four weights.
+
+```js
+kit.button('Save', { variant: 'primary', onClick: () => save() });
+```
+```
+
+- The file name is the slug: `<group>-<name>`, lowercased.
+- `name`, `group`, `title` and `signature` are required. So are one paragraph of
+  prose and one fenced example -- the parser refuses a file without either,
+  because a reference that shows an example for two thirds of what it lists
+  teaches the reader to distrust the third.
+- `preview` names a renderer in `scripts/api-previews.js`. A preview is code and
+  cannot be anything else; everything a writer writes about it is not.
+- Each `control` line is a knob beside the preview:
+  `key | type | value | label | options`. `text`, `number`, `boolean` and
+  `select`; `label` defaults to the key, and `options` is a comma-separated list
+  that only means anything for a select.
+- Deliberately not YAML. Five keys and a repeated line do not need a parser with
+  a specification, and a dependency that can only be wrong about indentation is
+  a poor trade for a file a person writes by hand.
+
+**Adding a method to the API means adding its file.** The build cross-checks the
+folder against the TypeScript interfaces -- `PluginApi`, `SlackApi`, `Helpers`,
+`I18n`, `Kit` -- and fails naming anything that is in one and not the other. It
+compares *what exists*, not the text of the signatures: those get reformatted by
+hand often enough that a character-by-character check would only cry wolf. Docs
+are the source; code is the proof.
+
+`scripts/api-previews.js` holds the render functions, bundled into
+`site/api-previews.js`. They import the real modules -- `createKit`,
+`createHelpers`, `createI18n`, `renderMarkdown`, `addToolbarButton` and friends,
+Code Highlight's tokeniser, the theme builder's `derivePalette` -- so the page
+renders what runs in Slack, and the site build fails if one of them stops
+compiling.
 
 Three things make that possible:
 
 - **`HelperContext` is five things**: an id, a way to write CSS, a toast, a
   settings store and a cleanup tracker. The site supplies all five against an
-  in-memory map and gets the shipped `toggle`, `debounce` and `describeHotkey`.
+  in-memory map and gets the shipped helpers.
 - **`site/slack-context.css` is Slack's stylesheet's understudy** -- the twenty
   classes the widgets wear (`c-button`, `c-dialog`, `c-menu`, `c-tooltip`) and
-  nothing else, scoped to `.slack-stage`. The widgets deliberately borrow
-  Slack's classes so they follow every theme; that is right in the client and
-  the reason they look like nothing on a web page. The *colours* are not
-  invented: `site/api-themes.css` is generated from `mods/themes/*/theme.css`,
-  so a component here is painted by the tokens that paint it in Slack, and the
-  picker switches between the shipped themes.
+  nothing else, scoped to `.slack-stage`. The widgets borrow Slack's classes so
+  they follow every theme; that is right in the client and the reason they look
+  like nothing on a web page. The *colours* are not invented:
+  `site/api-themes.css` is generated from `mods/themes/*/theme.css`, and the
+  picker in the bar switches the whole page between the shipped themes.
 - **`tests/slack-fixture.mjs`** holds the Slack-shaped fragment, so the real
   `addToolbarButton` and `addMessageAction` have the containers they look for.
-  The page mounts all of it and shows only the part the demo is about, and
-  swaps every avatar for a drawing -- a docs page has no business fetching
-  faces from Slack's CDN. The ids in that fixture are invented for the same
-  reason; they used to be a real team's.
+  The page mounts all of it, shows only the part the demo is about, and swaps
+  every avatar for a drawing -- a docs page has no business fetching faces from
+  Slack's CDN.
 
-Every demo has the same three parts -- a stage, controls that change the
-arguments, and the call that produced what you are looking at. Changing a
-control rebuilds all three.
+**One file, one panel at a time.** Every entry is a `<section class="panel">` in
+that single document and the list on the left switches between them; the page
+itself does not scroll. Ninety-eight separate files was an earlier shape and the
+wrong one: a reference is read by jumping around it, and a jump that costs a
+page load loses the theme you picked, the arguments you set and your place in
+the list.
 
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script

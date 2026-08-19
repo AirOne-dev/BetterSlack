@@ -1,6 +1,29 @@
 "use strict";
 (() => {
   // src/runtime/dom.ts
+  function waitFor(selector, timeoutMs = 3e4, root = document) {
+    const existing = root.querySelector(selector);
+    if (existing) return Promise.resolve(existing);
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        observer.disconnect();
+        clearTimeout(timer);
+        resolve(value);
+      };
+      const observer = new MutationObserver(() => {
+        const found = root.querySelector(selector);
+        if (found) finish(found);
+      });
+      observer.observe(root === document ? document.documentElement ?? document : root, {
+        childList: true,
+        subtree: true
+      });
+      const timer = setTimeout(() => finish(null), timeoutMs);
+    });
+  }
   var REMOUNT_LIMIT = 25;
   var REMOUNT_WINDOW_MS = 2e3;
   var mountCounts = /* @__PURE__ */ new Map();
@@ -193,6 +216,134 @@
   }
 
   // src/runtime/web-api.ts
+  var CONFIG_KEY = "localConfig_v2";
+  var METHOD_PATTERN = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)*$/;
+  var WebApiError = class extends Error {
+    constructor(method, slackError) {
+      super(`${method} failed: ${slackError}`);
+      this.method = method;
+      this.slackError = slackError;
+    }
+  };
+  function currentTeamId() {
+    const match = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i);
+    return match ? match[1] : null;
+  }
+  function readTeamConfig() {
+    const teamId = currentTeamId();
+    if (!teamId) return null;
+    try {
+      const raw = localStorage.getItem(CONFIG_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed.teams?.[teamId] ?? null;
+    } catch {
+      return null;
+    }
+  }
+  function createWebApi() {
+    let cachedTeam;
+    const directory = /* @__PURE__ */ new Map();
+    let directoryTeam;
+    let cached = null;
+    const config = () => {
+      const team = currentTeamId();
+      if (team !== cachedTeam) {
+        cachedTeam = team;
+        cached = readTeamConfig();
+      }
+      return cached;
+    };
+    const call = async (method, params = {}) => {
+      if (!METHOD_PATTERN.test(method)) {
+        throw new WebApiError(method, "invalid method name");
+      }
+      const token = config()?.token;
+      if (!token) throw new WebApiError(method, "no session token for this workspace");
+      const body = new FormData();
+      body.append("token", token);
+      for (const [key, value] of Object.entries(params)) body.append(key, String(value));
+      const response = await fetch(`/api/${method}`, {
+        method: "POST",
+        body,
+        credentials: "include"
+      });
+      if (!response.ok) throw new WebApiError(method, `HTTP ${response.status}`);
+      const payload = await response.json();
+      if (!payload.ok) throw new WebApiError(method, payload.error ?? "unknown error");
+      return payload;
+    };
+    return {
+      get available() {
+        return typeof config()?.token === "string";
+      },
+      get teamDomain() {
+        return config()?.domain ?? null;
+      },
+      get selfId() {
+        return config()?.user_id ?? null;
+      },
+      call,
+      async userInfo(userId) {
+        const res = await call("users.info", {
+          user: userId,
+          include_locale: true
+        });
+        return res.user;
+      },
+      async users(userIds) {
+        const team = currentTeamId();
+        if (team !== directoryTeam) {
+          directoryTeam = team;
+          directory.clear();
+        }
+        const wanted = [...new Set(userIds)].filter((id) => id);
+        const missing = wanted.filter((id) => !directory.has(id));
+        if (missing.length) {
+          try {
+            const res = await call("users.info", {
+              users: missing.join(","),
+              include_locale: true
+            });
+            for (const user of res.users ?? []) directory.set(user.id, user);
+          } catch {
+            const each = await Promise.all(
+              missing.map(
+                (id) => call("users.info", { user: id, include_locale: true }).then((res) => res.user).catch(() => null)
+              )
+            );
+            for (const user of each) if (user) directory.set(user.id, user);
+          }
+        }
+        const out = /* @__PURE__ */ new Map();
+        for (const id of wanted) {
+          const user = directory.get(id);
+          if (user) out.set(id, user);
+        }
+        return out;
+      },
+      presence: (userId) => call("users.getPresence", { user: userId }),
+      teamInfo: () => call("team.info"),
+      dndInfo: (userId) => call("dnd.info", { user: userId }),
+      async availability(userId) {
+        const [presence, dnd] = await Promise.all([
+          call("users.getPresence", { user: userId }).catch(() => null),
+          call("dnd.info", { user: userId }).catch(() => null)
+        ]);
+        const snoozed = Boolean(dnd?.snooze_enabled) || Boolean(dnd?.dnd_enabled && isInDndWindow(dnd));
+        if (snoozed) return { state: "dnd", presence, dnd };
+        if (!presence) return { state: "unknown", presence, dnd };
+        return { state: presence.presence === "active" ? "active" : "away", presence, dnd };
+      }
+    };
+  }
+  function isInDndWindow(dnd) {
+    const start = Number(dnd.next_dnd_start_ts ?? 0);
+    const end = Number(dnd.next_dnd_end_ts ?? 0);
+    if (!start || !end) return false;
+    const now = Date.now() / 1e3;
+    return now >= start && now < end;
+  }
   function userIdFromAvatarUrl(url) {
     if (!url) return null;
     const match = url.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i);
@@ -204,6 +355,8 @@
   var ACTIONS_ITEM_CLASS = "c-message_actions__overflow_item c-message_actions__overflow_item--button";
   var MORE_ACTIONS = '[data-qa="more_message_actions"]';
   var MESSAGE = '[data-qa="message_container"]';
+  var COMPOSER_EDITOR = ".ql-editor";
+  var COMPOSER = '[data-qa="message_input"]';
   var TOOLBARS = {
     /** Bottom strip of the rail: "Créer un nouveau", focus mode, avatar. */
     controlStrip: {
@@ -320,6 +473,12 @@
   }
   var PROFILE_PANE = '[data-qa="member_profile_pane"]';
   var PROFILE_AVATAR = ".p-r_member_profile__avatar__img";
+  function onProfilePane(handler) {
+    return onEach(PROFILE_PANE, (element) => {
+      const avatar = element.querySelector(PROFILE_AVATAR);
+      handler({ element, userId: userIdFromAvatarUrl(avatar?.src) });
+    });
+  }
   function addProfileButton(pluginId, button) {
     const nodeId = `betterslack-profile-${pluginId}-${button.id}`;
     const cleanup = onEach(PROFILE_PANE, (pane) => {
@@ -384,6 +543,55 @@
       for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
     };
   }
+  function escapeHtml(value) {
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  var composer = {
+    element: () => document.querySelector(COMPOSER_EDITOR),
+    focus() {
+      const editor = composer.element();
+      if (!editor) return false;
+      editor.focus();
+      return document.activeElement === editor || editor.contains(document.activeElement);
+    },
+    caretToEnd() {
+      const editor = composer.element();
+      if (!editor) return;
+      const selection = window.getSelection();
+      if (!selection) return;
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    },
+    insertText(text) {
+      if (!composer.focus()) return false;
+      composer.caretToEnd();
+      return document.execCommand("insertText", false, text);
+    },
+    insertLink(url, text) {
+      if (!composer.focus()) return false;
+      composer.caretToEnd();
+      let safe;
+      try {
+        safe = new URL(url);
+      } catch {
+        return false;
+      }
+      if (safe.protocol !== "https:" && safe.protocol !== "http:") return false;
+      return document.execCommand(
+        "insertHTML",
+        false,
+        `<a href="${escapeHtml(safe.href)}">${escapeHtml(text)}</a>`
+      );
+    },
+    isEmpty() {
+      const editor = composer.element();
+      if (!editor) return true;
+      return editor.innerText.replace(/\n/g, "").trim() === "";
+    }
+  };
   var WINDOW_MATERIALS = Object.freeze([
     "hud",
     "fullscreen-ui",
@@ -391,6 +599,122 @@
     "titlebar",
     "none"
   ]);
+  async function setMaterial(name) {
+    if (!WINDOW_MATERIALS.includes(name)) {
+      throw new Error(`"${name}" is not a window material BetterSlack will set`);
+    }
+    const bridge = window.desktop?.window;
+    if (typeof bridge?.getWindowId !== "function" || typeof bridge?.callBrowserWindowMethod !== "function") {
+      return false;
+    }
+    try {
+      const id = await bridge.getWindowId();
+      await bridge.callBrowserWindowMethod(id, "setVibrancy", name === "none" ? null : name);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function createSlackApi(pluginId) {
+    const web = createWebApi();
+    return {
+      addMessageAction: (action) => addMessageAction(pluginId, action),
+      addToolbarButton: (toolbar, button) => addToolbarButton(pluginId, toolbar, button),
+      addProfileButton: (button) => addProfileButton(pluginId, button),
+      onProfilePane,
+      web,
+      openConversation(channelId) {
+        const team = currentTeamId();
+        if (!team) return;
+        window.location.href = `slack://channel?team=${team}&id=${encodeURIComponent(channelId)}`;
+      },
+      async openDirectMessage(userId) {
+        const res = await web.call("conversations.open", {
+          users: userId,
+          return_im: true
+        });
+        const id = res.channel?.id ?? null;
+        if (id) this.openConversation(id);
+        return id;
+      },
+      openUserProfile(userId) {
+        const team = currentTeamId();
+        if (!team) return;
+        window.location.href = `slack://user?team=${team}&id=${encodeURIComponent(userId)}`;
+      },
+      async hideConversation(channelId) {
+        await web.call("conversations.close", { channel: channelId });
+      },
+      async startHuddle(userId) {
+        await this.openDirectMessage(userId);
+        const button = await waitFor(
+          '[data-qa="huddle_channel_header_button__start_button"]',
+          8e3
+        );
+        if (!button) return false;
+        button.click();
+        return true;
+      },
+      async vipUsers() {
+        const res = await web.call("users.prefs.get");
+        return String(res.prefs?.vip_users ?? "").split(",").map((id) => id.trim()).filter(Boolean);
+      },
+      async setVip(userId, isVip) {
+        const current = await this.vipUsers();
+        const next = isVip ? [.../* @__PURE__ */ new Set([...current, userId])] : current.filter((id) => id !== userId);
+        await web.call("users.prefs.set", { name: "vip_users", value: next.join(",") });
+        return isVip;
+      },
+      async filesFrom(userId, limit = 20) {
+        const res = await web.call("files.list", {
+          user: userId,
+          count: limit
+        });
+        return Array.isArray(res.files) ? res.files : [];
+      },
+      describeMessage,
+      composer,
+      avatarUrl: (url, size) => typeof url === "string" && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
+      userIdFromMessage: (message) => userIdFromAvatarUrl(
+        message.element.querySelector(".c-message_kit__avatar img, .c-avatar img")?.src
+      ),
+      currentChannelId: () => {
+        const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
+        return match ? match[1].toUpperCase() : null;
+      },
+      /*
+       * Filled in by `createPluginApi`, which is where the settings live. Left
+       * inert here so `createSlackApi` still satisfies the type on its own, and
+       * so a caller that somehow reaches this copy gets an honest "no" rather
+       * than a promise nobody keeps.
+       */
+      desktop: {
+        supported: false,
+        keys: () => [],
+        get: () => void 0,
+        launched: () => void 0,
+        needsRestart: () => false,
+        set: async () => void 0,
+        clear: async () => void 0,
+        managed: () => ({}),
+        materials: WINDOW_MATERIALS,
+        setMaterial
+      },
+      restart: async () => void 0,
+      selectors: Object.freeze({
+        message: MESSAGE,
+        messageActions: ACTIONS_GROUP,
+        composer: COMPOSER,
+        composerEditor: COMPOSER_EDITOR,
+        channelSidebar: '[data-qa="channel-sidebar"]',
+        tabRail: '[data-qa="tab_rail_desktop"]',
+        topNav: '[data-qa="top-nav"]',
+        messageText: '[data-qa="message-text"]',
+        profilePane: PROFILE_PANE,
+        profileAvatar: PROFILE_AVATAR
+      })
+    };
+  }
 
   // src/runtime/ui/code.ts
   var ESCAPES = {
@@ -1480,6 +1804,250 @@
 }
 `;
 
+  // src/runtime/ui/palette.ts
+  var HOST_ID = "betterslack-palette";
+  function rank(commands, query) {
+    const words2 = query.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words2.length === 0) return commands;
+    const scored = [];
+    commands.forEach((command, order) => {
+      const title = command.title.toLowerCase();
+      const rest = `${command.source ?? ""} ${command.subtitle ?? ""} ${command.section ?? ""}`.toLowerCase();
+      let score = 0;
+      let matched = true;
+      for (const word of words2) {
+        if (title.startsWith(word)) score += 4;
+        else if (new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(title)) score += 3;
+        else if (title.includes(word)) score += 2;
+        else if (rest.includes(word)) score += 1;
+        else {
+          matched = false;
+          break;
+        }
+      }
+      if (!matched && command.always) {
+        matched = true;
+        score = 1;
+      }
+      if (matched) scored.push({ command, score, order });
+    });
+    return scored.sort((a, b) => b.score - a.score || a.order - b.order).map((entry) => entry.command);
+  }
+  function closePalette() {
+    document.getElementById(HOST_ID)?.remove();
+  }
+  function isPaletteOpen() {
+    return Boolean(document.getElementById(HOST_ID));
+  }
+  function iconFor(command) {
+    const icon = command.icon?.trim();
+    if (icon && /^https?:\/\//.test(icon)) {
+      return h("img", { class: "betterslack-palette__icon", src: icon, alt: "", loading: "lazy" });
+    }
+    const box = h("span", { class: "betterslack-palette__icon betterslack-palette__icon--glyph" });
+    box.textContent = icon && icon.length <= 2 ? icon : command.title.slice(0, 1).toUpperCase();
+    return box;
+  }
+  function openPalette(source, labels) {
+    closePalette();
+    const modes = labels.modes ?? [];
+    let mode = null;
+    let query = "";
+    let shown = [];
+    let index = 0;
+    let rows = [];
+    let generation = 0;
+    const input = h("input", {
+      class: "betterslack-palette__input",
+      type: "text",
+      placeholder: labels.placeholder,
+      spellcheck: "false",
+      "aria-label": labels.placeholder
+    });
+    const chip = h("span", { class: "betterslack-palette__chip", hidden: "hidden" });
+    const list = h("div", { class: "betterslack-palette__list", role: "listbox" });
+    const footerAction = h("span", { class: "betterslack-palette__hint" });
+    const footerCount = h("span", { class: "betterslack-palette__count" });
+    const close = () => {
+      window.removeEventListener("keydown", onKey, true);
+      document.getElementById(HOST_ID)?.remove();
+    };
+    const run = (command) => {
+      if (!command) return;
+      close();
+      void Promise.resolve(command.run()).catch((err) => {
+        console.error(`[betterslack] "${command.title}" failed`, err);
+      });
+    };
+    const select = (next) => {
+      if (rows.length === 0) return;
+      index = (next + rows.length) % rows.length;
+      rows.forEach((row, position) => row.setAttribute("aria-selected", String(position === index)));
+      rows[index]?.scrollIntoView({ block: "nearest" });
+    };
+    const modesBar = h(
+      "div",
+      { class: "betterslack-palette__modes" },
+      modes.map((entry) => {
+        const button = h("button", { class: "betterslack-palette__mode", type: "button" }, [
+          h("kbd", {}, [entry.prefix]),
+          entry.label
+        ]);
+        button.addEventListener("click", () => {
+          input.value = entry.prefix;
+          onInput();
+          input.focus();
+        });
+        return button;
+      })
+    );
+    if (modes.length === 0) modesBar.setAttribute("hidden", "hidden");
+    const paint = (entries) => {
+      shown = entries;
+      list.replaceChildren();
+      rows = [];
+      if (shown.length === 0) {
+        list.append(h("div", { class: "betterslack-empty" }, [labels.empty]));
+        footerCount.textContent = "";
+        footerAction.textContent = "";
+        return;
+      }
+      const grouped = /* @__PURE__ */ new Map();
+      for (const command of shown) {
+        const key = command.section ?? "";
+        const bucket = grouped.get(key);
+        if (bucket) bucket.push(command);
+        else grouped.set(key, [command]);
+      }
+      for (const [heading, commands] of grouped) {
+        if (heading) list.append(h("div", { class: "betterslack-palette__section" }, [heading]));
+        for (const command of commands) {
+          const row = h("button", {
+            class: "betterslack-palette__row",
+            type: "button",
+            role: "option"
+          }, [
+            iconFor(command),
+            h("span", { class: "betterslack-palette__text" }, [
+              h("span", { class: "betterslack-palette__title" }, [command.title]),
+              command.subtitle ? h("span", { class: "betterslack-palette__sub" }, [command.subtitle]) : null
+            ].filter(Boolean)),
+            command.source ? h("span", { class: "betterslack-palette__source" }, [command.source]) : null
+          ].filter(Boolean));
+          const position = rows.length;
+          row.addEventListener("click", () => run(command));
+          row.addEventListener("mouseenter", () => select(position));
+          rows.push(row);
+          list.append(row);
+        }
+      }
+      shown = [...grouped.values()].flat();
+      footerCount.textContent = `${shown.length}`;
+      footerAction.textContent = `\u21B5 ${labels.openHint ?? "open"} \xB7 esc ${labels.closeHint ?? "close"}`;
+      select(0);
+    };
+    const update = () => {
+      if (modes.length > 0) {
+        if (!mode && query === "") modesBar.removeAttribute("hidden");
+        else modesBar.setAttribute("hidden", "hidden");
+      }
+      const mine = ++generation;
+      const answer = typeof source === "function" ? source(query, mode?.id ?? null) : source;
+      if (Array.isArray(answer)) {
+        paint(rank(answer, query));
+        return;
+      }
+      footerCount.textContent = labels.searching ?? "\u2026";
+      void answer.then((entries) => {
+        if (mine !== generation || !isPaletteOpen()) return;
+        paint(rank(entries, query));
+      });
+    };
+    const onInput = () => {
+      const raw = input.value;
+      if (!mode) {
+        const found = modes.find((entry) => raw.startsWith(entry.prefix));
+        if (found) {
+          mode = found;
+          input.value = raw.slice(found.prefix.length);
+          chip.textContent = found.label;
+          chip.removeAttribute("hidden");
+          input.placeholder = found.placeholder ?? labels.placeholder;
+        }
+      }
+      query = input.value.trim();
+      update();
+    };
+    const clearMode = () => {
+      mode = null;
+      chip.setAttribute("hidden", "hidden");
+      chip.textContent = "";
+      input.placeholder = labels.placeholder;
+      query = "";
+      update();
+    };
+    function onKey(event) {
+      if (!isPaletteOpen()) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (mode) clearMode();
+        else close();
+        return;
+      }
+      if (event.key === "Backspace" && mode && input.value === "") {
+        event.preventDefault();
+        clearMode();
+        return;
+      }
+      if (event.key === "ArrowDown" || event.ctrlKey && event.key === "n") {
+        event.preventDefault();
+        event.stopPropagation();
+        select(index + 1);
+        return;
+      }
+      if (event.key === "ArrowUp" || event.ctrlKey && event.key === "p") {
+        event.preventDefault();
+        event.stopPropagation();
+        select(index - 1);
+        return;
+      }
+      if (event.key === "Home" && !event.shiftKey && input.value === "") {
+        select(0);
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        run(shown[index]);
+      }
+    }
+    input.addEventListener("input", onInput);
+    const host = h("div", { id: HOST_ID, class: "betterslack-palette", role: "dialog", "aria-modal": "true" }, [
+      h("div", { class: "betterslack-palette__box" }, [
+        h("div", { class: "betterslack-palette__search" }, [
+          h("span", { class: "betterslack-palette__search_icon" }, ["\u2318"]),
+          chip,
+          input
+        ]),
+        list,
+        modesBar,
+        h("div", { class: "betterslack-palette__footer" }, [footerAction, footerCount])
+      ])
+    ]);
+    host.addEventListener("mousedown", (event) => {
+      if (event.target === host) close();
+    });
+    document.body.append(host);
+    window.addEventListener("keydown", onKey, true);
+    update();
+    queueMicrotask(() => input.focus());
+    close.refresh = () => {
+      if (isPaletteOpen()) update();
+    };
+    return close;
+  }
+
   // src/runtime/ui/widgets.ts
   var TOAST_HOST_ID = "betterslack-toast-host";
   function makeHost(id) {
@@ -2487,7 +3055,7 @@
     '"': "&quot;",
     "'": "&#39;"
   };
-  function escapeHtml(text) {
+  function escapeHtml2(text) {
     return text.replace(/[&<>"']/g, (c) => ESCAPES2[c]);
   }
   function safeUrl(url) {
@@ -2507,7 +3075,7 @@
   }
   function renderMarkdown(source, options = {}) {
     const resolve = options.resolve ?? ((href) => safeUrl(href));
-    const lines = escapeHtml(source.replace(/\r\n?/g, "\n")).split("\n");
+    const lines = escapeHtml2(source.replace(/\r\n?/g, "\n")).split("\n");
     const out = [];
     let list = null;
     let paragraph = [];
@@ -2585,7 +3153,7 @@
   }
 
   // mods/plugins/code-highlight/tokenise.js
-  function escapeHtml2(text) {
+  function escapeHtml3(text) {
     return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
   var words = (list) => list.join("|");
@@ -3296,7 +3864,7 @@
   };
   function highlight(code, language) {
     const pattern = LANGUAGES[language];
-    if (!pattern) return escapeHtml2(code);
+    if (!pattern) return escapeHtml3(code);
     let out = "";
     let last = 0;
     pattern.lastIndex = 0;
@@ -3308,11 +3876,11 @@
       }
       const name = Object.keys(m.groups).find((k) => m.groups[k] !== void 0);
       if (!name) continue;
-      out += escapeHtml2(code.slice(last, m.index));
-      out += `<span class="bshl-${ALIAS[name] ?? name}">${escapeHtml2(m[0])}</span>`;
+      out += escapeHtml3(code.slice(last, m.index));
+      out += `<span class="bshl-${ALIAS[name] ?? name}">${escapeHtml3(m[0])}</span>`;
       last = m.index + m[0].length;
     }
-    return out + escapeHtml2(code.slice(last));
+    return out + escapeHtml3(code.slice(last));
   }
 
   // mods/plugins/code-highlight/detect.js
@@ -3570,7 +4138,7 @@
     { key: "danger" }
   ];
 
-  // scripts/api-demos.js
+  // scripts/api-previews.js
   var kit = createKit(document);
   var $ = (id) => document.getElementById(id);
   var store = /* @__PURE__ */ new Map();
@@ -3596,7 +4164,10 @@
     const style = document.createElement("style");
     style.id = "sm-kit-css";
     style.textContent = KIT_CSS;
-    document.head.append(style, helperCss);
+    const panel = document.createElement("style");
+    panel.id = "betterslack-panel-css";
+    panel.textContent = PANEL_CSS;
+    document.head.append(style, panel, helperCss);
   }
   var el = (tag, className, children = []) => {
     const node = document.createElement(tag);
@@ -3634,49 +4205,38 @@
     input.id = id;
     const label = el("label", "pg__label");
     label.htmlFor = id;
-    label.textContent = spec2.label ?? spec2.key;
+    label.textContent = spec2.label || spec2.key;
     return el("div", "pg__control", [label, input]);
   }
-  function playground(name, spec2) {
+  function playground(name, render) {
     const slot = document.querySelector(`[data-demo="${name}"]`);
     if (!slot) return;
+    let controls = [];
+    try {
+      controls = JSON.parse(slot.dataset.controls || "[]");
+    } catch {
+      controls = [];
+    }
     const state = {};
-    for (const c of spec2.controls ?? []) state[c.key] = c.value;
+    for (const c of controls) state[c.key] = c.value;
     const stage = el("div", "pg__stage slack-stage");
-    stage.dataset.theme = document.querySelector(".stage-theme")?.value ?? "midnight";
-    const code = el("pre", "pg__code");
-    const controls = el("div", "pg__controls");
+    stage.dataset.theme = document.getElementById("stage-theme")?.value ?? "midnight";
     const draw = () => {
       try {
-        const made = spec2.render(state, { stage });
+        const made = render(state, { stage });
         if (made !== void 0) stage.replaceChildren(...[].concat(made).filter(Boolean));
-        code.innerHTML = highlight(spec2.code(state), "javascript");
       } catch (err) {
         stage.textContent = `this demo threw: ${err.message}`;
       }
     };
-    if (spec2.controls?.length) {
-      controls.replaceChildren(...spec2.controls.map((c) => control(c, state, draw)));
+    const parts = [el("div", "pg", [stage])];
+    if (controls.length) {
+      parts.push(el("div", "pg-knobs", [
+        el("p", "pg-knobs__title", [document.documentElement.lang === "fr" ? "Param\xE8tres" : "Props"]),
+        el("div", "pg__controls", controls.map((c) => control(c, state, draw)))
+      ]));
     }
-    const preview = el("div", "pg__panel", spec2.controls?.length ? [stage, controls] : [stage]);
-    const source = el("div", "pg__panel", [code, copyButton(() => code.textContent)]);
-    source.hidden = true;
-    const tabs = el("div", "pg__tabs");
-    const tab = (label, panel, on) => {
-      const button = el("button", "pg__tab");
-      button.type = "button";
-      button.textContent = label;
-      button.setAttribute("aria-selected", String(on));
-      button.addEventListener("click", () => {
-        for (const other of tabs.querySelectorAll(".pg__tab")) other.setAttribute("aria-selected", "false");
-        button.setAttribute("aria-selected", "true");
-        preview.hidden = panel !== preview;
-        source.hidden = panel !== source;
-      });
-      return button;
-    };
-    tabs.append(tab("Preview", preview, true), tab("Code", source, false));
-    slot.replaceChildren(el("div", "pg", [tabs, preview, source]));
+    slot.replaceChildren(...parts);
     draw();
   }
   function copyButton(text) {
@@ -3694,72 +4254,27 @@
   }
   var KIT = {
     el: {
-      controls: [
-        { key: "tag", type: "select", options: ["div", "p", "strong", "span"], value: "p" },
-        { key: "text", type: "text", value: "Built with the same maker as everything below." },
-        { key: "className", label: "class", type: "text", value: "sm-hint" }
-      ],
-      render: (v) => kit.el(v.tag, { class: v.className }, [v.text]),
-      code: (v) => `kit.el('${v.tag}', { class: '${v.className}' }, ['${v.text}'])`
+      render: (v) => kit.el(v.tag, { class: v.className }, [v.text])
     },
     button: {
-      controls: [
-        { key: "label", type: "text", value: "Save" },
-        { key: "variant", type: "select", options: ["default", "primary", "ghost", "danger"], value: "primary" },
-        { key: "wide", type: "boolean", value: false },
-        { key: "title", label: "tooltip", type: "text", value: "Write the theme to disk" }
-      ],
-      render: (v) => kit.button(v.label, { variant: v.variant, wide: v.wide, title: v.title }),
-      code: (v) => `kit.button('${v.label}', {
-  variant: '${v.variant}',
-  wide: ${v.wide},
-  title: '${v.title}',
-})`
+      render: (v) => kit.button(v.label, { variant: v.variant, wide: v.wide, title: v.title })
     },
     iconButton: {
-      controls: [
-        { key: "glyph", type: "text", value: "\u270E" },
-        { key: "title", type: "text", value: "Rename" },
-        { key: "danger", type: "boolean", value: false }
-      ],
-      render: (v) => kit.iconButton(v.glyph, { title: v.title, danger: v.danger }),
-      code: (v) => `kit.iconButton('${v.glyph}', { title: '${v.title}', danger: ${v.danger} })`
+      render: (v) => kit.iconButton(v.glyph, { title: v.title, danger: v.danger })
     },
     input: {
-      controls: [
-        { key: "value", type: "text", value: "Midnight" },
-        { key: "placeholder", type: "text", value: "Theme name" }
-      ],
-      render: (v) => kit.input({ value: v.value, placeholder: v.placeholder }),
-      code: (v) => `kit.input({ value: '${v.value}', placeholder: '${v.placeholder}' })`
+      render: (v) => kit.input({ value: v.value, placeholder: v.placeholder })
     },
     field: {
-      controls: [
-        { key: "label", type: "text", value: "Theme name" },
-        { key: "hint", type: "text", value: "Shown in the panel and in the palette." }
-      ],
-      render: (v) => kit.field(v.label, kit.input({ value: "Midnight" }), v.hint),
-      code: (v) => `kit.field('${v.label}', kit.input({ value: 'Midnight' }),
-  '${v.hint}')`
+      render: (v) => kit.field(v.label, kit.input({ value: "Midnight" }), v.hint)
     },
     select: {
-      controls: [
-        { key: "options", type: "text", value: "dark, light, follow the system" },
-        { key: "value", type: "text", value: "dark" }
-      ],
       render: (v) => kit.select(
         v.options.split(",").map((o) => ({ value: o.trim(), label: o.trim() })),
         { value: v.value.trim() }
-      ),
-      code: (v) => `kit.select([
-${v.options.split(",").map((o) => `  { value: '${o.trim()}', label: '${o.trim()}' },`).join("\n")}
-], { value: '${v.value.trim()}' })`
+      )
     },
     segmented: {
-      controls: [
-        { key: "labels", type: "text", value: "Colours, CSS, Inspect" },
-        { key: "count", label: "badge on the first", type: "number", value: 12 }
-      ],
       render: (v) => kit.segmented(
         v.labels.split(",").map((label, i) => ({
           value: label.trim().toLowerCase(),
@@ -3767,45 +4282,20 @@ ${v.options.split(",").map((o) => `  { value: '${o.trim()}', label: '${o.trim()}
           count: i === 0 && v.count ? v.count : void 0
         })),
         { value: v.labels.split(",")[0].trim().toLowerCase() }
-      ).node,
-      code: (v) => `kit.segmented([
-${v.labels.split(",").map((l, i) => `  { value: '${l.trim().toLowerCase()}', label: '${l.trim()}'${i === 0 && v.count ? `, count: ${v.count}` : ""} },`).join("\n")}
-], { value: '${v.labels.split(",")[0].trim().toLowerCase()}' }).node`
+      ).node
     },
     card: {
-      controls: [
-        { key: "title", type: "text", value: "Palette" },
-        { key: "subtitle", type: "text", value: "Two colours, ten derived" },
-        { key: "action", label: "action button", type: "text", value: "Reset" }
-      ],
       render: (v) => kit.card(v.title, [kit.el("p", { class: "sm-hint" }, [v.subtitle])], {
         actions: v.action ? [kit.button(v.action, { variant: "ghost" })] : []
-      }),
-      code: (v) => `kit.card('${v.title}', [
-  kit.el('p', { class: 'sm-hint' }, ['${v.subtitle}']),
-], { actions: [kit.button('${v.action}', { variant: 'ghost' })] })`
+      })
     },
     emptyState: {
-      controls: [
-        { key: "title", type: "text", value: "No themes yet" },
-        { key: "body", type: "text", value: "Build one and it appears here." },
-        { key: "action", label: "button", type: "text", value: "New theme" }
-      ],
-      render: (v) => kit.emptyState(v.title, v.body, v.action ? kit.button(v.action, { variant: "primary" }) : void 0),
-      code: (v) => `kit.emptyState('${v.title}', '${v.body}',
-  kit.button('${v.action}', { variant: 'primary' }))`
+      render: (v) => kit.emptyState(v.title, v.body, v.action ? kit.button(v.action, { variant: "primary" }) : void 0)
     },
     swatch: {
-      controls: [
-        { key: "colour", type: "text", value: "rgba(97, 31, 105, 0.55)" },
-        { key: "size", type: "select", options: ["sm", "md", "lg"], value: "lg" }
-      ],
-      render: (v) => kit.swatch(v.colour, { size: v.size }),
-      code: (v) => `// a translucent colour reads as translucent: the checkerboard is kit.CHECKER
-kit.swatch('${v.colour}', { size: '${v.size}' })`
+      render: (v) => kit.swatch(v.colour, { size: v.size })
     },
     popover: {
-      controls: [{ key: "label", type: "text", value: "Open a popover" }],
       render: (v) => {
         const anchor = kit.button(v.label);
         anchor.addEventListener("click", () => {
@@ -3815,19 +4305,9 @@ kit.swatch('${v.colour}', { size: '${v.size}' })`
           kit.popover(content, anchor);
         });
         return anchor;
-      },
-      code: (v) => `const anchor = kit.button('${v.label}');
-anchor.addEventListener('click', () => {
-  kit.popover(content, anchor);
-});`
+      }
     },
     confirm: {
-      controls: [
-        { key: "title", type: "text", value: "Delete Midnight?" },
-        { key: "body", type: "text", value: "The stylesheet goes with it. This cannot be undone." },
-        { key: "action", type: "text", value: "Delete" },
-        { key: "danger", type: "boolean", value: true }
-      ],
       render: (v) => {
         const trigger = kit.button(v.action, { variant: v.danger ? "danger" : "primary" });
         const said = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
@@ -3842,17 +4322,9 @@ anchor.addEventListener('click', () => {
           said.textContent = yes ? `it resolved true` : "it resolved false";
         });
         return [trigger, said];
-      },
-      code: (v) => `const yes = await kit.confirm({
-  title: '${v.title}',
-  body: '${v.body}',
-  action: '${v.action}',
-  cancel: 'Keep it',
-  danger: ${v.danger},
-});`
+      }
     },
     copyText: {
-      controls: [{ key: "text", type: "text", value: "#611f69" }],
       render: (v) => {
         const button = kit.button(`Copy ${v.text}`);
         const said = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
@@ -3860,25 +4332,14 @@ anchor.addEventListener('click', () => {
           said.textContent = await kit.copyText(v.text) ? "resolved true" : "resolved false";
         });
         return [button, said];
-      },
-      code: (v) => `const ok = await kit.copyText('${v.text}');`
+      }
     },
     code: {
-      controls: [
-        { key: "value", type: "text", value: ":root { --dt_color-base-pry: #0b0d12; }" }
-      ],
-      render: (v) => kit.code({ value: v.value }).node,
-      code: (v) => `const editor = kit.code({ value: '${v.value}' });
-document.body.append(editor.node);
-editor.value(); // what is in it now`
+      render: (v) => kit.code({ value: v.value }).node
     }
   };
   var HELPERS = {
     toggle: {
-      controls: [
-        { key: "className", label: "class on <html>", type: "text", value: "demo-zen" },
-        { key: "defaultOn", type: "boolean", value: false }
-      ],
       render: (v) => {
         for (const name of [...document.documentElement.classList]) {
           if (name.startsWith("demo-") || name.startsWith("betterslack-api-page")) {
@@ -3903,23 +4364,12 @@ editor.value(); // what is in it now`
         });
         paint();
         return watch;
-      },
-      code: (v) => `const zen = api.helpers.toggle({
-  key: 'on',
-  className: '${v.className}',
-  defaultOn: ${v.defaultOn},
-  whenOn: '& .p-channel_sidebar { display: none !important; }',
-});
-await zen.toggle();`
+      }
     },
     describeHotkey: {
-      controls: [{ key: "combo", type: "text", value: "mod+shift+f" }],
-      render: (v) => kit.el("strong", { style: "font-size:20px" }, [helpers.describeHotkey(v.combo)]),
-      code: (v) => `api.helpers.describeHotkey('${v.combo}')
-// \u2318\u21E7F on a Mac, Ctrl+Shift+F elsewhere`
+      render: (v) => kit.el("strong", { style: "font-size:20px" }, [helpers.describeHotkey(v.combo)])
     },
     debounce: {
-      controls: [{ key: "ms", label: "milliseconds", type: "number", value: 400 }],
       render: (v, { stage }) => {
         const out = kit.el("p", { class: "sm-hint" }, ["type below"]);
         let typed = 0;
@@ -3934,19 +4384,12 @@ await zen.toggle();`
           run();
         });
         return [box, out];
-      },
-      code: (v) => `const search = api.helpers.debounce((q) => run(q), ${v.ms});
-box.addEventListener('input', () => search(box.value));`
+      }
     }
   };
   var ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 6.5v4M10 13.2v.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   var UI = {
     "ui-toast": {
-      controls: [
-        { key: "message", type: "text", value: "Theme saved" },
-        { key: "variant", type: "select", options: ["info", "success", "warning", "error"], value: "success" },
-        { key: "action", label: "action label", type: "text", value: "Undo" }
-      ],
       render: (v) => {
         const button = kit.button("Show the toast", { variant: "primary" });
         button.addEventListener("click", () => toast(v.message, {
@@ -3955,19 +4398,9 @@ box.addEventListener('input', () => search(box.value));`
           } } : void 0
         }));
         return button;
-      },
-      code: (v) => `api.ui.toast('${v.message}', {
-  variant: '${v.variant}',
-  action: { label: '${v.action}', onClick: () => undo() },
-});`
+      }
     },
     "ui-modal": {
-      controls: [
-        { key: "title", type: "text", value: "Channel notes" },
-        { key: "body", type: "text", value: "Kept on this machine only. Nothing is sent anywhere." },
-        { key: "action", type: "text", value: "Save" },
-        { key: "width", type: "number", value: 460 }
-      ],
       render: (v) => {
         const button = kit.button("Open the dialog", { variant: "primary" });
         button.addEventListener("click", () => {
@@ -3979,20 +4412,9 @@ box.addEventListener('input', () => search(box.value));`
           });
         });
         return button;
-      },
-      code: (v) => `api.ui.modal({
-  title: '${v.title}',
-  content: api.dom.h('p', {}, ['${v.body}']),
-  width: ${v.width},
-  actions: [{ label: '${v.action}', primary: true, onClick: () => true }],
-});`
+      }
     },
     "ui-confirm": {
-      controls: [
-        { key: "title", type: "text", value: "Remove Midnight?" },
-        { key: "body", type: "text", value: "Its files go with it." },
-        { key: "danger", type: "boolean", value: true }
-      ],
       render: (v) => {
         const button = kit.button("Ask", { variant: v.danger ? "danger" : "primary" });
         const said = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
@@ -4000,15 +4422,9 @@ box.addEventListener('input', () => search(box.value));`
           said.textContent = await confirm({ title: v.title, body: v.body, danger: v.danger }) ? "resolved true" : "resolved false";
         });
         return [button, said];
-      },
-      code: (v) => `const sure = await api.ui.confirm({
-  title: '${v.title}',
-  body: '${v.body}',
-  danger: ${v.danger},
-});`
+      }
     },
     "ui-menu": {
-      controls: [{ key: "items", type: "text", value: "Rename, Duplicate, Remove" }],
       render: (v) => {
         const anchor = kit.button("Open the menu");
         anchor.addEventListener("click", () => openMenu(anchor, v.items.split(",").map((label, i) => ({
@@ -4018,10 +4434,7 @@ box.addEventListener('input', () => search(box.value));`
           }
         }))));
         return anchor;
-      },
-      code: (v) => `api.ui.menu(anchor, [
-${v.items.split(",").map((l, i, a) => `  { label: '${l.trim()}'${i === a.length - 1 ? ", danger: true" : ""}, onSelect: () => {} },`).join("\n")}
-]);`
+      }
     }
   };
   function slackChrome() {
@@ -4049,10 +4462,6 @@ ${v.items.split(",").map((l, i, a) => `  { label: '${l.trim()}'${i === a.length 
   };
   var CHROME = {
     "slack-addtoolbarbutton": {
-      controls: [
-        { key: "toolbar", type: "select", options: ["controlStrip", "composer", "channelHeader"], value: "controlStrip" },
-        { key: "label", type: "text", value: "Channel notes" }
-      ],
       render: (v, { stage }) => {
         const frame = slackChrome();
         stage.replaceChildren(frame);
@@ -4060,16 +4469,9 @@ ${v.items.split(",").map((l, i, a) => `  { label: '${l.trim()}'${i === a.length 
         } });
         focusChrome(frame, TOOLBAR_CONTAINER[v.toolbar]);
         return void 0;
-      },
-      code: (v) => `api.slack.addToolbarButton('${v.toolbar}', {
-  id: 'notes',
-  label: '${v.label}',
-  icon: '<svg viewBox="0 0 20 20">\u2026</svg>',
-  onClick: () => open(),
-});`
+      }
     },
     "slack-addmessageaction": {
-      controls: [{ key: "label", type: "text", value: "Copy link" }],
       render: (v, { stage }) => {
         const frame = slackChrome();
         stage.replaceChildren(frame);
@@ -4077,16 +4479,9 @@ ${v.items.split(",").map((l, i, a) => `  { label: '${l.trim()}'${i === a.length 
         } });
         focusChrome(frame, '[data-qa="message_container"]');
         return void 0;
-      },
-      code: (v) => `api.slack.addMessageAction({
-  id: 'copy-link',
-  label: '${v.label}',
-  icon: '<svg viewBox="0 0 20 20">\u2026</svg>',
-  onClick: (message) => copy(message.permalink),
-});`
+      }
     },
     "slack-addprofilebutton": {
-      controls: [{ key: "label", type: "text", value: "Download picture" }],
       render: (v, { stage }) => {
         const frame = slackChrome();
         stage.replaceChildren(frame);
@@ -4094,77 +4489,30 @@ ${v.items.split(",").map((l, i, a) => `  { label: '${l.trim()}'${i === a.length 
         } });
         focusChrome(frame, '[data-qa="member_profile_pane"]');
         return void 0;
-      },
-      code: (v) => `api.slack.addProfileButton({
-  id: 'download',
-  label: '${v.label}',
-  icon: '<svg viewBox="0 0 20 20">\u2026</svg>',
-  onClick: ({ userId }) => save(userId),
-});`
+      }
     },
     "slack-avatarurl": {
-      controls: [
-        { key: "url", type: "text", value: "https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-06c4356b6ae3-48" },
-        { key: "size", type: "select", options: ["24", "48", "72", "192", "512"], value: "192" }
-      ],
       render: (v) => {
         const at = /-\d+$/.test(v.url) ? v.url.replace(/-\d+$/, `-${v.size}`) : null;
         return kit.el("code", { class: "sm-hint", style: "word-break:break-all" }, [at ?? "null \u2014 not one of Slack\u2019s avatar URLs"]);
-      },
-      code: (v) => `api.slack.avatarUrl(
-  '${v.url}',
-  ${v.size},
-);`
-    },
-    "dom-h": {
-      controls: [
-        { key: "tag", type: "select", options: ["div", "button", "span"], value: "button" },
-        { key: "className", label: "class", type: "text", value: "c-button c-button--primary" },
-        { key: "text", type: "text", value: "Made with api.dom.h" }
-      ],
-      render: (v) => h(v.tag, { class: v.className }, [v.text]),
-      code: (v) => `api.dom.h('${v.tag}', { class: '${v.className}' }, ['${v.text}']);`
+      }
     }
   };
   var SLACK_HELPERS = {
     "helpers-iconbutton": {
-      controls: [
-        { key: "label", type: "text", value: "Notes" },
-        { key: "surface", type: "select", options: ["strip", "header", "composer"], value: "header" }
-      ],
       render: (v) => helpers.iconButton({ icon: ICON, label: v.label, surface: v.surface, onClick: () => {
-      } }),
-      code: (v) => `api.helpers.iconButton({
-  icon: '<svg viewBox="0 0 20 20">\u2026</svg>',
-  label: '${v.label}',
-  surface: '${v.surface}',
-  onClick: () => open(),
-});`
+      } })
     },
     "helpers-field": {
-      controls: [
-        { key: "label", type: "text", value: "Time zone" },
-        { key: "value", type: "text", value: "Europe/Paris" }
-      ],
-      render: (v) => helpers.field(v.label, v.value),
-      code: (v) => `api.helpers.field('${v.label}', '${v.value}');`
+      render: (v) => helpers.field(v.label, v.value)
     },
     "helpers-section": {
-      controls: [
-        { key: "title", type: "text", value: "More details" },
-        { key: "rows", type: "text", value: "User ID: U04KY0Z61, Time zone: Europe/Paris" }
-      ],
       render: (v) => helpers.section(v.title, v.rows.split(",").map((row) => {
         const [label, value] = row.split(":");
         return helpers.field((label ?? "").trim(), (value ?? "").trim());
-      })),
-      code: (v) => `api.helpers.section('${v.title}', [
-  api.helpers.field('User ID', user.id),
-  api.helpers.field('Time zone', user.tz_label),
-]);`
+      }))
     },
     "helpers-badge": {
-      controls: [{ key: "value", type: "number", value: 3 }],
       render: (v, { stage }) => {
         const host = el("div", "pg__badge-host");
         host.append(helpers.iconButton({ icon: ICON, label: "Activity", surface: "header", onClick: () => {
@@ -4172,22 +4520,242 @@ ${v.items.split(",").map((l, i, a) => `  { label: '${l.trim()}'${i === a.length 
         stage.replaceChildren(host);
         helpers.badge(".pg__badge-host button", "demo-badge", () => v.value || null);
         return void 0;
-      },
-      code: (v) => `let unread = ${v.value};
-api.helpers.badge('[data-qa="betterslack_button"]', 'unread', () => unread);`
+      }
     },
     "helpers-tooltip": {
-      controls: [
-        { key: "title", type: "text", value: "Channel notes" },
-        { key: "subtitle", type: "text", value: "\u2318\u21E7N" }
-      ],
       render: (v) => {
         const button = helpers.iconButton({ icon: ICON, label: v.title, surface: "header", onClick: () => {
         } });
         helpers.tooltip(button, v.title, v.subtitle);
         return [button, kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, ["hover it"])];
-      },
-      code: (v) => `api.helpers.tooltip(button, '${v.title}', '${v.subtitle}');`
+      }
+    }
+  };
+  function say(stage, lines) {
+    return kit.el("pre", { class: "pg__out" }, [lines.join("\n")]);
+  }
+  var MORE = {
+    "slack-selectors": {
+      render: () => {
+        const slack = createSlackApi("demo");
+        return kit.el("table", { class: "pg__table" }, Object.entries(slack.selectors).map(
+          ([name, value]) => kit.el("tr", {}, [
+            kit.el("td", {}, [name]),
+            kit.el("td", {}, [kit.el("code", {}, [value])])
+          ])
+        ));
+      }
+    },
+    "slack-describemessage": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        focusChrome(frame, '[data-qa="message_container"]');
+        const message = describeMessage(frame.querySelector('[data-qa="message_container"]'));
+        frame.append(say(stage, [
+          `channelId: ${message.channelId}`,
+          `ts:        ${message.ts}`,
+          `text:      ${message.text}`,
+          `permalink: ${message.permalink}`
+        ]));
+        return void 0;
+      }
+    },
+    "slack-composer": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        focusChrome(frame, '[data-qa="message_input"]');
+        const slack = createSlackApi("demo");
+        const button = kit.button("insert()", { variant: "primary" });
+        button.addEventListener("click", () => {
+          slack.composer.insert(v.text);
+          slack.composer.focus();
+        });
+        frame.append(button);
+        return void 0;
+      }
+    },
+    "helpers-each": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        focusChrome(frame, '[data-qa="message_container"]');
+        const seen = kit.el("span", { class: "sm-hint" }, [""]);
+        helpers.each('[data-qa="message_container"]', (message) => {
+          message.style.outline = "2px solid var(--dt_color-content-hgl-1, #7cc4ff)";
+          seen.textContent = "the handler ran on every match, and will run on new ones";
+        });
+        frame.append(seen);
+        return void 0;
+      }
+    },
+    "helpers-mount": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        focusChrome(frame, ".p-control_strip");
+        helpers.mount(".p-control_strip", "demo-mounted", () => {
+          const node = kit.button("mounted");
+          return node;
+        });
+        return void 0;
+      }
+    },
+    "helpers-hotkey": {
+      render: (v, { stage }) => {
+        const out = kit.el("p", { class: "sm-hint" }, [`press ${helpers.describeHotkey(v.combo)} with this page focused`]);
+        let count = 0;
+        helpers.hotkey(v.combo, () => {
+          count += 1;
+          out.textContent = `${helpers.describeHotkey(v.combo)} fired ${count}\xD7`;
+        });
+        return out;
+      }
+    },
+    "helpers-poll": {
+      render: (v) => {
+        const out = kit.el("p", { class: "sm-hint" }, ["\u2026"]);
+        let ticks = 0;
+        helpers.poll(() => {
+          ticks += 1;
+          out.textContent = `${ticks} tick${ticks === 1 ? "" : "s"} \u2014 and it stops while this tab is hidden`;
+        }, Math.max(250, v.ms));
+        return out;
+      }
+    },
+    "helpers-copy": {
+      render: (v) => {
+        const button = kit.button("copy()", { variant: "primary" });
+        const out = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, [""]);
+        toasted = (message) => {
+          out.textContent = `api.ui.toast(${JSON.stringify(message)})`;
+        };
+        button.addEventListener("click", () => helpers.copy(v.text, "Link copied"));
+        return [button, out];
+      }
+    },
+    "kit-hoverable": {
+      render: () => {
+        const out = kit.el("span", { class: "sm-hint", style: "margin-left:10px" }, ["not hovered"]);
+        const row = kit.button("hover me");
+        kit.hoverable(row, {
+          enter: () => {
+            out.textContent = "enter";
+          },
+          leave: () => {
+            out.textContent = "leave";
+          }
+        });
+        return [row, out];
+      }
+    },
+    "dom-h": {
+      render: (v) => h(v.tag, { class: v.className }, [v.text])
+    },
+    "dom-waitfor": {
+      render: (v, { stage }) => {
+        const out = kit.el("p", { class: "sm-hint" }, ["looking for .late-arrival\u2026"]);
+        const late = document.createElement("div");
+        late.className = "late-arrival";
+        waitFor(".late-arrival", 4e3).then((found) => {
+          out.textContent = found ? "found it \u2014 resolved with the element" : "timed out \u2014 resolved null, it does not throw";
+        });
+        setTimeout(() => stage.append(late), 900);
+        return out;
+      }
+    },
+    "dom-keepmounted": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        focusChrome(frame, ".p-control_strip");
+        const out = kit.el("p", { class: "sm-hint" }, [""]);
+        keepMounted(".p-control_strip", "demo-keep", () => kit.button("kept"));
+        const remove = kit.button("remove it", { variant: "danger" });
+        remove.addEventListener("click", () => {
+          frame.querySelector("#demo-keep")?.remove();
+          out.textContent = "taken out \u2014 and put straight back";
+        });
+        frame.append(remove, out);
+        return void 0;
+      }
+    },
+    "dom-oneach": {
+      render: (v, { stage }) => {
+        const list = kit.el("div", { class: "pg__rows" }, []);
+        const out = kit.el("p", { class: "sm-hint" }, ["0 rows seen"]);
+        let seen = 0;
+        onEach(".pg__rows > .row", (row) => {
+          seen += 1;
+          row.style.color = "var(--dt_color-content-hgl-1, #7cc4ff)";
+          out.textContent = `${seen} rows seen \u2014 including the ones added later`;
+        });
+        const add = kit.button("add a row", { variant: "primary" });
+        add.addEventListener("click", () => list.append(kit.el("div", { class: "row" }, ["a new row"])));
+        list.append(kit.el("div", { class: "row" }, ["a row that was already here"]));
+        return [list, add, out];
+      }
+    },
+    "dom-onshortcut": {
+      render: () => {
+        const out = kit.el("p", { class: "sm-hint" }, ["press F1 with this page focused"]);
+        onShortcut((event) => event.key === "F1", () => {
+          out.textContent = "F1 \u2014 the match ran";
+        });
+        return out;
+      }
+    },
+    "settings-set": {
+      render: (v, { stage }) => {
+        const out = kit.el("pre", { class: "pg__out" }, [JSON.stringify(Object.fromEntries(store), null, 2)]);
+        const button = kit.button("set()", { variant: "primary" });
+        button.addEventListener("click", async () => {
+          store.set(v.key, v.value);
+          out.textContent = JSON.stringify(Object.fromEntries(store), null, 2);
+        });
+        return [button, out];
+      }
+    },
+    "settings-get": {
+      render: (v) => kit.el("pre", { class: "pg__out" }, [
+        String(store.has(v.key) ? store.get(v.key) : v.fallback)
+      ])
+    },
+    "plugin-css": {
+      render: (v, { stage }) => {
+        const style = document.createElement("style");
+        style.textContent = v.css;
+        return [style, kit.el("p", { class: "pg__paint" }, ["this line is painted by the CSS beside it"])];
+      }
+    },
+    "log-info": {
+      render: (v) => say(null, [
+        `[betterslack:my-plugin] ${v.message}`,
+        "",
+        "and the same line in the loader\u2019s terminal, which is where",
+        "a mod that failed at boot says so."
+      ])
+    },
+    "i18n-locale": {
+      render: () => say(null, [`locale:   ${createI18n().locale}`, `language: ${createI18n().language}`])
+    },
+    "ui-palette": {
+      render: () => {
+        const button = kit.button("Open the palette", { variant: "primary" });
+        button.addEventListener("click", () => openPalette(
+          (query) => [
+            { id: "a", title: "Go to #releases", subtitle: "channel", source: "Slack", run: () => {
+            } },
+            { id: "b", title: "Open BetterSlack", subtitle: "\u2318\u21E7M", source: "BetterSlack", run: () => {
+            } },
+            { id: "c", title: "Change the shortcuts", source: "Command Palette", run: () => {
+            } }
+          ].filter((row) => row.title.toLowerCase().includes(query.toLowerCase())),
+          { placeholder: "Jump to\u2026", empty: "Nothing matches" }
+        ));
+        return button;
+      }
     }
   };
   function mountI18n() {
@@ -4268,15 +4836,17 @@ api.helpers.badge('[data-qa="betterslack_button"]', 'unread', () => unread);`
     draw();
   }
   installStyles();
-  function wireThemePickers() {
-    const pickers = [...document.querySelectorAll(".stage-theme")];
-    if (!pickers.length) return;
-    const apply = (value) => {
-      for (const stage of document.querySelectorAll(".slack-stage")) stage.dataset.theme = value;
-      for (const other of pickers) other.value = value;
+  function wireThemePicker() {
+    const picker = document.getElementById("stage-theme");
+    if (!picker) return;
+    const saved = localStorage.getItem("betterslack-api-theme");
+    if (saved && [...picker.options].some((o) => o.value === saved)) picker.value = saved;
+    const apply = () => {
+      for (const stage of document.querySelectorAll(".slack-stage")) stage.dataset.theme = picker.value;
+      localStorage.setItem("betterslack-api-theme", picker.value);
     };
-    for (const picker of pickers) picker.addEventListener("change", () => apply(picker.value));
-    apply(pickers[0].value);
+    picker.addEventListener("change", apply);
+    apply();
   }
   function router() {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
@@ -4321,19 +4891,27 @@ api.helpers.badge('[data-qa="betterslack_button"]', 'unread', () => unread);`
     const note = $("helpers-toast");
     if (note) note.textContent = `api.ui.toast(${JSON.stringify(message)})`;
   };
-  for (const [name, spec2] of Object.entries(KIT)) playground(`kit-${name.toLowerCase()}`, spec2);
-  for (const [name, spec2] of Object.entries(HELPERS)) playground(`helpers-${name.toLowerCase()}`, spec2);
-  for (const group of [UI, CHROME, SLACK_HELPERS]) {
-    for (const [slug, spec2] of Object.entries(group)) playground(slug, spec2);
+  var PREVIEWS = {};
+  for (const [name, spec2] of Object.entries(KIT)) PREVIEWS[`kit-${name.toLowerCase()}`] = spec2.render;
+  for (const [name, spec2] of Object.entries(HELPERS)) PREVIEWS[`helpers-${name.toLowerCase()}`] = spec2.render;
+  for (const group of [UI, CHROME, SLACK_HELPERS, MORE]) {
+    for (const [slug, spec2] of Object.entries(group)) PREVIEWS[slug] = spec2.render;
+  }
+  for (const slot of document.querySelectorAll("[data-demo]")) {
+    const render = PREVIEWS[slot.dataset.demo];
+    if (render) playground(slot.dataset.demo, render);
+    else slot.remove();
   }
   mountI18n();
   mountMarkdown();
   mountHighlight();
   mountRoles();
-  wireThemePickers();
+  wireThemePicker();
   router();
   filter();
   for (const block of document.querySelectorAll(".api-code")) {
-    block.append(copyButton(() => block.querySelector("code")?.textContent ?? ""));
+    const code = block.querySelector("code");
+    if (code) code.innerHTML = highlight(code.textContent ?? "", "javascript");
+    block.append(copyButton(() => code?.textContent ?? ""));
   }
 })();
