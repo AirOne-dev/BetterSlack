@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo } from './cdp.js';
 import { Catalog, parseManifest } from './catalog.js';
-import { downloadFile } from './download.js';
+import { downloadFile, saveBytes } from './download.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack } from './slack.js';
 import { applyDesktopPrefs, checkPref, prefsSupported, readDesktopPrefs } from './slack-settings.js';
 import { applyUpdate, checkForUpdate } from './update.js';
@@ -414,19 +414,11 @@ class Loader {
   ): Promise<void> {
     const dir = process.env.BETTERSLACK_SHOT;
     if (!dir) return;
-    const [width, height] = (size ?? process.env.BETTERSLACK_SHOT_SIZE ?? '1800x1128')
-      .split('x').map((n) => Number(n) || 0);
     const delay = delayMs ?? Number(process.env.BETTERSLACK_SHOT_DELAY ?? 6000);
 
     await sleep(delay);
     try {
-      if (width && height) {
-        await session.send('Emulation.setDeviceMetricsOverride', {
-          width, height, deviceScaleFactor: 2, mobile: false,
-        });
-        // Slack reflows, and the frame after a reflow is not the one to keep.
-        await sleep(1500);
-      }
+      await this.forceViewport(session, size ?? process.env.BETTERSLACK_SHOT_SIZE ?? '1800x1128');
       /*
        * A message action only exists while the pointer is over the message,
        * and Slack draws that toolbar from CSS `:hover` -- which no synthetic
@@ -461,15 +453,38 @@ class Loader {
         await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y, buttons: 0 });
         await sleep(700);
       }
-      const shot = await session.send<{ data: string }>('Page.captureScreenshot', { format: 'png' });
+      const png = await this.capture(session);
       const file = path.join(dir, `${name.replace(/[^\w-]+/g, '-').slice(0, 60)}.png`);
-      await fs.writeFile(file, Buffer.from(shot.data, 'base64'));
+      await fs.writeFile(file, png);
       console.log(`[betterslack] wrote ${file}`);
     } catch (err) {
       console.warn(`[betterslack] could not photograph ${name}: ${(err as Error).message}`);
     } finally {
       await session.send('Emulation.clearDeviceMetricsOverride').catch(() => undefined);
     }
+  }
+
+  /**
+   * Draw the page at the size the picture will be published at.
+   *
+   * Cropping a taller frame afterwards takes the crop from the middle, which
+   * is how the top bar and the composer went missing from every panel shot on
+   * the site. Forcing the viewport also means a picture does not depend on how
+   * wide whoever took it happened to have Slack open.
+   */
+  private async forceViewport(session: CdpSession, size: string): Promise<void> {
+    const [width, height] = size.split('x').map((n) => Number(n) || 0);
+    if (!width || !height) return;
+    await session.send('Emulation.setDeviceMetricsOverride', {
+      width, height, deviceScaleFactor: 2, mobile: false,
+    });
+    // Slack reflows, and the frame after a reflow is not the one to keep.
+    await sleep(1500);
+  }
+
+  private async capture(session: CdpSession): Promise<Buffer> {
+    const shot = await session.send<{ data: string }>('Page.captureScreenshot', { format: 'png' });
+    return Buffer.from(shot.data, 'base64');
   }
 
   private async attach(target: TargetInfo): Promise<void> {
@@ -882,7 +897,7 @@ class Loader {
     let result: unknown;
     let error: string | undefined;
     try {
-      result = await this.dispatch(request);
+      result = await this.dispatch(request, session);
     } catch (err) {
       error = (err as Error).message;
       console.warn(`[betterslack] ${request.type} failed: ${error}`);
@@ -892,7 +907,7 @@ class Loader {
     await this.post(session, { rid: envelope.rid, payload: { result, error } });
   }
 
-  private async dispatch(request: Request): Promise<unknown> {
+  private async dispatch(request: Request, session: CdpSession): Promise<unknown> {
     switch (request.type) {
       case 'catalog':
         return this.catalog.list();
@@ -953,6 +968,27 @@ class Loader {
         const result = await downloadFile(request.url, request.filename);
         console.log(`[betterslack] saved ${result.path} (${Math.round(result.bytes / 1024)} kB)`);
         return result;
+      }
+
+      case 'app.screenshot': {
+        /*
+         * The picture is taken of the renderer that asked for it.
+         *
+         * The page cannot photograph itself -- there is no such call in a
+         * page -- so this is the loader doing what `pnpm shoot` does, through
+         * the same forced viewport, and writing the result where a download
+         * would have gone.
+         */
+        try {
+          await this.forceViewport(session, request.size ?? '1600x1000');
+          const png = await this.capture(session);
+          const saved = await saveBytes(png, request.filename ?? 'slack.png');
+          console.log(`[betterslack] photographed the window into ${saved.path}`);
+          return saved;
+        } finally {
+          // Always, or the client is left drawn at the picture's size.
+          await session.send('Emulation.clearDeviceMetricsOverride').catch(() => undefined);
+        }
       }
 
       case 'app.update': {

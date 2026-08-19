@@ -172,6 +172,21 @@ export interface PluginApi {
    */
   readonly files: {
     save(url: string, filename: string): Promise<{ path: string; bytes: number }>;
+    /**
+     * Photograph the Slack window and put the picture in the download folder.
+     *
+     * A page cannot photograph itself, so the loader does it over CDP. `size`
+     * is "<width>x<height>" and forces the viewport first, which is the only
+     * way to get a frame that needs no cropping afterwards -- cropping takes
+     * from the middle, and the top bar and the composer go missing. Defaults
+     * to 1600x1000, the size every mod's picture in the catalogue uses.
+     *
+     * Anything of your own that should not be in the picture has to be hidden
+     * before you call this and put back after: the shutter is on the loader's
+     * side, and it photographs whatever is on screen.
+     */
+    screenshot(options?: { size?: string; filename?: string }):
+      Promise<{ path: string; bytes: number }>;
   };
 
   /**
@@ -316,6 +331,8 @@ export interface ApiContext {
   openPanel: (tab?: 'themes' | 'plugins' | 'css' | 'about') => void;
   openMod: (id: string) => void;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
+  screenshot: (options: { size?: string; filename?: string }) =>
+    Promise<{ path: string; bytes: number }>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
   listThemes: () => Array<{ id: string; name: string; description: string; enabled: boolean }>;
   themeSource: (id: string) => Promise<string>;
@@ -453,6 +470,7 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
 
     files: {
       save: (url, filename) => ctx.download(url, filename),
+      screenshot: (options) => ctx.screenshot(options ?? {}),
     },
 
     app: {

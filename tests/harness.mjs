@@ -222,6 +222,8 @@ export function createTestApi({
     palettes: [],
     /** `api.app.setEnabled` / `setInstalled` calls. */
     modChanges: [],
+    /** Every `api.files.screenshot(...)`, with what was still visible. */
+    screenshots: [],
   };
   const store = { ...settings };
   let confirmAnswer = true;
@@ -494,6 +496,19 @@ export function createTestApi({
         const entry = { url, filename, bytes: 2048 };
         recorded.saved.push(entry);
         return { path: `/tmp/${filename}`, bytes: entry.bytes };
+      },
+      screenshot: async (options = {}) => {
+        if (recorded.screenshotShouldFail) throw new Error(recorded.screenshotShouldFail);
+        /*
+         * Recorded with the state of <html> at the moment of the call.
+         *
+         * The shutter is on the loader's side and photographs whatever is on
+         * screen, so a mod that wants its own chrome out of the picture has to
+         * hide it *before* asking and put it back after. Inside the call is
+         * the only moment a test can see whether it did.
+         */
+        recorded.screenshots.push({ ...options, htmlClass: document.documentElement.className });
+        return { path: `/tmp/${options.filename ?? 'slack.png'}`, bytes: 4096 };
       },
     },
 

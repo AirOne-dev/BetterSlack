@@ -60,6 +60,23 @@ export interface DownloadResult {
   bytes: number;
 }
 
+/**
+ * Write bytes the loader already has into the same folder, under the same
+ * rules.
+ *
+ * The screenshot path needs this: there is nothing to fetch, but everything
+ * below the fetch -- one fixed directory the mod cannot choose, a name reduced
+ * to a safe basename, no overwriting a file the user already has -- is exactly
+ * what a mod writing to disk should still be held to.
+ */
+export async function saveBytes(bytes: Buffer, filename: string): Promise<DownloadResult> {
+  if (bytes.byteLength > MAX_BYTES) throw new DownloadError('file exceeded the 25 MB cap');
+  await fs.mkdir(DOWNLOAD_DIR, { recursive: true });
+  const target = await uniquePath(DOWNLOAD_DIR, safeFilename(filename));
+  await fs.writeFile(target, bytes);
+  return { path: target, bytes: bytes.byteLength };
+}
+
 export async function downloadFile(url: string, filename: string): Promise<DownloadResult> {
   let parsed: URL;
   try {

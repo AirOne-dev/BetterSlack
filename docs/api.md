@@ -478,6 +478,27 @@ The loader does the fetching, because Slack's CDN serves without CORS headers
 and a `fetch` from the page always fails. https only, the file name is
 sanitised, 25 MB cap, fixed download directory.
 
+```js
+const { path } = await api.files.screenshot({ size: '1600x1000', filename: 'slack.png' });
+```
+
+Photographs the Slack window into the same folder, under the same rules. A page
+cannot photograph itself, so the loader does it over CDP — the same call
+`pnpm shoot` makes.
+
+`size` forces the viewport before the shutter and puts it back after, which is
+the only way to get a frame that needs no cropping: cropping a taller picture
+afterwards takes the crop from the middle, and the top bar and the composer go
+missing. It defaults to `1600x1000`, the size every mod's picture in the
+catalogue uses.
+
+The shutter photographs whatever is on screen, so anything of your own that
+should not be in the picture has to be hidden before the call and put back
+after — in a `finally`, or a failed capture leaves your own interface hidden.
+Do it with a class on `<html>` and a stylesheet rather than an inline style:
+toolbar buttons are re-mounted when Slack re-renders around them, and a remount
+during the two seconds a capture takes would put the button back in shot.
+
 ## `api.slack.web` — users and availability
 
 ```js

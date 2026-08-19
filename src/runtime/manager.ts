@@ -456,6 +456,12 @@ export class ModManager {
         set.add(handler);
         return () => set!.delete(handler);
       },
+      screenshot: ({ size, filename }) =>
+        this.bridge.request<{ path: string; bytes: number }>({
+          type: 'app.screenshot',
+          size,
+          filename,
+        }),
       download: (url, filename) =>
         this.bridge.request<{ path: string; bytes: number }>({
           type: 'file.download',

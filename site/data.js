@@ -273,7 +273,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Ajoute un interrupteur dans la barre du haut qui remplit votre vrai Slack de gens qui n'existent pas : chaque nom, visage, message, canal, fichier et lien à l'écran est remplacé par un inventé, pour que vous puissiez capturer, partager votre écran ou faire une démo sans montrer le travail de personne. Une seconde pression et le vrai revient. Il démarre éteint, et le reste tant que vous ne demandez rien."
       },
-      "version": "1.1.0",
+      "version": "1.2.0",
       "tags": [
         "privacy",
         "screenshots",
@@ -282,7 +282,7 @@ window.CATALOGUE = {
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"8\" r=\"3.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M3.5 19a5.5 5.5 0 0 1 11 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M15.5 5.5c3 1.4 3 11.6 0 13\" fill=\"none\" stroke=\"#b8362f\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-dasharray=\"2.4 3\"/><circle cx=\"19.5\" cy=\"12\" r=\"2.5\" fill=\"#b8362f\"/></svg>",
       "shot": "shots/mods/demo-mode.jpg",
-      "settings": 0
+      "settings": 1
     },
     {
       "id": "devtools",

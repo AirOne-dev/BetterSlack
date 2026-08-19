@@ -253,3 +253,78 @@ test('does not check a screen it has not redacted', async () => {
     unmount();
   }
 });
+
+test('offers a camera only while the demo is running', async () => {
+  const { recorded, unmount } = await mount();
+  try {
+    const camera = recorded.toolbarButtons.find((b) => b.button.id === 'shot');
+    assert.ok(camera, 'no camera was added');
+    assert.equal(camera.toolbar, 'topNav', 'and it sits beside the switch');
+    // Which of the two is on screen is CSS, keyed on a class on <html> — the
+    // button is registered once and never re-registered.
+    assert.match(recorded.css.join('\n'), /betterslack-demo-on.*bs-demo-shot|bs-demo-shot/s);
+  } finally {
+    unmount();
+  }
+});
+
+test('photographs at the published size, into the downloads folder', async () => {
+  const { press, recorded, unmount } = await mount();
+  try {
+    press();
+    await recorded.toolbarButtons.find((b) => b.button.id === 'shot').button.onClick();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const [shot] = recorded.screenshots;
+    assert.ok(shot, 'nothing was photographed');
+    assert.equal(shot.size, '1600x1000', 'the size every mod picture in the catalogue uses');
+    assert.match(shot.filename, /^slack-[\d-]+\.png$/);
+  } finally {
+    unmount();
+  }
+});
+
+test('takes its own buttons out of the picture, and puts them back', async () => {
+  const { press, recorded, unmount } = await mount();
+  try {
+    press();
+    await recorded.toolbarButtons.find((b) => b.button.id === 'shot').button.onClick();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // The shutter is on the loader's side and photographs whatever is on
+    // screen, so this is the only moment the hiding can be checked.
+    assert.match(recorded.screenshots[0].htmlClass, /betterslack-demo-shooting/);
+    assert.doesNotMatch(document.documentElement.className, /betterslack-demo-shooting/);
+  } finally {
+    unmount();
+  }
+});
+
+test('a failed capture still gives the buttons back', async () => {
+  const { press, recorded, unmount } = await mount();
+  try {
+    press();
+    recorded.screenshotShouldFail = 'the renderer said no';
+    await recorded.toolbarButtons.find((b) => b.button.id === 'shot').button.onClick();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Otherwise the client is left with no toolbar buttons and no way to press
+    // anything, which is worse than the failure.
+    assert.doesNotMatch(document.documentElement.className, /betterslack-demo-shooting/);
+    assert.match(recorded.toasts.at(-1).message, /the renderer said no/);
+  } finally {
+    unmount();
+  }
+});
+
+test('will not photograph a screen it has not redacted', async () => {
+  const { recorded, unmount } = await mount();
+  try {
+    recorded.commands.find((command) => command.id === 'shoot').run();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(recorded.screenshots.length, 0);
+    assert.match(recorded.toasts.at(-1).message, /real/i);
+  } finally {
+    unmount();
+  }
+});

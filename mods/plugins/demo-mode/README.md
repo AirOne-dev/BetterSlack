@@ -3,6 +3,7 @@
 Puts a switch in the top bar that fills your real Slack with people who do not exist: every name, face, message, channel, file and link on screen is replaced by an invented one, so you can screenshot, screen-share or demo your own client without showing anybody's work. Press it again and the real thing comes back. It starts off, and stays off until you ask.
 
 - **The switch is at the right-hand end of the top bar**, beside Slack's own controls, and it turns red while the demo is running. Installing the mod is not the request; pressing the switch is.
+- **A camera appears beside it during a demo.** It draws the window at the size the site and the READMEs use, photographs it, and puts the file in your downloads — with a flash, so you can see it happened. BetterSlack's own switch, camera and strip are taken out of shot first, so the picture is of Slack rather than of the apparatus.
 - **The state is deliberately not remembered.** Every start is off. Coming back to a Slack full of invented names after a restart, and reading them as real, is the one failure this mod could cause on its own.
 - It **replaces** rather than blurs. A blurred name is still a name that was on the screen, and a black box says the picture had something to hide; substitution gives a screen that looks like Slack in use and contains nobody.
 - Every replacement is derived from a hash of the original, so the same person is the same invented person in the sidebar, in the messages and in the member list — and two runs produce the same screen.

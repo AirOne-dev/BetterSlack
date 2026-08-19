@@ -30,8 +30,16 @@ import { createRedaction } from './redaction.js';
 import { STRINGS } from './strings.js';
 
 const INDICATOR_ID = 'betterslack-demo-indicator';
+const FLASH_ID = 'betterslack-demo-flash';
 /** On `<html>`, so the switch's own appearance is pure CSS. */
 const ON_CLASS = 'betterslack-demo-on';
+/*
+ * Also on `<html>`, and for the same reason it is not an inline style: the
+ * toolbar buttons are re-mounted whenever Slack re-renders around them, and a
+ * remount during the two seconds a capture takes would put the button back in
+ * shot. A class and a stylesheet survive it.
+ */
+const SHOOTING_CLASS = 'betterslack-demo-shooting';
 
 /*
  * Both states in one icon: a face, and the mask that goes over it.
@@ -40,6 +48,12 @@ const ON_CLASS = 'betterslack-demo-on';
  * has to name the id the runtime gives the button -- which is the runtime's
  * business and not a contract.
  */
+const CAMERA_ICON = `<svg viewBox="0 0 20 20" class="bs-demo-icon bs-demo-shot" aria-hidden="true">
+  <path d="M2.5 6.5h3l1.2-2h6.6l1.2 2h3v9h-15z" fill="none" stroke="currentColor"
+        stroke-width="1.6" stroke-linejoin="round"/>
+  <circle cx="10" cy="11" r="3.1" fill="none" stroke="currentColor" stroke-width="1.6"/>
+</svg>`;
+
 const ICON = `<svg viewBox="0 0 20 20" class="bs-demo-icon" aria-hidden="true">
   <circle cx="7.5" cy="6.5" r="2.8" fill="none" stroke="currentColor" stroke-width="1.6"/>
   <path d="M2.6 16a4.9 4.9 0 0 1 9.8 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -67,6 +81,35 @@ export default {
       html.${ON_CLASS} .bs-demo-off { display: none; }
       html.${ON_CLASS} .bs-demo-on { display: inline; }
       html.${ON_CLASS} .bs-demo-icon { color: #b8362f; }
+
+      /*
+       * The camera belongs to the demo, so it is only there during one.
+       *
+       * Reached through the class on its own icon rather than through the id
+       * the runtime gives the button, which is the runtime's business. Hidden
+       * rather than shown, so its natural display never has to be guessed.
+       */
+      html:not(.${ON_CLASS}) .betterslack-toolbar-button:has(.bs-demo-shot) { display: none; }
+
+      /*
+       * Out of shot, but not out of the layout: the shutter is on the loader's
+       * side and photographs whatever is on screen, and removing these would
+       * shift Slack's own buttons along the top bar for the one frame that
+       * matters.
+       */
+      html.${SHOOTING_CLASS} #${INDICATOR_ID},
+      html.${SHOOTING_CLASS} .betterslack-toolbar-button { visibility: hidden; }
+
+      #${FLASH_ID} {
+        position: fixed; inset: 0; z-index: 2147483000;
+        background: #fff; pointer-events: none; opacity: 0;
+        animation: betterslack-demo-flash 420ms ease-out forwards;
+      }
+      @keyframes betterslack-demo-flash {
+        0% { opacity: 0; }
+        12% { opacity: 0.85; }
+        100% { opacity: 0; }
+      }
 
       #${INDICATOR_ID} {
         position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
@@ -112,6 +155,72 @@ export default {
       description: t('toggleHint'),
       icon: ICON,
       onClick: () => setDemo(!on),
+    });
+
+    /*
+     * A picture at the size it will be published at.
+     *
+     * Cropping a taller frame afterwards takes the crop from the middle, which
+     * is how the top bar and the composer went missing from every panel shot
+     * on this project's own site. The loader forces the viewport first, so
+     * what comes back needs no cropping at all.
+     */
+    const shoot = async () => {
+      /*
+       * The local clock, not UTC.
+       *
+       * `toISOString()` is the short way to a sortable stamp and it named the
+       * first file 07-41 while the clock on the wall said 09:41, which is a
+       * small thing that makes you distrust the whole file.
+       */
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+        + `-${pad(now.getHours())}${pad(now.getMinutes())}`;
+      root.classList.add(SHOOTING_CLASS);
+      try {
+        const saved = await api.files.screenshot({
+          size: api.settings.get('size', '1600x1000'),
+          filename: `slack-${stamp}.png`,
+        });
+        flash();
+        api.ui.toast(t('saved', { name: saved.path.split('/').pop() }), { variant: 'success' });
+      } catch (err) {
+        api.ui.toast(t('failed', { reason: err.message }), { variant: 'warning' });
+      } finally {
+        // In a finally, or a failed capture leaves the client with no toolbar
+        // buttons and no way to press anything.
+        root.classList.remove(SHOOTING_CLASS);
+      }
+    };
+
+    /** Confirmation you can see, in the place you were already looking. */
+    const flash = () => {
+      document.getElementById(FLASH_ID)?.remove();
+      const sheet = api.dom.h('div', { id: FLASH_ID, 'aria-hidden': 'true' });
+      sheet.addEventListener('animationend', () => sheet.remove());
+      document.body.append(sheet);
+      // A fallback, since an animation that never starts never ends -- and a
+      // white sheet left over the client is a broken Slack.
+      setTimeout(() => sheet.remove(), 1200);
+    };
+
+    api.slack.addToolbarButton('topNav', {
+      id: 'shot',
+      label: t('shoot'),
+      description: t('shootHint'),
+      icon: CAMERA_ICON,
+      onClick: () => void shoot(),
+    });
+
+    api.commands.add({
+      id: 'shoot',
+      title: t('shoot'),
+      subtitle: t('shootHint'),
+      run: () => {
+        if (!on) return void api.ui.toast(t('checkOff'), { variant: 'warning' });
+        void shoot();
+      },
     });
 
     api.commands.add({
@@ -160,7 +269,11 @@ export default {
 
     // Switching the mod off is switching the demo off: the real thing comes
     // back, whichever way you left it.
-    api.onDispose(() => setDemo(false));
+    api.onDispose(() => {
+      setDemo(false);
+      root.classList.remove(SHOOTING_CLASS);
+      document.getElementById(FLASH_ID)?.remove();
+    });
   },
 
   stop() {},

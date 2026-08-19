@@ -188,6 +188,19 @@ a command. Everything below was found by it rather than by looking:
   highlighter -- has to be switched off and on after the sweep, or what it
   decorated is the text that has since been replaced.
 
+It also carries the camera. `api.files.screenshot({ size })` is the loader
+photographing the renderer that asked -- a page cannot photograph itself -- and
+writing the PNG where a download would have gone, through the same fixed
+directory and safe-name rules. It forces the viewport first and clears it in a
+`finally`, so the file needs no cropping and the client is never left drawn at
+the picture's size. Measured: 1600x1000 comes back as 3200x2000, which is the
+catalogue's size at the 2x scale factor.
+
+The mod hides its own switch, camera and strip before asking and puts them back
+in a `finally` -- with a class on `<html>`, not an inline style, because the
+toolbar buttons are re-mounted whenever Slack re-renders around them and a
+remount during the two seconds a capture takes would put one back in shot.
+
 Two things the mod needs that the script never did, both measured against a
 live client rather than assumed:
 

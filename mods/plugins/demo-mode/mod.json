@@ -2,7 +2,7 @@
   "id": "demo-mode",
   "name": "Demo Mode",
   "type": "plugin",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "AirOne-dev",
   "description": "Puts a switch in the top bar that fills your real Slack with people who do not exist: every name, face, message, channel, file and link on screen is replaced by an invented one, so you can screenshot, screen-share or demo your own client without showing anybody's work. Press it again and the real thing comes back. It starts off, and stays off until you ask.",
   "descriptions": {
@@ -28,6 +28,29 @@
         "en": "The mod at work: a real workspace, and nobody in it.",
         "fr": "Le mod à l’œuvre : un vrai espace de travail, et personne dedans."
       }
+    }
+  ],
+  "settings": [
+    {
+      "key": "size",
+      "type": "choice",
+      "label": "Screenshot size",
+      "hint": "The window is drawn at this size for the picture and put back afterwards, so the file needs no cropping. The first is what every mod picture in the BetterSlack catalogue uses.",
+      "default": "1600x1000",
+      "options": [
+        {
+          "value": "1600x1000",
+          "label": "1600 x 1000 — a mod in the catalogue"
+        },
+        {
+          "value": "1800x990",
+          "label": "1800 x 990 — the wide frames on the site"
+        },
+        {
+          "value": "1280x800",
+          "label": "1280 x 800 — smaller, for a readme"
+        }
+      ]
     }
   ]
 }

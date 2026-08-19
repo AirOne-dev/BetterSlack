@@ -314,6 +314,15 @@ export type Request =
    */
   | { type: 'file.download'; url: string; filename: string }
   /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
+  /**
+   * Photograph the window and put the picture in the download folder.
+   *
+   * The renderer cannot photograph itself, so this is the loader doing it over
+   * CDP -- the same call `pnpm shoot` makes, at the same forced size, which is
+   * the only way to get a frame the site and the READMEs can use without
+   * cropping it afterwards.
+   */
+  | { type: 'app.screenshot'; size?: string; filename?: string }
   | { type: 'app.update' }
   /** Everything in ~/.betterslack worth keeping, as one JSON document. */
   | { type: 'backup.export' }
