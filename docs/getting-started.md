@@ -53,7 +53,20 @@ BETTERSLACK_SLACK_PATH=/path/to/Slack pnpm start
 pnpm build-app       # produces dist/BetterSlack.app
 ```
 
+A launcher rather than a bundle: it holds the path to this checkout and runs it,
+so the folder has to stay where it is. Output goes to
+`~/Library/Logs/BetterSlack.log`, and it runs without a Dock icon, like the
+loader itself.
+
 It is unsigned, so the first launch needs right-click → Open.
+
+**It cannot read a checkout on your Desktop, in Documents or in Downloads.**
+macOS gates those folders per application: your terminal has been granted
+access, a freshly built app has not, and no prompt is ever shown for an unsigned
+one — the read simply fails. `pnpm build-app` warns when the project is in one
+of them, and the app says so in a dialog rather than a log file. Either keep the
+project somewhere like `~/code`, or grant BetterSlack.app Full Disk Access in
+System Settings → Privacy & Security.
 </details>
 
 ---

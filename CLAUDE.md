@@ -63,6 +63,17 @@ which is why it is not part of `pnpm test`.
 The loader also watches while it runs: if the renderer stops answering, it says
 so, names the mods that were on, and re-arms the safe-start marker.
 
+**`pnpm build-app` cannot read a checkout on the Desktop.** macOS gates
+Desktop, Documents and Downloads per application: a terminal has that access, a
+freshly built app has not, and no prompt is shown for an unsigned one -- the
+read fails with EPERM and nothing explains why. Measured with a throwaway
+bundle: the same script reads `~/anything` and is refused `~/Desktop/anything`,
+and an ad-hoc signature does not change it. The build warns, and the app now
+says so in a dialog instead of leaving a stack trace in
+`~/Library/Logs/BetterSlack.log`. This repository is on the Desktop, so the app
+built here will not start until the project moves or is granted Full Disk
+Access.
+
 **pnpm, not npm.** `pnpm-workspace.yaml` carries `allowBuilds: esbuild: true` --
 pnpm refuses to run a dependency's install script unless it is named there, and
 esbuild fetches its platform binary in one, so a fresh checkout fails on every
@@ -74,6 +85,7 @@ pnpm new-mod plugin my-plugin "What a user gets"   # a mod that already passes
 pnpm release patch     # bumps, writes CHANGELOG.md from the commits, tags
 pnpm test:live         # boots real Slack and checks what loaded
 pnpm build             # both bundles + dist/download.mjs
+pnpm build-app         # macOS: dist/BetterSlack.app, a launcher for this checkout
 pnpm start             # launch Slack with mods
 pnpm test              # every mod's tests
 pnpm test:mod -- <id>  # one mod

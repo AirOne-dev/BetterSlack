@@ -5,16 +5,28 @@
 // It is a launcher, not a bundle: it runs the loader from this checkout, so the
 // repository has to stay where it is. That is a deliberate simplification over
 // vendoring a Node runtime into the app.
+//
+// **macOS gates Desktop, Documents and Downloads per application.** A terminal
+// has been granted that access; a freshly built, unsigned app has not, and no
+// prompt appears for one — the read just fails with EPERM. Measured with a
+// throwaway bundle: the same script reads `~/anything` and is refused
+// `~/Desktop/anything`. So a checkout in one of those folders produces an app
+// that cannot read its own repository, which is worth saying at build time
+// rather than leaving in a log file as a stack trace.
 
+import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { homedir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
 if (process.platform !== 'darwin') {
   console.error('build-app only works on macOS.');
   process.exit(1);
 }
 
+const run = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = path.join(root, 'dist', 'BetterSlack.app');
 const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
@@ -55,6 +67,20 @@ if [ -z "$NODE" ]; then
   osascript -e 'display alert "BetterSlack" message "Node.js was not found. Install it from nodejs.org, then try again."'
   exit 1
 fi
+# Ask the operating system rather than guessing: under macOS's file gate the
+# entry point is not missing, it is forbidden, and a -f test reports both as
+# false. The error text is what tells them apart. (No backticks in here:
+# this whole script is a JavaScript template literal, and one would end it.)
+WHY="$(cat "$REPO/bin/betterslack.mjs" 2>&1 >/dev/null)"
+if [ -n "$WHY" ]; then
+  case "$WHY" in
+    *"Operation not permitted"*)
+      osascript -e 'display alert "BetterSlack" message "macOS is blocking BetterSlack from reading its own folder, because the project is in a protected place (Desktop, Documents or Downloads).\n\nEither move the project somewhere else and run pnpm build-app again, or give BetterSlack.app Full Disk Access in System Settings > Privacy & Security."' ;;
+    *)
+      osascript -e 'display alert "BetterSlack" message "BetterSlack could not be started from this folder. Check that the project is still where it was when the app was built."' ;;
+  esac
+  exit 1
+fi
 if [ ! -f "$REPO/dist/loader.mjs" ]; then
   osascript -e 'display alert "BetterSlack" message "BetterSlack is not built. Run pnpm install && pnpm build in the repository."'
   exit 1
@@ -70,6 +96,27 @@ await fs.copyFile(
   path.join(app, 'Contents', 'Resources', 'icon.icns'),
 ).catch(() => console.warn('no assets/icon.icns, the app will use the default icon'));
 
+/*
+ * Signed ad-hoc, which is not about trust.
+ *
+ * It gives the bundle a stable identity, so any access the user grants it in
+ * System Settings survives the next `pnpm build-app`. Without one, macOS treats
+ * each rebuild as a different application and the permission is lost.
+ */
+await run('codesign', ['--force', '--deep', '--sign', '-', app])
+  .catch((err) => console.warn(`could not sign the app: ${err.message.split('\n')[0]}`));
+
 console.log(`built ${app}`);
+
+const GATED = ['Desktop', 'Documents', 'Downloads'].map((name) => path.join(homedir(), name));
+if (GATED.some((dir) => root === dir || root.startsWith(`${dir}${path.sep}`))) {
+  console.warn(
+    '\nThis project is in a folder macOS gates per application, so the app will not\n'
+    + 'be able to read it: an unsigned app is refused, and no prompt is shown. Either\n'
+    + 'move the project somewhere like ~/code and build again, or grant BetterSlack.app\n'
+    + 'Full Disk Access in System Settings > Privacy & Security.',
+  );
+}
+
 console.log('Unsigned: the first launch needs right-click -> Open.');
 console.log('Logs: ~/Library/Logs/BetterSlack.log');
