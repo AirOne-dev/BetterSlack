@@ -597,6 +597,15 @@ export interface SlackApi {
    * Resolves false when Slack shows no huddle control for that conversation.
    */
   startHuddle(userId: string): Promise<boolean>;
+  /**
+   * Slack's own "set a status" dialog, which is two clicks rather than a URL.
+   *
+   * There is no deep link and no exposed action for it: the entry lives in the
+   * account menu, so the menu has to be opened first. Its `data-qa` is
+   * `main-menu-custom-status-item`, which is the same in every language -- the
+   * label beside it is not.
+   */
+  openStatusEditor(): Promise<boolean>;
 
   /** The people marked VIP, in Slack's own order. */
   vipUsers(): Promise<string[]>;
@@ -799,6 +808,25 @@ export function createSlackApi(pluginId: string): SlackApi {
       );
       if (!button) return false;
       button.click();
+      return true;
+    },
+
+    async openStatusEditor(): Promise<boolean> {
+      /*
+       * The menu, then the item.
+       *
+       * The account menu is what holds it, and it is drawn on demand, so the
+       * item cannot be waited for before the menu is asked for. The user button
+       * may be hidden by a mod -- the account strip covers it -- and a hidden
+       * button still takes a click, which is why this does not go looking for
+       * something visible.
+       */
+      const button = document.querySelector<HTMLElement>('[data-qa="user-button"]');
+      if (!button) return false;
+      button.click();
+      const item = await waitFor<HTMLElement>('[data-qa="main-menu-custom-status-item"]', 4000);
+      if (!item) return false;
+      item.click();
       return true;
     },
 

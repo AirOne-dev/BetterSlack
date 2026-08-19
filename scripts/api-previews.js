@@ -1202,6 +1202,37 @@ const IMITATED = {
     },
   },
 
+  'slack-openstatuseditor': {
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      const strip = frame.querySelector('.p-control_strip');
+      const menu = kit.el('div', { class: 'c-menu pg__fakemenu' }, [
+        kit.el('ul', { class: 'c-menu__items' }, [
+          kit.el('li', { class: 'c-menu_item__li' }, [
+            kit.el('button', { class: 'c-menu_item__button', 'data-qa': 'main-menu-custom-status-item' }, [
+              kit.el('span', { class: 'c-menu_item__label' }, ['Set a status']),
+            ]),
+          ]),
+          kit.el('li', { class: 'c-menu_item__li' }, [
+            kit.el('button', { class: 'c-menu_item__button' }, [
+              kit.el('span', { class: 'c-menu_item__label' }, ['Pause notifications']),
+            ]),
+          ]),
+        ]),
+      ]);
+      strip.append(menu);
+      stage.replaceChildren(frame, kit.el('pre', { class: 'pg__out' }, [
+        'await api.slack.openStatusEditor()',
+        '',
+        'The account menu is opened first, then the entry below is pressed.',
+        'data-qa rather than the words beside it: the label is translated,',
+        'the attribute is not.',
+      ]));
+      focusChrome(frame, '.p-control_strip');
+      return undefined;
+    },
+  },
+
   'slack-restart': {
     render: () => {
       const button = kit.button('Restart Slack', { variant: 'primary' });
@@ -1875,6 +1906,63 @@ function drawer() {
 
 const DRAWER = drawer();
 
+/*
+ * The order of each group, which is a choice rather than a fact.
+ *
+ * A to Z is what the build writes and what you want when you know the name.
+ * By date is what you want when you do not: it puts what changed last at the
+ * top of its group, from the same `site/api-updated.js` the foot of each page
+ * reads. Groups keep their own order either way -- sorting across them would
+ * mix `api.helpers` into `api.slack`, and the grouping is the map.
+ */
+function order() {
+  const picker = document.getElementById('side-order');
+  if (!picker) return;
+  const dates = (typeof window !== 'undefined' && window.__API_UPDATED) || {};
+
+  const apply = () => {
+    const byDate = picker.value === 'updated';
+    for (const group of document.querySelectorAll('.side__group')) {
+      const list = group.querySelector('ul');
+      if (!list) continue;
+      const items = [...list.children];
+      items.sort((a, b) => {
+        const linkA = a.querySelector('a');
+        const linkB = b.querySelector('a');
+        if (!linkA || !linkB) return 0;
+        if (!byDate) {
+          // The build's own order, kept on the element so a return to A to Z is
+          // exact rather than a re-sort that might disagree with it.
+          return Number(a.dataset.at ?? 0) - Number(b.dataset.at ?? 0);
+        }
+        const slugA = linkA.getAttribute('href')?.slice(1) ?? '';
+        const slugB = linkB.getAttribute('href')?.slice(1) ?? '';
+        /*
+         * No date means no commit yet, which means it is being written right
+         * now -- the newest thing there is. Left as an empty string it sorted
+         * to the bottom of "recently updated", which is the opposite of true.
+         */
+        const dateA = dates[slugA] || '9999-99-99';
+        const dateB = dates[slugB] || '9999-99-99';
+        if (dateA === dateB) return Number(a.dataset.at ?? 0) - Number(b.dataset.at ?? 0);
+        return dateA < dateB ? 1 : -1;
+      });
+      list.append(...items);
+    }
+    localStorage.setItem('betterslack-api-order', picker.value);
+  };
+
+  // Stamped once, before anything moves: this is the order the build wrote.
+  for (const group of document.querySelectorAll('.side__group')) {
+    [...(group.querySelector('ul')?.children ?? [])].forEach((li, at) => { li.dataset.at = String(at); });
+  }
+
+  const saved = localStorage.getItem('betterslack-api-order');
+  if (saved && [...picker.options].some((o) => o.value === saved)) picker.value = saved;
+  picker.addEventListener('change', apply);
+  apply();
+}
+
 /** Narrow the list without leaving the page. */
 function filter() {
   const box = document.getElementById('side-filter');
@@ -1934,6 +2022,7 @@ function stampDates() {
 
 stampDates();
 wireThemePicker();
+order();
 router();
 filter();
 

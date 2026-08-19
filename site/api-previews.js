@@ -741,6 +741,15 @@
         button.click();
         return true;
       },
+      async openStatusEditor() {
+        const button = document.querySelector('[data-qa="user-button"]');
+        if (!button) return false;
+        button.click();
+        const item = await waitFor('[data-qa="main-menu-custom-status-item"]', 4e3);
+        if (!item) return false;
+        item.click();
+        return true;
+      },
       async vipUsers() {
         const res = await web.call("users.prefs.get");
         return String(res.prefs?.vip_users ?? "").split(",").map((id) => id.trim()).filter(Boolean);
@@ -1247,6 +1256,21 @@
 }
 .betterslack-row.betterslack-row--notice .betterslack-row__meta { margin-bottom: 12px; }
 .betterslack-row.betterslack-row--notice .betterslack-row__actions { flex-wrap: wrap; gap: 10px; }
+/* The same card, in the colour of something wrong rather than something new. */
+.betterslack-row.betterslack-row--warn {
+  border-color: rgba(var(--sk_highlight_accent, 224, 30, 90), 0.4);
+  background: rgba(var(--sk_highlight_accent, 224, 30, 90), 0.07);
+}
+.betterslack-skipped {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.75);
+  word-break: break-word;
+}
 
 /*
  * The state while it is working, which used to be a disabled button with a line
@@ -2045,7 +2069,7 @@
     const words2 = query.toLowerCase().split(/\s+/).filter(Boolean);
     if (words2.length === 0) return commands;
     const scored = [];
-    commands.forEach((command, order) => {
+    commands.forEach((command, order2) => {
       const title = command.title.toLowerCase();
       const rest = `${command.source ?? ""} ${command.subtitle ?? ""} ${command.section ?? ""}`.toLowerCase();
       let score = 0;
@@ -2064,7 +2088,7 @@
         matched = true;
         score = 1;
       }
-      if (matched) scored.push({ command, score, order });
+      if (matched) scored.push({ command, score, order: order2 });
     });
     return scored.sort((a, b) => b.score - a.score || a.order - b.order).map((entry) => entry.command);
   }
@@ -5389,6 +5413,36 @@ api.slack.desktop.needsRestart(${JSON.stringify(pref.key)})  // ${pref.restart}`
         ];
       }
     },
+    "slack-openstatuseditor": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        const strip = frame.querySelector(".p-control_strip");
+        const menu = kit.el("div", { class: "c-menu pg__fakemenu" }, [
+          kit.el("ul", { class: "c-menu__items" }, [
+            kit.el("li", { class: "c-menu_item__li" }, [
+              kit.el("button", { class: "c-menu_item__button", "data-qa": "main-menu-custom-status-item" }, [
+                kit.el("span", { class: "c-menu_item__label" }, ["Set a status"])
+              ])
+            ]),
+            kit.el("li", { class: "c-menu_item__li" }, [
+              kit.el("button", { class: "c-menu_item__button" }, [
+                kit.el("span", { class: "c-menu_item__label" }, ["Pause notifications"])
+              ])
+            ])
+          ])
+        ]);
+        strip.append(menu);
+        stage.replaceChildren(frame, kit.el("pre", { class: "pg__out" }, [
+          "await api.slack.openStatusEditor()",
+          "",
+          "The account menu is opened first, then the entry below is pressed.",
+          "data-qa rather than the words beside it: the label is translated,",
+          "the attribute is not."
+        ]));
+        focusChrome(frame, ".p-control_strip");
+        return void 0;
+      }
+    },
     "slack-restart": {
       render: () => {
         const button = kit.button("Restart Slack", { variant: "primary" });
@@ -5991,6 +6045,44 @@ const kit = api.ui.kit(win.document);`)
     };
   }
   var DRAWER = drawer();
+  function order() {
+    const picker = document.getElementById("side-order");
+    if (!picker) return;
+    const dates = typeof window !== "undefined" && window.__API_UPDATED || {};
+    const apply = () => {
+      const byDate = picker.value === "updated";
+      for (const group of document.querySelectorAll(".side__group")) {
+        const list = group.querySelector("ul");
+        if (!list) continue;
+        const items = [...list.children];
+        items.sort((a, b) => {
+          const linkA = a.querySelector("a");
+          const linkB = b.querySelector("a");
+          if (!linkA || !linkB) return 0;
+          if (!byDate) {
+            return Number(a.dataset.at ?? 0) - Number(b.dataset.at ?? 0);
+          }
+          const slugA = linkA.getAttribute("href")?.slice(1) ?? "";
+          const slugB = linkB.getAttribute("href")?.slice(1) ?? "";
+          const dateA = dates[slugA] || "9999-99-99";
+          const dateB = dates[slugB] || "9999-99-99";
+          if (dateA === dateB) return Number(a.dataset.at ?? 0) - Number(b.dataset.at ?? 0);
+          return dateA < dateB ? 1 : -1;
+        });
+        list.append(...items);
+      }
+      localStorage.setItem("betterslack-api-order", picker.value);
+    };
+    for (const group of document.querySelectorAll(".side__group")) {
+      [...group.querySelector("ul")?.children ?? []].forEach((li, at) => {
+        li.dataset.at = String(at);
+      });
+    }
+    const saved = localStorage.getItem("betterslack-api-order");
+    if (saved && [...picker.options].some((o) => o.value === saved)) picker.value = saved;
+    picker.addEventListener("change", apply);
+    apply();
+  }
   function filter() {
     const box = document.getElementById("side-filter");
     if (!box) return;
@@ -6039,6 +6131,7 @@ const kit = api.ui.kit(win.document);`)
   }
   stampDates();
   wireThemePicker();
+  order();
   router();
   filter();
   for (const block of document.querySelectorAll(".api-code")) {

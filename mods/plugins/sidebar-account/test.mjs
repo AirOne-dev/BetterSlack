@@ -338,3 +338,45 @@ test('takes the avatar, not whatever image Slack put in the button first', async
     dom.cleanup();
   }
 });
+
+test('the status emoji opens Slack’s own status dialog, and only on a click', async () => {
+  const dom = installDom();
+  let opened = 0;
+  let menuOpened = 0;
+  document.querySelector('[data-qa="user-button"]')
+    .addEventListener('click', () => { menuOpened += 1; });
+
+  const { api, recorded } = createTestApi({
+    web: {
+      users: async (ids) => new Map(ids.map((id) => [id, {
+        id,
+        profile: { display_name: 'Erwan', status_emoji: ':catjam:', status_text: '' },
+      }])),
+      emoji: async () => new Map([['catjam', 'https://emoji.slack-edge.com/T1/catjam/0e40.gif']]),
+    },
+  });
+  api.slack.openStatusEditor = async () => { opened += 1; return true; };
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const emoji = document.querySelector('.betterslack-me__emoji');
+    assert.ok(emoji, 'the emoji is there');
+    assert.equal(emoji.tagName, 'BUTTON', 'and it is pressable');
+
+    // Hovering must not open anything: this is Slack's dialog over the whole
+    // window, and a 15px target crossed on the way somewhere else is not a
+    // request for it.
+    emoji.dispatchEvent(new window.MouseEvent('mouseenter', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(opened, 0, 'hovering opens nothing');
+
+    emoji.click();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(opened, 1, 'clicking opens the status dialog');
+    assert.equal(menuOpened, 0, 'and does not also open the account menu under it');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

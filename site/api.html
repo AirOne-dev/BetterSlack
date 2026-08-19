@@ -119,6 +119,13 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
     <label class="side__search">
       <input type="search" id="side-filter" placeholder="Filter…" aria-label="Filter the list">
     </label>
+    <label class="side__sort" for="side-order">
+      <span data-en="Order" data-fr="Ordre">Order</span>
+      <select id="side-order" class="api-select">
+        <option value="name" data-en="A to Z" data-fr="De A à Z">A to Z</option>
+        <option value="updated" data-en="Recently updated" data-fr="Modifiés récemment">Recently updated</option>
+      </select>
+    </label>
     <nav><ul class="side__list"><li class="side__group"><p class="side__title">Getting started</p>
       <ul><li><a href="#guide-install">Install and run</a></li><li><a href="#guide-plugin">Your first plugin</a></li><li><a href="#guide-theme">Your first theme</a></li></ul></li>
 <li class="side__group"><p class="side__title">Tools</p>
@@ -128,7 +135,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">api.helpers</p>
       <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.slack</p>
-      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
+      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.ui</p>
       <ul><li><a href="#ui-confirm">confirm</a></li><li><a href="#ui-kit">kit</a></li><li><a href="#ui-kitcss">kitCss</a></li><li><a href="#ui-menu">menu</a></li><li><a href="#ui-modal">modal</a></li><li><a href="#ui-palette">palette</a></li><li><a href="#ui-toast">toast</a></li><li><a href="#ui-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.dom</p>
@@ -1091,6 +1098,23 @@ api.slack.openConversation('C0BFQCYBRAB');</code></pre>
     <div class="api-demo" data-demo="slack-opendirectmessage" data-controls="[{&quot;key&quot;:&quot;user&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;U0EXAMPLE2&quot;,&quot;label&quot;:&quot;user id&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const channelId = await api.slack.openDirectMessage('U0EXAMPLE1');</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-slack-openstatuseditor" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>openStatusEditor</code></h1>
+    <p class="api-sig api-sig--big">(): Promise&lt;boolean&gt;</p>
+  </header>
+  <div class="panel__body">
+    <p>Slack's own &quot;set a status&quot; dialog. There is no deep link for it and no action a mod can dispatch: the entry lives in the account menu, so this opens the menu and then presses it.</p>
+<p>Anchored on <code>data-qa=&quot;main-menu-custom-status-item&quot;</code>, which is the same in every language — the label beside it is not, and matching on the words would work in English and quietly stop working in French.</p>
+<p>It resolves false when the user button is not on the page or the menu never drew, rather than throwing: a dialog that could not be opened is not a reason to fail whatever asked for it.</p>
+    <div class="api-demo" data-demo="slack-openstatuseditor" data-controls="[]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>// The emoji beside your name in the account strip does exactly this.
+const opened = await api.slack.openStatusEditor();
+if (!opened) api.ui.toast('Slack did not open the status dialog', { variant: 'warn' });</code></pre>
   </div>
 </section>
 <section class="panel" id="p-slack-openuserprofile" hidden>

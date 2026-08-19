@@ -557,15 +557,22 @@ export default {
       button.dataset.userId = user.id;
       button.addEventListener('click', () => void openProfileDialog(user.id));
 
-      // Slack's own tooltip markup rather than a native title: a native one
-      // would show as well as this, and half a second later.
-      // Trimmed before the truthiness test: a profile field holding a single
-      // space is truthy, and would render a tooltip subtitle made of nothing.
-      const subtitle = [status?.text, user.profile?.title]
-        .map((part) => (part ?? '').trim())
-        .filter(Boolean)
-        .join(' · ') || undefined;
-      api.helpers.tooltip(button, name, subtitle);
+      /*
+       * No tooltip.
+       *
+       * The row already says the name, and a card following the pointer down a
+       * column you are scanning is in the way of the thing you are scanning.
+       * What the tooltip carried that the row does not -- the status sentence
+       * and the title -- is one click away in the profile, and the emoji beside
+       * the name is the part worth having at a glance.
+       *
+       * The label is set here rather than left to go with it: `helpers.tooltip`
+       * was what put `aria-label` on the row, since a tooltip takes over the
+       * accessible name. Dropping the call dropped the name with it, which the
+       * test below caught -- the row is an icon and a first name, and a screen
+       * reader needs to be told whose row it is.
+       */
+      button.setAttribute('aria-label', name);
       return button;
     };
 

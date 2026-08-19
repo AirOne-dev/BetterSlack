@@ -130,7 +130,24 @@ const CSS = `
   min-width: 0;
 }
 #${STRIP_ID} .betterslack-me__nameline .betterslack-me__name { min-width: 0; }
-#${STRIP_ID} .betterslack-me__emoji { flex: 0 0 auto; display: inline-flex; }
+#${STRIP_ID} .betterslack-me__emoji {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  margin: -2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+#${STRIP_ID} .betterslack-me__emoji:hover,
+#${STRIP_ID} .betterslack-me__emoji:focus-visible {
+  background: var(--dt_color-theme-surf-inv-ter, rgba(255, 255, 255, 0.12));
+  outline: none;
+}
+/* Nothing to press when there is no status, and an empty button would still
+   take a hover and a tab stop. */
 #${STRIP_ID} .betterslack-me__emoji:empty { display: none; }
 #${STRIP_ID} .betterslack-me__name {
   font-size: 14px;
@@ -150,6 +167,7 @@ const STRINGS = {
     available: 'Active',
     away: 'Away',
     dnd: 'Do not disturb',
+    editStatus: 'Set a status',
   },
   fr: {
     account: 'Votre compte',
@@ -157,6 +175,7 @@ const STRINGS = {
     available: 'Disponible',
     away: 'Absent',
     dnd: 'Ne pas déranger',
+    editStatus: 'Définir un statut',
   },
 };
 
@@ -273,7 +292,26 @@ export default {
        * where it reads as belonging to the person rather than to the line below.
        * Its own node so the name can be rewritten without taking it away.
        */
-      const nameEmoji = api.dom.h('span', { class: 'betterslack-me__emoji' });
+      const nameEmoji = api.dom.h('button', {
+        class: 'betterslack-me__emoji',
+        type: 'button',
+        'aria-label': t('editStatus'),
+      });
+      /*
+       * Click, not hover.
+       *
+       * Opening a dialog because a pointer crossed a 15px target is a dialog
+       * that opens by accident on the way to something else -- and this one is
+       * Slack's own, over the whole window. Hovering says what it does; the
+       * click does it. The strip below opens the account menu on its own click,
+       * so this one has to stop there before it does both.
+       */
+      nameEmoji.addEventListener('click', (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        void api.slack.openStatusEditor?.();
+      });
+      api.helpers.tooltip(nameEmoji, t('editStatus'));
       const nameLine = api.dom.h('div', { class: 'betterslack-me__nameline' }, [name, nameEmoji]);
       // Filled in by paintDot, which is the only thing that writes this line.
       // It used to be read once here, from Slack's screen-reader label, and
