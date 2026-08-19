@@ -1,0 +1,195 @@
+// What Demo Mode promises.
+//
+// The two that matter most are the last two: switching it off has to put the
+// real thing back, and it must not put a stale message back over a newer one.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { assertPluginShape, createTestApi, installDom, readModFiles } from '../../../tests/harness.mjs';
+import plugin from './index.js';
+import { createRedaction } from './redaction.js';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const FILES = readModFiles(here);
+
+async function mount() {
+  const dom = installDom();
+  const harness = createTestApi({ files: FILES });
+  await plugin.start(harness.api);
+  const unmount = () => {
+    for (const dispose of harness.recorded.disposers) dispose();
+    dom.cleanup();
+  };
+  return { dom, unmount, ...harness };
+}
+
+const text = () => document.querySelector('[data-qa="message-text"]').textContent;
+
+test('has the shape the runtime loads', () => assertPluginShape(assert, plugin));
+
+test('replaces what somebody wrote', async () => {
+  const { unmount } = await mount();
+  try {
+    assert.notEqual(text(), 'hello world');
+    assert.ok(text().trim().length > 0, 'and puts something there rather than emptying it');
+  } finally {
+    unmount();
+  }
+});
+
+test('replaces every face that came off the network', async () => {
+  const { unmount } = await mount();
+  try {
+    for (const img of document.querySelectorAll('img')) {
+      assert.ok(
+        img.getAttribute('src').startsWith('data:image/svg+xml'),
+        `still remote: ${img.getAttribute('src')}`,
+      );
+    }
+  } finally {
+    unmount();
+  }
+});
+
+test('says it is on', async () => {
+  const { unmount } = await mount();
+  try {
+    // The one thing that stops a demo becoming a leak is knowing you are in
+    // one, so this is a promise like any other.
+    assert.ok(document.getElementById('betterslack-demo-indicator'));
+  } finally {
+    unmount();
+  }
+});
+
+test('switching it off puts the real thing back', async () => {
+  const dom = installDom();
+  const harness = createTestApi({ files: FILES });
+  try {
+    await plugin.start(harness.api);
+    assert.notEqual(text(), 'hello world');
+    const avatar = document.querySelector('.c-message_kit__avatar img');
+    assert.ok(avatar.getAttribute('src').startsWith('data:'));
+
+    // Disposing is what switching a mod off does.
+    for (const dispose of harness.recorded.disposers) dispose();
+
+    assert.equal(text(), 'hello world');
+    assert.ok(
+      avatar.getAttribute('src').startsWith('https://ca.slack-edge.com/'),
+      'the real face came back too',
+    );
+    assert.equal(document.getElementById('betterslack-demo-indicator'), null);
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('the same person is the same invented person twice over', () => {
+  const dom = installDom();
+  try {
+    const redaction = createRedaction({ document });
+    redaction.sweep({ first: true });
+    const sender = document.querySelector('[data-qa="message-text"]').textContent;
+    redaction.restore();
+    redaction.sweep({ first: true });
+    assert.equal(document.querySelector('[data-qa="message-text"]').textContent, sender);
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('leaves BetterSlack\'s own interface alone', () => {
+  const dom = installDom();
+  try {
+    const panel = document.createElement('div');
+    panel.id = 'betterslack-panel';
+    panel.textContent = 'Installed mods';
+    document.body.append(panel);
+
+    const redaction = createRedaction({ document });
+    redaction.sweep({ first: true });
+    // Its own words are neither something to replace nor something that
+    // "survived": a run once failed on the word "machine", out of the sentence
+    // "kept on this machine only".
+    assert.equal(panel.textContent, 'Installed mods');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('will not put a stale message back over a newer one', () => {
+  const dom = installDom();
+  try {
+    const redaction = createRedaction({ document });
+    redaction.sweep({ first: true });
+
+    // Slack re-renders that message with something newer while the demo runs.
+    const body = document.querySelector('[data-qa="message-text"]');
+    body.firstChild.nodeValue = 'a message that arrived since';
+
+    redaction.restore();
+    assert.equal(
+      body.textContent,
+      'a message that arrived since',
+      'restoring wrote an older value over a newer one',
+    );
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('sweeps the draft once, then leaves you typing', () => {
+  const dom = installDom();
+  try {
+    const editor = document.querySelector('.ql-editor');
+    editor.textContent = 'the thing I had half written to Marie';
+
+    const redaction = createRedaction({ document });
+    redaction.sweep({ first: true });
+    assert.notEqual(editor.textContent, 'the thing I had half written to Marie');
+
+    // What you type during a demo is your own words on your own screen, and
+    // rewriting them keystroke by keystroke makes the client unusable.
+    editor.textContent = 'typing this now';
+    redaction.sweep();
+    assert.equal(editor.textContent, 'typing this now');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('reports what is still real rather than claiming success', () => {
+  const dom = installDom();
+  try {
+    const redaction = createRedaction({ document });
+    redaction.sweep({ first: true });
+    assert.deepEqual(redaction.remaining(), []);
+
+    // Something Slack drew after the sweep, which is the case the strip in the
+    // corner cannot help with.
+    const late = document.createElement('img');
+    late.src = 'https://ca.slack-edge.com/T025V5WN2-U9-real-48';
+    document.querySelector('[data-qa="message_container"]').append(late);
+
+    const left = redaction.remaining();
+    assert.equal(left.length, 1);
+    assert.equal(left[0].what, 'image');
+    assert.ok(left[0].where.includes('div'), 'and says where it is');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('registers the two commands it offers', async () => {
+  const { recorded, unmount } = await mount();
+  try {
+    const ids = recorded.commands.map((command) => command.id);
+    assert.ok(ids.includes('sweep'));
+    assert.ok(ids.includes('check'));
+  } finally {
+    unmount();
+  }
+});

@@ -267,6 +267,24 @@ window.CATALOGUE = {
       "settings": 0
     },
     {
+      "id": "demo-mode",
+      "name": "Demo Mode",
+      "description": "Fills your real Slack with people who do not exist: every name, face, message, channel, file and link on screen is replaced by an invented one, so you can screenshot, screen-share or demo your own client without showing anybody's work. Switch it off and the real thing comes back.",
+      "descriptions": {
+        "fr": "Remplit votre vrai Slack de gens qui n'existent pas : chaque nom, visage, message, canal, fichier et lien à l'écran est remplacé par un inventé, pour que vous puissiez capturer, partager votre écran ou faire une démo sans montrer le travail de personne. Éteignez-le et le vrai revient."
+      },
+      "version": "1.0.0",
+      "tags": [
+        "privacy",
+        "screenshots",
+        "tools"
+      ],
+      "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"8\" r=\"3.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M3.5 19a5.5 5.5 0 0 1 11 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M15.5 5.5c3 1.4 3 11.6 0 13\" fill=\"none\" stroke=\"#b8362f\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-dasharray=\"2.4 3\"/><circle cx=\"19.5\" cy=\"12\" r=\"2.5\" fill=\"#b8362f\"/></svg>",
+      "shot": "shots/mods/demo-mode.jpg",
+      "settings": 0
+    },
+    {
       "id": "devtools",
       "name": "DevTools",
       "description": "Opens and closes Slack's real Chrome DevTools — console, elements, network, the lot — from a button above the BetterSlack one. Same action as Slack's own hidden ⌘⌥I menu item.",

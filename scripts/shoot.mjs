@@ -20,6 +20,13 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
  * The second is the one that runs against a real workspace, so it redacts.
  */
 const forMods = process.argv.includes('--mods');
+/*
+ * `--only=<id>,<id>` retakes some of the set rather than all of it.
+ *
+ * A mod changes and its picture goes stale; without this the choice was
+ * twenty-three frames or none, which in practice meant none.
+ */
+const only = process.argv.find((arg) => arg.startsWith('--only='))?.slice('--only='.length) ?? '';
 const positional = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
 const out = path.resolve(positional[0]
   ?? (forMods ? path.join(root, 'site/shots/mods') : path.join(root, 'site/shots')));
@@ -53,6 +60,7 @@ const child = spawn(process.execPath, [path.join(root, 'bin/betterslack.mjs')], 
     BETTERSLACK_HOME: home,
     BETTERSLACK_SHOT: out,
     BETTERSLACK_SHOT_SCRIPT: path.join(root, recipe),
+    BETTERSLACK_SHOT_ONLY: only,
   },
 });
 

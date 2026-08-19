@@ -6,11 +6,12 @@
 //
 // These are taken against a real, signed-in Slack, because that is the only
 // place a mod does anything, and a real Slack belongs to somebody. So nothing
-// is photographed until `scripts/redact.js` has replaced every name, face,
+// is photographed until Demo Mode's engine has replaced every name, face,
 // message and channel on screen, and the recipe *checks* that it did: if a
 // string that was there before the sweep is still there after it, the run stops
 // without writing a file. A screenshot is forever and a README is public.
 
+import * as esbuild from 'esbuild';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
@@ -44,6 +45,7 @@ const CHROME = new Set([
   'réponse', 'réponses', 'reponse', 'reponses', 'dernière', 'derniere',
   'afficher', 'télécharger', 'telecharger', 'modifié', 'modifie',
   'retour', 'ajouter', 'ligne', 'enregistrer', 'chargement', 'envoyer', 'channel',
+  'mentions', 'réactions', 'reactions', 'brouillon',
   'janvier', 'février', 'fevrier', 'mars', 'avril', 'juin', 'juillet',
   'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre',
 ]);
@@ -70,6 +72,7 @@ const SHOTS = [
   { id: 'terminal' },
   { id: 'focus-rings' },
   // Plugins.
+  { id: 'demo-mode', expect: '#betterslack-demo-indicator' },
   { id: 'motion', open: 'panel', expect: '#betterslack-panel' },
   { id: 'code-highlight', stage: 'codeblock', reapply: true, expect: '.betterslack-hl' },
   { id: 'full-links', reapply: true },
@@ -213,7 +216,30 @@ const openFor = (what) => {
 };
 
 export default async function shootMods({ evaluate, shoot, shootWindow, click, sleep }) {
-  const redactor = await fs.readFile(path.join(root, 'scripts/redact.js'), 'utf8');
+  /*
+   * The redaction is Demo Mode's, bundled into the page.
+   *
+   * It used to be a copy living in `scripts/`, which is exactly the shape this
+   * repository refuses elsewhere: two implementations of one idea, and the one
+   * users run would have been the one nothing checks. This way the pictures in
+   * the repository and the ones anybody takes with the mod hide the same
+   * things, and this recipe -- which reads the screen afterwards and refuses
+   * to shoot if anything survived -- is the mod's test against a real Slack.
+   */
+  const bundle = await esbuild.build({
+    entryPoints: [path.join(root, 'mods/plugins/demo-mode/redaction.js')],
+    bundle: true,
+    write: false,
+    format: 'iife',
+    globalName: '__betterslackRedactionModule',
+  });
+  const redactor = `${bundle.outputFiles[0].text}
+    window.__betterslackRedaction = __betterslackRedactionModule.createRedaction({
+      // No coalescing here: the mod spares the client somebody is using, and
+      // this one is about to press a shutter.
+      debounceMs: 0,
+    });
+    'installed'`;
 
   // Installed first, and it does not sweep until it is told to: the sample
   // taken below is the only evidence of what was on screen.
@@ -350,7 +376,7 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
   })()`));
 
   console.log(`[mods] ${before.length} strings on screen to be rid of`);
-  console.log('[mods] sweeping:', await evaluate('window.__betterslackRedaction.start()'));
+  console.log('[mods] sweeping:', await evaluate('(window.__betterslackRedaction.start(), "swept")'));
   await sleep(1500);
 
   /*
@@ -389,16 +415,24 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
       throw new Error(`${label}: ${still.length} original string(s) came back — ${still.slice(0, 6).join(', ')}`);
     }
     // And the absolute rule, which knows nothing about what was there before.
-    const remote = await evaluate('window.__betterslackRedaction.remoteThings()');
+    const remote = await evaluate('window.__betterslackRedaction.remaining()');
     if (remote.length > 0) {
-      throw new Error(`${label}: ${remote.length} address(es) still point outside — ${remote.slice(0, 4).join(', ')}`);
+      const named = remote.slice(0, 4).map((item) => `${item.what} ${item.text}`);
+      throw new Error(`${label}: ${remote.length} address(es) still point outside — ${named.join(', ')}`);
     }
   };
 
   await assertClean('after the first sweep');
   console.log('[mods] nothing of the workspace is left on screen');
 
-  for (const shot of SHOTS) {
+  // `pnpm shoot --mods --only=demo-mode`, for one picture that has gone stale.
+  const wanted = (process.env.BETTERSLACK_SHOT_ONLY ?? '').split(',').filter(Boolean);
+  const todo = wanted.length ? SHOTS.filter((shot) => wanted.includes(shot.id)) : SHOTS;
+  if (wanted.length && todo.length !== wanted.length) {
+    throw new Error(`no such mod to photograph: ${wanted.filter((id) => !SHOTS.some((s) => s.id === id)).join(', ')}`);
+  }
+
+  for (const shot of todo) {
     await evaluate(only([shot.id]));
     await sleep(1200);
     // Anything the picture needs on screen that Slack will not have put there.
@@ -408,7 +442,7 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
       console.log(`[mods] ${shot.id} stage: ${staged}`);
     }
     // Slack re-renders as mods come and go; sweep whatever it just drew.
-    await evaluate('window.__betterslackRedaction.run(), true');
+    await evaluate('window.__betterslackRedaction.sweep(), true');
     /*
      * Some mods read the screen once and decorate what they found. They ran
      * before the sweep, so what they decorated was the real thing and what is
@@ -425,7 +459,7 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
     // Long enough for a mod that asks Slack for something -- the member column
     // fetches the channel's people, and a shorter wait photographed one of them.
     await sleep(shot.open === 'profile' ? 4200 : 2600);
-    await evaluate('window.__betterslackRedaction.run(), true');
+    await evaluate('window.__betterslackRedaction.sweep(), true');
     /*
      * A picture that does not show the mod is worse than no picture: it goes
      * into the catalogue looking like every other one and nobody notices for a

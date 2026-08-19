@@ -1,0 +1,33 @@
+{
+  "id": "demo-mode",
+  "name": "Demo Mode",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Fills your real Slack with people who do not exist: every name, face, message, channel, file and link on screen is replaced by an invented one, so you can screenshot, screen-share or demo your own client without showing anybody's work. Switch it off and the real thing comes back.",
+  "descriptions": {
+    "fr": "Remplit votre vrai Slack de gens qui n'existent pas : chaque nom, visage, message, canal, fichier et lien à l'écran est remplacé par un inventé, pour que vous puissiez capturer, partager votre écran ou faire une démo sans montrer le travail de personne. Éteignez-le et le vrai revient."
+  },
+  "entry": "index.js",
+  "icon": "icon.svg",
+  "betterslackApi": 1,
+  "slackVersion": "4.51",
+  "tags": [
+    "privacy",
+    "screenshots",
+    "tools"
+  ],
+  "readme": "README.md",
+  "readmes": {
+    "fr": "README.fr.md"
+  },
+  "screenshots": [
+    {
+      "file": "screenshot.jpg",
+      "captions": {
+        "en": "The mod at work: a real workspace, and nobody in it.",
+        "fr": "Le mod à l’œuvre : un vrai espace de travail, et personne dedans."
+      }
+    }
+  ]
+}

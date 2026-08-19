@@ -95,6 +95,7 @@ enabled mods are untouched -- and switch mods on and off through
 pnpm shoot         # site/shots: the panel, a mod's page, Browse, the palette,
                    # the palette, Discord Dark with its plugins, the builder
 pnpm shoot --mods  # one frame per mod, filed as mods/<kind>/<id>/screenshot.jpg
+pnpm shoot --mods -- --only=motion,devtools   # just those two, when one goes stale
 ```
 
 `scripts/shoot-site.mjs` photographs the **empty demo workspace** and refuses,
@@ -143,19 +144,26 @@ how a window a mod opened gets looked at outside a recipe.
 
 ## Photographing somebody's real Slack
 
-`scripts/redact.js` replaces everything on screen that belongs to anybody
-before `shoot-mods` takes a picture: names, faces, messages, channels, files,
-links, the workspace's name. It substitutes rather than blurs -- a blurred name
-is still a name that was on the screen -- and derives every replacement from a
-hash of the original, so the same person is the same invented person in every
-frame and two runs produce the same picture.
+`mods/plugins/demo-mode/redaction.js` replaces everything on screen that
+belongs to anybody: names, faces, messages, channels, files, links, the
+workspace's name. It substitutes rather than blurs -- a blurred name is still a
+name that was on the screen -- and derives every replacement from a hash of the
+original, so the same person is the same invented person in every frame and two
+runs produce the same picture.
+
+**It is a mod, and the recipe bundles it.** `shoot-mods.mjs` builds that file
+with esbuild and evaluates it in the page. It used to be a copy in `scripts/`,
+which is the shape this repository refuses everywhere else: two implementations
+of one idea, and the one users run would have been the one nothing checks. Now
+the recipe is Demo Mode's test against a real Slack, and anybody taking their
+own screenshots hides exactly what the repository's hide.
 
 **What makes it safe is not the list of selectors.** A list can always miss
 one. It is that the recipe reads the screen before and after and refuses to
 take the picture if anything survived, and re-checks before *every* frame,
 since Slack keeps rendering. A missed selector is a failed run, which is a bug
-report; it is not a leak. Everything below was found by that check rather than
-by looking:
+report; it is not a leak. `remaining()` is the same check offered to a user, as
+a command. Everything below was found by it rather than by looking:
 
 - The composer's grey prompt carries the channel's name.
 - A link Slack unfurled is a card with somebody's title and author in it.
@@ -164,6 +172,11 @@ by looking:
 - `aria-label` on every avatar reads "show X's profile" -- not drawn, but Slack
   builds a tooltip out of a `title`, and a picture taken with the pointer
   resting anywhere is a picture with a real name in it.
+- **The workspace's name is not a direct child of the element that holds it.**
+  Slack wraps it in a span, so walking `childNodes` misses it and walking the
+  whole subtree finds it. Assigning `textContent` would find it too and is what
+  the script did -- but a mod has to be able to put the node back, so it writes
+  the first text node and empties the rest.
 - The audit reads what is **drawn**: text nodes that are visible, links and
   images. Reading `body.textContent` put Slack's own inline `<script>` in it --
   the word "master" from a bundler path -- and a hidden support link, and both
@@ -174,6 +187,18 @@ by looking:
 - A mod that reads the screen once and decorates what it found -- the syntax
   highlighter -- has to be switched off and on after the sweep, or what it
   decorated is the text that has since been replaced.
+
+Two things the mod needs that the script never did, both measured against a
+live client rather than assumed:
+
+- **Every write is recorded and put back**, and only where what is on screen is
+  still what it wrote -- Slack re-renders, and restoring blind would put a
+  stale message back over a newer one. Verified live: body, sender, workspace
+  name and avatar all returned identical after switching it off.
+- **The composer is swept once and then left alone.** Sweeping it on every
+  mutation rewrites what you are typing as you type it. The draft that was
+  there when the demo started is somebody's words; what you type during the
+  demo is your own.
 
 `site/` is the presentation page published to GitHub Pages by
 `.github/workflows/pages.yml`. It is plain HTML, one stylesheet and one script
