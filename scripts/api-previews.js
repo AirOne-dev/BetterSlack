@@ -1202,6 +1202,20 @@ const IMITATED = {
     },
   },
 
+  'slack-currentteamid': {
+    render: () => {
+      const slack = createSlackApi('demo');
+      return [
+        source(`location.pathname        ${location.pathname}\n`
+          + `api.slack.currentTeamId()    ${slack.currentTeamId()}\n`
+          + `api.slack.currentChannelId() ${slack.currentChannelId()}\n\n`
+          + '// Null on this page: it is not a Slack client, so there is neither a\n'
+          + '// /client/<team>/<channel> address nor a drawn avatar to read one from.'),
+        stubbed('In Slack these answer about the workspace on screen, which at a cold start is not the one in the URL.'),
+      ];
+    },
+  },
+
   'slack-openstatuseditor': {
     render: (v, { stage }) => {
       const frame = slackChrome();
