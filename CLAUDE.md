@@ -94,7 +94,7 @@ enabled mods are untouched -- and switch mods on and off through
 ```bash
 pnpm shoot         # site/shots: the panel, a mod's page, Browse, the palette,
                    # the palette, Discord Dark with its plugins, the builder
-pnpm shoot --mods  # one frame per mod, filed as mods/<kind>/<id>/screenshot.jpg
+pnpm shoot --mods  # one frame per mod, filed as mods/<kind>/<id>/screenshot.webp
 pnpm shoot --mods -- --only=motion,devtools   # just those two, when one goes stale
 ```
 
@@ -139,8 +139,18 @@ cannot do for itself:
   the background is Slack that is not rendering, and a deep link that should
   slide a profile in does nothing there.
 
-`BETTERSLACK_SHOT=<dir>` alone still writes a PNG per attached window, which is
-how a window a mod opened gets looked at outside a recipe.
+`BETTERSLACK_SHOT=<dir>` alone still writes one picture per attached window,
+which is how a window a mod opened gets looked at outside a recipe.
+
+**Everything is WebP, and Chromium is the encoder.** `Page.captureScreenshot`
+writes the format directly, so there is no conversion step and no external tool
+in the pipeline at all -- which matters, because the two `sips` calls it
+replaced are macOS-only and `sips` cannot write WebP anyway (it reads it; the
+format is not listed Writable). Measured on one frame: 472 kB as PNG, 132 kB as
+the 1400-wide JPEG this project used to publish, 160 kB as WebP at the full
+3200x2000. The retina resolution costs 28 kB, so the downscale is gone too and
+every picture is now 2x. Quality 78 is measured as well -- 70 starts showing on
+Slack's text, 85 costs 28 kB for nothing visible.
 
 ## Photographing somebody's real Slack
 
@@ -168,7 +178,15 @@ a command. Everything below was found by it rather than by looking:
 - The composer's grey prompt carries the channel's name.
 - A link Slack unfurled is a card with somebody's title and author in it.
 - Sidebar section headings are named by the person who made them.
-- Slack narrates every navigation into `.c-aria_live_announcer_api`.
+- Slack narrates every navigation for screen readers -- into
+  `.c-aria_live_announcer_api`, and into a second region whose only class is a
+  CSS-module hash. Match those on `[aria-live]`, which is what they are; a
+  hashed class could never have been listed.
+- **Slack's own paths carry ids**, and the absolute rule never sees them
+  because they have no host: `/team/U…` for a mention, `/archives/C…/p…` for a
+  permalink, `/services/B…` for an integration. The audit caught a real app id
+  that way. Replace the ids and keep the path's shape, so `/client/…` still
+  navigates.
 - `aria-label` on every avatar reads "show X's profile" -- not drawn, but Slack
   builds a tooltip out of a `title`, and a picture taken with the pointer
   resting anywhere is a picture with a real name in it.
@@ -218,7 +236,7 @@ live client rather than assumed:
 -- nothing fetched from a CDN, so it renders the same whatever else the network
 is doing. Its catalogue is generated from `mods/registry.json`, and the workflow
 fails if the committed `site/data.js` has drifted from it. `pnpm site` also
-copies each mod's `screenshot.jpg` into `site/shots/mods/`, since the page is
+copies each mod's `screenshot.webp` into `site/shots/mods/`, since the page is
 published on its own and cannot reach `mods/`; the catalogue and the panel
 therefore show the same frame, out of the same file.
 

@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="site/shots/panel.jpg" width="880" alt="The BetterSlack panel open inside Slack, listing installed themes with switches">
+  <img src="site/shots/panel.webp" width="880" alt="The BetterSlack panel open inside Slack, listing installed themes with switches">
 </p>
 
 <p align="center"><em>⌘⇧M, or the sliders button above your avatar.</em></p>
@@ -28,16 +28,16 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="site/shots/mods/aurora.jpg" alt="Slack wearing the Aurora theme"></td>
-    <td width="50%"><img src="site/shots/mods/terminal.jpg" alt="Slack wearing the Terminal theme"></td>
+    <td width="50%"><img src="site/shots/mods/aurora.webp" alt="Slack wearing the Aurora theme"></td>
+    <td width="50%"><img src="site/shots/mods/terminal.webp" alt="Slack wearing the Terminal theme"></td>
   </tr>
   <tr>
     <td><strong>Aurora</strong> — frosted glass over a drifting gradient.</td>
     <td><strong>Terminal</strong> — monospace, square corners, phosphor.</td>
   </tr>
   <tr>
-    <td><img src="site/shots/mods/cocoa.jpg" alt="Slack wearing the Cocoa theme"></td>
-    <td><img src="site/shots/mods/midnight.jpg" alt="Slack wearing the Midnight theme"></td>
+    <td><img src="site/shots/mods/cocoa.webp" alt="Slack wearing the Cocoa theme"></td>
+    <td><img src="site/shots/mods/midnight.webp" alt="Slack wearing the Midnight theme"></td>
   </tr>
   <tr>
     <td><strong>Cocoa</strong> — cream paper, cocoa text, soft shadows.</td>
@@ -51,13 +51,13 @@ offers to switch it on — **Discord Dark** does exactly that, and brings the
 member column and the account strip with it:
 
 <p align="center">
-  <img src="site/shots/discord-combo.jpg" width="880" alt="Slack rebuilt as Discord: the theme, a member column on the right and an account strip bottom-left">
+  <img src="site/shots/discord-combo.webp" width="880" alt="Slack rebuilt as Discord: the theme, a member column on the right and an account strip bottom-left">
 </p>
 
 ### ⌘K, and everything is one keystroke away
 
 <p align="center">
-  <img src="site/shots/palette.jpg" width="880" alt="The BetterSlack command palette open over Slack">
+  <img src="site/shots/palette.webp" width="880" alt="The BetterSlack command palette open over Slack">
 </p>
 
 Slack's quick switcher with everything Slack has no idea about in the same list:
@@ -68,7 +68,7 @@ your open DMs), every mod's commands, and a plugin's settings — `/` for action
 ### A theme builder whose preview is Slack
 
 <p align="center">
-  <img src="site/shots/builder.jpg" width="720" alt="The theme builder window, showing a gallery of themes to start from">
+  <img src="site/shots/mods/theme-builder.webp" width="720" alt="The theme builder window, showing a gallery of themes to start from">
 </p>
 
 Two colours become twelve roles across all four of Slack's token families,
@@ -117,7 +117,7 @@ Each has a page in the panel — what it is for, in your language, with a pictur
 and its settings:
 
 <p align="center">
-  <img src="site/shots/panel-mod.jpg" width="880" alt="A mod's page in the BetterSlack panel: icon, description, screenshot and settings">
+  <img src="site/shots/panel-mod.webp" width="880" alt="A mod's page in the BetterSlack panel: icon, description, screenshot and settings">
 </p>
 
 Several themes can run at once. Terminal is the exception: it restyles through

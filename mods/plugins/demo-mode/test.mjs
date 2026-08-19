@@ -278,7 +278,7 @@ test('photographs at the published size, into the downloads folder', async () =>
     const [shot] = recorded.screenshots;
     assert.ok(shot, 'nothing was photographed');
     assert.equal(shot.size, '1600x1000', 'the size every mod picture in the catalogue uses');
-    assert.match(shot.filename, /^slack-[\d-]+\.png$/);
+    assert.match(shot.filename, /^slack-[\d-]+\.webp$/);
   } finally {
     unmount();
   }

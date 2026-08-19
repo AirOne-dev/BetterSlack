@@ -89,7 +89,7 @@ unexplained one is an automatic no.
    mods/plugins/<id>/mod.json + <entry>.js
    ```
 
-   Plus, for the panel's page: `icon.svg`, `screenshot.jpg`, `README.md` and
+   Plus, for the panel's page: `icon.svg`, `screenshot.webp`, `README.md` and
    `README.fr.md`, each named in the manifest --
    [docs/getting-started.md](docs/getting-started.md) has the shape.
 

@@ -17,12 +17,9 @@
 //   Shoot on the empty BetterSlack workspace, never a real one. These end up
 //   in a public README; nothing in them should belong to anybody.
 
-import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { promisify } from 'node:util';
 
-const run = promisify(execFile);
 const OUT = process.env.BETTERSLACK_SHOT;
 const DEMO_TEAM = process.env.BETTERSLACK_SHOT_TEAM ?? 'T0BQ89Z4L4F';
 
@@ -71,12 +68,12 @@ export default async function shootSite({ evaluate, shoot, sleep }) {
   }
 
   /*
-   * The themes are not photographed here any more.
+   * Neither the themes nor the builder's window are photographed here any more.
    *
    * Every mod has one picture, taken by `pnpm shoot --mods` into its own
    * folder, and both the panel and the site read that one. This recipe keeps
-   * what has nowhere else to come from: the panel, the palette, the builder's
-   * window, and Discord Dark with its two plugins in one frame.
+   * what has nowhere else to come from: the panel, a mod's page, Browse, the
+   * palette, and Discord Dark with its two plugins in one frame.
    */
 
   /*
@@ -121,24 +118,9 @@ export default async function shootSite({ evaluate, shoot, sleep }) {
   await shoot('discord-combo', PANEL_SIZE);
   console.log('[shots] discord-combo');
 
-  await toJpeg(OUT);
 }
 
-/**
- * PNG to JPEG, at the published width.
- *
- * `sips` because it is on every Mac and these are taken on a Mac -- the
- * alternative is a dependency for eleven files a year.
- */
-async function toJpeg(dir) {
-  for (const file of await fs.readdir(dir)) {
-    if (!file.endsWith('.png')) continue;
-    const png = path.join(dir, file);
-    const jpg = png.replace(/\.png$/, '.jpg');
-    await run('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '82', png, '--out', jpg]);
-    // Captured at twice the size on a retina display; the site wants 1800.
-    await run('sips', ['--resampleWidth', '1800', jpg]);
-    await fs.rm(png);
-  }
-  console.log(`[shots] wrote ${dir}`);
-}
+// No conversion step: `Page.captureScreenshot` writes the WebP itself, at the
+// size the picture is published at. See scripts/shoot-mods.mjs for the
+// measurements behind that.
+

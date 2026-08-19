@@ -17,7 +17,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M2 15c4-6 8 2 12-3s6-1 8-3\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" opacity=\".55\"/><path d=\"M2 19c4-6 8 2 12-3s6-1 8-3\" stroke=\"#a78bfa\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/><circle cx=\"18\" cy=\"5\" r=\"2\" fill=\"#a78bfa\"/></svg>",
-      "shot": "shots/mods/aurora.jpg",
+      "shot": "shots/mods/aurora.webp",
       "palette": [
         "rgba(14, 12, 28, 0.42)",
         "rgba(18, 16, 34, 0.34)",
@@ -41,7 +41,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M5 8h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V8Z\" fill=\"#c08457\"/><path d=\"M16 10h2a2.5 2.5 0 0 1 0 5h-2\" stroke=\"currentColor\" stroke-width=\"1.6\" fill=\"none\"/><path d=\"M8 3v2M11 3v2\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg>",
-      "shot": "shots/mods/cocoa.jpg",
+      "shot": "shots/mods/cocoa.webp",
       "palette": [
         "#4a3b32",
         "#fffaf3",
@@ -67,7 +67,7 @@ window.CATALOGUE = {
         "sidebar-account"
       ],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"14\" rx=\"5\" fill=\"#5865f2\"/><circle cx=\"9\" cy=\"11\" r=\"2\" fill=\"#fff\"/><circle cx=\"15\" cy=\"11\" r=\"2\" fill=\"#fff\"/><path d=\"M8 18l-2 3 5-3\" fill=\"#5865f2\"/></svg>",
-      "shot": "shots/mods/discord-dark.jpg",
+      "shot": "shots/mods/discord-dark.webp",
       "palette": [
         "#121214",
         "#1a1a1e",
@@ -90,7 +90,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"14\" rx=\"5\" fill=\"none\" stroke=\"#5865f2\" stroke-width=\"2\"/><circle cx=\"9\" cy=\"11\" r=\"1.8\" fill=\"#5865f2\"/><circle cx=\"15\" cy=\"11\" r=\"1.8\" fill=\"#5865f2\"/><path d=\"M8 18l-2 3 5-3\" fill=\"none\" stroke=\"#5865f2\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>",
-      "shot": "shots/mods/discord-light.jpg",
+      "shot": "shots/mods/discord-light.webp",
       "palette": [
         "#f2f3f5",
         "#ffffff",
@@ -112,7 +112,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"6\" y=\"6\" width=\"12\" height=\"12\" rx=\"3\" fill=\"currentColor\" opacity=\".25\"/><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"6\" fill=\"none\" stroke=\"#38bdf8\" stroke-width=\"2.4\"/></svg>",
-      "shot": "shots/mods/focus-rings.jpg",
+      "shot": "shots/mods/focus-rings.webp",
       "palette": [
         "#4cc8ff"
       ]
@@ -130,7 +130,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z\" fill=\"#818cf8\"/><circle cx=\"17\" cy=\"6\" r=\"1.2\" fill=\"currentColor\" opacity=\".7\"/></svg>",
-      "shot": "shots/mods/midnight.jpg",
+      "shot": "shots/mods/midnight.webp",
       "palette": [
         "#0b0e14",
         "#0f1219",
@@ -154,7 +154,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" opacity=\".5\"/><path d=\"M6 9l3 3-3 3\" stroke=\"#4ade80\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/><path d=\"M12 15h6\" stroke=\"#4ade80\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
-      "shot": "shots/mods/terminal.jpg",
+      "shot": "shots/mods/terminal.webp",
       "palette": [
         "#030506",
         "#05080a",
@@ -179,7 +179,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"8\" r=\"4\" fill=\"currentColor\" opacity=\".55\"/><path d=\"M3 20a7 7 0 0 1 11-5.7\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\" opacity=\".55\" stroke-linecap=\"round\"/><path d=\"M18 12v7m0 0 3-3m-3 3-3-3\" stroke=\"#38bdf8\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/></svg>",
-      "shot": "shots/mods/avatar-downloader.jpg",
+      "shot": "shots/mods/avatar-downloader.webp",
       "settings": 1
     },
     {
@@ -196,7 +196,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"4\" y=\"3\" width=\"16\" height=\"18\" rx=\"3\" fill=\"currentColor\" opacity=\".25\"/><path d=\"M8 8h8M8 12h8M8 16h5\" stroke=\"#fbbf24\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
-      "shot": "shots/mods/channel-notes.jpg",
+      "shot": "shots/mods/channel-notes.webp",
       "settings": 0
     },
     {
@@ -213,7 +213,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M8 8 4 12l4 4M16 8l4 4-4 4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/><path d=\"M13 5l-2 14\" stroke=\"#c678dd\" stroke-width=\"2.4\" stroke-linecap=\"round\"/></svg>",
-      "shot": "shots/mods/code-highlight.jpg",
+      "shot": "shots/mods/code-highlight.webp",
       "settings": 0
     },
     {
@@ -231,7 +231,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"5\" width=\"20\" height=\"14\" rx=\"3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" opacity=\".55\"/><path d=\"M9 9.5h2.5a2 2 0 1 1-2 2V15\" stroke=\"#38bdf8\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/><circle cx=\"16.5\" cy=\"14.5\" r=\"1.3\" fill=\"#38bdf8\"/></svg>",
-      "shot": "shots/mods/command-palette.jpg",
+      "shot": "shots/mods/command-palette.webp",
       "settings": 1
     },
     {
@@ -247,7 +247,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" opacity=\".35\"/><path d=\"M12 4a8 8 0 0 1 7 4\" stroke=\"#fbbf24\" stroke-width=\"2.4\" stroke-linecap=\"round\" fill=\"none\"/><path d=\"M9 12h6\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
-      "shot": "shots/mods/composer-char-count.jpg",
+      "shot": "shots/mods/composer-char-count.webp",
       "settings": 2
     },
     {
@@ -263,7 +263,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M10 14a4 4 0 0 1 0-5.6l2.4-2.4a4 4 0 0 1 5.6 5.6L16.6 13\" stroke=\"#38bdf8\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/><path d=\"M14 10a4 4 0 0 1 0 5.6L11.6 18A4 4 0 0 1 6 12.4L7.4 11\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" opacity=\".6\"/></svg>",
-      "shot": "shots/mods/copy-message-link.jpg",
+      "shot": "shots/mods/copy-message-link.webp",
       "settings": 0
     },
     {
@@ -281,7 +281,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"8\" r=\"3.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M3.5 19a5.5 5.5 0 0 1 11 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M15.5 5.5c3 1.4 3 11.6 0 13\" fill=\"none\" stroke=\"#b8362f\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-dasharray=\"2.4 3\"/><circle cx=\"19.5\" cy=\"12\" r=\"2.5\" fill=\"#b8362f\"/></svg>",
-      "shot": "shots/mods/demo-mode.jpg",
+      "shot": "shots/mods/demo-mode.webp",
       "settings": 1
     },
     {
@@ -298,7 +298,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M9 7 4 12l5 5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/><path d=\"M15 7l5 5-5 5\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/><circle cx=\"12\" cy=\"12\" r=\"2\" fill=\"#f472b6\"/></svg>",
-      "shot": "shots/mods/devtools.jpg",
+      "shot": "shots/mods/devtools.webp",
       "settings": 0
     },
     {
@@ -315,7 +315,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M4 9V6a2 2 0 0 1 2-2h3M20 9V6a2 2 0 0 0-2-2h-3M4 15v3a2 2 0 0 0 2 2h3M20 15v3a2 2 0 0 1-2 2h-3\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\"/><rect x=\"9\" y=\"9\" width=\"6\" height=\"6\" rx=\"1.5\" fill=\"#4ade80\"/></svg>",
-      "shot": "shots/mods/focus-mode.jpg",
+      "shot": "shots/mods/focus-mode.webp",
       "settings": 0
     },
     {
@@ -332,7 +332,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M7 12h10\" stroke=\"#38bdf8\" stroke-width=\"2.4\" stroke-linecap=\"round\"/><path d=\"M9 8H5.5a4 4 0 0 0 0 8H9M15 8h3.5a4 4 0 0 1 0 8H15\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" opacity=\".65\"/></svg>",
-      "shot": "shots/mods/full-links.jpg",
+      "shot": "shots/mods/full-links.webp",
       "settings": 0
     },
     {
@@ -350,7 +350,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"10\" height=\"16\" rx=\"2\" fill=\"currentColor\" opacity=\".22\"/><circle cx=\"17\" cy=\"8\" r=\"2.2\" fill=\"#4ade80\"/><circle cx=\"17\" cy=\"15\" r=\"2.2\" fill=\"currentColor\" opacity=\".55\"/><path d=\"M15 4h7M15 20h7\" stroke=\"currentColor\" stroke-width=\"1.4\" opacity=\".3\"/></svg>",
-      "shot": "shots/mods/member-sidebar.jpg",
+      "shot": "shots/mods/member-sidebar.webp",
       "settings": 2
     },
     {
@@ -368,7 +368,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"16\" cy=\"12\" r=\"4\" fill=\"#a78bfa\"/><path d=\"M3 8h6M2 12h5M3 16h6\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" opacity=\".6\"/></svg>",
-      "shot": "shots/mods/motion.jpg",
+      "shot": "shots/mods/motion.webp",
       "settings": 7
     },
     {
@@ -385,7 +385,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M4 14a3 3 0 1 1 3-3c0 3-1.5 5-4 6M12 14a3 3 0 1 1 3-3c0 3-1.5 5-4 6\" stroke=\"#fbbf24\" stroke-width=\"1.8\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M17 6l4 4-4 4\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/></svg>",
-      "shot": "shots/mods/quote-reply.jpg",
+      "shot": "shots/mods/quote-reply.webp",
       "settings": 0
     },
     {
@@ -402,7 +402,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3\" fill=\"currentColor\" opacity=\".18\"/><circle cx=\"8\" cy=\"16\" r=\"2.4\" fill=\"#4ade80\"/><path d=\"M12 15h6M12 18h4\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" opacity=\".6\"/></svg>",
-      "shot": "shots/mods/sidebar-account.jpg",
+      "shot": "shots/mods/sidebar-account.webp",
       "settings": 0
     },
     {
@@ -421,7 +421,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.9 1.2-1.7-.6-1.2.3-2.3 1.6-2.3H17a4 4 0 0 0 4-4c0-5-4-10-9-10Z\" fill=\"currentColor\" opacity=\".28\"/><circle cx=\"8\" cy=\"10\" r=\"1.5\" fill=\"#f472b6\"/><circle cx=\"12\" cy=\"7\" r=\"1.5\" fill=\"#f472b6\"/><circle cx=\"16\" cy=\"10\" r=\"1.5\" fill=\"#f472b6\"/></svg>",
-      "shot": "shots/mods/theme-builder.jpg",
+      "shot": "shots/mods/theme-builder.webp",
       "settings": 0
     },
     {
@@ -438,7 +438,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"10\" cy=\"8\" r=\"3.5\" fill=\"currentColor\" opacity=\".5\"/><path d=\"M4 19a6 6 0 0 1 8.5-5.4\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\" opacity=\".5\" stroke-linecap=\"round\"/><circle cx=\"16.5\" cy=\"15.5\" r=\"3.5\" fill=\"none\" stroke=\"#38bdf8\" stroke-width=\"2\"/><path d=\"M19 18l2.5 2.5\" stroke=\"#38bdf8\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>",
-      "shot": "shots/mods/user-inspector.jpg",
+      "shot": "shots/mods/user-inspector.webp",
       "settings": 0
     }
   ]

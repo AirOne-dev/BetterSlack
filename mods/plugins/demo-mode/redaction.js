@@ -90,9 +90,15 @@ const TEXT_AREAS = [
   // #<name>" -- which is as public as the header. Found by the audit.
   { sel: '.c-texty_input__placeholder', as: CHANNELS },
   { sel: '.ql-placeholder', as: CHANNELS },
-  // Not drawn, but Slack narrates every navigation into it for screen readers,
-  // names and all.
+  /*
+   * Not drawn, but Slack narrates every navigation for screen readers, names
+   * and all. Matched on the role rather than the class: a second announcer
+   * turned up in a container whose only class was a CSS-module hash
+   * (`div.mBgaT`), which changes with every Slack build and could never have
+   * been listed. `aria-live` is what they have in common and what they are.
+   */
   { sel: '.c-aria_live_announcer_api', as: CHANNELS },
+  { sel: '[aria-live]', as: CHANNELS },
   // Messages: who, and what.
   '[data-qa="message_sender"]', '.c-message__sender', '.c-message__sender_button',
   '[data-qa="message-text"]', '.p-rich_text_block', '.c-message_kit__blocks',
@@ -301,9 +307,15 @@ export function createRedaction(options = {}) {
     for (const anchor of root.querySelectorAll('a[href]')) {
       if (anchor.closest(keep)) continue;
       const href = anchor.getAttribute('href') ?? '';
-      // A mention is a link to a person: no host, but a user id all the same.
-      if (/^\/team\/U/i.test(href)) {
-        setAttr(anchor, 'href', '/team/U0000000000');
+      /*
+       * Slack's own paths carry ids: a mention is `/team/U…`, a permalink is
+       * `/archives/C…/p…`, an integration is `/services/B…`. No host, so the
+       * absolute rule below never sees them, and the audit caught a real app
+       * id this way. The path keeps its shape and only the ids go, so
+       * `/client/…` is left alone and the client still navigates.
+       */
+      if (/^\/(team|services|archives|apps|files)\//i.test(href)) {
+        setAttr(anchor, 'href', href.replace(/\b[A-Z][A-Z0-9]{6,}\b/g, 'X0000000000'));
         continue;
       }
       if (!/^https?:/i.test(href)) continue;

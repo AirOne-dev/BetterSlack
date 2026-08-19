@@ -181,7 +181,7 @@ export default {
       try {
         const saved = await api.files.screenshot({
           size: api.settings.get('size', '1600x1000'),
-          filename: `slack-${stamp}.png`,
+          filename: `slack-${stamp}.webp`,
         });
         flash();
         api.ui.toast(t('saved', { name: saved.path.split('/').pop() }), { variant: 'success' });

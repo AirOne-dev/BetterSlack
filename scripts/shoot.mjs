@@ -74,16 +74,25 @@ await fs.rm(home, { recursive: true, force: true });
  * so the last step of taking them is filing them -- otherwise the catalogue
  * keeps showing the previous set and nobody can tell.
  */
-if (forMods && code === 0) {
+/*
+ * Filed whatever was taken, even if a later frame failed.
+ *
+ * The rule used to be all-or-nothing, which sounds careful and is not: a run
+ * that took twenty-one good pictures and then timed out on the twenty-second
+ * threw all twenty-one away. Every picture has already passed the redaction
+ * audit by the time it is written, and `--only` means a partial set is an
+ * ordinary thing to have. The exit code still says the run failed.
+ */
+if (forMods) {
   const kinds = ['themes', 'plugins'];
   for (const file of await fs.readdir(out)) {
-    if (!file.endsWith('.jpg')) continue;
-    const id = file.replace(/\.jpg$/, '');
+    if (!file.endsWith('.webp')) continue;
+    const id = file.replace(/\.webp$/, '');
     for (const kind of kinds) {
       const folder = path.join(root, 'mods', kind, id);
       if (!await fs.stat(folder).then(() => true, () => false)) continue;
-      await fs.copyFile(path.join(out, file), path.join(folder, 'screenshot.jpg'));
-      console.log(`[shots] mods/${kind}/${id}/screenshot.jpg`);
+      await fs.copyFile(path.join(out, file), path.join(folder, 'screenshot.webp'));
+      console.log(`[shots] mods/${kind}/${id}/screenshot.webp`);
     }
   }
 }

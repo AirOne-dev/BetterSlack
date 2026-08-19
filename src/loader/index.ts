@@ -453,9 +453,9 @@ class Loader {
         await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y, buttons: 0 });
         await sleep(700);
       }
-      const png = await this.capture(session);
-      const file = path.join(dir, `${name.replace(/[^\w-]+/g, '-').slice(0, 60)}.png`);
-      await fs.writeFile(file, png);
+      const picture = await this.capture(session);
+      const file = path.join(dir, `${name.replace(/[^\w-]+/g, '-').slice(0, 60)}.webp`);
+      await fs.writeFile(file, picture);
       console.log(`[betterslack] wrote ${file}`);
     } catch (err) {
       console.warn(`[betterslack] could not photograph ${name}: ${(err as Error).message}`);
@@ -482,8 +482,25 @@ class Loader {
     await sleep(1500);
   }
 
+  /*
+   * WebP, and Chromium is the encoder.
+   *
+   * Measured on one of these frames: the same picture is 472 kB as a PNG,
+   * 132 kB as the 1400-wide JPEG this project used to publish, and 160 kB as a
+   * WebP at the full 3200x2000 -- so the retina resolution costs almost
+   * nothing and the downscale can go. That matters twice over, because the
+   * downscale was `sips`, which is macOS-only and cannot write WebP at all:
+   * asking Chromium for the format it already supports leaves the screenshot
+   * pipeline with no external tool in it.
+   *
+   * 78 is measured too: 70 saves 12 kB and starts showing on Slack's text,
+   * 85 costs 28 kB for nothing anybody can see.
+   */
   private async capture(session: CdpSession): Promise<Buffer> {
-    const shot = await session.send<{ data: string }>('Page.captureScreenshot', { format: 'png' });
+    const shot = await session.send<{ data: string }>('Page.captureScreenshot', {
+      format: 'webp',
+      quality: 78,
+    });
     return Buffer.from(shot.data, 'base64');
   }
 
@@ -981,8 +998,8 @@ class Loader {
          */
         try {
           await this.forceViewport(session, request.size ?? '1600x1000');
-          const png = await this.capture(session);
-          const saved = await saveBytes(png, request.filename ?? 'slack.png');
+          const picture = await this.capture(session);
+          const saved = await saveBytes(picture, request.filename ?? 'slack.webp');
           console.log(`[betterslack] photographed the window into ${saved.path}`);
           return saved;
         } finally {

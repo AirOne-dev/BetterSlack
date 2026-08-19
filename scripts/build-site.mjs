@@ -28,7 +28,7 @@ const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
  * Where a mod's own picture is copied to.
  *
  * The catalogue and the panel show the same frame, out of the same file:
- * `mods/<kind>/<id>/screenshot.jpg`, taken by `pnpm shoot --mods`. The page is
+ * `mods/<kind>/<id>/screenshot.webp`, taken by `pnpm shoot --mods`. The page is
  * published on its own, so the file has to be inside `site/` -- copied here
  * rather than listed by hand, which is what the previous table of seven theme
  * crops was, and it went stale the first time a theme was added.
@@ -65,10 +65,10 @@ for (const mod of registry.mods) {
     if (icon.startsWith('<svg')) entry.icon = icon;
   }
 
-  const shot = path.join(folder, 'screenshot.jpg');
+  const shot = path.join(folder, 'screenshot.webp');
   if (existsSync(shot)) {
-    copyFileSync(shot, path.join(SHOT_DIR, `${mod.id}.jpg`));
-    entry.shot = `shots/mods/${mod.id}.jpg`;
+    copyFileSync(shot, path.join(SHOT_DIR, `${mod.id}.webp`));
+    entry.shot = `shots/mods/${mod.id}.webp`;
   }
 
   if (mod.type === 'theme') {

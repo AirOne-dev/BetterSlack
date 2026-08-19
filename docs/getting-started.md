@@ -96,7 +96,7 @@ somebody reads is optional, and every mod in this repository has all of it:
   "icon": "icon.svg",
   "descriptions": { "fr": "Une phrase, dans la langue du lecteur." },
   "screenshots": [{
-    "file": "screenshot.jpg",
+    "file": "screenshot.webp",
     "captions": { "en": "What the picture shows.", "fr": "Ce que montre l'image." }
   }],
   "readme": "README.md",
@@ -113,7 +113,8 @@ somebody reads is optional, and every mod in this repository has all of it:
   mod's name and its description; the panel drops both, since they are already
   the heading and the paragraph above it.
 - `pnpm shoot --mods` takes the picture for you and files it as
-  `screenshot.jpg` in the folder.
+  `screenshot.webp` in the folder — WebP, straight out of Chromium, at twice
+  the published size and roughly half the weight of the JPEG it replaced.
 
 Every path must stay inside the mod's folder -- the loader refuses anything
 that climbs out of it -- and `pnpm validate-mods` checks that each file exists.

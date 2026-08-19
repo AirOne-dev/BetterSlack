@@ -14,11 +14,8 @@
 import * as esbuild from 'esbuild';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 
-const run = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = process.env.BETTERSLACK_SHOT;
 const SIZE = '1600x1000';
@@ -46,6 +43,8 @@ const CHROME = new Set([
   'afficher', 'télécharger', 'telecharger', 'modifié', 'modifie',
   'retour', 'ajouter', 'ligne', 'enregistrer', 'chargement', 'envoyer', 'channel',
   'mentions', 'réactions', 'reactions', 'brouillon',
+  // "il y a 23 heures", and the rest of Slack's relative clock.
+  'secondes', 'minutes', 'heures', 'jours', 'semaines', 'semaine', 'heure',
   'janvier', 'février', 'fevrier', 'mars', 'avril', 'juin', 'juillet',
   'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre',
 ]);
@@ -125,75 +124,6 @@ const openFor = (what) => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', metaKey: true, ctrlKey: true, bubbles: true }));
     return true;
   })()`;
-  if (what === 'profile') return `(async () => {
-    /*
-     * Slack keeps a profile out of the address bar, but its own deep link
-     * opens one in place: it navigates to the conversation with that person
-     * and slides their profile in beside it. The ids were read before the
-     * sweep, since the avatars they come off have been replaced by drawings.
-     *
-     * Tried in turn, because not every id in a message list belongs to
-     * somebody with a profile -- apps post messages too, and the first one
-     * here opened a conversation with no pane at all.
-     */
-    const team = (location.pathname.match(/\\/client\\/([^/]+)/) ?? [])[1];
-    if (!team) return 'no team in the url';
-    for (const id of (window.__betterslackPeople ?? []).slice(0, 14)) {
-      window.location.href = 'slack://user?team=' + team + '&id=' + id;
-      await new Promise((resolve) => setTimeout(resolve, 4500));
-      if (document.querySelector('[data-qa="member_profile_pane"]')) return id;
-    }
-    return 'no profile opened';
-  })()`;
-  if (what === 'compose') return `(() => {
-    /*
-     * The counter counts what is in the composer, so an empty one photographs
-     * as nothing at all. Written only into an empty composer, and taken back
-     * out after the picture: this is somebody's real Slack, and a screenshot
-     * run has no business leaving a draft behind in it.
-     */
-    const editor = document.querySelector('[data-qa="message_input"] .ql-editor');
-    if (!editor) return 'no composer';
-    if ((editor.textContent ?? '').trim()) return 'left the draft alone';
-    editor.focus();
-    document.execCommand('insertText', false,
-      'shipping this afternoon, rebased and green. good catch -- moved it to next week.');
-    return 'typed';
-  })()`;
-  if (what === 'uncompose') return `(() => {
-    const editor = document.querySelector('[data-qa="message_input"] .ql-editor');
-    if (!editor) return 'no composer';
-    editor.focus();
-    document.execCommand('selectAll');
-    document.execCommand('delete');
-    return 'cleared';
-  })()`;
-  if (what === 'codeblock') return `(() => {
-    /*
-     * A channel with a code block in it is not something to hope for.
-     *
-     * Slack's own markup, appended to the last message rather than replacing
-     * anything -- adding a child is safe, removing one from a node React owns
-     * is what earns a "removeChild on a node that is not a child" at its next
-     * render. The highlighter then finds it the way it finds any other, so
-     * what the picture shows is the mod really working.
-     */
-    if (document.querySelector('pre.c-mrkdwn__pre')) return 'already one here';
-    const bodies = [...document.querySelectorAll('[data-qa="message-text"]')];
-    const body = bodies[bodies.length - 2] ?? bodies[bodies.length - 1];
-    if (!body) return 'no message to add it to';
-    const pre = document.createElement('pre');
-    pre.className = 'c-mrkdwn__pre';
-    pre.setAttribute('data-stringify-type', 'pre');
-    pre.textContent = [
-      'const shipped = releases.filter((r) => r.stage === "live");',
-      'export function latest(list) {',
-      '  return list.sort((a, b) => b.at - a.at)[0];',
-      '}',
-    ].join('\\n');
-    body.append(pre);
-    return 'added one';
-  })()`;
   if (what.startsWith('button:')) {
     // Not every mod puts a command in the palette; some are only a button in
     // Slack's chrome, and `addToolbarButton` gives it a predictable id.
@@ -218,6 +148,38 @@ const openFor = (what) => {
 };
 
 export default async function shootMods({ evaluate, shoot, shootWindow, click, sleep }) {
+  /*
+   * Open somebody's profile, waiting in Node rather than in the page.
+   *
+   * Slack keeps a profile out of the address bar, but its own deep link opens
+   * one in place. Not every id in a message list belongs to somebody with a
+   * profile -- apps post messages too -- so they are tried in turn, and the
+   * ids were read before the sweep, since the avatars they come off have been
+   * replaced by drawings since.
+   *
+   * Two things this got wrong, both of which read as "Slack refuses to open a
+   * profile" and neither of which was:
+   *
+   * - The waiting belongs here and not inside one `evaluate`, which gives up
+   *   after 30 seconds. Fourteen tries at 4.5s each is 63, and a run died on
+   *   exactly that after taking twenty-one of its twenty-three pictures.
+   * - The id and the team have to travel together. They are both in the avatar
+   *   URL -- `<team>-<user>-<hash>-<size>` -- and pairing an id from a shared
+   *   channel with whichever workspace the client happened to be showing opens
+   *   nothing at all.
+   */
+  const openProfile = async () => {
+    const people = await evaluate('window.__betterslackPeople ?? []');
+    for (const { id, team } of people.slice(0, 10)) {
+      const link = `slack://user?team=${team}&id=${id}`;
+      await evaluate(`(window.location.href = ${JSON.stringify(link)}, true)`);
+      await sleep(3500);
+      const open = await evaluate(`Boolean(document.querySelector('[data-qa="member_profile_pane"]'))`);
+      if (open) return `${id} of ${team}`;
+    }
+    return `no profile opened in ${people.length} tries`;
+  };
+
   /*
    * The redaction is Demo Mode's, bundled into the page.
    *
@@ -312,8 +274,8 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
   const workspaces = await evaluate(`[...document.querySelectorAll('[data-qa="team_sidebar_item"]')]
     .map((team) => team.getAttribute('data-rbd-draggable-id')).filter(Boolean)`);
   console.log(`[mods] ${workspaces.length} workspace(s) to look through`);
-  const openWorkspace = (team) => evaluate(`(window.location.href = 'slack://open?team=${'${team}'}', true)`
-    .replace('${team}', team));
+  const openWorkspace = (team) =>
+    evaluate(`(window.location.href = ${JSON.stringify(`slack://open?team=${team}`)}, true)`);
 
   let messages = 0;
   find: for (const team of workspaces.length ? workspaces : [null]) {
@@ -368,11 +330,20 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
    * the wait above and the sweep below.
    */
   console.log('[mods] people:', await evaluate(`(() => {
-    const ids = [...document.querySelectorAll('img[src]')]
-      .flatMap((img) => (img.getAttribute('src') ?? '').match(/\\b(U[A-Z0-9]{7,})\\b/g) ?? []);
-    window.__betterslackPeople = [...new Set(ids)];
-    // The sample comes back too: when this found nothing, the reason was in the
-    // shape of the URLs and there was no way to see it from here.
+    /*
+     * Each id with the workspace it belongs to.
+     *
+     * Slack's avatar URLs are <team>-<user>-<hash>-<size>, and the two halves
+     * have to travel together: a run once paired ids read off a shared
+     * channel's avatars with whichever team the client happened to be showing,
+     * and \`slack://user\` opened nothing for any of them.
+     */
+    const seen = new Map();
+    for (const img of document.querySelectorAll('img[src]')) {
+      const match = (img.getAttribute('src') ?? '').match(/\\/(T[A-Z0-9]{6,})-(U[A-Z0-9]{6,})-/);
+      if (match) seen.set(match[2], match[1]);
+    }
+    window.__betterslackPeople = [...seen].map(([id, team]) => ({ id, team }));
     const sample = document.querySelector('[data-qa="message_container"] img[src^="http"]');
     return window.__betterslackPeople.length + ' ' + (sample?.getAttribute('src') ?? 'no avatar');
   })()`));
@@ -457,7 +428,8 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
       await evaluate(only([shot.id]));
       await sleep(1200);
     }
-    if (shot.open) console.log(`[mods] ${shot.id} <- ${await evaluate(openFor(shot.open))}`);
+    if (shot.open === 'profile') console.log(`[mods] ${shot.id} <- ${await openProfile()}`);
+    else if (shot.open) console.log(`[mods] ${shot.id} <- ${await evaluate(openFor(shot.open))}`);
     // Long enough for a mod that asks Slack for something -- the member column
     // fetches the channel's people, and a shorter wait photographed one of them.
     await sleep(shot.open === 'profile' ? 4200 : 2600);
@@ -490,17 +462,16 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
     if (shot.open) await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), window.__betterslack.close(), true`);
   }
 
-  await toJpeg(OUT);
 }
 
-async function toJpeg(dir) {
-  for (const file of await fs.readdir(dir)) {
-    if (!file.endsWith('.png')) continue;
-    const png = path.join(dir, file);
-    const jpg = png.replace(/\.png$/, '.jpg');
-    await run('sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '80', png, '--out', jpg]);
-    await run('sips', ['--resampleWidth', '1400', jpg]);
-    await fs.rm(png);
-  }
-  console.log(`[mods] wrote ${dir}`);
-}
+/*
+ * There is no conversion step any more.
+ *
+ * `Page.captureScreenshot` writes the WebP itself, at the size the picture is
+ * published at, so nothing here reopens the file. What this replaced was two
+ * `sips` calls -- a format change and a downscale -- and `sips` is macOS-only
+ * and cannot write WebP at all, so the pipeline was going to need a Homebrew
+ * dependency to keep the old shape. Measured first: the full 3200x2000 WebP is
+ * 160 kB against 132 kB for the 1400-wide JPEG it replaces.
+ */
+

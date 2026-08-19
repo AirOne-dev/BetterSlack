@@ -479,12 +479,13 @@ and a `fetch` from the page always fails. https only, the file name is
 sanitised, 25 MB cap, fixed download directory.
 
 ```js
-const { path } = await api.files.screenshot({ size: '1600x1000', filename: 'slack.png' });
+const { path } = await api.files.screenshot({ size: '1600x1000', filename: 'slack.webp' });
 ```
 
 Photographs the Slack window into the same folder, under the same rules. A page
 cannot photograph itself, so the loader does it over CDP — the same call
-`pnpm shoot` makes.
+`pnpm shoot` makes, and the picture comes back as WebP, which Chromium encodes
+itself.
 
 `size` forces the viewport before the shutter and puts it back after, which is
 the only way to get a frame that needs no cropping: cropping a taller picture

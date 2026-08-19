@@ -508,7 +508,7 @@ export function createTestApi({
          * the only moment a test can see whether it did.
          */
         recorded.screenshots.push({ ...options, htmlClass: document.documentElement.className });
-        return { path: `/tmp/${options.filename ?? 'slack.png'}`, bytes: 4096 };
+        return { path: `/tmp/${options.filename ?? 'slack.webp'}`, bytes: 4096 };
       },
     },
 
