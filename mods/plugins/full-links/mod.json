@@ -27,6 +27,13 @@
         "en": "The mod at work, in a workspace with the names replaced.",
         "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
       }
+    },
+    {
+      "file": "screenshot-paste.webp",
+      "captions": {
+        "en": "The other half: a long URL pasted into the composer stays whole instead of becoming a stub.",
+        "fr": "L’autre moitié : une URL longue collée dans la zone de saisie reste entière au lieu de devenir un moignon."
+      }
     }
   ]
 }

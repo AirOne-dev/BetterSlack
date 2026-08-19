@@ -54,6 +54,13 @@
         "en": "The mod at work, in a workspace with the names replaced.",
         "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
       }
+    },
+    {
+      "file": "screenshot-message.webp",
+      "captions": {
+        "en": "The same download from the hover actions on a message, where you reach for it most.",
+        "fr": "Le même téléchargement depuis les actions au survol d’un message, là où on le cherche le plus souvent."
+      }
     }
   ]
 }

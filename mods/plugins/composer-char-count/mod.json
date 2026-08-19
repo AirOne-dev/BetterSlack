@@ -45,6 +45,13 @@
         "en": "The mod at work, in a workspace with the names replaced.",
         "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
       }
+    },
+    {
+      "file": "screenshot-warning.webp",
+      "captions": {
+        "en": "Near Slack’s 4000-character limit, past which a message is silently split in two.",
+        "fr": "À l’approche de la limite de 4000 caractères, au-delà de laquelle Slack coupe le message en deux sans prévenir."
+      }
     }
   ]
 }

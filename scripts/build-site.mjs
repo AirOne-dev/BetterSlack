@@ -65,10 +65,17 @@ for (const mod of registry.mods) {
     if (icon.startsWith('<svg')) entry.icon = icon;
   }
 
-  const shot = path.join(folder, 'screenshot.webp');
-  if (existsSync(shot)) {
-    copyFileSync(shot, path.join(SHOT_DIR, `${mod.id}.webp`));
-    entry.shot = `shots/mods/${mod.id}.webp`;
+  /*
+   * Every frame the mod ships, not only the first: several mods have two or
+   * three now, and the panel shows them all. The card on the site still uses
+   * the first, which is why the manifest's order is the one that matters.
+   */
+  for (const [index, declared] of (mod.screenshots ?? []).entries()) {
+    const file = path.join(folder, declared.file);
+    if (!existsSync(file)) continue;
+    const name = index === 0 ? mod.id : `${mod.id}-${index + 1}`;
+    copyFileSync(file, path.join(SHOT_DIR, `${name}.webp`));
+    if (index === 0) entry.shot = `shots/mods/${name}.webp`;
   }
 
   if (mod.type === 'theme') {

@@ -123,6 +123,19 @@ Rules baked into both, each of which cost a set of pictures:
   and the run fails if it is not. Without it a message action, which only
   exists while the pointer is over a message, photographs as an ordinary
   channel, and fifteen identical pictures go into the catalogue unnoticed.
+- **A mod can want more than one frame**, and seven do: the member column and
+  the dialog it opens, the palette empty and filtered by `/` and `@`, focus
+  mode on and off. An entry carries `frames: [...]`, each inheriting the
+  entry's staging unless it overrides it, and each filed as
+  `screenshot-<name>.webp` beside the first. The manifest's order is what the
+  panel and the site draw, so the frame that shows the mod best goes first.
+- **`stage` runs before the frame is opened; `then` runs after.** Typing into
+  the palette is a `then` -- there is no box to type into until it is up -- and
+  the two are easy to confuse because both look like "do this as well".
+- **Every staging verb is checked before Slack launches.** An edit once cut four
+  of them out of `openFor`, and nothing said so: the fallback returned the
+  string `'true'`, the recipe evaluated it happily, and the frames came out
+  staged with nothing.
 
 A recipe is handed `evaluate`, `sleep`, `shoot`, and three things the page
 cannot do for itself:

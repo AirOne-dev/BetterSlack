@@ -50,6 +50,13 @@
         "en": "The mod at work, in a workspace with the names replaced.",
         "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
       }
+    },
+    {
+      "file": "screenshot-profile.webp",
+      "captions": {
+        "en": "Clicking somebody opens the mod’s own profile dialog, wearing Slack’s profile markup.",
+        "fr": "Cliquer sur quelqu’un ouvre la fiche de profil du mod, qui porte le balisage de profil de Slack."
+      }
     }
   ]
 }

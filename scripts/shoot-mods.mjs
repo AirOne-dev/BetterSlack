@@ -22,7 +22,7 @@ const SIZE = '1600x1000';
 
 /** What to switch on, and what to open, for each mod's picture. */
 /*
- * Slack's own vocabulary, which is in every workspace and identifies none.
+ * Words that identify nobody: Slack's own vocabulary, and BetterSlack's.
  *
  * These reached the audit because they are on screen twice: in a message, and
  * in a tab label, a placeholder or a tip the redactor has no business
@@ -42,6 +42,14 @@ const CHROME = new Set([
   'réponse', 'réponses', 'reponse', 'reponses', 'dernière', 'derniere',
   'afficher', 'télécharger', 'telecharger', 'modifié', 'modifie',
   'retour', 'ajouter', 'ligne', 'enregistrer', 'chargement', 'envoyer', 'channel',
+  /*
+   * BetterSlack's own, which reach the audit through the palette: it lists
+   * every mod's commands, and those rows are deliberately not swept -- a mod's
+   * command title is our copy, not the workspace's. They only fail the run
+   * when the same word also happened to be on screen beforehand.
+   */
+  'shortcut', 'shortcuts', 'raccourci', 'raccourcis', 'configure', 'configurer',
+  'betterslack', 'palette', 'thèmes', 'themes', 'plugins',
   'mentions', 'réactions', 'reactions', 'brouillon',
   // "il y a 23 heures", and the rest of Slack's relative clock.
   'secondes', 'minutes', 'heures', 'jours', 'semaines', 'semaine', 'heure',
@@ -76,29 +84,105 @@ const SHOTS = [
   { id: 'demo-mode', open: 'button:demo-mode-toggle', expect: '#betterslack-demo-indicator' },
   { id: 'motion', open: 'panel', expect: '#betterslack-panel' },
   { id: 'code-highlight', stage: 'codeblock', reapply: true, expect: '.betterslack-hl' },
-  { id: 'full-links', reapply: true },
-  { id: 'command-palette', open: 'palette', expect: '.betterslack-palette__box' },
-  { id: 'member-sidebar', expect: '#betterslack-member-column' },
+  {
+    id: 'full-links',
+    reapply: true,
+    frames: [
+      {},
+      // The half nobody sees: Slack shortens a URL as you paste it, and the
+      // mod stops the stub being made at all.
+      { name: 'paste', stage: 'paste', undo: 'uncompose' },
+    ],
+  },
+  {
+    id: 'command-palette',
+    open: 'palette',
+    expect: '.betterslack-palette__box',
+    frames: [
+      {},
+      // `then`, not `stage`: staging runs before the frame is opened, and
+      // there is no box to type into until the palette is up.
+      { name: 'actions', then: 'type:/', expect: '.betterslack-palette__row' },
+      { name: 'people', then: 'type:@', expect: '.betterslack-palette__row' },
+    ],
+  },
+  {
+    id: 'member-sidebar',
+    expect: '#betterslack-member-column',
+    frames: [
+      {},
+      // The column is half of it; clicking somebody opens the mod's own
+      // profile dialog, which is the first non-Slack thing to wear Slack's
+      // profile contract.
+      { name: 'profile', then: 'member', expect: '.betterslack-widget_dialog' },
+    ],
+  },
   { id: 'sidebar-account', expect: '.betterslack-me' },
   { id: 'channel-notes', open: 'button:channel-notes-notes', expect: '.betterslack-widget_dialog' },
   // No text is typed into the composer: it is the user's real draft, in a real
   // workspace, and a screenshot run has no business writing to it. Whatever is
   // in there is what the counter counts.
-  { id: 'composer-char-count', stage: 'compose', undo: 'uncompose', expect: '#betterslack-char-count' },
+  {
+    id: 'composer-char-count',
+    undo: 'uncompose',
+    expect: '#betterslack-char-count',
+    frames: [
+      { stage: 'compose' },
+      // The state it exists for: near Slack's 4000-character limit, past which
+      // a message is silently split in two.
+      { name: 'warning', stage: 'longdraft' },
+    ],
+  },
   { id: 'copy-message-link', hover: MESSAGE },
   { id: 'quote-reply', hover: MESSAGE },
-  { id: 'focus-mode', open: 'command:focus-mode' },
+  {
+    id: 'focus-mode',
+    frames: [
+      { open: 'command:focus-mode' },
+      // The same conversation with it off, which is the whole argument.
+      { name: 'before' },
+    ],
+  },
   {
     id: 'devtools',
     hover: '.betterslack-toolbar-button:not(#betterslack-control-button)',
     expect: '#betterslack-tb-devtools-devtools',
   },
-  { id: 'theme-builder', open: 'command:theme-builder', window: 'betterslack-theme-builder' },
+  {
+    id: 'theme-builder',
+    open: 'command:theme-builder',
+    window: 'betterslack-theme-builder',
+    frames: [
+      {},
+      // Past the door and into the work: the twelve roles, which is what the
+      // mod actually is. Driven inside its own renderer, since the client's
+      // session cannot reach it.
+      {
+        name: 'roles',
+        windowSize: '900x1100',
+        // The door's own "start a new theme" card, which the builder gives a
+        // class of its own rather than leaving it to be matched by its words.
+        inWindow: `(() => {
+          const card = document.querySelector('.gallery__card--new');
+          if (!card) return 'no start card';
+          card.click();
+          return 'opened a new theme';
+        })()`,
+      },
+    ],
+  },
   // Last, and in this order: opening a profile leaves the client in a
   // conversation with that person, which is a poor backdrop for everything
   // else and has no messages to hover.
   { id: 'user-inspector', open: 'profile', expect: '.betterslack-user-details' },
-  { id: 'avatar-downloader', open: 'profile', expect: '.betterslack-profile-row' },
+  {
+    id: 'avatar-downloader',
+    frames: [
+      { open: 'profile', expect: '.betterslack-profile-row' },
+      // It is also a message action, which is where you reach for it most.
+      { name: 'message', hover: MESSAGE },
+    ],
+  },
 ];
 
 const only = (ids) => `(async () => {
@@ -144,10 +228,129 @@ const openFor = (what) => {
       return Boolean(command ?? wanted);
     })()`;
   }
-  return 'true';
+  if (what.startsWith('type:')) {
+    /*
+     * Type into the palette's own box.
+     *
+     * Its list is rebuilt from an `input` event, so setting `value` alone
+     * changes the text and nothing else -- the frame would show a prefix over
+     * the unfiltered list.
+     */
+    return `(() => {
+      const box = document.querySelector('.betterslack-palette__input');
+      if (!box) return 'no palette';
+      box.focus();
+      box.value = ${JSON.stringify(what.slice('type:'.length))};
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+      return 'typed ' + box.value;
+    })()`;
+  }
+  if (what === 'member') return `(() => {
+    // A row in the member column, which opens that mod's own profile dialog --
+    // the second thing it has to show.
+    const row = document.querySelector('#betterslack-member-column .betterslack-members__row');
+    if (!row) return 'no member row';
+    row.click();
+    return 'opened a member';
+  })()`;
+  if (what === 'codeblock') return `(() => {
+    /*
+     * A channel with a code block in it is not something to hope for.
+     *
+     * Slack's own markup, appended to the last message rather than replacing
+     * anything -- adding a child is safe, removing one from a node React owns
+     * is what earns a "removeChild on a node that is not a child" at its next
+     * render. The highlighter then finds it the way it finds any other, so
+     * what the picture shows is the mod really working.
+     */
+    if (document.querySelector('pre.c-mrkdwn__pre')) return 'already one here';
+    const bodies = [...document.querySelectorAll('[data-qa="message-text"]')];
+    const body = bodies[bodies.length - 2] ?? bodies[bodies.length - 1];
+    if (!body) return 'no message to add it to';
+    const pre = document.createElement('pre');
+    pre.className = 'c-mrkdwn__pre';
+    pre.setAttribute('data-stringify-type', 'pre');
+    pre.textContent = [
+      'const shipped = releases.filter((r) => r.stage === "live");',
+      'export function latest(list) {',
+      '  return list.sort((a, b) => b.at - a.at)[0];',
+      '}',
+    ].join('\\n');
+    body.append(pre);
+    return 'added one';
+  })()`;
+  if (what === 'compose') return `(() => {
+    /*
+     * The counter counts what is in the composer, so an empty one photographs
+     * as nothing at all. Written only into an empty composer, and taken back
+     * out after the picture: this is somebody's real Slack, and a screenshot
+     * run has no business leaving a draft behind in it.
+     */
+    const editor = document.querySelector('[data-qa="message_input"] .ql-editor');
+    if (!editor) return 'no composer';
+    if ((editor.textContent ?? '').trim()) return 'left the draft alone';
+    editor.focus();
+    document.execCommand('insertText', false,
+      'shipping this afternoon, rebased and green. good catch -- moved it to next week.');
+    return 'typed';
+  })()`;
+  if (what === 'longdraft') return `(() => {
+    // Near Slack's 4000-character limit, which is the state the counter exists
+    // to warn about.
+    const editor = document.querySelector('[data-qa="message_input"] .ql-editor');
+    if (!editor) return 'no composer';
+    if ((editor.textContent ?? '').trim()) return 'left the draft alone';
+    editor.focus();
+    const line = 'the release notes are up. shipping this afternoon. nice, thanks for the fix. ';
+    document.execCommand('insertText', false, line.repeat(50).slice(0, 3940));
+    return 'typed a long one';
+  })()`;
+  if (what === 'paste') return `(() => {
+    /*
+     * The half of Full Links nobody sees: Slack turns a long URL into a stub as
+     * you paste it, and the mod stops that happening. Only into an empty
+     * composer, and taken back out afterwards.
+     */
+    const editor = document.querySelector('[data-qa="message_input"] .ql-editor');
+    if (!editor) return 'no composer';
+    if ((editor.textContent ?? '').trim()) return 'left the draft alone';
+    editor.focus();
+    const event = new Event('paste', { bubbles: true, cancelable: true });
+    event.clipboardData = {
+      getData: () => 'https://example.com/releases/2026-08/build-4820/notes?ref=slack-digest&source=weekly',
+    };
+    editor.dispatchEvent(event);
+    return 'pasted';
+  })()`;
+  if (what === 'uncompose') return `(() => {
+    const editor = document.querySelector('[data-qa="message_input"] .ql-editor');
+    if (!editor) return 'no composer';
+    editor.focus();
+    document.execCommand('selectAll');
+    document.execCommand('delete');
+    return 'cleared';
+  })()`;
+  throw new Error(`no staging called ${what}`);
 };
 
-export default async function shootMods({ evaluate, shoot, shootWindow, click, sleep }) {
+/*
+ * Every verb the table above uses has to exist.
+ *
+ * An edit once cut four of them out of `openFor`, and nothing said so: the
+ * fallback returned the string 'true', the recipe dutifully evaluated it, and
+ * the frames came out staged with nothing. Checked here rather than at the
+ * moment of use, so a missing verb is a failure before Slack is even launched.
+ */
+for (const shot of SHOTS) {
+  for (const frame of shot.frames ?? [{}]) {
+    for (const verb of [frame.open ?? shot.open, frame.stage ?? shot.stage,
+      frame.then ?? shot.then, frame.undo ?? shot.undo]) {
+      if (verb && verb !== 'profile') openFor(verb);
+    }
+  }
+}
+
+export default async function shootMods({ evaluate, shoot, shootWindow, evaluateWindow, click, sleep }) {
   /*
    * Open somebody's profile, waiting in Node rather than in the page.
    *
@@ -408,58 +611,96 @@ export default async function shootMods({ evaluate, shoot, shootWindow, click, s
   for (const shot of todo) {
     await evaluate(only([shot.id]));
     await sleep(1200);
-    // Anything the picture needs on screen that Slack will not have put there.
-    let staged = null;
-    if (shot.stage) {
-      staged = await evaluate(openFor(shot.stage));
-      console.log(`[mods] ${shot.id} stage: ${staged}`);
-    }
-    // Slack re-renders as mods come and go; sweep whatever it just drew.
-    await evaluate('window.__betterslackRedaction.sweep(), true');
+
     /*
-     * Some mods read the screen once and decorate what they found. They ran
-     * before the sweep, so what they decorated was the real thing and what is
-     * on screen now is untouched invented text -- code with no highlighting on
-     * it. Switched off and on, they read the screen as it is.
+     * A mod can want more than one picture, and several do: the member column
+     * and the profile dialog it opens, the palette empty and the palette
+     * filtered, the client with focus mode off and on. One entry, a list of
+     * frames, each inheriting the entry's own staging unless it says otherwise.
      */
-    if (shot.reapply) {
-      await evaluate(only([]));
-      await sleep(400);
-      await evaluate(only([shot.id]));
-      await sleep(1200);
+    const frames = shot.frames ?? [{}];
+    for (const [index, spec] of frames.entries()) {
+      const frame = { ...shot, ...spec, frames: undefined };
+      const name = frame.name ? `${shot.id}-${frame.name}` : shot.id;
+
+      /*
+       * Back to the mod's own starting state between frames.
+       *
+       * The second frame of a mod usually follows the first -- a dialog opened
+       * on top of the column -- but not always, and a frame that expects a
+       * clean client got whatever the previous one left open. Switching the mod
+       * off and on is the cheapest way to put everything back, and it is what
+       * `reapply` already did for the mods that read the screen once.
+       */
+      if (index > 0 || frame.reapply) {
+        await evaluate(only([]));
+        await sleep(400);
+        await evaluate(only([frame.id]));
+        await sleep(1200);
+      }
+
+      // Anything the picture needs on screen that Slack will not have put there.
+      let staged = null;
+      if (frame.stage) {
+        staged = await evaluate(openFor(frame.stage));
+        console.log(`[mods] ${name} stage: ${staged}`);
+      }
+      // Slack re-renders as mods come and go; sweep whatever it just drew.
+      await evaluate('window.__betterslackRedaction.sweep(), true');
+
+      if (frame.open === 'profile') console.log(`[mods] ${name} <- ${await openProfile()}`);
+      else if (frame.open) console.log(`[mods] ${name} <- ${await evaluate(openFor(frame.open))}`);
+      // Long enough for a mod that asks Slack for something -- the member
+      // column fetches the channel's people, and a shorter wait photographed
+      // one of them.
+      await sleep(frame.open === 'profile' ? 4200 : 2600);
+
+      // A second thing to do once the first has landed: click a row in a list
+      // the mod only drew a moment ago.
+      if (frame.then) {
+        console.log(`[mods] ${name} then: ${await evaluate(openFor(frame.then))}`);
+        await sleep(1800);
+      }
+      await evaluate('window.__betterslackRedaction.sweep(), true');
+
+      /*
+       * A picture that does not show the mod is worse than no picture: it goes
+       * into the catalogue looking like every other one and nobody notices for
+       * a month. Each frame names something of its own that has to be there.
+       */
+      if (frame.expect) {
+        const there = await evaluate(`Boolean(document.querySelector(${JSON.stringify(frame.expect)}))`);
+        if (!there) throw new Error(`${name}: nothing matches ${frame.expect}, so the shot would not show it`);
+      }
+      await assertClean(name);
+
+      if (frame.window) {
+        // Inside the mod's own window, which is a separate renderer: its door
+        // has to be walked through before there is anything else to photograph.
+        if (frame.inWindow) {
+          const did = await evaluateWindow(frame.window, frame.inWindow);
+          console.log(`[mods] ${name} in-window: ${did}`);
+          await sleep(1800);
+        }
+        const taken = await shootWindow(frame.window, name, frame.windowSize ?? '900x640');
+        if (!taken) throw new Error(`${name}: no window matching ${frame.window} was open`);
+      } else {
+        await shoot(name, SIZE, 0, frame.hover);
+      }
+      console.log(`[mods] ${name}`);
+
+      /*
+       * Only what this script did. It cleared a composer it had not written to
+       * once, which threw away a draft somebody had left there -- a screenshot
+       * run may stage what it needs, but only ever undoes its own staging.
+       */
+      if (frame.undo && staged && !String(staged).startsWith('left')) {
+        console.log(`[mods] ${name} undo: ${await evaluate(openFor(frame.undo))}`);
+      }
+      if (frame.open || frame.then) {
+        await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), window.__betterslack.close(), true`);
+      }
     }
-    if (shot.open === 'profile') console.log(`[mods] ${shot.id} <- ${await openProfile()}`);
-    else if (shot.open) console.log(`[mods] ${shot.id} <- ${await evaluate(openFor(shot.open))}`);
-    // Long enough for a mod that asks Slack for something -- the member column
-    // fetches the channel's people, and a shorter wait photographed one of them.
-    await sleep(shot.open === 'profile' ? 4200 : 2600);
-    await evaluate('window.__betterslackRedaction.sweep(), true');
-    /*
-     * A picture that does not show the mod is worse than no picture: it goes
-     * into the catalogue looking like every other one and nobody notices for a
-     * month. Each entry names something of its own that has to be on screen.
-     */
-    if (shot.expect) {
-      const there = await evaluate(`Boolean(document.querySelector(${JSON.stringify(shot.expect)}))`);
-      if (!there) throw new Error(`${shot.id}: nothing matches ${shot.expect}, so the shot would not show it`);
-    }
-    await assertClean(shot.id);
-    if (shot.window) {
-      // Tight to the content: the builder's door is one short column, and a
-      // taller frame is mostly empty background.
-      const taken = await shootWindow(shot.window, shot.id, '900x640');
-      if (!taken) throw new Error(`${shot.id}: no window matching ${shot.window} was open`);
-    } else {
-      await shoot(shot.id, SIZE, 0, shot.hover);
-    }
-    console.log(`[mods] ${shot.id}`);
-    /*
-     * Only what this script did. It cleared a composer it had not written to
-     * once, which threw away a draft somebody had left there -- a screenshot
-     * run may stage what it needs, but only ever undoes its own staging.
-     */
-    if (shot.undo && staged === 'typed') console.log(`[mods] ${shot.id} undo: ${await evaluate(openFor(shot.undo))}`);
-    if (shot.open) await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), window.__betterslack.close(), true`);
   }
 
 }

@@ -91,6 +91,13 @@
             "en": "The mod at work, in a workspace with the names replaced.",
             "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
           }
+        },
+        {
+          "file": "screenshot-message.webp",
+          "captions": {
+            "en": "The same download from the hover actions on a message, where you reach for it most.",
+            "fr": "Le même téléchargement depuis les actions au survol d’un message, là où on le cherche le plus souvent."
+          }
         }
       ],
       "path": "plugins/avatar-downloader"
@@ -235,6 +242,20 @@
             "en": "The mod at work, in a workspace with the names replaced.",
             "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
           }
+        },
+        {
+          "file": "screenshot-actions.webp",
+          "captions": {
+            "en": "Typing / narrows it to actions: every mod’s commands, and BetterSlack’s own.",
+            "fr": "Taper / réduit la liste aux actions : les commandes de chaque mod, et celles de BetterSlack."
+          }
+        },
+        {
+          "file": "screenshot-people.webp",
+          "captions": {
+            "en": "Typing @ narrows it to people, straight from the workspace directory.",
+            "fr": "Taper @ réduit la liste aux personnes, prises dans l’annuaire de l’espace de travail."
+          }
         }
       ],
       "path": "plugins/command-palette"
@@ -285,6 +306,13 @@
           "captions": {
             "en": "The mod at work, in a workspace with the names replaced.",
             "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        },
+        {
+          "file": "screenshot-warning.webp",
+          "captions": {
+            "en": "Near Slack’s 4000-character limit, past which a message is silently split in two.",
+            "fr": "À l’approche de la limite de 4000 caractères, au-delà de laquelle Slack coupe le message en deux sans prévenir."
           }
         }
       ],
@@ -511,6 +539,13 @@
             "en": "The mod at work, in a workspace with the names replaced.",
             "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
           }
+        },
+        {
+          "file": "screenshot-before.webp",
+          "captions": {
+            "en": "The same conversation with it off: the rail, the sidebar and the top bar all back.",
+            "fr": "La même conversation sans lui : le rail, la barre latérale et la barre du haut sont revenus."
+          }
         }
       ],
       "path": "plugins/focus-mode"
@@ -576,6 +611,13 @@
             "en": "The mod at work, in a workspace with the names replaced.",
             "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
           }
+        },
+        {
+          "file": "screenshot-paste.webp",
+          "captions": {
+            "en": "The other half: a long URL pasted into the composer stays whole instead of becoming a stub.",
+            "fr": "L’autre moitié : une URL longue collée dans la zone de saisie reste entière au lieu de devenir un moignon."
+          }
         }
       ],
       "path": "plugins/full-links"
@@ -631,6 +673,13 @@
           "captions": {
             "en": "The mod at work, in a workspace with the names replaced.",
             "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        },
+        {
+          "file": "screenshot-profile.webp",
+          "captions": {
+            "en": "Clicking somebody opens the mod’s own profile dialog, wearing Slack’s profile markup.",
+            "fr": "Cliquer sur quelqu’un ouvre la fiche de profil du mod, qui porte le balisage de profil de Slack."
           }
         }
       ],
@@ -889,6 +938,13 @@
           "captions": {
             "en": "The mod at work, in a workspace with the names replaced.",
             "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
+          }
+        },
+        {
+          "file": "screenshot-roles.webp",
+          "captions": {
+            "en": "Past the door: two colours become twelve roles, written across all four token families.",
+            "fr": "Passé la porte : deux couleurs deviennent douze rôles, écrits dans les quatre familles de jetons."
           }
         }
       ],

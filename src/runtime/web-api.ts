@@ -299,18 +299,6 @@ function isInDndWindow(dnd: Record<string, unknown>): boolean {
   return now >= start && now < end;
 }
 
-/**
- * Slack serves avatars as `<base>-<size>`, and `image_original` is the file as
- * uploaded. Ordered best first.
- */
-export function bestAvatarUrl(profile: SlackProfile | undefined): string | null {
-  if (!profile) return null;
-  for (const key of ['image_original', 'image_1024', 'image_512', 'image_192', 'image_72'] as const) {
-    const value = profile[key];
-    if (typeof value === 'string' && value) return value;
-  }
-  return null;
-}
 
 /** Pull a user id out of any Slack avatar URL: `<team>-<user>-<hash>-<size>`. */
 export function userIdFromAvatarUrl(url: string | null | undefined): string | null {

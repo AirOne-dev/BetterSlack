@@ -280,7 +280,6 @@ export function missingRequirements(manifest: ModManifest, settings: Settings): 
 
 /** Requests the renderer sends to the loader. */
 export type Request =
-  | { type: 'catalog' }
   /**
    * Stop Slack and start it again, keeping this loader.
    *
@@ -291,7 +290,6 @@ export type Request =
   /** One file out of a mod's folder, as a data URL. For screenshots. */
   | { type: 'mods.asset'; id: string; file: string }
   | { type: 'slack.restart' }
-  | { type: 'settings.get' }
   | { type: 'settings.set'; settings: Partial<Settings> }
   /**
    * Deliberately granular. Sending the whole `enabled` array back would make
@@ -306,7 +304,6 @@ export type Request =
   /** `source` marks it as coming from outside this repository, for good. */
   | { type: 'mod.install'; id: string; manifest: ModManifest; files: ModFiles; source?: string }
   | { type: 'mod.uninstall'; id: string }
-  | { type: 'loader.info' }
   /**
    * Fetch a URL and save it. The renderer cannot do this itself: Slack's CDN
    * serves avatars without CORS headers, so `fetch` from the page fails even
@@ -341,8 +338,7 @@ export type Request =
   /** Fetch one mod's folder from the branch and install it over the old one. */
   | { type: 'mods.update'; id: string }
   /** The renderer saying it got all the way up, which clears the crash marker. */
-  | { type: 'app.ready' }
-  | { type: 'log'; level: 'log' | 'warn' | 'error'; message: string };
+  | { type: 'app.ready' };
 
 /** Push notifications the loader sends to the renderer unprompted. */
 export type Event =

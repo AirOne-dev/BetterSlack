@@ -38,6 +38,20 @@
         "en": "The mod at work, in a workspace with the names replaced.",
         "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
       }
+    },
+    {
+      "file": "screenshot-actions.webp",
+      "captions": {
+        "en": "Typing / narrows it to actions: every mod’s commands, and BetterSlack’s own.",
+        "fr": "Taper / réduit la liste aux actions : les commandes de chaque mod, et celles de BetterSlack."
+      }
+    },
+    {
+      "file": "screenshot-people.webp",
+      "captions": {
+        "en": "Typing @ narrows it to people, straight from the workspace directory.",
+        "fr": "Taper @ réduit la liste aux personnes, prises dans l’annuaire de l’espace de travail."
+      }
     }
   ]
 }

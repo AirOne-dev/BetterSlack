@@ -85,14 +85,24 @@ await fs.rm(home, { recursive: true, force: true });
  */
 if (forMods) {
   const kinds = ['themes', 'plugins'];
+  const catalogue = JSON.parse(await fs.readFile(path.join(root, 'mods/registry.json'), 'utf8'));
+  // Longest id first: a frame is filed as `<id>-<name>`, and `demo-mode` would
+  // otherwise be claimed by a mod called `demo`.
+  const ids = catalogue.mods.map((mod) => mod.id).sort((a, b) => b.length - a.length);
+
   for (const file of await fs.readdir(out)) {
     if (!file.endsWith('.webp')) continue;
-    const id = file.replace(/\.webp$/, '');
+    const stem = file.replace(/\.webp$/, '');
+    const id = ids.find((candidate) => stem === candidate || stem.startsWith(`${candidate}-`));
+    if (!id) continue;
+    // The first frame is the mod's picture; the rest are numbered by the name
+    // the recipe gave them, and the manifest is what decides their order.
+    const suffix = stem === id ? '' : stem.slice(id.length);
     for (const kind of kinds) {
       const folder = path.join(root, 'mods', kind, id);
       if (!await fs.stat(folder).then(() => true, () => false)) continue;
-      await fs.copyFile(path.join(out, file), path.join(folder, 'screenshot.webp'));
-      console.log(`[shots] mods/${kind}/${id}/screenshot.webp`);
+      await fs.copyFile(path.join(out, file), path.join(folder, `screenshot${suffix}.webp`));
+      console.log(`[shots] mods/${kind}/${id}/screenshot${suffix}.webp`);
     }
   }
 }

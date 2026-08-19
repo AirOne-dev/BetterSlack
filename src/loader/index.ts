@@ -333,6 +333,7 @@ class Loader {
           evaluate: <T>(expression: string) => Promise<T>;
           shoot: (name: string, size?: string, delayMs?: number, hover?: string) => Promise<void>;
           shootWindow: (match: string, name: string, size?: string) => Promise<boolean>;
+          evaluateWindow: <T>(match: string, expression: string) => Promise<T | null>;
           click: (selector: string, index?: number) => Promise<string>;
           sleep: (ms: number) => Promise<void>;
         }) => Promise<void>;
@@ -346,6 +347,21 @@ class Loader {
          * routinely puts it on another Space. The loader is already attached to
          * every page target, so it is the only thing that can.
          */
+        /*
+         * Drive a window a mod opened, the same way `shootWindow` photographs
+         * one. The theme builder's interesting frame is a click past its door,
+         * and the client's session cannot reach into another renderer.
+         */
+        evaluateWindow: async (match, expression) => {
+          for (const [, other] of this.auxiliary) {
+            const here = await other
+              .evaluate<string>('[location.href, document.title, window.name].join(" ")')
+              .catch(() => '');
+            if (!here.includes(match)) continue;
+            return other.evaluate(expression);
+          }
+          return null;
+        },
         shootWindow: async (match, name, size) => {
           for (const [, other] of this.auxiliary) {
             // A window a mod opens with `window.open('', name)` is about:blank
@@ -926,12 +942,6 @@ class Loader {
 
   private async dispatch(request: Request, session: CdpSession): Promise<unknown> {
     switch (request.type) {
-      case 'catalog':
-        return this.catalog.list();
-
-      case 'settings.get':
-        return readSettings();
-
       case 'settings.set': {
         const saved = await mergeSettings(request.settings);
         /*
@@ -977,9 +987,6 @@ class Loader {
 
       case 'mod.uninstall':
         return this.uninstall(request.id);
-
-      case 'loader.info':
-        return this.info;
 
       case 'file.download': {
         const result = await downloadFile(request.url, request.filename);
@@ -1095,10 +1102,6 @@ class Loader {
         // The renderer got all the way up, so this run is not the one that
         // needs a safe start next time.
         await markBootHealthy();
-        return null;
-
-      case 'log':
-        console[request.level](`[betterslack:renderer] ${request.message}`);
         return null;
 
       default: {

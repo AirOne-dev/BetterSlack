@@ -233,10 +233,3 @@ export function confirm(options: ConfirmOptions): Promise<boolean> {
   });
 }
 
-/** Remove any widget host left behind, e.g. when a plugin is disabled. */
-export function disposeWidgets(): Cleanup {
-  return () => {
-    document.getElementById(TOAST_HOST_ID)?.remove();
-    for (const node of document.querySelectorAll('.betterslack-modal-host')) node.remove();
-  };
-}

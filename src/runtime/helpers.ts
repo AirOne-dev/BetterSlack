@@ -107,7 +107,13 @@ export interface Helpers {
   /** A section with Slack's own header styling, for panes. */
   section(title: string, children: (Node | string)[]): HTMLElement;
 
-  /** Debounce, because half the mods needed one. */
+  /**
+   * Debounce. No shipped mod calls this today -- the two that debounce
+   * something do it inside code that has no `api` to reach for: the palette's
+   * directory search, and Demo Mode's engine, which the screenshot recipe also
+   * runs outside the runtime. Kept because it is three lines and it is the
+   * obvious thing to reach for.
+   */
   debounce<T extends (...args: never[]) => void>(fn: T, ms: number): T;
 }
 
