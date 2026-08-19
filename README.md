@@ -95,12 +95,17 @@ pnpm start
 active as long as it does. Nothing is installed on a fresh setup: open the panel
 and install what you want from **Browse**.
 
-On macOS, `pnpm build-app` puts a **BetterSlack.app** in `dist/` so you can start
-it from Spotlight, the Dock or your login items instead of a terminal. It is a
-launcher rather than a bundle — it runs this checkout, so keep the folder where
-it is. It needs a C compiler at build time (`xcode-select --install`); without
-one it still builds, but macOS will then refuse it access to a project kept on
-the Desktop, in Documents or in Downloads.
+On macOS, `pnpm build-app --install` puts a **BetterSlack.app** in
+`~/Applications` so you can start it from Spotlight, the Dock or your login
+items instead of a terminal. It is a launcher rather than a bundle — it runs
+this checkout, so keep the project folder where it is.
+
+Two things it needs. A C compiler at build time (`xcode-select --install`),
+because the bundle's executable has to be a real binary rather than a shell
+script. And, if the project lives on your Desktop or in Documents or Downloads,
+macOS will ask once for permission to read it — say yes. Do not run the copy
+left in `dist/`: an app inside one of those folders cannot read even its own
+launcher, and a double-click does nothing at all.
 
 **→ [docs/getting-started.md](docs/getting-started.md)** covers running it,
 writing a theme, writing a plugin, testing and shipping.

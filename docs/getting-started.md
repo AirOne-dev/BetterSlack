@@ -50,7 +50,7 @@ BETTERSLACK_SLACK_PATH=/path/to/Slack pnpm start
 <summary>Start it without a terminal (macOS)</summary>
 
 ```bash
-pnpm build-app       # produces dist/BetterSlack.app
+pnpm build-app --install    # ~/Applications/BetterSlack.app
 ```
 
 A launcher rather than a bundle: it holds the path to this checkout and runs it,
@@ -61,16 +61,26 @@ loader itself.
 It is unsigned, so the first launch needs right-click → Open.
 
 **It needs a C compiler**, which you have if `xcode-select --install` has ever
-been run. The bundle's executable is a three-line stub that launches the shell
-script beside it, and that indirection is the difference between an app macOS
-lets read your project and one it refuses: a bundle whose executable *is* a
-shell script is not an application as far as the Desktop/Documents/Downloads
-gate is concerned — the process it sees is `/bin/bash` — so the read fails, with
-no prompt and no way to grant it.
+been run. The bundle's executable is a small stub that launches the shell script
+beside it, and that indirection is the difference between an app macOS lets read
+your project and one it refuses: a bundle whose executable *is* a shell script
+is not an application as far as the Desktop/Documents/Downloads gate is
+concerned — the process it sees is `/bin/bash` — so the read fails, with no
+prompt and nothing to grant.
 
-Without a compiler the script-only shape is still built and still works,
-provided the project is not in one of those three folders. `pnpm build-app`
-says so when it falls back.
+**`--install` is not decoration.** `dist/` is inside the project, so if the
+project is in one of those folders then so is the app, and it cannot read even
+its own launcher: exec fails and a double-click does nothing whatsoever. From
+`~/Applications` it reads itself normally, and the only thing left to ask about
+is the project — which macOS does, once.
+
+It remembers that answer for as long as the app is not rebuilt. An ad-hoc
+signature identifies a bundle by its contents, so `pnpm build-app` again means
+being asked again.
+
+Without a compiler the script-only shape is still built, and works provided the
+project is not in one of those three folders. The build says so when it falls
+back.
 </details>
 
 ---

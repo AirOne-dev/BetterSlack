@@ -75,23 +75,37 @@ verified by running the script with a repository path that does not exist.
 **A bundle whose executable is a shell script is not an application**, as far
 as the gate on Desktop, Documents and Downloads is concerned. The process macOS
 sees is `/bin/bash`, a platform binary with no identity of its own, so the read
-is refused outright -- no prompt, and `tccutil` has no record of the bundle to
-reset. Four throwaway bundles, in order:
+is refused outright and there is nothing to grant. Measured with throwaway
+bundles, in order:
 
 | bundle | result |
 | --- | --- |
 | script executable, unsigned | refused |
 | script executable, ad-hoc signed | refused |
 | script executable + `NSDesktopFolderUsageDescription` | refused |
-| Mach-O executable | allowed, and no prompt at all |
-| Mach-O executable exec'ing the same script | allowed |
+| Mach-O executable | macOS asks, and remembers |
+| Mach-O executable exec'ing the same script | same |
 
-So `build-app` compiles a three-line C stub as the bundle's executable, which
-execs `Contents/Resources/launch.sh`, and everything below it inherits the app's
-identity. Verified by double-clicking the built app with this repository on the
-Desktop: Slack comes up with its mods and nothing is ever asked. Without `cc` on
-the machine the old script-only shape is written instead, and then the gate
-applies again -- which is what the fallback warning is for.
+So `Contents/MacOS/betterslack` is compiled from `scripts/launcher.c`, and
+execs `Contents/Resources/launch.sh`. Three things follow, each of which was a
+bug report before it was written down:
+
+- **The app cannot live in the gated folder either.** `dist/` is inside the
+  repository, so an app built there cannot read its own `launch.sh`, `execl`
+  fails, `main` returns, and a double-click does *nothing at all* -- no window,
+  no dialog, no log. `pnpm build-app --install` copies it to `~/Applications`,
+  where it reads itself normally and only the project needs permission.
+- **The stub explains rather than dying.** Running another program is not
+  gated, only reading a file is, so it can still reach `osascript` even when it
+  cannot read its own launcher.
+- **The grant lasts until the next build.** An ad-hoc signature identifies a
+  bundle by its contents, so rebuilding asks again. That is fine for a user who
+  builds once and invisible to anyone iterating on the launcher -- which is how
+  a working app turned into a silent one mid-session, twice.
+
+The C is a file rather than a string in `build-app.mjs`. It was a template
+literal for one revision, and between JavaScript escapes, C escapes and
+AppleScript quoting inside one `execl`, nothing would compile.
 
 **pnpm, not npm.** `pnpm-workspace.yaml` carries `allowBuilds: esbuild: true` --
 pnpm refuses to run a dependency's install script unless it is named there, and

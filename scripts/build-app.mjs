@@ -69,31 +69,6 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
 </plist>
 `;
 
-/*
- * Three lines of C, so the bundle has an executable macOS recognises as one.
- *
- * It finds itself, walks to Contents/Resources/launch.sh and execs it, which
- * keeps every decision in the shell script next door where it can be read.
- */
-const stub = `#include <mach-o/dyld.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-int main(void) {
-  char exe[4096];
-  uint32_t size = sizeof(exe);
-  if (_NSGetExecutablePath(exe, &size) != 0) return 1;
-  char *slash = strrchr(exe, '/');
-  if (slash) *slash = '\\0';
-  char script[4600];
-  snprintf(script, sizeof(script), "%s/../Resources/launch.sh", exe);
-  execl("/bin/bash", "bash", script, (char *)NULL);
-  return 1;
-}
-`;
-
 // `command -v node` rather than a hardcoded path: Homebrew, nvm, Volta and the
 // official installer all put it somewhere different, and a GUI launch does not
 // get the user's interactive shell PATH.
@@ -145,18 +120,18 @@ await fs.writeFile(path.join(app, 'Contents', 'Info.plist'), plist, 'utf8');
  * If there is no compiler the old shape is written instead -- the script as the
  * executable -- which works everywhere except the folders macOS gates.
  */
-const source = path.join(app, 'Contents', 'Resources', 'launch.c');
 let compiled = false;
-await fs.writeFile(source, stub, 'utf8');
 try {
-  await run('cc', ['-O2', '-o', path.join(app, 'Contents', 'MacOS', 'betterslack'), source]);
+  await run('cc', [
+    '-O2', '-o', path.join(app, 'Contents', 'MacOS', 'betterslack'),
+    path.join(root, 'scripts', 'launcher.c'),
+  ]);
   await fs.writeFile(path.join(app, 'Contents', 'Resources', 'launch.sh'), launcher, { mode: 0o755 });
   compiled = true;
 } catch (err) {
   console.warn(`no C compiler (${err.message.split('\n')[0]}), falling back to a script launcher`);
   await fs.writeFile(path.join(app, 'Contents', 'MacOS', 'betterslack'), launcher, { mode: 0o755 });
 }
-await fs.rm(source, { force: true });
 await fs.copyFile(
   path.join(root, 'assets', 'icon.icns'),
   path.join(app, 'Contents', 'Resources', 'icon.icns'),
@@ -174,13 +149,47 @@ await run('codesign', ['--force', '--deep', '--sign', '-', app])
 
 console.log(`built ${app}`);
 
+/*
+ * Where it has to live to work.
+ *
+ * `dist/` is inside the repository, and if the repository is on the Desktop
+ * then so is the app -- which cannot then read its own launcher, let alone the
+ * project. Copied to ~/Applications it reads itself fine, and the only thing
+ * left needing permission is the project, which macOS will ask about once.
+ */
+const installed = path.join(homedir(), 'Applications', 'BetterSlack.app');
+if (process.argv.includes('--install')) {
+  await fs.mkdir(path.dirname(installed), { recursive: true });
+  await fs.rm(installed, { recursive: true, force: true });
+  await fs.cp(app, installed, { recursive: true });
+  await run('codesign', ['--force', '--deep', '--sign', '-', installed]).catch(() => undefined);
+  console.log(`installed ${installed}`);
+}
+
 const GATED = ['Desktop', 'Documents', 'Downloads'].map((name) => path.join(homedir(), name));
-if (!compiled && GATED.some((dir) => root === dir || root.startsWith(`${dir}${path.sep}`))) {
+const gated = GATED.some((dir) => root === dir || root.startsWith(`${dir}${path.sep}`));
+
+if (!compiled && gated) {
   console.warn(
     '\nThis project is in a folder macOS gates per application, and without a\n'
     + 'compiler the app is a shell script, which that gate refuses outright. Install\n'
-    + 'the Xcode command line tools (xcode-select --install) and build again, move the\n'
-    + 'project somewhere like ~/code, or grant BetterSlack.app Full Disk Access.',
+    + 'the Xcode command line tools (xcode-select --install) and build again, or move\n'
+    + 'the project somewhere like ~/code.',
+  );
+} else if (gated && !process.argv.includes('--install')) {
+  console.warn(
+    `\nThis project is in a folder macOS gates per application, so the app cannot be\n`
+    + `run from ${path.relative(root, app)} -- it cannot read its own launcher there, and a\n`
+    + `double-click does nothing at all. Run "pnpm build-app --install" to put a copy in\n`
+    + `~/Applications and open it from there; macOS will ask once about the project.`,
+  );
+}
+
+if (gated) {
+  console.log(
+    '\nmacOS asks about the project the first time, and remembers the answer for as\n'
+    + 'long as the app is not rebuilt: an ad-hoc signature identifies a bundle by its\n'
+    + 'contents, so building again asks again.',
   );
 }
 
