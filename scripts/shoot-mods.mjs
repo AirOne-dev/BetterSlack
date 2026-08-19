@@ -72,7 +72,9 @@ const SHOTS = [
   { id: 'terminal' },
   { id: 'focus-rings' },
   // Plugins.
-  { id: 'demo-mode', expect: '#betterslack-demo-indicator' },
+  // The switch starts off, so the frame has to press it -- which is also the
+  // only picture in the set where the mod and the recipe do the same thing.
+  { id: 'demo-mode', open: 'button:demo-mode-toggle', expect: '#betterslack-demo-indicator' },
   { id: 'motion', open: 'panel', expect: '#betterslack-panel' },
   { id: 'code-highlight', stage: 'codeblock', reapply: true, expect: '.betterslack-hl' },
   { id: 'full-links', reapply: true },

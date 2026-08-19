@@ -59,6 +59,22 @@ const TOOLBARS = {
     before: undefined,
     placement: 'top' as Placement,
   },
+  /**
+   * Right-hand end of the top bar, beside Slack's own help and account
+   * controls. The place for a switch that belongs to the whole client rather
+   * than to the conversation on screen.
+   *
+   * The container is a direct child on purpose: `display_flex` and
+   * `align_items_center` are utility classes that appear all over Slack's
+   * markup, and matching them anywhere under the right container would put the
+   * button in whichever one happened to come first.
+   */
+  topNav: {
+    container: '.p-ia4_top_nav__right_container > .display_flex.align_items_center',
+    buttonClass: 'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default',
+    before: undefined,
+    placement: 'bottom' as Placement,
+  },
   /** Right-hand side of the channel header: huddle, search, more. */
   channelHeader: {
     container: '.p-view_header__actions',

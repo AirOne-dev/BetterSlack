@@ -326,11 +326,11 @@
       "id": "demo-mode",
       "name": "Demo Mode",
       "type": "plugin",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "AirOne-dev",
-      "description": "Fills your real Slack with people who do not exist: every name, face, message, channel, file and link on screen is replaced by an invented one, so you can screenshot, screen-share or demo your own client without showing anybody's work. Switch it off and the real thing comes back.",
+      "description": "Puts a switch in the top bar that fills your real Slack with people who do not exist: every name, face, message, channel, file and link on screen is replaced by an invented one, so you can screenshot, screen-share or demo your own client without showing anybody's work. Press it again and the real thing comes back. It starts off, and stays off until you ask.",
       "descriptions": {
-        "fr": "Remplit votre vrai Slack de gens qui n'existent pas : chaque nom, visage, message, canal, fichier et lien à l'écran est remplacé par un inventé, pour que vous puissiez capturer, partager votre écran ou faire une démo sans montrer le travail de personne. Éteignez-le et le vrai revient."
+        "fr": "Ajoute un interrupteur dans la barre du haut qui remplit votre vrai Slack de gens qui n'existent pas : chaque nom, visage, message, canal, fichier et lien à l'écran est remplacé par un inventé, pour que vous puissiez capturer, partager votre écran ou faire une démo sans montrer le travail de personne. Une seconde pression et le vrai revient. Il démarre éteint, et le reste tant que vous ne demandez rien."
       },
       "entry": "index.js",
       "icon": "icon.svg",

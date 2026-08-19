@@ -206,7 +206,9 @@ their neighbours in size, colour, hover and transition.
 ### `addToolbarButton(toolbar, button)`
 
 `toolbar` is `'controlStrip'` (beside your avatar), `'composer'` (the formatting
-row) or `'channelHeader'`.
+row), `'channelHeader'`, or `'topNav'` — the right-hand end of the top bar,
+which is where a switch belonging to the whole client goes rather than to the
+conversation on screen.
 
 ```js
 api.slack.addToolbarButton('controlStrip', {

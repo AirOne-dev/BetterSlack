@@ -18,20 +18,52 @@ async function mount() {
   const dom = installDom();
   const harness = createTestApi({ files: FILES });
   await plugin.start(harness.api);
+  /** The switch in the top bar, which is the only way in. */
+  const press = () => harness.recorded.toolbarButtons.find((b) => b.toolbar === 'topNav').button.onClick();
   const unmount = () => {
     for (const dispose of harness.recorded.disposers) dispose();
     dom.cleanup();
   };
-  return { dom, unmount, ...harness };
+  return { dom, press, unmount, ...harness };
 }
 
 const text = () => document.querySelector('[data-qa="message-text"]').textContent;
 
 test('has the shape the runtime loads', () => assertPluginShape(assert, plugin));
 
-test('replaces what somebody wrote', async () => {
+test('does nothing at all until the switch is pressed', async () => {
   const { unmount } = await mount();
   try {
+    // Installing the mod is not the request; pressing the switch is.
+    assert.equal(text(), 'hello world');
+    assert.equal(document.getElementById('betterslack-demo-indicator'), null);
+    assert.ok(
+      document.querySelector('.c-message_kit__avatar img').getAttribute('src').startsWith('https://'),
+      'and the real faces are still there',
+    );
+  } finally {
+    unmount();
+  }
+});
+
+test('puts a switch in the top bar', async () => {
+  const { recorded, unmount } = await mount();
+  try {
+    const button = recorded.toolbarButtons.find((b) => b.toolbar === 'topNav');
+    assert.ok(button, 'nothing was added to the top bar');
+    // Both states live in one icon, swapped by a class on <html>, so the
+    // stylesheet never has to name the id the runtime gives the button.
+    assert.match(button.button.icon, /bs-demo-off/);
+    assert.match(button.button.icon, /bs-demo-on/);
+  } finally {
+    unmount();
+  }
+});
+
+test('replaces what somebody wrote', async () => {
+  const { press, unmount } = await mount();
+  try {
+    press();
     assert.notEqual(text(), 'hello world');
     assert.ok(text().trim().length > 0, 'and puts something there rather than emptying it');
   } finally {
@@ -40,8 +72,9 @@ test('replaces what somebody wrote', async () => {
 });
 
 test('replaces every face that came off the network', async () => {
-  const { unmount } = await mount();
+  const { press, unmount } = await mount();
   try {
+    press();
     for (const img of document.querySelectorAll('img')) {
       assert.ok(
         img.getAttribute('src').startsWith('data:image/svg+xml'),
@@ -54,8 +87,9 @@ test('replaces every face that came off the network', async () => {
 });
 
 test('says it is on', async () => {
-  const { unmount } = await mount();
+  const { press, unmount } = await mount();
   try {
+    press();
     // The one thing that stops a demo becoming a leak is knowing you are in
     // one, so this is a promise like any other.
     assert.ok(document.getElementById('betterslack-demo-indicator'));
@@ -69,6 +103,7 @@ test('switching it off puts the real thing back', async () => {
   const harness = createTestApi({ files: FILES });
   try {
     await plugin.start(harness.api);
+    harness.recorded.toolbarButtons.find((b) => b.toolbar === 'topNav').button.onClick();
     assert.notEqual(text(), 'hello world');
     const avatar = document.querySelector('.c-message_kit__avatar img');
     assert.ok(avatar.getAttribute('src').startsWith('data:'));
@@ -183,12 +218,37 @@ test('reports what is still real rather than claiming success', () => {
   }
 });
 
-test('registers the two commands it offers', async () => {
+test('registers the commands it offers', async () => {
   const { recorded, unmount } = await mount();
   try {
     const ids = recorded.commands.map((command) => command.id);
-    assert.ok(ids.includes('sweep'));
-    assert.ok(ids.includes('check'));
+    for (const id of ['toggle', 'check', 'sweep']) assert.ok(ids.includes(id), id);
+  } finally {
+    unmount();
+  }
+});
+
+test('pressing it twice puts the real thing back', async () => {
+  const { press, unmount } = await mount();
+  try {
+    press();
+    assert.notEqual(text(), 'hello world');
+    press();
+    assert.equal(text(), 'hello world');
+    assert.equal(document.getElementById('betterslack-demo-indicator'), null);
+  } finally {
+    unmount();
+  }
+});
+
+test('does not check a screen it has not redacted', async () => {
+  const { recorded, unmount } = await mount();
+  try {
+    // Off, every face on screen is real and "nothing real is left" would be a
+    // lie told with a green tick.
+    recorded.commands.find((command) => command.id === 'check').run();
+    assert.match(recorded.toasts.at(-1).message, /real/i);
+    assert.equal(recorded.toasts.at(-1).variant, 'warning');
   } finally {
     unmount();
   }
