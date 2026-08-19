@@ -616,6 +616,19 @@ export default {
 
     const render = async (host, channel) => {
       const mine = ++generation;
+      /*
+       * The workspace this render belongs to, captured with the channel.
+       *
+       * `generation` catches a second render starting; it does not catch the
+       * workspace changing under a render already in flight. Slack settles onto
+       * its last session a moment after the client is up, so a request sent
+       * against one workspace can be answered and painted while the URL --
+       * and the token every later call uses -- has moved to another. What that
+       * looks like is a column that lists the right people and then replaces
+       * them with a single row: yourself, the only member of that id that the
+       * other workspace admits to.
+       */
+      const team = currentTeamId();
       host.replaceChildren(api.dom.h('div', { class: 'betterslack-members__note' }, [t('loading')]));
 
       let ids = [];
@@ -627,8 +640,9 @@ export default {
         });
         ids = Array.isArray(res.members) ? res.members : [];
         truncated = Boolean(res.response_metadata?.next_cursor);
+        api.log.info(`members of ${channel} in ${team}: ${ids.length}`);
       } catch (err) {
-        if (mine !== generation) return;
+        if (mine !== generation || team !== currentTeamId()) return;
         host.replaceChildren(api.dom.h('div', { class: 'betterslack-members__note' }, [t('noMembers')]));
         api.log.warn(`could not list members of ${channel}:`, err.message);
         return;
@@ -637,15 +651,18 @@ export default {
       // One request for the lot, cached across channels by the API -- and
       // dropped by it when the workspace changes, which is the part that used
       // to be this plugin's problem.
+      // Both guards: a newer render, or the workspace having moved while this
+      // one was in flight. Either makes this answer somebody else's.
+      if (mine !== generation || team !== currentTeamId()) return;
       const users = await api.slack.web.users(ids);
-      if (mine !== generation) return;
+      if (mine !== generation || team !== currentTeamId()) return;
       paint(host, ids, truncated, users);
 
       stopPolling?.();
       stopPolling = api.helpers.poll(async () => {
-        if (mine !== generation || !document.getElementById(COLUMN_ID)) return;
+        if (mine !== generation || team !== currentTeamId() || !document.getElementById(COLUMN_ID)) return;
         await refreshPresence(ids, mine);
-        if (mine !== generation || !document.getElementById(COLUMN_ID)) return;
+        if (mine !== generation || team !== currentTeamId() || !document.getElementById(COLUMN_ID)) return;
         paint(host, ids, truncated, users);
       }, PRESENCE_INTERVAL_MS);
     };

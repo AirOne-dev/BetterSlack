@@ -626,3 +626,43 @@ test('nothing in the column may shrink, or it never overflows to scroll', () => 
   assert.ok(rule, 'headings, rows and notes must all be flex: 0 0 auto');
   assert.match(css, /min-height: 0;/, 'and the column itself must be allowed to shrink');
 });
+
+test('a render answered after the workspace moved is not painted', async () => {
+  const dom = installDom();
+  /*
+   * The symptom this guards: the column lists the right people and then, a
+   * second later, replaces them with a single row -- yourself. Slack settles
+   * onto its last session a moment after the client is up, so a request sent
+   * against one workspace can come back while the URL, and the token every
+   * later call uses, has moved to another.
+   */
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  const stub = web({ members: ['U1', 'U2', 'U3'] });
+  const original = stub.web.call;
+  stub.web.call = async (method, params) => {
+    if (method === 'conversations.members') {
+      await held;
+      return { members: ['U1', 'U2', 'U3'] };
+    }
+    return original(method, params);
+  };
+
+  const { api, recorded } = createApi({ web: stub.web });
+  try {
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // The workspace moves while the request is in flight.
+    window.history.pushState({}, '', '/client/T0OTHER/C0BQ8AG3771');
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    const column = document.getElementById('betterslack-member-column');
+    assert.equal(column.querySelectorAll('.betterslack-members__row').length, 0,
+      'the answer belongs to a workspace the user has left, so it is dropped');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
