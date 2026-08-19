@@ -93,7 +93,19 @@
     if (pluginMark) heading.append(pluginMark);
     heading.append(el('h3', { textContent: plugin.name }));
 
-    plugins?.append(el('article', { className: 'card reveal' }, [heading, describe(plugin), meta]));
+    const card = el('article', { className: 'card reveal' });
+    // A plugin is a thing you can see, so the card shows it rather than
+    // describing it. Same file the panel shows on the mod's own page.
+    if (plugin.shot) {
+      card.append(el('img', {
+        className: 'card__shot',
+        src: plugin.shot,
+        alt: `${plugin.name} at work inside Slack`,
+        loading: 'lazy',
+      }));
+    }
+    card.append(heading, describe(plugin), meta);
+    plugins?.append(card);
   }
 
   const count = document.getElementById('mod-count');

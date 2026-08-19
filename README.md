@@ -24,20 +24,20 @@
 
 <p align="center"><em>⌘⇧M, or the sliders button above your avatar.</em></p>
 
-## Seven themes, twelve plugins, one keystroke
+## Seven themes, fifteen plugins, one keystroke
 
 <table>
   <tr>
-    <td width="50%"><img src="site/shots/crop-aurora.jpg" alt="Slack wearing the Aurora theme"></td>
-    <td width="50%"><img src="site/shots/crop-terminal.jpg" alt="Slack wearing the Terminal theme"></td>
+    <td width="50%"><img src="site/shots/mods/aurora.jpg" alt="Slack wearing the Aurora theme"></td>
+    <td width="50%"><img src="site/shots/mods/terminal.jpg" alt="Slack wearing the Terminal theme"></td>
   </tr>
   <tr>
     <td><strong>Aurora</strong> — frosted glass over a drifting gradient.</td>
     <td><strong>Terminal</strong> — monospace, square corners, phosphor.</td>
   </tr>
   <tr>
-    <td><img src="site/shots/crop-cocoa.jpg" alt="Slack wearing the Cocoa theme"></td>
-    <td><img src="site/shots/crop-midnight.jpg" alt="Slack wearing the Midnight theme"></td>
+    <td><img src="site/shots/mods/cocoa.jpg" alt="Slack wearing the Cocoa theme"></td>
+    <td><img src="site/shots/mods/midnight.jpg" alt="Slack wearing the Midnight theme"></td>
   </tr>
   <tr>
     <td><strong>Cocoa</strong> — cream paper, cocoa text, soft shadows.</td>
@@ -106,9 +106,18 @@ Discord Light (Slack rebuilt as Discord, colours sampled from the real client),
 Focus Rings.
 
 **Plugins** — Command Palette (⌘K, with `/` `@` `#` to narrow it), Theme Builder,
-Member Sidebar, Sidebar Account Strip, Quote Reply, Copy Message Link, Focus
-Mode (⌘⇧F), Composer Character Count, Channel Notes, User Inspector, Avatar
+Motion (Slack with the frames in between), Code Highlight (twenty-one
+languages, detected), Full Links (Slack stops shortening your URLs), Member
+Sidebar, Sidebar Account Strip, Quote Reply, Copy Message Link, Focus Mode
+(⌘⇧F), Composer Character Count, Channel Notes, User Inspector, Avatar
 Downloader, DevTools.
+
+Each has a page in the panel — what it is for, in your language, with a picture
+and its settings:
+
+<p align="center">
+  <img src="site/shots/panel-mod.jpg" width="880" alt="A mod's page in the BetterSlack panel: icon, description, screenshot and settings">
+</p>
 
 Several themes can run at once. Terminal is the exception: it restyles through
 `*` selectors, so run it on its own.

@@ -244,10 +244,12 @@ kbd {
 .cards { display: grid; gap: 16px; }
 .cards--3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .card {
+  --card-pad: 22px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
-  padding: 22px;
+  padding: var(--card-pad);
+  overflow: hidden;
 }
 .card p { font-size: 14.5px; margin: 0; }
 .card h3 code { font: 600 15px/1 var(--mono); color: var(--blue); }
@@ -384,3 +386,20 @@ kbd {
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
 .card__icon svg { width: 22px; height: 22px; display: block; }
+
+/*
+ * A plugin's picture, above its name.
+ *
+ * Cropped to a band rather than shown whole: the frame is a whole Slack
+ * window, and at card width the interesting part -- the thing the mod adds --
+ * is the only part worth a hundred pixels of height.
+ */
+.card__shot {
+  width: calc(100% + 2 * var(--card-pad, 22px));
+  margin: calc(-1 * var(--card-pad, 22px)) calc(-1 * var(--card-pad, 22px)) 16px;
+  height: 148px;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
+  display: block;
+}

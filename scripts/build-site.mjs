@@ -14,7 +14,7 @@
 // parser, so the site and the builder can never disagree about what a theme's
 // palette is.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { stripFrom } from '../mods/plugins/theme-builder/read-theme.js';
@@ -24,16 +24,17 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const registry = JSON.parse(readFileSync(path.join(root, 'mods/registry.json'), 'utf8'));
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 
-/** The screenshots that exist, so the page can show one where there is one. */
-const SHOTS = {
-  aurora: 'shots/crop-aurora.jpg',
-  cocoa: 'shots/crop-cocoa.jpg',
-  'discord-dark': 'shots/crop-discord-dark.jpg',
-  'discord-light': 'shots/crop-discord-light.jpg',
-  'focus-rings': 'shots/crop-focus-rings.jpg',
-  midnight: 'shots/crop-midnight.jpg',
-  terminal: 'shots/crop-terminal.jpg',
-};
+/*
+ * Where a mod's own picture is copied to.
+ *
+ * The catalogue and the panel show the same frame, out of the same file:
+ * `mods/<kind>/<id>/screenshot.jpg`, taken by `pnpm shoot --mods`. The page is
+ * published on its own, so the file has to be inside `site/` -- copied here
+ * rather than listed by hand, which is what the previous table of seven theme
+ * crops was, and it went stale the first time a theme was added.
+ */
+const SHOT_DIR = path.join(root, 'site/shots/mods');
+mkdirSync(SHOT_DIR, { recursive: true });
 
 const themes = [];
 const plugins = [];
@@ -64,10 +65,15 @@ for (const mod of registry.mods) {
     if (icon.startsWith('<svg')) entry.icon = icon;
   }
 
+  const shot = path.join(folder, 'screenshot.jpg');
+  if (existsSync(shot)) {
+    copyFileSync(shot, path.join(SHOT_DIR, `${mod.id}.jpg`));
+    entry.shot = `shots/mods/${mod.id}.jpg`;
+  }
+
   if (mod.type === 'theme') {
     const css = readFileSync(path.join(folder, mod.entry ?? 'theme.css'), 'utf8');
     entry.palette = stripFrom(css).map((colour) => formatCss(colour));
-    entry.shot = SHOTS[mod.id] ?? null;
     themes.push(entry);
   } else {
     entry.settings = (JSON.parse(readFileSync(path.join(folder, 'mod.json'), 'utf8')).settings ?? []).length;
