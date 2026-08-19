@@ -1,63 +1,134 @@
 /*
- * The host, not the widgets.
+ * Slack's stylesheet's understudy.
  *
- * `api.ui.modal`, `api.ui.menu` and the Slack-styled helpers deliberately wear
- * Slack's own classes — .c-dialog, .c-menu, .c-button — so that they follow
- * whatever theme the reader has on, without BetterSlack owning a second design
- * system. That is the right decision inside the client and the reason those
- * widgets look like nothing on a web page: the classes exist, the stylesheet
- * behind them does not.
+ * `api.ui.modal`, `api.ui.menu`, `api.ui.tooltip` and the Slack-styled helpers
+ * deliberately wear Slack's own classes -- `.c-dialog`, `.c-menu`, `.c-button`
+ * -- so they follow whatever theme the reader has on without BetterSlack owning
+ * a second design system. That is the right decision inside the client, and the
+ * exact reason those widgets look like nothing on a web page: the classes are
+ * there, the stylesheet behind them is not.
  *
- * So this file is Slack's stylesheet's understudy, for the ~20 classes the
- * widgets actually use, and nothing else. It is a stand-in and says so: the
- * widget code on this page is the shipped code, unmodified, and only the host
- * around it is approximate. The colours come from whichever shipped theme the
- * preview is set to (see site/api-themes.css, generated from mods/themes), so
- * a component here is painted by the same tokens that paint it in Slack.
+ * So this is that stylesheet, for the classes the widgets actually use. It is a
+ * stand-in and says so: the widget code on this page is the shipped code,
+ * unmodified, and only the host around it is approximate. The colours are not
+ * approximate -- they come from whichever shipped theme the picker is set to
+ * (site/api-themes.css, generated from mods/themes).
  *
- * Everything is scoped to .slack-stage. A bare `.c-button` rule would style
- * the site's own buttons too.
+ * Scoped to `body.api-page` rather than to the preview box, because half of
+ * these render into `document.body`: a dialog, a menu and a tooltip are not in
+ * the box that asked for them. Scoping them to the box is what left the modal
+ * as a giant unstyled heading at the bottom of the page.
  */
+
+body.api-page {
+  --slack-radius: 8px;
+  --slack-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), 0 18px 48px rgba(0, 0, 0, 0.45);
+  --slack-font: Lato, "Slack-Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/*
+ * Two layers, in the client's order: the theme's own backdrop colour, and
+ * Slack's pane colour over it. Aurora's pane colour is 34% opaque -- painting
+ * it alone gives a smear of whatever the site happens to be, which is not what
+ * the theme looks like.
+ */
+.slack-stage,
+body.api-page .c-dialog__content,
+body.api-page .c-menu,
+body.api-page .c-popover__content {
+  background-color: var(--api-backdrop, #0f1219);
+  background-image:
+    linear-gradient(var(--dt_color-base-pry, transparent), var(--dt_color-base-pry, transparent));
+}
+
+/*
+ * And the third layer, only on the imitated client.
+ *
+ * `--api-backdrop-image` is what the theme paints across the whole window --
+ * Aurora's four drifting radial gradients, sized in vw and vh. On a 90px box
+ * holding one button that is not a gradient, it is a flat wash of colour, and
+ * every widget preview came out lilac. It belongs on the thing that stands in
+ * for the window, which is the fake client.
+ */
+.chrome .p-client_container {
+  background-color: var(--api-backdrop, #0f1219);
+  background-image:
+    linear-gradient(var(--dt_color-base-pry, transparent), var(--dt_color-base-pry, transparent)),
+    var(--api-backdrop-image, none);
+}
 
 .slack-stage {
   color: var(--dt_color-content-pry, #e7e9ee);
-  background: var(--dt_color-base-pry, #0f1219);
-  font-family: Lato, "Slack-Lato", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--slack-font);
   font-size: 15px;
   line-height: 1.46668;
 }
 
 /* Buttons ---------------------------------------------------------------- */
 
-.slack-stage .c-button {
+body.api-page .c-button-unstyled {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+body.api-page .c-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-width: 56px;
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid transparent;
   border-radius: 4px;
-  font: 900 15px/1.2 inherit;
+  font-family: var(--slack-font);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0.8px;
   cursor: pointer;
   background: transparent;
-  color: inherit;
+  color: var(--dt_color-content-pry, #e7e9ee);
+  transition: background 80ms ease, border-color 80ms ease, box-shadow 80ms ease;
 }
-.slack-stage .c-button--primary {
+body.api-page .c-button--small { min-height: 28px; font-size: 13px; padding: 0 10px; }
+body.api-page .c-button--large { min-height: 44px; font-size: 18px; padding: 0 16px; }
+body.api-page .c-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--dt_color-base-pry, #0f1219), 0 0 0 5px rgba(29, 155, 209, 0.5);
+}
+
+body.api-page .c-button--primary {
   background: var(--dt_color-content-hgl-2, #007a5a);
+  border-color: transparent;
   color: #fff;
 }
-.slack-stage .c-button--primary:hover { filter: brightness(1.08); }
-.slack-stage .c-button--outline {
-  border-color: var(--dt_color-otl-sec, rgba(228, 233, 242, 0.3));
-  color: inherit;
-}
-.slack-stage .c-button--outline:hover { background: var(--dt_color-base-pry-hover, rgba(255, 255, 255, 0.06)); }
-.slack-stage .c-button--danger { background: var(--dt_color-content-imp, #e01e5a); color: #fff; }
+body.api-page .c-button--primary:hover { filter: brightness(1.1); }
+body.api-page .c-button--primary:active { filter: brightness(0.94); }
 
-.slack-stage .c-icon_button,
-.slack-stage .c-message_actions__button,
-.slack-stage .p-control_strip__circle_button {
+body.api-page .c-button--outline {
+  border-color: var(--dt_color-otl-sec, rgba(228, 233, 242, 0.3));
+  color: var(--dt_color-content-pry, #e7e9ee);
+}
+body.api-page .c-button--outline:hover {
+  background: var(--dt_color-base-pry-hover, rgba(255, 255, 255, 0.06));
+  border-color: var(--dt_color-otl-pry, rgba(228, 233, 242, 0.45));
+}
+
+body.api-page .c-button--danger {
+  background: var(--dt_color-content-imp, #e01e5a);
+  border-color: transparent;
+  color: #fff;
+}
+body.api-page .c-button--danger:hover { filter: brightness(1.08); }
+
+body.api-page .c-icon_button,
+body.api-page .c-message_actions__button,
+body.api-page .p-control_strip__circle_button {
   display: inline-grid;
   place-items: center;
   width: 28px;
@@ -67,91 +138,332 @@
   background: transparent;
   color: var(--dt_color-content-sec, #a4abb8);
   cursor: pointer;
+  transition: background 80ms ease, color 80ms ease;
 }
-.slack-stage .c-icon_button--size_medium { width: 36px; height: 36px; }
-.slack-stage .c-icon_button:hover,
-.slack-stage .c-message_actions__button:hover {
-  background: var(--dt_color-base-pry-hover, rgba(255, 255, 255, 0.06));
+body.api-page .c-icon_button--size_medium { width: 36px; height: 36px; }
+body.api-page .c-icon_button--size_smedium { width: 32px; height: 32px; }
+body.api-page .c-icon_button:hover,
+body.api-page .c-message_actions__button:hover,
+body.api-page .p-control_strip__circle_button:hover {
+  background: var(--dt_color-base-pry-hover, rgba(255, 255, 255, 0.08));
   color: var(--dt_color-content-pry, #e7e9ee);
 }
-.slack-stage .p-control_strip__circle_button { width: 36px; height: 36px; border-radius: 50%; }
-.slack-stage .c-icon_button svg,
-.slack-stage .c-message_actions__button svg { width: 20px; height: 20px; }
+body.api-page .p-control_strip__circle_button { width: 36px; height: 36px; border-radius: 50%; }
+body.api-page .c-icon_button svg,
+body.api-page .c-message_actions__button svg,
+body.api-page .p-control_strip__circle_button svg { width: 20px; height: 20px; display: block; }
 
-/* Dialog ----------------------------------------------------------------- */
+/* Dialog ----------------------------------------------------------------- *
+ *
+ * `.c-dialog` is the whole overlay in Slack, not the box: the box is
+ * `.c-dialog__content` inside it. Getting that the wrong way round is what put
+ * a 60px heading in the page flow instead of a dialog on top of it.
+ */
 
-.slack-stage .c-dialog {
-  border-radius: 8px;
-  background: var(--dt_color-base-pry, #0f1219);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.14));
-  overflow: hidden;
-  max-width: 100%;
-}
-.slack-stage .c-dialog__header {
+body.api-page .c-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px 22px 6px;
+  justify-content: center;
+  padding: 24px;
+  background: var(--dt_color-base-modal, rgba(6, 8, 12, 0.72));
+  font-family: var(--slack-font);
+  font-size: 15px;
+  line-height: 1.46668;
+  color: var(--dt_color-content-pry, #e7e9ee);
 }
-.slack-stage .c-dialog__title { font: 900 22px/1.2 inherit; margin: 0; }
-.slack-stage .c-dialog__body,
-.slack-stage .c-dialog__content { padding: 8px 22px 18px; }
-.slack-stage .c-dialog__footer {
+
+body.api-page .c-dialog__content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 96px);
+  border-radius: var(--slack-radius);
+  box-shadow: var(--slack-shadow);
+  overflow: hidden;
+}
+
+body.api-page .c-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 28px 0;
+}
+body.api-page .c-dialog__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.2px;
+}
+body.api-page .c-dialog__body { padding: 12px 28px 4px; overflow-y: auto; }
+body.api-page .c-dialog__footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 22px 18px;
-  border-top: 1px solid var(--dt_color-otl-ter, rgba(228, 233, 242, 0.08));
+  gap: 12px;
+  padding: 20px 28px 24px;
 }
 
 /* Menu ------------------------------------------------------------------- */
 
-.slack-stage .c-menu {
-  min-width: 200px;
+body.api-page .c-menu {
+  position: absolute;
+  z-index: 1001;
+  min-width: 220px;
+  max-width: 360px;
   padding: 8px 0;
   border-radius: 6px;
-  background: var(--dt_color-base-sec, #151924);
   border: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.14));
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--slack-shadow);
+  font-family: Lato, "Slack-Lato", -apple-system, sans-serif;
+  color: var(--dt_color-content-pry, #e7e9ee);
 }
-.slack-stage .c-menu__items { list-style: none; margin: 0; padding: 0; }
-.slack-stage .c-menu_item__button {
+body.api-page .c-menu__items,
+body.api-page .c-menu__items_scroller { list-style: none; margin: 0; padding: 0; }
+body.api-page .c-menu_item__li { list-style: none; }
+body.api-page .c-menu_item__button {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 7px 22px;
+  padding: 8px 24px;
   border: 0;
   background: transparent;
   color: inherit;
-  font: 400 15px/1.46 inherit;
+  font-size: 15px;
+  line-height: 1.46668;
   text-align: left;
   cursor: pointer;
 }
-.slack-stage .c-menu_item__button:hover {
-  background: var(--dt_color-content-hgl-1, #7cc4ff);
-  color: var(--dt_color-base-pry, #0f1219);
+body.api-page .c-menu_item__button:hover,
+body.api-page .c-menu_item__button:focus-visible {
+  outline: none;
+  background: var(--dt_color-content-hgl-1, #1264a3);
+  color: #fff;
 }
-.slack-stage .c-menu_item__icon { display: inline-grid; place-items: center; width: 20px; }
+body.api-page .c-menu_item__icon { display: inline-grid; place-items: center; width: 20px; }
+body.api-page .c-menu_item__icon svg { width: 18px; height: 18px; }
+body.api-page .c-menu_item__label { flex: 1 1 auto; min-width: 0; }
 
 /* Popover and tooltip ---------------------------------------------------- */
 
-.slack-stage .c-popover__content {
+body.api-page .c-popover__content {
   border-radius: 6px;
-  background: var(--dt_color-base-sec, #151924);
   border: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.14));
+  box-shadow: var(--slack-shadow);
 }
-.slack-stage .c-tooltip__tip {
+
+body.api-page .c-tooltip__tip {
   position: relative;
+  z-index: 1002;
   max-width: 260px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
   background: var(--dt_color-base-ter, #1c2130);
   color: var(--dt_color-content-pry, #e7e9ee);
-  font: 400 13px/1.4 inherit;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-family: var(--slack-font);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  box-shadow: var(--slack-shadow);
+  pointer-events: none;
 }
-.slack-stage .c-tooltip__subtitle { display: block; color: var(--dt_color-content-sec, #a4abb8); font-size: 12px; }
-.slack-stage .c-tooltip__tip__arrow { display: none; }
+body.api-page .c-tooltip__tip--small { font-size: 12px; padding: 6px 10px; }
+body.api-page .c-tooltip__subtitle {
+  display: block;
+  margin-top: 2px;
+  color: var(--dt_color-content-sec, #a4abb8);
+  font-size: 12px;
+  font-weight: 400;
+}
+body.api-page .c-tooltip__tip__arrow { display: none; }
+
+/* The client, imitated ---------------------------------------------------- *
+ *
+ * Layout lives in site/style.css; everything here is colour, and all of it
+ * comes from the theme, so the fake client follows the picker in the top bar
+ * exactly as the real one follows whatever theme is switched on. The metrics
+ * are Slack's own, measured against 4.51.
+ */
+
+.chrome { color: var(--dt_color-content-pry, #e7e9ee); }
+
+.chrome__rail,
+.chrome .p-channel_sidebar {
+  background: var(--dt_color-theme-rail-background, var(--dt_color-base-sec, #151924));
+  border-right: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.13));
+}
+.chrome .p-channel_sidebar {
+  background: var(--dt_color-theme-sidebar-background, var(--dt_color-base-sec, #151924));
+  padding-bottom: 8px;
+}
+
+.chrome .p-tab_rail__button {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  width: 44px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dt_color-content-sec, #a4abb8);
+  cursor: default;
+}
+.chrome .p-tab_rail__button--active {
+  background: var(--dt_color-base-hgl-1, rgba(255, 255, 255, 0.1));
+  color: var(--dt_color-content-pry, #e7e9ee);
+}
+.chrome .p-tab_rail__button__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid currentColor;
+  opacity: 0.85;
+}
+.chrome .p-tab_rail__button__label { font-size: 10px; font-weight: 700; letter-spacing: 0.2px; }
+.chrome .p-tab_rail__tab_container,
+.chrome .p-tab_rail__tab_menu { display: grid; gap: 4px; justify-items: center; }
+
+.chrome .p-ia4_sidebar_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.1));
+}
+.chrome .p-ia4_sidebar_header__title { font-size: 15px; font-weight: 900; }
+
+.chrome .p-channel_sidebar__list { padding: 8px 6px; display: grid; gap: 1px; }
+.chrome .p-channel_sidebar__channel {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: var(--dt_color-content-sec, #a4abb8);
+}
+.chrome .p-channel_sidebar__channel.is-unread { color: var(--dt_color-content-pry, #e7e9ee); font-weight: 900; }
+.chrome .p-channel_sidebar__channel.is-selected {
+  background: var(--dt_color-content-hgl-1, #1264a3);
+  color: var(--dt_color-content-inv-pry, #fff);
+  font-weight: 700;
+}
+
+.chrome .p-view_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.13));
+}
+.chrome .chrome__title { display: flex; align-items: baseline; font-size: 15px; font-weight: 900; }
+.chrome .chrome__topic { color: var(--dt_color-content-sec, #a4abb8); }
+.chrome .p-view_header__actions { display: flex; align-items: center; gap: 4px; }
+
+.chrome .p-view_contents--primary { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.chrome .p-message_pane { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 12px; gap: 10px; }
+.chrome [data-qa="message_container"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.chrome .chrome__filler {
+  display: block;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 34px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    transparent 0 8px,
+    var(--dt_color-content-pry, #e7e9ee) 8px 9px,
+    transparent 9px 22px);
+  opacity: 0.07;
+}
+.chrome .chrome__when,
+.chrome .chrome__role,
+.chrome .chrome__topic,
+.chrome .chrome__placeholder { color: var(--dt_color-content-sec, #a4abb8); }
+.chrome [data-qa="message-actions"] { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+
+.chrome [data-qa="message_input"] {
+  margin-top: auto;
+  border: 1px solid var(--dt_color-otl-pry, rgba(228, 233, 242, 0.3));
+  border-radius: 8px;
+  background: var(--dt_color-base-pry, #0f1219);
+}
+.chrome .ql-editor { padding: 9px 12px; }
+.chrome .ql-editor p { margin: 0; }
+.chrome [data-qa="message_input"] > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.12));
+}
+.chrome [data-qa="bold-composer-button"] {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dt_color-content-sec, #a4abb8);
+  font: 900 13px/1 var(--slack-font);
+}
+.chrome [data-qa="bold-composer-button"]::before { content: "B"; }
+
+.chrome [data-qa="member_profile_pane"] {
+  width: 190px;
+  overflow: hidden;
+  padding: 16px;
+  border-left: 1px solid var(--dt_color-otl-sec, rgba(228, 233, 242, 0.13));
+  background: var(--dt_color-base-sec, #151924);
+}
+.chrome .p-r_member_profile__container { display: grid; justify-items: center; text-align: center; }
+
+/*
+ * Avatars are drawn, never fetched -- nobody's face, and no request made on a
+ * reader's behalf. The hue comes from the invented user id in the fixture, so
+ * the same person is the same colour in every preview.
+ */
+.chrome__avatar {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background:
+    linear-gradient(140deg,
+      var(--dt_color-content-hgl-1, #7cc4ff),
+      var(--dt_color-content-hgl-2, #4cc894));
+  opacity: 0.75;
+}
+.chrome__avatar[data-seed="U0EXAMPLE2"] {
+  background: linear-gradient(140deg,
+    var(--dt_color-content-hgl-3, #ffd98a),
+    var(--dt_color-content-imp, #e01e5a));
+}
+.chrome .p-r_member_profile__avatar__img { width: 64px; height: 64px; border-radius: 14px; }
+.chrome [data-qa="user-button"] { display: grid; place-items: center; border: 0; background: transparent; padding: 0; }
+.chrome [data-qa="user-button"] .chrome__avatar { width: 28px; height: 28px; border-radius: 7px; }
+.chrome .c-avatar { position: relative; display: inline-block; }
+.chrome .c-presence {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--dt_color-theme-rail-background, var(--dt_color-base-sec, #151924));
+  background: var(--dt_color-content-sec, #a4abb8);
+}
+.chrome .c-presence--active { background: var(--dt_color-content-hgl-2, #2bac76); }
+.chrome .p-control_strip { display: grid; gap: 6px; justify-items: center; }
+.chrome .p-control_strip [data-qa="presence_indicator"] { display: none; }

@@ -3,6 +3,9 @@ name: desktop
 group: slack
 title: api.slack
 signature: : {
+preview: slack-desktop
+control: key | select | windowVibrancy | preference | windowVibrancy, useHwAcceleration, runFromTray, zoomLevel
+control: value | boolean | true | wanted
 ---
 
 Slack's own translucent window, which it ships switched off.

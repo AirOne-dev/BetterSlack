@@ -3,6 +3,9 @@ name: openConversation
 group: slack
 title: api.slack
 signature: (channelId: string): void
+preview: slack-openconversation
+control: channel | text | C0EXAMPLE1 | channel id
+control: name | text | design | its name
 ---
 
 Move the client to a conversation, without a page load.

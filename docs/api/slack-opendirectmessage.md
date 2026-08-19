@@ -3,6 +3,8 @@ name: openDirectMessage
 group: slack
 title: api.slack
 signature: (userId: string): Promise<string | null>
+preview: slack-opendirectmessage
+control: user | text | U0EXAMPLE2 | user id
 ---
 
 Open the direct message with someone, creating it if there is none.

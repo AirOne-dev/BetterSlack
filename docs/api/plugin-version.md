@@ -3,6 +3,7 @@ name: version
 group: plugin
 title: On the api object
 signature: : string
+preview: plugin-version
 ---
 
 BetterSlack's version, not the mod's. The mod's is in api.manifest.version.

@@ -3,6 +3,7 @@ name: startHuddle
 group: slack
 title: api.slack
 signature: (userId: string): Promise<boolean>
+preview: slack-starthuddle
 ---
 
 Start a huddle with someone: open the conversation, then press Slack's own

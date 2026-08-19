@@ -3,6 +3,7 @@ name: restart
 group: slack
 title: api.slack
 signature: (): Promise<void>
+preview: slack-restart
 ---
 
 Stop Slack and start it again, with the loader still driving.

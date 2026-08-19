@@ -3,6 +3,7 @@ name: suspend
 group: themes
 title: api.themes
 signature: (on: boolean): void
+preview: themes-suspend
 ---
 
 Hold every enabled theme back, or let them through again.

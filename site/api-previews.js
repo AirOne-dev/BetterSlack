@@ -725,7 +725,7 @@
   function escape(text) {
     return text.replace(/[&<>]/g, (char) => ESCAPES[char]);
   }
-  function tokenizeCss(source) {
+  function tokenizeCss(source2) {
     const tokens = [];
     let index = 0;
     let afterColon = false;
@@ -736,12 +736,12 @@
     const push = (kind, text) => {
       if (text) tokens.push({ kind, text });
     };
-    while (index < source.length) {
-      const rest = source.slice(index);
+    while (index < source2.length) {
+      const rest = source2.slice(index);
       if (rest.startsWith("/*")) {
-        const end = source.indexOf("*/", index + 2);
-        const stop = end === -1 ? source.length : end + 2;
-        push("comment", source.slice(index, stop));
+        const end = source2.indexOf("*/", index + 2);
+        const stop = end === -1 ? source2.length : end + 2;
+        push("comment", source2.slice(index, stop));
         index = stop;
         continue;
       }
@@ -835,8 +835,8 @@
     }
     return tokens;
   }
-  function highlightCss(source) {
-    return tokenizeCss(source).map(({ kind, text }) => kind === "space" ? escape(text) : `<span class="sm-tok-${kind}">${escape(text)}</span>`).join("");
+  function highlightCss(source2) {
+    return tokenizeCss(source2).map(({ kind, text }) => kind === "space" ? escape(text) : `<span class="sm-tok-${kind}">${escape(text)}</span>`).join("");
   }
   function createCodeEditor(doc, options = {}) {
     const wrap = doc.createElement("div");
@@ -1803,6 +1803,46 @@
   .toast { transition: none; }
 }
 `;
+  var LAUNCHER_CSS = `
+.betterslack-launcher svg,
+.betterslack-toolbar-button svg,
+.betterslack-action svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/*
+ * Slack sizes its channel-header buttons from a per-page class
+ * (p-view_header_search_action_button and friends) rather than from a shared
+ * modifier, so a generic icon button lands at 36px next to their 28px. Borrow
+ * one of theirs and the name would lie about what the button is; this states
+ * the size directly instead.
+ */
+.p-view_header__actions .betterslack-toolbar-button {
+  width: 28px;
+  height: 28px;
+}
+
+/* Slack's unread badge, on our own button: the same pill, the same red, the
+ * same place. Anything else in that strip would read as a Slack control that
+ * had gone wrong. */
+.betterslack-launcher { position: relative; }
+.betterslack-launcher__badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: rgba(var(--sk_highlight_accent, 224, 30, 90), 1);
+  color: #fff;
+  font: 700 11px/16px Lato, Slack-Lato, sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+`;
 
   // src/runtime/ui/palette.ts
   var HOST_ID = "betterslack-palette";
@@ -1848,7 +1888,7 @@
     box.textContent = icon && icon.length <= 2 ? icon : command.title.slice(0, 1).toUpperCase();
     return box;
   }
-  function openPalette(source, labels) {
+  function openPalette(source2, labels) {
     closePalette();
     const modes = labels.modes ?? [];
     let mode = null;
@@ -1952,7 +1992,7 @@
         else modesBar.setAttribute("hidden", "hidden");
       }
       const mine = ++generation;
-      const answer = typeof source === "function" ? source(query, mode?.id ?? null) : source;
+      const answer = typeof source2 === "function" ? source2(query, mode?.id ?? null) : source2;
       if (Array.isArray(answer)) {
         paint(rank(answer, query));
         return;
@@ -2325,6 +2365,23 @@
     </div>
   </div>
 </div>`;
+
+  // src/shared/protocol.ts
+  var SLACK_PREFS = [
+    { key: "windowVibrancy", type: "boolean", restart: true, defaults: true, note: "A translucent window: macOS vibrancy, Windows 11 acrylic. Off by default." },
+    { key: "userTheme", type: "string", restart: false, defaults: false, note: "Slack's own light/dark choice." },
+    { key: "systemThemeSyncEnabled", type: "boolean", restart: false, defaults: false, note: "Follow the operating system's light/dark setting." },
+    { key: "launchOnStartup", type: "boolean", restart: false, defaults: false, note: "Start Slack when you sign in." },
+    { key: "runFromTray", type: "boolean", restart: false, defaults: false, note: "Keep Slack in the menu bar or tray when its window closes." },
+    { key: "hideOnStartup", type: "boolean", restart: false, defaults: false, note: "Start without showing the window." },
+    { key: "autoHideMenuBar", type: "boolean", restart: false, defaults: false, note: "Windows and Linux: hide the menu bar until Alt." },
+    { key: "useHwAcceleration", type: "boolean", restart: true, defaults: true, note: "GPU acceleration." },
+    { key: "shouldUseHighContrastColors", type: "boolean", restart: false, defaults: false, note: "Higher-contrast colours throughout." },
+    { key: "spellcheckerLanguage", type: "string", restart: false, defaults: false, note: "Language tag the spell checker uses." },
+    { key: "notificationMethod", type: "string", restart: false, defaults: false, note: "How desktop notifications are delivered." },
+    { key: "notificationPlayback", type: "string", restart: false, defaults: false, note: "Notification sound behaviour." },
+    { key: "zoomLevel", type: "number", restart: true, defaults: false, note: "Interface zoom, in Chromium steps." }
+  ];
 
   // src/runtime/ui/kit.ts
   function createKit(doc = document) {
@@ -3073,9 +3130,9 @@
       return url ? `<a class="sm-md__link" href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>` : whole;
     }).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1<em>$2</em>").replace(/(^|[\s(])_([^_\n]+)_/g, "$1<em>$2</em>");
   }
-  function renderMarkdown(source, options = {}) {
+  function renderMarkdown(source2, options = {}) {
     const resolve = options.resolve ?? ((href) => safeUrl(href));
-    const lines = escapeHtml2(source.replace(/\r\n?/g, "\n")).split("\n");
+    const lines = escapeHtml2(source2.replace(/\r\n?/g, "\n")).split("\n");
     const out = [];
     let list = null;
     let paragraph = [];
@@ -4157,8 +4214,22 @@
         store.set(key, value);
       }
     },
-    track: (cleanup) => cleanup
+    /*
+     * Every cleanup a helper hands back, collected for whoever is drawing.
+     *
+     * `helpers.mount`, `each`, `badge`, `hotkey` and `poll` all keep observing
+     * after the call returns -- that is what they are for -- and in the client
+     * the plugin host holds their cleanups. Here the drawing panel does: without
+     * it, `keepMounted` from one entry went on putting its button into the next
+     * entry's fake client, and `helpers.mount`'s demo showed a `kept` button
+     * nobody on that page had asked for.
+     */
+    track: (cleanup) => {
+      TRACKED.push(cleanup);
+      return cleanup;
+    }
   });
+  var TRACKED = [];
   function installStyles() {
     if (document.getElementById("sm-kit-css")) return;
     const style = document.createElement("style");
@@ -4167,7 +4238,10 @@
     const panel = document.createElement("style");
     panel.id = "betterslack-panel-css";
     panel.textContent = PANEL_CSS;
-    document.head.append(style, panel, helperCss);
+    const launcher = document.createElement("style");
+    launcher.id = "betterslack-launcher-css";
+    launcher.textContent = LAUNCHER_CSS;
+    document.head.append(style, panel, launcher, helperCss);
   }
   var el = (tag, className, children = []) => {
     const node = document.createElement(tag);
@@ -4208,6 +4282,7 @@
     label.textContent = spec2.label || spec2.key;
     return el("div", "pg__control", [label, input]);
   }
+  var MOUNTED = /* @__PURE__ */ new Map();
   function playground(name, render) {
     const slot = document.querySelector(`[data-demo="${name}"]`);
     if (!slot) return;
@@ -4221,13 +4296,29 @@
     for (const c of controls) state[c.key] = c.value;
     const stage = el("div", "pg__stage slack-stage");
     stage.dataset.theme = document.getElementById("stage-theme")?.value ?? "midnight";
+    let cleanups = [];
+    const teardown = () => {
+      for (const stop of cleanups.splice(0)) {
+        try {
+          stop();
+        } catch {
+        }
+      }
+      stage.replaceChildren();
+    };
+    const keep = (stop) => {
+      if (typeof stop === "function") cleanups.push(stop);
+    };
     const draw = () => {
+      teardown();
+      TRACKED.length = 0;
       try {
-        const made = render(state, { stage });
+        const made = render(state, { stage, keep });
         if (made !== void 0) stage.replaceChildren(...[].concat(made).filter(Boolean));
       } catch (err) {
         stage.textContent = `this demo threw: ${err.message}`;
       }
+      for (const stop of TRACKED.splice(0)) keep(stop);
     };
     const parts = [el("div", "pg", [stage])];
     if (controls.length) {
@@ -4237,7 +4328,19 @@
       ]));
     }
     slot.replaceChildren(...parts);
-    draw();
+    const entry = {
+      drawn: true,
+      draw: () => {
+        draw();
+        entry.drawn = true;
+      },
+      teardown: () => {
+        teardown();
+        entry.drawn = false;
+      }
+    };
+    MOUNTED.set(slot.closest(".panel")?.id ?? name, entry);
+    return entry;
   }
   function copyButton(text) {
     const button = el("button", "pg__copy");
@@ -4437,23 +4540,70 @@
       }
     }
   };
-  function slackChrome() {
+  function slackChrome({ pane = false } = {}) {
     const frame = el("div", "chrome");
     frame.innerHTML = SLACK_FIXTURE;
     for (const img of frame.querySelectorAll("img")) {
-      const avatar = document.createElement("span");
-      avatar.className = img.className;
-      avatar.setAttribute("style", "display:inline-block;width:36px;height:36px;border-radius:8px;background:var(--dt_color-content-hgl-1, #7cc4ff);opacity:.5");
-      img.replaceWith(avatar);
+      img.classList.add("chrome__avatar");
+      img.dataset.seed = (img.src.match(/-(U[A-Z0-9]+)-/) ?? [, "U0"])[1];
+      img.alt = "";
+      img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'/%3E#` + new URL(img.src).pathname;
     }
+    return dressChrome(frame, pane);
+  }
+  function dressChrome(frame, pane_ = false) {
+    const client = frame.querySelector(".p-client_container");
+    const pick = (selector) => frame.querySelector(selector);
+    const rail = pick(".p-tab_rail");
+    const sidebar = pick(".p-channel_sidebar");
+    const primary = pick(".p-view_contents--primary");
+    const header = pick(".p-view_header__actions");
+    const strip = pick(".p-control_strip");
+    const pane = pick('[data-qa="member_profile_pane"]');
+    const railColumn = el("div", "chrome__rail");
+    railColumn.append(rail, el("div", "chrome__spacer"), strip);
+    const list = pick(".p-channel_sidebar__list");
+    for (const [name, state] of [["general", ""], ["releases", "is-selected"], ["design", "is-unread"], ["random", ""]]) {
+      const row = el("div", `p-channel_sidebar__channel ${state}`);
+      row.innerHTML = `<span class="chrome__hash">#</span><span class="chrome__name">${name}</span>`;
+      list.append(row);
+    }
+    const bar = el("div", "p-view_header");
+    const title = el("div", "chrome__title");
+    title.innerHTML = '<span class="chrome__hash">#</span>releases<span class="chrome__topic">Ships on Thursdays</span>';
+    bar.append(title, header);
+    const message = pick('[data-qa="message_container"]');
+    const text = message.querySelector('[data-qa="message-text"]');
+    text.replaceWith(Object.assign(document.createElement("div"), {
+      className: "chrome__lines",
+      innerHTML: '<div class="chrome__who">Robin Vasquez <span class="chrome__when">11:04</span></div><div data-qa="message-text">Cutting 1.4 this afternoon \u2014 anything still open?</div>'
+    }));
+    message.append(el("div", "chrome__filler"));
+    const composer2 = pick('[data-qa="message_input"]');
+    const editor = composer2.querySelector(".ql-editor");
+    if (editor) editor.innerHTML = '<p class="chrome__placeholder">Message #releases</p>';
+    const container = pane.querySelector(".p-r_member_profile__container");
+    container.append(Object.assign(document.createElement("div"), {
+      className: "chrome__profile",
+      innerHTML: '<div class="chrome__who">Robin Vasquez</div><div class="chrome__role">Release engineering</div>'
+    }));
+    if (!pane_) pane.classList.add("chrome__offstage");
+    client.replaceChildren(railColumn, sidebar, el("div", "chrome__main"), pane);
+    frame.querySelector(".chrome__main").append(bar, primary);
+    primary.querySelector(".p-message_pane").append(composer2);
     return frame;
   }
   function focusChrome(frame, selector) {
     const target = frame.querySelector(selector);
     if (!target) return;
-    for (const node of frame.querySelectorAll("*")) node.classList.add("is-out");
-    for (let node = target; node && node !== frame; node = node.parentElement) node.classList.remove("is-out");
-    for (const node of target.querySelectorAll("*")) node.classList.remove("is-out");
+    const dim = (node) => {
+      for (const child of node.children) {
+        if (child === target || child.contains(target)) dim(child);
+        else child.classList.add("chrome__dim");
+      }
+    };
+    dim(frame.querySelector(".p-client_container") ?? frame);
+    target.classList.add("chrome__focus");
   }
   var TOOLBAR_CONTAINER = {
     controlStrip: ".p-control_strip",
@@ -4462,31 +4612,31 @@
   };
   var CHROME = {
     "slack-addtoolbarbutton": {
-      render: (v, { stage }) => {
+      render: (v, { stage, keep }) => {
         const frame = slackChrome();
         stage.replaceChildren(frame);
-        addToolbarButton("demo", v.toolbar, { id: "demo", label: v.label, icon: ICON, onClick: () => {
-        } });
+        keep(addToolbarButton("demo", v.toolbar, { id: "demo", label: v.label, icon: ICON, onClick: () => {
+        } }));
         focusChrome(frame, TOOLBAR_CONTAINER[v.toolbar]);
         return void 0;
       }
     },
     "slack-addmessageaction": {
-      render: (v, { stage }) => {
+      render: (v, { stage, keep }) => {
         const frame = slackChrome();
         stage.replaceChildren(frame);
-        addMessageAction("demo", { id: "demo", label: v.label, icon: ICON, onClick: () => {
-        } });
+        keep(addMessageAction("demo", { id: "demo", label: v.label, icon: ICON, onClick: () => {
+        } }));
         focusChrome(frame, '[data-qa="message_container"]');
         return void 0;
       }
     },
     "slack-addprofilebutton": {
-      render: (v, { stage }) => {
-        const frame = slackChrome();
+      render: (v, { stage, keep }) => {
+        const frame = slackChrome({ pane: true });
         stage.replaceChildren(frame);
-        addProfileButton("demo", { id: "demo", label: v.label, icon: ICON, onClick: () => {
-        } });
+        keep(addProfileButton("demo", { id: "demo", label: v.label, icon: ICON, onClick: () => {
+        } }));
         focusChrome(frame, '[data-qa="member_profile_pane"]');
         return void 0;
       }
@@ -4552,7 +4702,7 @@
         stage.replaceChildren(frame);
         focusChrome(frame, '[data-qa="message_container"]');
         const message = describeMessage(frame.querySelector('[data-qa="message_container"]'));
-        frame.append(say(stage, [
+        stage.append(say(stage, [
           `channelId: ${message.channelId}`,
           `ts:        ${message.ts}`,
           `text:      ${message.text}`,
@@ -4572,7 +4722,7 @@
           slack.composer.insert(v.text);
           slack.composer.focus();
         });
-        frame.append(button);
+        stage.append(button);
         return void 0;
       }
     },
@@ -4586,7 +4736,7 @@
           message.style.outline = "2px solid var(--dt_color-content-hgl-1, #7cc4ff)";
           seen.textContent = "the handler ran on every match, and will run on new ones";
         });
-        frame.append(seen);
+        stage.append(seen);
         return void 0;
       }
     },
@@ -4595,10 +4745,13 @@
         const frame = slackChrome();
         stage.replaceChildren(frame);
         focusChrome(frame, ".p-control_strip");
-        helpers.mount(".p-control_strip", "demo-mounted", () => {
-          const node = kit.button("mounted");
-          return node;
-        });
+        helpers.mount(".p-control_strip", "demo-mounted", () => helpers.iconButton({
+          icon: ICON,
+          label: "mounted",
+          surface: "rail",
+          onClick: () => {
+          }
+        }));
         return void 0;
       }
     },
@@ -4666,31 +4819,36 @@
       }
     },
     "dom-keepmounted": {
-      render: (v, { stage }) => {
+      render: (v, { stage, keep }) => {
         const frame = slackChrome();
         stage.replaceChildren(frame);
         focusChrome(frame, ".p-control_strip");
         const out = kit.el("p", { class: "sm-hint" }, [""]);
-        keepMounted(".p-control_strip", "demo-keep", () => kit.button("kept"));
+        keep(keepMounted(
+          ".p-control_strip",
+          "demo-keep",
+          () => helpers.iconButton({ icon: ICON, label: "kept", surface: "rail", onClick: () => {
+          } })
+        ));
         const remove = kit.button("remove it", { variant: "danger" });
         remove.addEventListener("click", () => {
           frame.querySelector("#demo-keep")?.remove();
           out.textContent = "taken out \u2014 and put straight back";
         });
-        frame.append(remove, out);
+        stage.append(remove, out);
         return void 0;
       }
     },
     "dom-oneach": {
-      render: (v, { stage }) => {
+      render: (v, { stage, keep }) => {
         const list = kit.el("div", { class: "pg__rows" }, []);
         const out = kit.el("p", { class: "sm-hint" }, ["0 rows seen"]);
         let seen = 0;
-        onEach(".pg__rows > .row", (row) => {
+        keep(onEach(".pg__rows > .row", (row) => {
           seen += 1;
           row.style.color = "var(--dt_color-content-hgl-1, #7cc4ff)";
           out.textContent = `${seen} rows seen \u2014 including the ones added later`;
-        });
+        }));
         const add = kit.button("add a row", { variant: "primary" });
         add.addEventListener("click", () => list.append(kit.el("div", { class: "row" }, ["a new row"])));
         list.append(kit.el("div", { class: "row" }, ["a row that was already here"]));
@@ -4698,11 +4856,11 @@
       }
     },
     "dom-onshortcut": {
-      render: () => {
+      render: (v, { keep }) => {
         const out = kit.el("p", { class: "sm-hint" }, ["press F1 with this page focused"]);
-        onShortcut((event) => event.key === "F1", () => {
+        keep(onShortcut((event) => event.key === "F1", () => {
           out.textContent = "F1 \u2014 the match ran";
-        });
+        }));
         return out;
       }
     },
@@ -4772,8 +4930,8 @@
         const frame = slackChrome();
         stage.replaceChildren(frame);
         focusChrome(frame, '[data-qa="message_container"]');
-        const url = SLACK_FIXTURE.match(/src="([^"]*-U[A-Z0-9]+-[^"]*)"/)?.[1] ?? "";
-        frame.append(kit.el("pre", { class: "pg__out" }, [
+        const url = frame.querySelector(".c-message_kit__avatar img")?.src ?? "";
+        stage.append(kit.el("pre", { class: "pg__out" }, [
           `from ${url}`,
           `      -> ${userIdFromAvatarUrl(url)}`
         ]));
@@ -4877,6 +5035,510 @@
       ])
     }
   };
+  var FIXTURES = typeof window !== "undefined" && window.__API_FIXTURES || {
+    theme: { id: "midnight", css: "" },
+    plugin: { id: "channel-notes", files: [], manifest: {}, entry: "" }
+  };
+  function stubbed(text) {
+    return kit.el("p", { class: "pg__stub" }, [text]);
+  }
+  function source(text, language = "javascript") {
+    const code = kit.el("code", { class: "betterslack-hl" });
+    code.innerHTML = highlight(text, language);
+    return kit.el("pre", { class: "api-output pg__source" }, [code]);
+  }
+  var PEOPLE = [
+    { id: "U0EXAMPLE1", name: "Robin Vasquez", title: "Release engineering", presence: "active" },
+    { id: "U0EXAMPLE2", name: "Sam Okonkwo", title: "Design systems", presence: "away" },
+    { id: "U0EXAMPLE3", name: "Nadia Prescott", title: "Support", presence: "active" }
+  ];
+  function modRow(mod) {
+    const row = kit.el("div", { class: "betterslack-row" }, [
+      kit.el("div", { class: "betterslack-row__text" }, [
+        kit.el("div", { class: "betterslack-row__name" }, [mod.name]),
+        kit.el("div", { class: "betterslack-row__desc" }, [mod.description])
+      ])
+    ]);
+    const toggle = kit.el("input", { type: "checkbox", class: "pg__check" });
+    toggle.checked = Boolean(mod.enabled);
+    if (mod.onToggle) toggle.addEventListener("change", () => mod.onToggle(toggle.checked));
+    row.append(mod.installed === false ? kit.button("Install", { variant: "primary" }) : toggle);
+    return row;
+  }
+  var IMITATED = {
+    /* -- Slack's own surface ------------------------------------------------ */
+    "slack-web": {
+      render: (v) => {
+        const person = PEOPLE.find((p) => p.id === v.user) ?? PEOPLE[0];
+        const answer = {
+          ok: true,
+          users: [{
+            id: person.id,
+            name: person.name.toLowerCase().replace(" ", "."),
+            profile: { real_name: person.name, title: person.title, image_192: `https://ca.slack-edge.com/T0EXAMPLE1-${person.id}-\u2026-192` }
+          }]
+        };
+        return [
+          kit.el("div", { class: "pg__card" }, [
+            kit.el("span", { class: "chrome__avatar", "data-seed": person.id }),
+            kit.el("div", {}, [
+              kit.el("div", { class: "chrome__who" }, [person.name]),
+              kit.el("div", { class: "chrome__role" }, [person.title])
+            ])
+          ]),
+          source(`await api.slack.web.users(['${person.id}'])
+
+${JSON.stringify(answer, null, 2)}`, "json"),
+          stubbed("The call and its shape are real; the workspace behind them is not.")
+        ];
+      }
+    },
+    "slack-desktop": {
+      render: (v) => {
+        const rows = SLACK_PREFS.map((pref2) => {
+          const wanted = pref2.key === v.key ? pref2.type === "boolean" ? v.value : String(v.value) : null;
+          return kit.el("tr", { class: pref2.key === v.key ? "is-current" : "" }, [
+            kit.el("td", {}, [kit.el("code", {}, [pref2.key])]),
+            kit.el("td", {}, [pref2.type]),
+            kit.el("td", {}, [wanted === null ? "\u2014" : String(wanted)]),
+            kit.el("td", {}, [kit.el("span", { class: "sm-hint" }, [
+              pref2.restart ? "read when the window is created \u2014 needs a restart" : "applies at once"
+            ])])
+          ]);
+        });
+        const pref = SLACK_PREFS.find((p) => p.key === v.key) ?? SLACK_PREFS[0];
+        return [
+          source(`api.slack.desktop.keys()          // the ${SLACK_PREFS.length} below, and nothing else
+api.slack.desktop.get(${JSON.stringify(pref.key)})
+await api.slack.desktop.set(${JSON.stringify(pref.key)}, ${JSON.stringify(pref.type === "boolean" ? v.value : String(v.value))});
+api.slack.desktop.needsRestart(${JSON.stringify(pref.key)})  // ${pref.restart}`),
+          kit.el("div", { class: "pg__legend" }, ["key \xB7 type \xB7 what this preview would set \xB7 when it takes effect"]),
+          kit.el("table", { class: "pg__table pg__prefs" }, rows),
+          stubbed(pref.note)
+        ];
+      }
+    },
+    "slack-restart": {
+      render: () => {
+        const button = kit.button("Restart Slack", { variant: "primary" });
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        button.addEventListener("click", async () => {
+          const ok = await confirm({
+            title: "Restart Slack?",
+            body: "The translucent window is chosen when Slack starts, so this preference needs a restart to take effect.",
+            action: "Restart"
+          });
+          out.textContent = ok ? "api.slack.restart({ windowVibrancy: true })\n\nThe loader stops Slack, writes the preferences, launches it again\nand rebuilds its CDP connection in place. Same terminal, same run." : "cancelled \u2014 nothing written";
+        });
+        return [button, out, stubbed("The dialog is the shipped one; nothing is restarted from a web page.")];
+      }
+    },
+    "slack-vipusers": {
+      render: (v) => {
+        const ids = v.pref.split(",").map((id) => id.trim()).filter(Boolean);
+        return [
+          source(`users.prefs.get(name: 'vip_users')
+  -> ${JSON.stringify(v.pref)}
+
+api.slack.vipUsers()
+  -> ${JSON.stringify(ids)}`),
+          kit.el("div", { class: "pg__people" }, ids.map((id) => {
+            const person = PEOPLE.find((p) => p.id === id);
+            return kit.el("div", { class: "pg__card" }, [
+              kit.el("span", { class: "chrome__avatar", "data-seed": id }),
+              kit.el("div", {}, [
+                kit.el("div", { class: "chrome__who" }, [person?.name ?? id]),
+                kit.el("div", { class: "chrome__role" }, [person ? "VIP" : "not in this workspace"])
+              ])
+            ]);
+          }))
+        ];
+      }
+    },
+    "slack-setvip": {
+      render: (v, { stage }) => {
+        const vips = new Set(v.vips.split(",").map((id) => id.trim()).filter(Boolean));
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        const draw = () => {
+          out.textContent = `users.prefs.set(name: 'vip_users', value: '${[...vips].join(",")}')`;
+        };
+        const list = kit.el("div", { class: "pg__people" }, PEOPLE.map((person) => {
+          const star = kit.button(vips.has(person.id) ? "\u2605 VIP" : "\u2606 Add", { variant: vips.has(person.id) ? "primary" : "default" });
+          star.addEventListener("click", () => {
+            if (vips.has(person.id)) vips.delete(person.id);
+            else vips.add(person.id);
+            star.textContent = vips.has(person.id) ? "\u2605 VIP" : "\u2606 Add";
+            star.className = `c-button c-button--medium c-button--${vips.has(person.id) ? "primary" : "outline"}`;
+            draw();
+          });
+          return kit.el("div", { class: "pg__card" }, [
+            kit.el("span", { class: "chrome__avatar", "data-seed": person.id }),
+            kit.el("div", {}, [kit.el("div", { class: "chrome__who" }, [person.name])]),
+            star
+          ]);
+        }));
+        draw();
+        return [list, out, stubbed("Read, edit, write \u2014 the whole list every time, which is why two windows can clobber each other.")];
+      }
+    },
+    "slack-starthuddle": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        const header = frame.querySelector(".p-view_header__actions");
+        const start = helpers.iconButton({ icon: ICON, label: "Start a huddle", surface: "header", onClick: () => {
+        } });
+        start.setAttribute("data-qa", "huddle_channel_header_button__start_button");
+        header.prepend(start);
+        stage.replaceChildren(frame, kit.el("pre", { class: "pg__out" }, [
+          "api.slack.startHuddle('U0EXAMPLE2')",
+          "",
+          "It clicks this button. The profile pane\u2019s huddle control is only a menu",
+          "trigger; the channel header\u2019s is the one that starts anything, and a plain",
+          "element.click() is enough. Slack opens a separate window for the call."
+        ]));
+        focusChrome(frame, '[data-qa="huddle_channel_header_button__start_button"]');
+        return void 0;
+      }
+    },
+    "slack-hideconversation": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        const rows = [...frame.querySelectorAll(".p-channel_sidebar__channel")];
+        const target = rows.find((row) => row.textContent?.includes(v.channel)) ?? rows[3];
+        const button = kit.button(`Hide #${v.channel}`, { variant: "danger" });
+        button.addEventListener("click", () => {
+          target.classList.toggle("chrome__hidden");
+          button.textContent = target.classList.contains("chrome__hidden") ? `Show #${v.channel}` : `Hide #${v.channel}`;
+        });
+        stage.replaceChildren(frame, button);
+        focusChrome(frame, ".p-channel_sidebar");
+        return void 0;
+      }
+    },
+    "slack-openconversation": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        const link = kit.el("pre", { class: "pg__out" }, [`slack://channel?team=T0EXAMPLE1&id=${v.channel}`]);
+        const rows = [...frame.querySelectorAll(".p-channel_sidebar__channel")];
+        const go = kit.button("Open it", { variant: "primary" });
+        go.addEventListener("click", () => {
+          for (const row of rows) row.classList.remove("is-selected");
+          (rows.find((row) => row.textContent?.includes(v.name)) ?? rows[0]).classList.add("is-selected");
+          frame.querySelector(".chrome__title").firstChild.nextSibling.textContent = v.name;
+        });
+        stage.replaceChildren(frame, go, link, stubbed(
+          "Assigning that URL hands it to the desktop app\u2019s protocol handler, which routes it in place \u2014 same document, no reload."
+        ));
+        focusChrome(frame, ".p-channel_sidebar");
+        return void 0;
+      }
+    },
+    "slack-opendirectmessage": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        const list = frame.querySelector(".p-channel_sidebar__list");
+        const row = el("div", "p-channel_sidebar__channel");
+        row.innerHTML = '<span class="chrome__avatar" data-seed="U0EXAMPLE2" style="width:18px;height:18px;border-radius:5px;margin-right:6px"></span><span class="chrome__name">Sam Okonkwo</span>';
+        list.append(row);
+        const go = kit.button("Open the DM", { variant: "primary" });
+        go.addEventListener("click", () => {
+          for (const other of list.children) other.classList.remove("is-selected");
+          row.classList.add("is-selected");
+        });
+        stage.replaceChildren(frame, go, kit.el("pre", { class: "pg__out" }, [
+          `api.slack.openDirectMessage('${v.user}')`,
+          "",
+          "conversations.open gives the DM channel id, then the deep link opens it."
+        ]));
+        focusChrome(frame, ".p-channel_sidebar");
+        return void 0;
+      }
+    },
+    "slack-openuserprofile": {
+      render: (v, { stage }) => {
+        const frame = slackChrome({ pane: true });
+        stage.replaceChildren(frame, kit.el("pre", { class: "pg__out" }, [
+          `slack://user?team=T0EXAMPLE1&id=${v.user}`,
+          "",
+          "Not everyone has one: an app, or a conversation with yourself, gives a",
+          "pane that never appears. Try ids in turn rather than trusting the first."
+        ]));
+        focusChrome(frame, '[data-qa="member_profile_pane"]');
+        return void 0;
+      }
+    },
+    "slack-onprofilepane": {
+      render: (v, { stage, keep }) => {
+        const frame = slackChrome({ pane: true });
+        stage.replaceChildren(frame);
+        const slack = createSlackApi("demo");
+        keep(slack.onProfilePane(({ element, userId }) => {
+          element.querySelector(".p-r_member_profile__container")?.append(
+            helpers.section(v.title, [helpers.field("User id", userId ?? "unknown")])
+          );
+        }));
+        focusChrome(frame, '[data-qa="member_profile_pane"]');
+        return void 0;
+      }
+    },
+    "slack-filesfrom": {
+      render: (v) => {
+        const person = PEOPLE.find((p) => p.id === v.user) ?? PEOPLE[0];
+        const all = [
+          { name: "release-notes-1.4.pdf", size: "284 KB", type: "pdf", ts: "2 days ago" },
+          { name: "sidebar-before-after.png", size: "1.1 MB", type: "png", ts: "5 days ago" },
+          { name: "rollout-plan.md", size: "4 KB", type: "md", ts: "last week" },
+          { name: "timings.csv", size: "18 KB", type: "csv", ts: "last week" }
+        ];
+        const files = all.slice(0, Math.max(1, Math.min(Number(v.limit) || all.length, all.length)));
+        return [
+          kit.el("div", { class: "pg__card" }, [
+            kit.el("span", { class: "chrome__avatar", "data-seed": person.id }),
+            kit.el("div", {}, [
+              kit.el("div", { class: "chrome__who" }, [person.name]),
+              kit.el("div", { class: "chrome__role" }, [`${files.length} of ${all.length} files, newest first`])
+            ])
+          ]),
+          kit.el("div", { class: "pg__files" }, files.map((file) => kit.el("div", { class: "pg__file" }, [
+            kit.el("span", { class: "pg__file__kind" }, [file.type.toUpperCase()]),
+            kit.el("div", {}, [
+              kit.el("div", { class: "chrome__who" }, [file.name]),
+              kit.el("div", { class: "chrome__role" }, [`${file.size} \xB7 ${file.ts}`])
+            ])
+          ]))),
+          source(`await api.slack.filesFrom('${person.id}'${v.limit ? `, ${v.limit}` : ""})
+
+` + JSON.stringify(files.map((f) => ({
+            name: f.name,
+            url_private: `https://files.slack.com/\u2026/${f.name}`
+          })), null, 2), "json"),
+          stubbed("Without a limit you get Slack\u2019s own default page, which is rarely what a panel wants to draw.")
+        ];
+      }
+    },
+    /* -- the loader's side -------------------------------------------------- */
+    "files-save": {
+      render: (v, { stage }) => {
+        const out = kit.el("div", { class: "pg__downloads" }, []);
+        const button = kit.button("Save it", { variant: "primary" });
+        button.addEventListener("click", () => {
+          out.replaceChildren(kit.el("div", { class: "pg__file" }, [
+            kit.el("span", { class: "pg__file__kind" }, ["JPG"]),
+            kit.el("div", {}, [
+              kit.el("div", { class: "chrome__who" }, [v.filename]),
+              kit.el("div", { class: "chrome__role" }, [`~/Downloads/${v.filename} \u2014 48 320 bytes`])
+            ])
+          ]));
+          toast(`Saved ${v.filename}`, { variant: "success" });
+        });
+        return [
+          source(`const { path, bytes } = await api.files.save(
+  '${v.url}',
+  '${v.filename}',
+);`),
+          button,
+          out,
+          stubbed("The loader fetches it, because Slack\u2019s CDN serves without CORS headers and the renderer cannot.")
+        ];
+      }
+    },
+    "files-screenshot": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        const flash = el("div", "pg__flash");
+        const shot = kit.button("Take the shot", { variant: "primary" });
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        shot.addEventListener("click", () => {
+          flash.classList.remove("is-firing");
+          void flash.offsetWidth;
+          flash.classList.add("is-firing");
+          out.textContent = `api.files.screenshot({ size: '${v.size}', filename: '${v.filename}' })
+
+~/Downloads/${v.filename} \u2014 ${v.size}, webp`;
+        });
+        const wrap = el("div", "pg__shotframe", [frame, flash]);
+        stage.replaceChildren(wrap, shot, out);
+        return void 0;
+      }
+    },
+    "assets-list": {
+      render: () => [
+        kit.el("ul", { class: "pg__tree" }, FIXTURES.plugin.files.map(
+          (name) => kit.el("li", {}, [kit.el("code", {}, [name])])
+        )),
+        kit.el("p", { class: "sm-hint" }, [`mods/plugins/${FIXTURES.plugin.id}/, read by the loader \u2014 this repository\u2019s own folder.`])
+      ]
+    },
+    "assets-text": {
+      render: (v) => [
+        kit.el("p", { class: "sm-hint" }, [`api.assets.text(${JSON.stringify(v.file)})`]),
+        source(
+          v.file.endsWith(".json") ? JSON.stringify(FIXTURES.plugin.manifest, null, 2) : FIXTURES.plugin.entry,
+          v.file.endsWith(".json") ? "json" : "javascript"
+        )
+      ]
+    },
+    "themes-source": {
+      render: () => [
+        kit.el("p", { class: "sm-hint" }, [`await api.themes.source('${FIXTURES.theme.id}') \u2014 the first lines of it`]),
+        source(FIXTURES.theme.css, "css")
+      ]
+    },
+    "themes-suspend": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        const button = kit.button("Suspend the themes", { variant: "primary" });
+        let off = false;
+        button.addEventListener("click", () => {
+          off = !off;
+          frame.dataset.theme = off ? "none" : "";
+          frame.classList.toggle("chrome--bare", off);
+          button.textContent = off ? "Restore them" : "Suspend the themes";
+        });
+        stage.replaceChildren(frame, button, kit.el("p", { class: "sm-hint" }, [
+          "The whole theme layer detaches, and the user\u2019s settings are untouched. The theme builder holds it back like this so the preview shows what it is painting rather than what was already on."
+        ]));
+        return void 0;
+      }
+    },
+    "plugin-savetheme": {
+      render: (v, { stage }) => {
+        const editor = kit.code({ value: v.css });
+        const save = kit.button("Save the theme", { variant: "primary" });
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        save.addEventListener("click", () => {
+          out.textContent = `~/.betterslack/mods/themes/${v.id}/theme.css
+${editor.value.length} bytes \u2014 it shows up in the panel as an installed theme`;
+          toast(`Saved \u201C${v.id}\u201D`, { variant: "success" });
+        });
+        stage.replaceChildren(editor.node, save, out);
+        return void 0;
+      }
+    },
+    /* -- BetterSlack itself -------------------------------------------------- */
+    "app-commands": {
+      render: () => {
+        const rows = [
+          { id: "focus-mode:toggle", title: "Toggle Focus Mode", source: "Focus Mode", shortcut: "\u2318\u21E7F" },
+          { id: "theme-builder:open", title: "Open the theme builder", source: "Theme Builder", shortcut: "" },
+          { id: "demo-mode:toggle", title: "Turn demo mode on", source: "Demo Mode", shortcut: "" }
+        ];
+        return kit.el("table", { class: "pg__table" }, rows.map((row) => kit.el("tr", {}, [
+          kit.el("td", {}, [kit.el("code", {}, [row.id])]),
+          kit.el("td", {}, [row.title]),
+          kit.el("td", {}, [kit.el("span", { class: "sm-hint" }, [row.source])]),
+          kit.el("td", {}, [kit.el("span", { class: "sm-hint" }, [row.shortcut])])
+        ])));
+      }
+    },
+    "app-openpanel": {
+      render: () => {
+        const button = kit.button("Open the panel", { variant: "primary" });
+        button.addEventListener("click", () => modal({
+          title: "BetterSlack",
+          body: "The panel is the Mods dialog, on \u2318\u21E7M. api.app.openPanel() is what a command or a button calls to bring it up.",
+          actions: [{ label: "Close", primary: true }]
+        }));
+        return button;
+      }
+    },
+    "app-openmod": {
+      render: (v) => {
+        const button = kit.button(`Open ${v.id}`, { variant: "primary" });
+        button.addEventListener("click", () => modal({
+          title: v.id,
+          body: "A mod\u2019s page: its icon, version and author, its description in your language, a screenshot, its README and its settings. Not the row\u2019s settings drawer, which is what this used to open when settings were all there was.",
+          actions: [{ label: "Close", primary: true }]
+        }));
+        return button;
+      }
+    },
+    "app-setenabled": {
+      render: (v, { stage }) => {
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        const row = modRow({
+          name: "Focus Mode",
+          description: "Folds the sidebar away on \u2318\u21E7F.",
+          enabled: v.enabled,
+          onToggle: (on) => {
+            out.textContent = `api.app.setEnabled('focus-mode', ${on})`;
+          }
+        });
+        return [row, out, kit.el("p", { class: "sm-hint" }, [
+          "A plugin is code that keeps running after the theme that wanted it is off, so nothing switches one on without asking."
+        ])];
+      }
+    },
+    "app-setinstalled": {
+      render: (v, { stage }) => {
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        const shelf = kit.el("div", { class: "pg__shelf" }, [
+          modRow({ name: "Aurora", description: "Frosted glass over a drifting gradient.", installed: false }),
+          modRow({ name: "Terminal", description: "Monospace, square corners, phosphor.", installed: false })
+        ]);
+        for (const button of shelf.querySelectorAll("button")) {
+          button.addEventListener("click", () => {
+            const name = button.closest(".betterslack-row").querySelector(".betterslack-row__name").textContent;
+            out.textContent = `api.app.setInstalled('${name.toLowerCase()}', true)
+
+The folder is fetched through the loader, which re-validates the manifest:
+files off the network are untrusted whichever button asked for them.`;
+            button.textContent = "Installed";
+            button.disabled = true;
+          });
+        }
+        return [shelf, out];
+      }
+    },
+    /* -- the api object itself ----------------------------------------------- */
+    "plugin-id": {
+      render: () => [
+        source(`api.id            // '${FIXTURES.plugin.id}'
+api.settings.get() // scoped to it
+api.css(\u2026)         // one stylesheet, keyed on it`),
+        kit.el("p", { class: "sm-hint" }, ["The folder name, which is also the key everything else is filed under."])
+      ]
+    },
+    "plugin-version": {
+      render: () => source(`api.version   // '${FIXTURES.plugin.manifest.version ?? "1.0.0"}'
+
+// A mod carries its own version and updates on its own, so a one-line
+// fix to a theme does not mean pulling the loader and the runtime too.`)
+    },
+    "plugin-manifest": {
+      render: () => source(JSON.stringify(FIXTURES.plugin.manifest, null, 2), "json")
+    },
+    "plugin-ondispose": {
+      render: (v, { stage, keep }) => {
+        const out = kit.el("pre", { class: "pg__out" }, ["running \u2014 leave this entry and come back"]);
+        const timer = setInterval(() => {
+          out.textContent = `tick ${Number((out.textContent.match(/\d+/) ?? [0])[0]) + 1} \u2014 still running`;
+        }, 1e3);
+        keep(() => clearInterval(timer));
+        return [out, kit.el("p", { class: "sm-hint" }, [
+          "This preview registers its cleanup exactly as a mod does, and the page runs it when you navigate away \u2014 which is what onDispose is for."
+        ])];
+      }
+    },
+    "ui-kitcss": {
+      render: () => [
+        kit.el("div", { class: "pg__kitrow" }, [
+          kit.button("Primary", { variant: "primary" }),
+          kit.button("Default"),
+          kit.input({ value: "A field" }),
+          kit.swatch("#7cc4ff", { size: "md" })
+        ]),
+        kit.el("p", { class: "sm-hint" }, [
+          `api.ui.kitCss \u2014 ${Math.round(KIT_CSS.length / 1024)} kB of stylesheet, and what the row above is wearing. A window a mod opens is a blank document: none of Slack\u2019s stylesheet reaches it, so the kit brings its own.`
+        ]),
+        source(`const win = window.open('', 'my-window');
+win.document.head.append(
+  Object.assign(win.document.createElement('style'), { textContent: api.ui.kitCss }),
+);
+const kit = api.ui.kit(win.document);`)
+      ]
+    }
+  };
   function split(input, output) {
     return kit.el("div", { class: "api-split" }, [input, output]);
   }
@@ -4895,29 +5557,29 @@
     },
     "tools-markdown": {
       render: (v, { stage }) => {
-        const source = kit.el("textarea", { class: "api-input", rows: "12", spellcheck: "false" }, [v.source]);
+        const source2 = kit.el("textarea", { class: "api-input", rows: "12", spellcheck: "false" }, [v.source]);
         const out = kit.el("div", { class: "api-output sm-md" });
         const draw = () => {
-          out.innerHTML = renderMarkdown(source.value);
+          out.innerHTML = renderMarkdown(source2.value);
         };
-        source.addEventListener("input", draw);
+        source2.addEventListener("input", draw);
         draw();
-        return split(source, out);
+        return split(source2, out);
       }
     },
     "tools-highlight": {
       render: (v, { stage }) => {
-        const source = kit.el("textarea", { class: "api-input", rows: "12", spellcheck: "false" }, [v.source]);
+        const source2 = kit.el("textarea", { class: "api-input", rows: "12", spellcheck: "false" }, [v.source]);
         const code = kit.el("code", { class: "betterslack-hl" });
         const guess = kit.el("p", { class: "sm-hint" }, [""]);
         const draw = () => {
-          const chosen = v.language || detect(source.value);
+          const chosen = v.language || detect(source2.value);
           guess.textContent = v.language ? `forced to ${chosen}` : chosen ? `detected: ${chosen}` : "not confident \u2014 left alone, which is the point";
-          code.innerHTML = chosen ? highlight(source.value, chosen) : source.value.replace(/[<&]/g, (c) => c === "<" ? "&lt;" : "&amp;");
+          code.innerHTML = chosen ? highlight(source2.value, chosen) : source2.value.replace(/[<&]/g, (c) => c === "<" ? "&lt;" : "&amp;");
         };
-        source.addEventListener("input", draw);
+        source2.addEventListener("input", draw);
         draw();
-        return [guess, split(source, kit.el("pre", { class: "api-output" }, [code]))];
+        return [guess, split(source2, kit.el("pre", { class: "api-output" }, [code]))];
       }
     },
     "tools-roles": {
@@ -4948,6 +5610,7 @@
     if (saved && [...picker.options].some((o) => o.value === saved)) picker.value = saved;
     const apply = () => {
       for (const stage of document.querySelectorAll(".slack-stage")) stage.dataset.theme = picker.value;
+      document.body.dataset.theme = picker.value;
       localStorage.setItem("betterslack-api-theme", picker.value);
     };
     picker.addEventListener("change", apply);
@@ -4960,7 +5623,14 @@
     if (!stack || !links.length) return;
     const show = (slug) => {
       const wanted = document.getElementById(`p-${slug}`) ?? stack.querySelector(".panel");
-      for (const panel of stack.querySelectorAll(".panel")) panel.hidden = panel !== wanted;
+      for (const panel of stack.querySelectorAll(".panel")) {
+        if (panel === wanted) continue;
+        MOUNTED.get(panel.id)?.teardown();
+        panel.hidden = true;
+      }
+      const shown = MOUNTED.get(wanted.id);
+      if (shown && !shown.drawn) shown.draw();
+      wanted.hidden = false;
       for (const link of links) {
         const current = link.getAttribute("href") === `#${wanted.id.slice(2)}`;
         link.toggleAttribute("aria-current", current);
@@ -4999,7 +5669,7 @@
   var PREVIEWS = {};
   for (const [name, spec2] of Object.entries(KIT)) PREVIEWS[`kit-${name.toLowerCase()}`] = spec2.render;
   for (const [name, spec2] of Object.entries(HELPERS)) PREVIEWS[`helpers-${name.toLowerCase()}`] = spec2.render;
-  for (const group of [UI, CHROME, SLACK_HELPERS, MORE, TOOLS, REST]) {
+  for (const group of [UI, CHROME, SLACK_HELPERS, MORE, TOOLS, REST, IMITATED]) {
     for (const [slug, spec2] of Object.entries(group)) PREVIEWS[slug] = spec2.render;
   }
   for (const slot of document.querySelectorAll("[data-demo]")) {
@@ -5007,6 +5677,7 @@
     if (render) playground(slot.dataset.demo, render);
     else slot.remove();
   }
+  for (const { teardown } of MOUNTED.values()) teardown();
   wireThemePicker();
   router();
   filter();

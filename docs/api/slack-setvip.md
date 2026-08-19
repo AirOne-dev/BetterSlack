@@ -3,6 +3,8 @@ name: setVip
 group: slack
 title: api.slack
 signature: (userId: string, isVip: boolean): Promise<boolean>
+preview: slack-setvip
+control: vips | text | U0EXAMPLE1 | starting list
 ---
 
 Add or remove someone from your VIP list, and report the new state.

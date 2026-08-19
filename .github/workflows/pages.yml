@@ -44,9 +44,9 @@ jobs:
           # api.html and api-demos.js are generated from the TypeScript and from
           # the mods, so they go stale the moment the API changes -- which is
           # the whole reason the page is generated rather than written.
-          if ! git diff --quiet -- site/data.js site/api.html site/api-previews.js docs/api.md; then
+          if ! git diff --quiet -- site/data.js site/api.html site/api-previews.js site/api-themes.css site/api-fixtures.js docs/api.md; then
             echo "::error::a generated site file is stale. Run 'pnpm site' and commit the result."
-            git --no-pager diff --stat -- site/data.js site/api.html site/api-previews.js docs/api.md
+            git --no-pager diff --stat -- site/data.js site/api.html site/api-previews.js site/api-themes.css site/api-fixtures.js docs/api.md
             exit 1
           fi
 

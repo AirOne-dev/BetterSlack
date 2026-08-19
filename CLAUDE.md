@@ -326,7 +326,15 @@ kit.button('Save', { variant: 'primary', onClick: () => save() });
   because a reference that shows an example for two thirds of what it lists
   teaches the reader to distrust the third.
 - `preview` names a renderer in `scripts/api-previews.js`. A preview is code and
-  cannot be anything else; everything a writer writes about it is not.
+  cannot be anything else; everything a writer writes about it is not. **Every
+  entry has one.** The ones that reach something a web page has not got --
+  Slack's API, the loader's filesystem, a window that can be restarted --
+  imitate it rather than saying "inside Slack", because a reference is read to
+  find out what a call *looks* like and "not available here" answers nothing.
+  Where the data can be real it is real: `site/api-fixtures.js` is generated
+  from a theme's stylesheet and a plugin's folder in this repository. Where it
+  cannot be -- a workspace, a download folder -- the preview wears the
+  `stubbed()` note, so the reader is never left to guess which.
 - Each `control` line is a knob beside the preview:
   `key | type | value | label | options`. `text`, `number`, `boolean` and
   `select`; `label` defaults to the key, and `options` is a comma-separated list
@@ -360,18 +368,65 @@ Three things make that possible:
 - **`HelperContext` is five things**: an id, a way to write CSS, a toast, a
   settings store and a cleanup tracker. The site supplies all five against an
   in-memory map and gets the shipped helpers.
-- **`site/slack-context.css` is Slack's stylesheet's understudy** -- the twenty
-  classes the widgets wear (`c-button`, `c-dialog`, `c-menu`, `c-tooltip`) and
-  nothing else, scoped to `.slack-stage`. The widgets borrow Slack's classes so
-  they follow every theme; that is right in the client and the reason they look
-  like nothing on a web page. The *colours* are not invented:
-  `site/api-themes.css` is generated from `mods/themes/*/theme.css`, and the
-  picker in the bar switches the whole page between the shipped themes.
+- **`site/slack-context.css` is Slack's stylesheet's understudy** -- the classes
+  the widgets wear (`c-button`, `c-dialog`, `c-menu`, `c-tooltip`) plus the
+  imitated client, **scoped to `body.api-page`, not to the preview box**.
+  `api.ui.modal`, `menu`, `confirm` and `tooltip` all render into
+  `document.body`; scoped to the box that asked for them, the modal was a
+  60px heading in the page flow with no dialog, no scrim and no colours. Note
+  that `.c-dialog` is Slack's *overlay*, and `.c-dialog__content` the box.
+- **The colours are not invented.** `site/api-themes.css` is generated from
+  `mods/themes/*/theme.css` and the picker in the bar switches the whole page.
+  Three things that each cost a wrong-looking page:
+  - **A theme has more than one `:root` block** -- `--dt_color-*` in one, the
+    legacy `--sk_*` triplets in another. Taking the first dropped the whole
+    legacy family, whose fallbacks in BetterSlack's own CSS are Slack's *light*
+    defaults, so a dialog's hint text came out near-black on near-black.
+    `--sk_foreground_low` alone is referenced 31 times.
+  - **Half the themes are translucent by design.** Aurora's `--dt_color-base-pry`
+    is 34% opaque over a gradient it paints on `body`. So `--api-backdrop` and
+    `--api-backdrop-image` travel with the tokens, and a pane is painted as the
+    client paints it: backdrop colour, backdrop image, pane colour.
+  - **The backdrop *image* only goes on the imitated client.** It is sized in vw
+    and vh; on a 90px box holding one button it is a flat wash, and every widget
+    preview came out lilac.
+  - `LAUNCHER_CSS` is installed alongside `PANEL_CSS`. It is the only place a
+    toolbar button's icon is given a size, and without it every `addToolbarButton`
+    preview drew its SVG at 300x150 -- the same omission that once shipped.
 - **`tests/slack-fixture.mjs`** holds the Slack-shaped fragment, so the real
   `addToolbarButton` and `addMessageAction` have the containers they look for.
-  The page mounts all of it, shows only the part the demo is about, and swaps
-  every avatar for a drawing -- a docs page has no business fetching faces from
-  Slack's CDN.
+  It stays a flat list of empty containers, which is all jsdom needs; the page
+  moves those same nodes into Slack's layout and fills them (`dressChrome`), so
+  the answer to "where did my button go" is a client with a ring on it rather
+  than five dashed rectangles. Avatars keep their real `src` in the **fragment
+  of a 1x1 transparent SVG**: `onProfilePane` and `userIdFromMessage` read the
+  user id out of that URL, so it has to be the real one, and a docs page has no
+  business fetching faces from Slack's CDN.
+- **Only the open panel's demo is mounted.** `addToolbarButton` and
+  `addMessageAction` mount by observing the whole document, so with four fake
+  clients in the page at once each collected every other entry's button --
+  `addProfileButton` showed a message action nobody had asked for. A panel's
+  demo is drawn when it is opened and torn down through the cleanup those same
+  functions return, and the helper context's `track` collects the rest: `mount`,
+  `each`, `badge`, `hotkey` and `poll` all keep observing after they return, and
+  an untracked `keepMounted` went on putting its button into the *next* entry's
+  client.
+- **The grid is the client, not the frame around it.** It was on `.chrome` with
+  `.p-client_container { display: contents }`, so anything a demo appended to
+  the frame became a fifth grid item: it landed in the 64px rail column, over
+  the control strip, cut off by the frame's `overflow: hidden`.
+  `describeMessage` printed its channel id into a sliver. Demos append to the
+  stage, and the layout no longer punishes them for forgetting. Nothing in the
+  rail may `flex-shrink` either, or a second button in the strip squashes the
+  first.
+- **Anything mounted into the fake client wears Slack's classes**, never
+  `kit.button`. The kit is for a window a mod opens, where there is no
+  stylesheet at all, and its colours are its own -- mounted into Slack's rail on
+  a light theme it came out white on cream. Same rule as the client.
+- **The output panes stay dark whatever the theme is.** They are the site
+  talking, not a Slack surface, and the tokeniser's colours are fixed values
+  chosen against a dark background. `rgba(0, 0, 0, .4)` did follow the theme,
+  which on Cocoa's cream stage came out grey-on-grey.
 
 **One file, one panel at a time.** Every entry is a `<section class="panel">` in
 that single document and the list on the left switches between them; the page

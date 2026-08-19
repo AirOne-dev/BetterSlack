@@ -3,6 +3,8 @@ name: web
 group: slack
 title: api.slack
 signature: : WebApi
+preview: slack-web
+control: user | select | U0EXAMPLE1 | user id | U0EXAMPLE1, U0EXAMPLE2, U0EXAMPLE3
 ---
 
 Slack's own web API, as the signed-in user. Reads the session token in one

@@ -3,6 +3,9 @@ name: screenshot
 group: files
 title: api.files
 signature: (options?: { size?: string; filename?: string }):
+preview: files-screenshot
+control: filename | text | slack-1440x900.webp | saved as
+control: size | select | 1440x900 | size | 1440x900, 1280x800, 880x560
 ---
 
 Photograph the Slack window and put the picture in the download folder.

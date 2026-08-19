@@ -3,6 +3,8 @@ name: hideConversation
 group: slack
 title: api.slack
 signature: (channelId: string): Promise<void>
+preview: slack-hideconversation
+control: channel | text | design | channel
 ---
 
 Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave.

@@ -3,6 +3,7 @@ name: manifest
 group: plugin
 title: On the api object
 signature: : ModRecord
+preview: plugin-manifest
 ---
 
 This mod's own `mod.json`, as the loader parsed it — its version, its author, the settings it declares.

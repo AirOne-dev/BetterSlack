@@ -3,6 +3,7 @@ name: commands
 group: app
 title: api.app
 signature: (): Command[]
+preview: app-commands
 ---
 
 What every other mod has registered, so a palette can offer all of them rather than only its own.

@@ -3,6 +3,7 @@ name: list
 group: assets
 title: api.assets
 signature: (): string[]
+preview: assets-list
 ---
 
 Every readable file in the mod's own folder, folder-relative and forward-slashed — the same strings you would import.

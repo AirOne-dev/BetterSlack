@@ -795,7 +795,7 @@ api.slack.composer.focus();</code></pre>
 <p><code>set</code> takes effect the next time Slack starts: the window's material is
 chosen when the window is created, and nothing in the page can restart it.
 Tell the user so rather than leaving them to wonder why nothing happened.</p>
-    
+    <div class="api-demo" data-demo="slack-desktop" data-controls="[{&quot;key&quot;:&quot;key&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;windowVibrancy&quot;,&quot;label&quot;:&quot;preference&quot;,&quot;options&quot;:[&quot;windowVibrancy&quot;,&quot;useHwAcceleration&quot;,&quot;runFromTray&quot;,&quot;zoomLevel&quot;]},{&quot;key&quot;:&quot;value&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;wanted&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Slack's own preferences, the ones it keeps outside app.asar
 api.slack.desktop.keys();                     // what may be set, and which need a restart
@@ -812,7 +812,7 @@ if (api.slack.desktop.needsRestart('windowVibrancy')) await api.slack.restart();
   </header>
   <div class="panel__body">
     <p>The files somebody shared, newest first. <code>limit</code> caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw.</p>
-    
+    <div class="api-demo" data-demo="slack-filesfrom" data-controls="[{&quot;key&quot;:&quot;user&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;U0EXAMPLE1&quot;,&quot;label&quot;:&quot;user id&quot;,&quot;options&quot;:[&quot;U0EXAMPLE1&quot;,&quot;U0EXAMPLE2&quot;,&quot;U0EXAMPLE3&quot;]},{&quot;key&quot;:&quot;limit&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:2,&quot;label&quot;:&quot;limit&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const files = await api.slack.filesFrom('U0EXAMPLE1', 20);
 for (const file of files) api.log.info(file.name);</code></pre>
@@ -826,7 +826,7 @@ for (const file of files) api.log.info(file.name);</code></pre>
   </header>
   <div class="panel__body">
     <p>Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave.</p>
-    
+    <div class="api-demo" data-demo="slack-hideconversation" data-controls="[{&quot;key&quot;:&quot;channel&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;design&quot;,&quot;label&quot;:&quot;channel&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Removes it from the sidebar. The history is untouched.
 await api.slack.hideConversation('C0BFQCYBRAB');</code></pre>
@@ -840,7 +840,7 @@ await api.slack.hideConversation('C0BFQCYBRAB');</code></pre>
   </header>
   <div class="panel__body">
     <p>Run a handler each time a profile pane appears, with the pane and the user id it is showing. Mount per pane rather than once: a single mount fills whichever profile it reaches first and starves the other.</p>
-    
+    <div class="api-demo" data-demo="slack-onprofilepane" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Local notes&quot;,&quot;label&quot;:&quot;section title&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.onProfilePane(({ element, userId }) =&gt; {
   element.append(api.helpers.section('More details', rowsFor(userId)));
@@ -861,7 +861,7 @@ popstate, there is no exposed React Router instance, and an &lt;a&gt; to
 /archives/&lt;id&gt; leaves the client entirely. What does work is Slack's own
 documented deep-link scheme, which the desktop app handles in place --
 measured against 4.51: same document, no reload, view follows.</p>
-    
+    <div class="api-demo" data-demo="slack-openconversation" data-controls="[{&quot;key&quot;:&quot;channel&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;C0EXAMPLE1&quot;,&quot;label&quot;:&quot;channel id&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;design&quot;,&quot;label&quot;:&quot;its name&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// A deep link Slack routes in place: same document, no reload.
 api.slack.openConversation('C0BFQCYBRAB');</code></pre>
@@ -877,7 +877,7 @@ api.slack.openConversation('C0BFQCYBRAB');</code></pre>
     <p>Open the direct message with someone, creating it if there is none.</p>
 <p><code>conversations.open</code> returns the IM's id, and opening one that did not
 exist makes Slack navigate to it on its own; the deep link covers the rest.</p>
-    
+    <div class="api-demo" data-demo="slack-opendirectmessage" data-controls="[{&quot;key&quot;:&quot;user&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;U0EXAMPLE2&quot;,&quot;label&quot;:&quot;user id&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const channelId = await api.slack.openDirectMessage('U0EXAMPLE1');</code></pre>
   </div>
@@ -890,7 +890,7 @@ exist makes Slack navigate to it on its own; the deep link covers the rest.</p>
   </header>
   <div class="panel__body">
     <p>Open somebody's profile, through Slack's own deep link — same document, no reload. Not every id has one: an app, or a conversation with yourself, gives a pane that never appears.</p>
-    
+    <div class="api-demo" data-demo="slack-openuserprofile" data-controls="[{&quot;key&quot;:&quot;user&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;U0EXAMPLE2&quot;,&quot;label&quot;:&quot;user id&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.openUserProfile('U0EXAMPLE1');</code></pre>
   </div>
@@ -906,7 +906,7 @@ exist makes Slack navigate to it on its own; the deep link covers the rest.</p>
 <p>For settings that are read when a window is created, so they can never
 take effect in place. This tears down the page that called it: do nothing
 after it but let go, and never call it without asking first.</p>
-    
+    <div class="api-demo" data-demo="slack-restart" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// The loader stops Slack, applies what was wanted and launches it again,
 // rebuilding its own connection in place.
@@ -939,7 +939,7 @@ await api.slack.restart();</code></pre>
 <code>vip_users</code> as a comma-separated list. Read, edit, write -- which also
 means two windows editing it at once can clobber each other, exactly as
 they would in Slack itself.</p>
-    
+    <div class="api-demo" data-demo="slack-setvip" data-controls="[{&quot;key&quot;:&quot;vips&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;U0EXAMPLE1&quot;,&quot;label&quot;:&quot;starting list&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>await api.slack.setVip('U0EXAMPLE1', true);
 // VIP is a preference, not an endpoint: users.prefs.set, name=vip_users</code></pre>
@@ -960,7 +960,7 @@ start control.</p>
 separate window that no web API exposes. A plain element.click() reaches
 it, so at least no trusted gesture is needed.</p>
 <p>Resolves false when Slack shows no huddle control for that conversation.</p>
-    
+    <div class="api-demo" data-demo="slack-starthuddle" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Opens the conversation, then presses Slack's own start control.
 const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
@@ -988,7 +988,7 @@ const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
   </header>
   <div class="panel__body">
     <p>The workspace's VIP list. VIP is a preference rather than an endpoint: a comma-separated list under <code>vip_users</code>.</p>
-    
+    <div class="api-demo" data-demo="slack-vipusers" data-controls="[{&quot;key&quot;:&quot;pref&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;U0EXAMPLE1,U0EXAMPLE3&quot;,&quot;label&quot;:&quot;vip_users&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const vips = await api.slack.vipUsers();   // ['U0EXAMPLE1', …]</code></pre>
   </div>
@@ -1003,7 +1003,7 @@ const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
     <p>Slack's own web API, as the signed-in user. Reads the session token in one
 audited place so mods never touch localStorage themselves; requests can
 only reach Slack's own origin. See src/runtime/web-api.ts.</p>
-    
+    <div class="api-demo" data-demo="slack-web" data-controls="[{&quot;key&quot;:&quot;user&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;U0EXAMPLE1&quot;,&quot;label&quot;:&quot;user id&quot;,&quot;options&quot;:[&quot;U0EXAMPLE1&quot;,&quot;U0EXAMPLE2&quot;,&quot;U0EXAMPLE3&quot;]}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const user = await api.slack.web.userInfo('U0EXAMPLE1');
 
@@ -1064,7 +1064,7 @@ child.document.head.append(styleWith(api.ui.kitCss));</code></pre>
   </header>
   <div class="panel__body">
     <p>The kit's stylesheet, as text, for the document a mod opened. A window a mod opens is blank — no Slack stylesheet to borrow — so this is what makes the primitives look like anything.</p>
-    
+    <div class="api-demo" data-demo="ui-kitcss" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const style = child.document.createElement('style');
 style.textContent = api.ui.kitCss;
@@ -1377,7 +1377,7 @@ a window that would close.</p>
   </header>
   <div class="panel__body">
     <p>Fetch a URL and save it to the download folder. The renderer cannot do this for Slack's CDN, which serves without CORS headers.</p>
-    
+    <div class="api-demo" data-demo="files-save" data-controls="[{&quot;key&quot;:&quot;url&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-…-512&quot;,&quot;label&quot;:&quot;url&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;filename&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;robin-original.jpg&quot;,&quot;label&quot;:&quot;saved as&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// The loader fetches it: Slack's CDN serves without CORS headers.
 const { path } = await api.files.save(avatarUrl, 'jean-original.jpg');</code></pre>
@@ -1399,7 +1399,7 @@ to 1600x1000, the size every mod's picture in the catalogue uses.</p>
 <p>Anything of your own that should not be in the picture has to be hidden
 before you call this and put back after: the shutter is on the loader's
 side, and it photographs whatever is on screen.</p>
-    
+    <div class="api-demo" data-demo="files-screenshot" data-controls="[{&quot;key&quot;:&quot;filename&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;slack-1440x900.webp&quot;,&quot;label&quot;:&quot;saved as&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;size&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;1440x900&quot;,&quot;label&quot;:&quot;size&quot;,&quot;options&quot;:[&quot;1440x900&quot;,&quot;1280x800&quot;,&quot;880x560&quot;]}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const { path } = await api.files.screenshot({
   size: '1600x1000',
@@ -1415,7 +1415,7 @@ side, and it photographs whatever is on screen.</p>
   </header>
   <div class="panel__body">
     <p>Every readable file in the mod's own folder, folder-relative and forward-slashed — the same strings you would import.</p>
-    
+    <div class="api-demo" data-demo="assets-list" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.assets.list();   // ['index.js', 'panel.css', 'views/start.js']</code></pre>
   </div>
@@ -1428,7 +1428,7 @@ side, and it photographs whatever is on screen.</p>
   </header>
   <div class="panel__body">
     <p>One of the mod's own files, as text. This is what lets a plugin keep its stylesheet in a real <code>.css</code> file, with an editor that highlights it, instead of a template literal.</p>
-    
+    <div class="api-demo" data-demo="assets-text" data-controls="[{&quot;key&quot;:&quot;file&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;index.js&quot;,&quot;label&quot;:&quot;file&quot;,&quot;options&quot;:[&quot;index.js&quot;,&quot;mod.json&quot;]}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.css(api.assets.text('panel.css'));</code></pre>
   </div>
@@ -1456,7 +1456,7 @@ side, and it photographs whatever is on screen.</p>
   </header>
   <div class="panel__body">
     <p>One theme's stylesheet as text, so a builder can start from it rather than from nothing.</p>
-    
+    <div class="api-demo" data-demo="themes-source" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const css = await api.themes.source('midnight');</code></pre>
   </div>
@@ -1474,7 +1474,7 @@ editor working on top of a chosen base cannot show its own work while
 whatever is switched on is still painting. Nothing is enabled or disabled
 by this: the settings are untouched and the stylesheets come straight
 back. Undone automatically when the plugin stops.</p>
-    
+    <div class="api-demo" data-demo="themes-suspend" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Hold the user's themes back while a builder paints its own preview.
 api.themes.suspend(true);
@@ -1489,7 +1489,7 @@ api.onDispose(() =&gt; api.themes.suspend(false));</code></pre>
   </header>
   <div class="panel__body">
     <p>What every other mod has registered, so a palette can offer all of them rather than only its own.</p>
-    
+    <div class="api-demo" data-demo="app-commands" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const everything = api.app.commands();   // what every other mod registered</code></pre>
   </div>
@@ -1520,7 +1520,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
 saved; this points at the mod's own page there -- description, picture,
 readme, settings -- rather than reimplementing any of it somewhere with
 less room.</p>
-    
+    <div class="api-demo" data-demo="app-openmod" data-controls="[{&quot;key&quot;:&quot;id&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;focus-mode&quot;,&quot;label&quot;:&quot;mod id&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.app.openMod('channel-notes');   // that mod's own page</code></pre>
   </div>
@@ -1533,7 +1533,7 @@ less room.</p>
   </header>
   <div class="panel__body">
     <p>Open the Mods panel, optionally on a particular tab. With no argument it opens wherever it was left.</p>
-    
+    <div class="api-demo" data-demo="app-openpanel" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.app.openPanel('themes');   // or no argument for wherever it was</code></pre>
   </div>
@@ -1546,7 +1546,7 @@ less room.</p>
   </header>
   <div class="panel__body">
     <p>Switch a mod on or off, exactly as the panel's own toggle does — including writing it to the settings file.</p>
-    
+    <div class="api-demo" data-demo="app-setenabled" data-controls="[{&quot;key&quot;:&quot;enabled&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:false,&quot;label&quot;:&quot;on&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>await api.app.setEnabled('midnight', true);</code></pre>
   </div>
@@ -1559,7 +1559,7 @@ less room.</p>
   </header>
   <div class="panel__body">
     <p>Install a mod into the user's own folder, or remove it. Installing is what the Browse shelf does.</p>
-    
+    <div class="api-demo" data-demo="app-setinstalled" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>await api.app.setInstalled('aurora', true);</code></pre>
   </div>
@@ -1628,7 +1628,7 @@ api.css(`
   </header>
   <div class="panel__body">
     <p>This mod's id: its folder name, the key its settings are stored under, and the prefix on everything it puts in the DOM.</p>
-    
+    <div class="api-demo" data-demo="plugin-id" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.id;   // 'channel-notes' — the folder name, and the settings key</code></pre>
   </div>
@@ -1641,7 +1641,7 @@ api.css(`
   </header>
   <div class="panel__body">
     <p>This mod's own <code>mod.json</code>, as the loader parsed it — its version, its author, the settings it declares.</p>
-    
+    <div class="api-demo" data-demo="plugin-manifest" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.manifest.version;      // '1.2.0'
 api.manifest.settings;     // what the panel draws for you</code></pre>
@@ -1655,7 +1655,7 @@ api.manifest.settings;     // what the panel draws for you</code></pre>
   </header>
   <div class="panel__body">
     <p>Register a teardown callback. It runs when the plugin is switched off, which is the moment everything a mod started has to stop: intervals, listeners, anything it put on the page.</p>
-    
+    <div class="api-demo" data-demo="plugin-ondispose" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const timer = setInterval(tick, 1000);
 api.onDispose(() =&gt; clearInterval(timer));</code></pre>
@@ -1674,7 +1674,7 @@ panel like any other and survives a restart.</p>
 manifest it is handed, so the worst a mod can do here is add an ugly
 stylesheet the user can switch off -- which is not true of plugins, and is
 why there is no equivalent for them.</p>
-    
+    <div class="api-demo" data-demo="plugin-savetheme" data-controls="[{&quot;key&quot;:&quot;id&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;my-theme&quot;,&quot;label&quot;:&quot;theme id&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;css&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;:root { --dt_color-base-pry: #101322; }&quot;,&quot;label&quot;:&quot;stylesheet&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>await api.saveTheme({
   id: 'my-theme',
@@ -1692,7 +1692,7 @@ why there is no equivalent for them.</p>
   </header>
   <div class="panel__body">
     <p>BetterSlack's version, not the mod's. The mod's is in api.manifest.version.</p>
-    
+    <div class="api-demo" data-demo="plugin-version" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.version;   // BetterSlack's version, not the mod's</code></pre>
   </div>
@@ -1701,6 +1701,7 @@ why there is no equivalent for them.</p>
 
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script src="api-fixtures.js"></script>
 <script src="api-previews.js"></script>
 </body>
 </html>
