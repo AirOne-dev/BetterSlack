@@ -136,14 +136,6 @@ const SHOTS = [
   { id: 'copy-message-link', hover: MESSAGE },
   { id: 'quote-reply', hover: MESSAGE },
   {
-    id: 'focus-mode',
-    frames: [
-      { open: 'command:focus-mode' },
-      // The same conversation with it off, which is the whole argument.
-      { name: 'before' },
-    ],
-  },
-  {
     id: 'devtools',
     hover: '.betterslack-toolbar-button:not(#betterslack-control-button)',
     expect: '#betterslack-tb-devtools-devtools',

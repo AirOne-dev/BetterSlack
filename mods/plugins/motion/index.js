@@ -19,8 +19,8 @@
 // builds the entire sheet each time and hands it over in one go rather than
 // adding to it. (Helpers that write CSS -- toggle's `whenOn`, badge, tooltip --
 // have a style node of their own, so they cannot collide with this one. They
-// did not always, and Focus Mode shipped folding nothing away because of it;
-// see tests/styles.test.mjs.)
+// did not always, and a shipped mod folded nothing away because of it; see
+// tests/styles.test.mjs.)
 
 import { STRINGS } from './strings.js';
 import { onViewChange, restartAnimation } from './navigation.js';

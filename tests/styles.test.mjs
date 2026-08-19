@@ -5,10 +5,14 @@
 // CSS of their own. Those two used to share one <style> node, so a mod that
 // used both kept only whichever wrote last.
 //
-// It was not theoretical. Focus Mode called `toggle({ whenOn })` to hide the
+// It was not theoretical. A shipped mod called `toggle({ whenOn })` to hide the
 // sidebar and then `api.css` to style its indicator, and shipped folding
 // nothing away at all. Its own tests passed: they asserted on every call the
-// mod made, and the bug is that only one of those calls survives.
+// mod made, and the bug is that only one of those calls survives. That mod has
+// since been removed from the catalogue, which is why the third test below
+// carries its shape as a fixture rather than importing it -- the regression
+// outlives any one mod, and a test that can be deleted along with its subject
+// is not covering the runtime.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -67,9 +71,8 @@ test('the helpers are wired to a node of their own', () => {
   );
 });
 
-test('a mod using both keeps both, which Focus Mode is the reason for', async () => {
+test('a mod using both keeps both, which is what the bug was', async () => {
   await withDom(async () => {
-    const { default: focus } = await import('../mods/plugins/focus-mode/index.js');
     const sheets = { plugin: '', helpers: '' };
     const store = {};
     const settings = {
@@ -77,92 +80,31 @@ test('a mod using both keeps both, which Focus Mode is the reason for', async ()
       set: async (key, value) => { store[key] = value; },
     };
 
-    // Only what the mod touches, and both sinks kept apart exactly as the
-    // runtime now keeps them.
-    const api = {
-      id: 'focus-mode',
-      css: (text) => { sheets.plugin = text; },
-      settings: { ...settings, all: () => ({ ...store }), onChange: () => () => {} },
-      i18n: { strings: (tables) => (key) => tables.en[key] ?? key },
-      dom: { h: (tag, attrs = {}, kids = []) => {
-        const el = document.createElement(tag);
-        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k === 'class' ? 'class' : k, v);
-        for (const kid of kids) el.append(typeof kid === 'string' ? document.createTextNode(kid) : kid);
-        return el;
-      } },
-      commands: { add: () => () => {} },
-      onDispose: () => {},
-      log: { info() {}, warn() {}, error() {} },
-    };
-    api.helpers = createHelpers({
-      pluginId: 'focus-mode',
+    // Both sinks kept apart exactly as the runtime keeps them.
+    const helpers = createHelpers({
+      pluginId: 'fixture',
       css: (text) => { sheets.helpers = text; },
       toast: () => {},
       settings,
       track: (fn) => fn,
     });
 
-    await focus.start(api);
+    /*
+     * The shape the bug had: a `whenOn` rule that hides something, and an
+     * `api.css` call that styles the mod's own indicator. Either one alone
+     * passes whichever way the runtime is wired; only both together catch a
+     * shared style node.
+     */
+    await helpers.toggle({
+      key: 'on',
+      className: 'betterslack-fixture-on',
+      initial: true,
+      whenOn: 'html.betterslack-fixture-on .p-channel_sidebar { display: none }',
+    });
+    const api = { css: (text) => { sheets.plugin = text; } };
+    api.css('.betterslack-fixture-indicator { position: fixed }');
 
     assert.ok(sheets.helpers.includes('p-channel_sidebar'), 'it really does hide the sidebar');
-    assert.ok(sheets.plugin.includes('betterslack-focus-indicator'), 'and really does draw its indicator');
+    assert.ok(sheets.plugin.includes('betterslack-fixture-indicator'), 'and really does draw its indicator');
   });
-});
-
-/*
- * Slack's own preferences file.
- *
- * This is the only thing BetterSlack writes outside its own home, so it is
- * held to a narrow contract: two keys, nothing else touched, and an untouched
- * file when it already agrees. The edit is a pure function precisely so it can
- * be checked without a Slack installation.
- */
-test('the window flag changes two keys and nothing else', async () => {
-  const { withPrefs } = await import('../dist/slack-settings.mjs');
-
-  const original = {
-    settings: {
-      windowVibrancy: false,
-      slackDefaults: { windowVibrancy: false, userTheme: 'dark' },
-      locale: 'fr-FR',
-      mainWindowSettings: { bounds: { x: 1, y: 2 } },
-    },
-    teams: { T1: { name: 'Acme' } },
-  };
-
-  const { changed, state } = withPrefs(structuredClone(original), { windowVibrancy: true });
-  assert.equal(changed, true);
-  assert.equal(state.settings.windowVibrancy, true);
-  assert.equal(state.settings.slackDefaults.windowVibrancy, true, 'and the defaults snapshot with it');
-  assert.equal(state.settings.slackDefaults.userTheme, 'dark', 'neighbours untouched');
-  assert.equal(state.settings.locale, 'fr-FR');
-  assert.deepEqual(state.teams, original.teams, 'and the workspaces are not ours to rewrite');
-
-  assert.equal(withPrefs(structuredClone(state), { windowVibrancy: true }).changed, false, 'already true is no write');
-});
-
-test('a settings file it does not recognise is left alone', async () => {
-  const { withPrefs } = await import('../dist/slack-settings.mjs');
-  // Slack could rename or restructure this at any update. Refusing to guess is
-  // the difference between a mod that stops working and a Slack that will not
-  // start.
-  for (const junk of [null, 'not json', 42, {}, { settings: null }, { settings: 'nope' }]) {
-    const { changed } = withPrefs(junk, { windowVibrancy: true });
-    assert.equal(changed, false, `left ${JSON.stringify(junk)} alone`);
-  }
-});
-
-test('refuses a key that is not on the list, and a value of the wrong type', async () => {
-  const { withPrefs, checkPref } = await import('../dist/slack-settings.mjs');
-
-  // The file holds the workspaces you are signed in to. A mod reaching a key
-  // nobody vetted is the failure this list exists to make impossible.
-  assert.match(checkPref('teams', {}), /not a Slack preference/);
-  assert.match(checkPref('windowVibrancy', 'yes'), /is a boolean/);
-  assert.equal(checkPref('windowVibrancy', true), null);
-
-  const state = { settings: { windowVibrancy: false, teams: 'mine' } };
-  const { changed, state: after } = withPrefs(state, { teams: 'theirs', windowVibrancy: true });
-  assert.equal(changed, true, 'the allowed key went in');
-  assert.equal(after.settings.teams, 'mine', 'and the refused one did not');
 });

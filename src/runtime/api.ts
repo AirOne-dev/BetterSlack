@@ -427,8 +427,8 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
        * on a settings change would otherwise stack copies of it forever. But
        * `helpers.toggle({ whenOn })`, `helpers.badge` and `helpers.tooltip`
        * all wrote through that same node, so a mod that used one of them *and*
-       * called `api.css` silently kept only whichever went last. Focus Mode
-       * did exactly that and shipped: it put its class on <html>, drew its
+       * called `api.css` silently kept only whichever went last. A mod did
+       * exactly that and shipped: it put its class on <html>, drew its
        * indicator, and folded nothing away, because its own indicator
        * stylesheet had overwritten the rules that hide the sidebar. Its tests
        * passed throughout -- they asserted on every call made, and the bug is

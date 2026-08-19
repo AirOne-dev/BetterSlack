@@ -481,14 +481,18 @@
       "id": "discord-light",
       "name": "Discord Light",
       "type": "theme",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "author": "AirOne-dev",
-      "description": "Slack wearing Discord's default light theme: white chat on grey chrome, blurple accent, gg sans type stack, 8px corners and circular avatars.",
+      "description": "Discord Dark's stylesheet with Discord's light palette: white chat on grey chrome, blurple accent, round rail icons with the sliding pill, gg sans type stack. Brings in the member column and account strip as plugins.",
       "descriptions": {
-        "fr": "Slack habillé du thème clair de Discord : conversation blanche sur chrome gris, accent blurple, pile typographique gg sans, coins de 8 px et avatars circulaires."
+        "fr": "La feuille de style de Discord Dark avec la palette claire de Discord : conversation blanche sur chrome gris, accent blurple, icônes rondes avec la pastille coulissante, pile typographique gg sans. Amène la colonne des membres et le bandeau de compte sous forme de plugins."
       },
       "entry": "theme.css",
       "icon": "icon.svg",
+      "requires": [
+        "member-sidebar",
+        "sidebar-account"
+      ],
       "betterslackApi": 1,
       "slackVersion": "4.51",
       "tags": [
@@ -509,46 +513,6 @@
         }
       ],
       "path": "themes/discord-light"
-    },
-    {
-      "id": "focus-mode",
-      "name": "Focus Mode",
-      "type": "plugin",
-      "version": "1.0.0",
-      "author": "AirOne-dev",
-      "description": "Press Cmd/Ctrl+Shift+F to fold away the sidebar, the rail and the top bar, leaving just the conversation on a narrower, centred column. Press again to bring it all back.",
-      "descriptions": {
-        "fr": "Cmd/Ctrl+Maj+F replie la barre latérale, le rail et la barre du haut, et ne laisse que la conversation, dans une colonne plus étroite et centrée. Une seconde pression remet tout en place."
-      },
-      "entry": "index.js",
-      "icon": "icon.svg",
-      "betterslackApi": 1,
-      "slackVersion": "4.51",
-      "tags": [
-        "productivity",
-        "layout"
-      ],
-      "readme": "README.md",
-      "readmes": {
-        "fr": "README.fr.md"
-      },
-      "screenshots": [
-        {
-          "file": "screenshot.webp",
-          "captions": {
-            "en": "The mod at work, in a workspace with the names replaced.",
-            "fr": "Le mod à l’œuvre, dans un espace de travail dont les noms ont été remplacés."
-          }
-        },
-        {
-          "file": "screenshot-before.webp",
-          "captions": {
-            "en": "The same conversation with it off: the rail, the sidebar and the top bar all back.",
-            "fr": "La même conversation sans lui : le rail, la barre latérale et la barre du haut sont revenus."
-          }
-        }
-      ],
-      "path": "plugins/focus-mode"
     },
     {
       "id": "focus-rings",

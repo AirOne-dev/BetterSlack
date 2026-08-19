@@ -4,7 +4,7 @@ group: app
 title: api.app
 signature: (id: string): void
 preview: app-openmod
-control: id | text | focus-mode | mod id
+control: id | text | channel-notes | mod id
 ---
 
 Open the panel on one mod, with its settings unfolded.

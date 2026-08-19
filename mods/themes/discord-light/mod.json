@@ -2,14 +2,18 @@
   "id": "discord-light",
   "name": "Discord Light",
   "type": "theme",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "AirOne-dev",
-  "description": "Slack wearing Discord's default light theme: white chat on grey chrome, blurple accent, gg sans type stack, 8px corners and circular avatars.",
+  "description": "Discord Dark's stylesheet with Discord's light palette: white chat on grey chrome, blurple accent, round rail icons with the sliding pill, gg sans type stack. Brings in the member column and account strip as plugins.",
   "descriptions": {
-    "fr": "Slack habillé du thème clair de Discord : conversation blanche sur chrome gris, accent blurple, pile typographique gg sans, coins de 8 px et avatars circulaires."
+    "fr": "La feuille de style de Discord Dark avec la palette claire de Discord : conversation blanche sur chrome gris, accent blurple, icônes rondes avec la pastille coulissante, pile typographique gg sans. Amène la colonne des membres et le bandeau de compte sous forme de plugins."
   },
   "entry": "theme.css",
   "icon": "icon.svg",
+  "requires": [
+    "member-sidebar",
+    "sidebar-account"
+  ],
   "betterslackApi": 1,
   "slackVersion": "4.51",
   "tags": [

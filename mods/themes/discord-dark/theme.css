@@ -54,6 +54,22 @@
   --dc-green: #3ba55d;
   --dc-yellow: #e0a01e;
 
+  /*
+   * The five a light palette cannot simply inherit.
+   *
+   * Everything above is a colour; these are the places where "the same rule,
+   * lighter" is not a colour swap -- a shadow that has to be a tint rather than
+   * a shade, a scrollbar whose thumb and track trade places, a floating surface
+   * that is the darkest thing on screen here and the brightest one there.
+   * Naming them is what lets discord-light be this stylesheet with a different
+   * palette rather than a second stylesheet that drifts. See its test.
+   */
+  --dc-header-shadow: 0 1px 0 rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.16);
+  --dc-float: var(--dc-rail);
+  --dc-float-text: var(--dc-text);
+  --dc-scroll-thumb: var(--dc-rail);
+  --dc-scroll-track: var(--dc-raised);
+
   /* Content and controls. */
   --dt_color-base-pry: var(--dc-chat);
   --dt_color-base-sec: var(--dc-raised);
@@ -372,7 +388,7 @@ html, body { background-color: var(--dc-chat); }
 .p-ia4_sidebar_header {
   height: 48px !important;
   padding: 0 16px !important;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--dc-header-shadow);
   position: relative;
   z-index: 2;
 }
@@ -543,12 +559,18 @@ html, body { background-color: var(--dc-chat); }
 }
 .c-message_attachment__border { display: none !important; }
 
-/* Menus and tooltips float on the darkest shade. */
+/*
+ * Menus and tooltips float on their own surface -- the darkest shade in the
+ * dark theme, white in the light one -- with a hairline, which is what keeps a
+ * white menu off a white conversation. The same rule reads as a subtle edge on
+ * near-black.
+ */
 .c-menu,
 .c-menu__items,
 .c-tooltip__tip {
-  background: var(--dc-rail) !important;
-  color: var(--dc-text) !important;
+  background: var(--dc-float) !important;
+  color: var(--dc-float-text) !important;
+  border: 1px solid var(--dc-surface) !important;
 }
 .c-menu_item__button:hover {
   background: var(--dc-accent) !important;
@@ -558,13 +580,13 @@ html, body { background-color: var(--dc-chat); }
 /* Discord's scrollbars: a thumb on a darker track, both inset. */
 ::-webkit-scrollbar { width: 16px; height: 16px; }
 ::-webkit-scrollbar-thumb {
-  background: var(--dc-rail);
+  background: var(--dc-scroll-thumb);
   border: 4px solid transparent;
   background-clip: content-box;
   border-radius: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--dc-raised);
+  background: var(--dc-scroll-track);
   border: 4px solid transparent;
   background-clip: content-box;
   border-radius: 8px;

@@ -146,9 +146,9 @@ const DRAFT = { sel: '.ql-editor', as: WORDS };
  * what the mods draw *is* the workspace -- the palette's rows, the member
  * column's names -- and that has to be replaced like everything else. What is
  * listed here is fixed copy: the panel, a toast, a hint under a field, the
- * strips Focus Mode and this mod leave on screen.
+ * strip this mod leaves on screen.
  */
-const KEEP = '#betterslack-panel, #betterslack-toast-host, #betterslack-focus-indicator,'
+const KEEP = '#betterslack-panel, #betterslack-toast-host,'
   + ' #betterslack-demo-indicator, .betterslack-hint, .betterslack-widget_titles';
 
 const hash = (text) => {

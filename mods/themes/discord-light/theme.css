@@ -1,129 +1,185 @@
 /*
- * Discord Light — Slack in Discord's default light theme.
+ * Discord Light — Slack in Discord's light theme.
  *
- * The dark theme's twin; see mods/themes/discord-dark/theme.css for how the
- * three Slack token families are mapped. Discord's light tokens:
+ * This file is `discord-dark/theme.css` with one block changed. Everything
+ * below the palette is byte-for-byte the same stylesheet, and a test in this
+ * folder fails if the two ever drift: the two themes are one design with two
+ * palettes, and the moment they are two stylesheets, one of them stops getting
+ * the fixes.
  *
- *   background-primary    #ffffff   the chat surface
- *   background-secondary  #f2f3f5   channel sidebar
- *   background-tertiary   #e3e5e8   server rail, search field
- *   background-floating   #ffffff   popovers, with a shadow rather than a fill
- *   composer              #ebedef
- *   divider               #e3e5e8
- *   text-normal           #313338
- *   text-muted            #5c5e66
- *   header-primary        #060607
- *   interactive-normal    #4e5058
- *   blurple               #5865f2
- *   link                  #006ce7
+ * Where the colours come from, stated plainly because the dark theme's are not
+ * from the same place. Discord Dark's were sampled off a screenshot of the real
+ * client. These are Discord's own published light-theme design tokens, by name,
+ * which is the best source available without a client to photograph:
  *
- * "gg sans" is not redistributable and is not installed on your machine; the
- * stack below is Discord's own fallback chain.
+ *   --background-tertiary       #e3e5e8   server rail, channel sidebar
+ *   --background-primary        #ffffff   message pane, top bar
+ *   --background-secondary      #f2f3f5   composer field, raised surfaces
+ *   --background-modifier-*     #dcdfe4   dividers, neutral pills
+ *                               #d4d7dc   selected channel row
+ *                               #f7f7f8   message hover
+ *   --text-normal               #2e3338   message text
+ *   --header-primary            #060607   headings, selected channel name
+ *   --channels-default          #5c5e66   timestamps, idle channel names
+ *   --text-muted                #6d6f78   date-divider label
+ *                               #87898c   composer placeholder
+ *   --brand-experiment          #5865f2   blurple: reaction borders, focus
+ *                               #e0e3fd   mention and reaction chip background
+ *                               #4752c4   mention text, readable on the chip
+ *   --status-danger             #d83c3e   unread badge
+ *
+ * Two of them are not Discord's, and are marked: the mention chip and the
+ * mention text. Discord paints the chip as blurple at 10% over whatever is
+ * behind it, which works there and does not here -- Slack puts mentions on the
+ * pane, on a hovered row and inside a raised card, and a translucent chip is a
+ * different colour in each. Flattened to the value it resolves to on the pane,
+ * with the text darkened to stay readable on it.
+ *
+ * "gg sans" is not redistributable and is not installed here; the stack below
+ * is Discord's own fallback chain, so this matches what a Discord user without
+ * the font sees.
  */
 
 :root,
 .sk-client-theme--light,
 .sk-client-theme--dark {
-  --dc-bg-primary: #ffffff;
-  --dc-bg-secondary: #f2f3f5;
-  --dc-bg-secondary-alt: #ebedef;
-  --dc-bg-tertiary: #e3e5e8;
-  --dc-bg-floating: #ffffff;
-  --dc-composer: #ebedef;
-  --dc-divider: #e3e5e8;
-  --dc-text: #313338;
-  --dc-muted: #5c5e66;
-  --dc-header: #060607;
-  --dc-interactive: #4e5058;
-  --dc-blurple: #5865f2;
-  --dc-link: #006ce7;
-  --dc-green: #248046;
-  --dc-red: #d83a42;
-  --dc-yellow: #a84300;
-  --dc-hover: rgba(116, 127, 141, 0.16);
-  --dc-selected: rgba(116, 127, 141, 0.24);
+  --dc-rail: #e3e5e8;
+  --dc-chat: #ffffff;
+  --dc-raised: #f2f3f5;
+  --dc-selected: #d4d7dc;
+  --dc-surface: #dcdfe4;
+  --dc-hover: #f7f7f8;
 
-  --dt_color-base-pry: var(--dc-bg-primary);
-  --dt_color-base-sec: var(--dc-bg-secondary);
-  --dt_color-base-ter: var(--dc-bg-secondary-alt);
-  --dt_color-base-modal: rgba(0, 0, 0, 0.7);
+  --dc-text: #2e3338;
+  --dc-bright: #060607;
+  --dc-muted: #5c5e66;
+  --dc-dim: #6d6f78;
+  --dc-placeholder: #87898c;
+
+  --dc-accent: #5865f2;
+  --dc-accent-bg: #e0e3fd;
+  --dc-accent-text: #4752c4;
+  --dc-red: #d83c3e;
+  --dc-green: #248046;
+  --dc-yellow: #b58500;
+
+  /*
+   * The five a light palette cannot simply inherit -- see the note in
+   * discord-dark, which names the same five for the same reason. The shadow is
+   * a tint of the ink rather than a shade of black, the scrollbar's thumb and
+   * track trade places, and the floating surface is the brightest thing on
+   * screen here where it is the darkest one there.
+   */
+  --dc-header-shadow: 0 1px 0 rgba(6, 6, 7, 0.08), 0 2px 6px rgba(6, 6, 7, 0.06);
+  --dc-float: var(--dc-chat);
+  --dc-float-text: var(--dc-text);
+  --dc-scroll-thumb: #c4c9ce;
+  --dc-scroll-track: var(--dc-raised);
+
+  /* Content and controls. */
+  --dt_color-base-pry: var(--dc-chat);
+  --dt_color-base-sec: var(--dc-raised);
+  --dt_color-base-ter: var(--dc-surface);
+  --dt_color-base-modal: rgba(6, 6, 7, 0.6);
 
   --dt_color-base-pry-hover: var(--dc-hover);
-  --dt_color-base-pry-pressed: var(--dc-selected);
-  --dt_color-base-sec-hover: var(--dc-hover);
+  --dt_color-base-pry-pressed: var(--dc-surface);
+  --dt_color-base-sec-hover: var(--dc-surface);
   --dt_color-base-sec-pressed: var(--dc-selected);
-  --dt_color-base-ter-hover: var(--dc-hover);
+  --dt_color-base-ter-hover: var(--dc-selected);
   --dt_color-base-ter-pressed: var(--dc-selected);
 
   --dt_color-content-pry: var(--dc-text);
   --dt_color-content-sec: var(--dc-muted);
-  --dt_color-content-ter: #80848e;
+  --dt_color-content-ter: var(--dc-placeholder);
 
-  --dt_color-otl-pry: #c4c9ce;
-  --dt_color-otl-sec: var(--dc-divider);
-  --dt_color-otl-ter: rgba(227, 229, 232, 0.7);
+  --dt_color-otl-pry: var(--dc-surface);
+  --dt_color-otl-sec: var(--dc-surface);
+  --dt_color-otl-ter: rgba(220, 223, 228, 0.6);
 
-  --dt_color-content-hgl-1: var(--dc-link);
+  --dt_color-content-hgl-1: var(--dc-accent-text);
   --dt_color-content-hgl-2: var(--dc-green);
   --dt_color-content-hgl-3: var(--dc-yellow);
   --dt_color-content-imp: var(--dc-red);
 
-  --dt_color-base-hgl-1: rgba(0, 108, 231, 0.08);
-  --dt_color-base-hgl-2: rgba(36, 128, 70, 0.08);
-  --dt_color-base-hgl-3: rgba(168, 67, 0, 0.08);
-  --dt_color-base-imp: rgba(216, 58, 66, 0.08);
+  --dt_color-base-hgl-1: var(--dc-accent-bg);
+  --dt_color-base-hgl-2: rgba(36, 128, 70, 0.12);
+  --dt_color-base-hgl-3: rgba(181, 133, 0, 0.12);
+  --dt_color-base-imp: rgba(216, 60, 62, 0.12);
 
-  /* Discord's light theme keeps a light sidebar, not an inverted dark one. */
-  --dt_color-base-inv-pry: var(--dc-bg-secondary);
-  --dt_color-content-inv-pry: var(--dc-header);
-  --dt_color-content-inv-sec: var(--dc-interactive);
+  /*
+   * Slack's "inverted" family is its chrome, not a dark-on-light trick: the
+   * rail and the sidebar wear it. In the dark theme it is the near-black rail
+   * with bright text; here it is the grey rail with dark text, so the *content*
+   * side of the family flips while the base side stays the rail. Getting this
+   * the wrong way round is how a light Discord theme ends up with white
+   * channel names on light grey.
+   */
+  --dt_color-base-inv-pry: var(--dc-rail);
+  --dt_color-content-inv-pry: var(--dc-bright);
+  --dt_color-content-inv-sec: var(--dc-muted);
 }
 
+/* Chrome and legacy families; both need !important. */
 :root,
 .sk-client-theme--light,
 .sk-client-theme--dark {
-  --dt_color-theme-base-inv-pry: var(--dc-bg-secondary) !important;
-  --dt_color-theme-base-inv-sec: var(--dc-bg-tertiary) !important;
-  --dt_color-theme-content-inv-pry: var(--dc-header) !important;
-  --dt_color-theme-content-inv-sec: var(--dc-interactive) !important;
-  --dt_color-theme-content-inv-ter: var(--dc-muted) !important;
-  --dt_color-theme-otl-inv-pry: var(--dc-divider) !important;
+  --dt_color-theme-base-inv-pry: var(--dc-rail) !important;
+  --dt_color-theme-base-inv-sec: var(--dc-rail) !important;
+  --dt_color-theme-content-inv-pry: var(--dc-bright) !important;
+  --dt_color-theme-content-inv-sec: var(--dc-muted) !important;
+  --dt_color-theme-content-inv-ter: var(--dc-placeholder) !important;
+  --dt_color-theme-otl-inv-pry: var(--dc-surface) !important;
 
   --dt_color-theme-surf-inv-pry: var(--dc-selected) !important;
-  --dt_color-theme-surf-inv-sec: var(--dc-bg-tertiary) !important;
+  --dt_color-theme-surf-inv-sec: var(--dc-rail) !important;
   --dt_color-theme-surf-inv-ter: var(--dc-hover) !important;
   --dt_color-theme-surf-pry: var(--dc-selected) !important;
   --dt_color-theme-surf-sec: var(--dc-hover) !important;
-  --dt_color-theme-surf-ter: var(--dc-bg-secondary) !important;
+  --dt_color-theme-surf-ter: var(--dc-chat) !important;
 
-  --dt_color-theme-base-pry: var(--dc-bg-primary) !important;
-  --dt_color-theme-base-sec: var(--dc-bg-secondary) !important;
+  --dt_color-theme-base-pry: var(--dc-chat) !important;
+  --dt_color-theme-base-sec: var(--dc-raised) !important;
+  --dt_color-theme-base-hgl-1: var(--dc-selected) !important;
   --dt_color-theme-content-pry: var(--dc-text) !important;
   --dt_color-theme-content-sec: var(--dc-muted) !important;
-  --dt_color-theme-content-ter: #80848e !important;
+  --dt_color-theme-content-ter: var(--dc-placeholder) !important;
 
+  /*
+   * The legacy triplets, which are bare `r, g, b` and parse as nothing if you
+   * write a hex here. Inverted swaps with primary, and the foreground ramp runs
+   * dark-to-light rather than light-to-dark: `--sk_foreground_max` is the
+   * strongest ink, which on a light theme is the darkest value, not the
+   * brightest. It is referenced 31 times across BetterSlack's own CSS and its
+   * fallback is Slack's light default, so getting it backwards is invisible
+   * until a dialog's hint text disappears.
+   */
   --sk_primary_background: 255, 255, 255 !important;
-  --sk_primary_foreground: 49, 51, 56 !important;
-  --sk_inverted_background: 49, 51, 56 !important;
+  --sk_primary_foreground: 46, 51, 56 !important;
+  --sk_inverted_background: 46, 51, 56 !important;
   --sk_inverted_foreground: 255, 255, 255 !important;
   --sk_foreground_max: 6, 6, 7 !important;
-  --sk_foreground_high: 49, 51, 56 !important;
-  --sk_foreground_mid: 78, 80, 88 !important;
+  --sk_foreground_high: 46, 51, 56 !important;
+  --sk_foreground_mid: 109, 111, 120 !important;
   --sk_foreground_low: 92, 94, 102 !important;
-  --sk_foreground_min: 128, 132, 142 !important;
+  --sk_foreground_min: 135, 137, 140 !important;
   --sk_foreground_max_solid: 6, 6, 7 !important;
   --sk_foreground_high_solid: 92, 94, 102 !important;
-  --sk_foreground_mid_solid: 196, 201, 206 !important;
-  --sk_foreground_low_solid: 227, 229, 232 !important;
+  --sk_foreground_mid_solid: 212, 215, 220 !important;
+  --sk_foreground_low_solid: 220, 223, 228 !important;
   --sk_foreground_min_solid: 242, 243, 245 !important;
   --sk_highlight: 88, 101, 242 !important;
   --sk_highlight_hover: 71, 82, 196 !important;
   --sk_highlight_accent: 88, 101, 242 !important;
 }
 
-html, body { background-color: var(--dc-bg-primary); }
-.p-theme_background { background: var(--dc-bg-primary) !important; }
+html, body { background-color: var(--dc-chat); }
+.p-theme_background { background: var(--dc-chat) !important; }
 
+/*
+ * Type. Discord's stack and its metrics: 16px messages on a 1.375 line height,
+ * 16px medium sender names, 12px timestamps, no letter-spacing anywhere.
+ */
 *:not(.c-emoji):not(.c-emoji *) {
   font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
   letter-spacing: 0 !important;
@@ -140,7 +196,7 @@ html, body { background-color: var(--dc-bg-primary); }
 .c-message_kit__sender {
   font-size: 16px !important;
   font-weight: 500 !important;
-  color: var(--dc-header) !important;
+  color: var(--dc-bright) !important;
 }
 
 .c-timestamp__label {
@@ -148,6 +204,242 @@ html, body { background-color: var(--dc-bg-primary); }
   color: var(--dc-muted) !important;
 }
 
+/* The rail and the sidebar share the same near-black; the pane is a step up. */
+.p-tab_rail,
+.p-channel_sidebar,
+.p-ia4_home_header {
+  background: var(--dc-rail) !important;
+  border: none !important;
+}
+
+/*
+ * THE RAIL, GIVEN DISCORD'S SHAPE
+ *
+ * Say plainly what this is and is not. Discord's rail lists servers; Slack's
+ * lists sections of one workspace (Home, DMs, Activity, ...). Nothing can turn
+ * one into the other, so what this does is give Slack's rail Discord's
+ * behaviour: round icons with no labels, a squircle that rounds off on hover,
+ * and the white pill on the left that grows from a dot to a bar.
+ *
+ * Sizes are 40px, not Discord's 48. Slack's rail is 70px wide and clips what
+ * overflows it, and 48px plus the pill does not fit: the tab container is laid
+ * out 80px wide, so the icons were being cut off on both sides. Widening the
+ * rail would mean overriding the workspace grid; 40px simply fits, with 15px of
+ * air each side.
+ */
+.p-tab_rail__tab_container {
+  /* Slack lays this out wider than the rail that clips it. */
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-top: 12px !important;
+  justify-content: center !important;
+  /* The containing block for the separator below, which must not be a flex
+     item -- see the note there. */
+  position: relative !important;
+}
+
+/*
+ * The menu has to fill the rail, or nothing inside it can be centred in the
+ * rail.
+ *
+ * Measured, and it is the whole reason the icons looked pushed to one side:
+ * the rail is 70px wide and its centre is at 35, but this menu was laid out
+ * 50px wide starting at 21 -- so a button with `margin: auto` centred itself
+ * at 46, eleven pixels off, and the pill beside it made the asymmetry obvious.
+ * `width: 100%` alone did not do it: as a flex item it was still allowed to
+ * shrink to its content, so the basis has to be stated too.
+ */
+.p-tab_rail__tab_menu {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 1 1 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  align-items: center !important;
+}
+
+.p-tab_rail__button {
+  position: relative;
+  width: 40px !important;
+  min-height: 0 !important;
+  height: 40px !important;
+  margin: 0 auto 8px !important;
+  padding: 0 !important;
+  border-radius: 14px !important;
+}
+.p-tab_rail__button__label { display: none !important; }
+
+.p-tab_rail__button__icon {
+  width: 40px !important;
+  height: 40px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  /* !important on the colours: Slack styles the active tab through
+   * --dt_color-theme-surf-* on a more specific selector, so without it the
+   * active icon keeps the grey the token family already gave it. */
+  background: var(--dc-surface) !important;
+  color: var(--dc-text) !important;
+  transition: border-radius 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+.p-tab_rail__button:hover .p-tab_rail__button__icon,
+.p-tab_rail__button--active .p-tab_rail__button__icon {
+  border-radius: 14px;
+  background: var(--dc-accent) !important;
+  color: #ffffff !important;
+}
+
+/*
+ * The pill, against the rail's left edge, out of the flow entirely.
+ *
+ * It is absolute, so it never took space -- but where it sits depends on the
+ * button it hangs off, and the button now sits in the middle of the rail. The
+ * rail is 70px and the button 40, so there are 15px of air on each side and
+ * -15px puts the pill's left edge exactly on the rail's. If either number
+ * changes, this is the line to change with it.
+ */
+.p-tab_rail__button::before {
+  content: "";
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  width: 4px;
+  height: 0;
+  margin-top: 0;
+  background: var(--dc-bright);
+  border-radius: 0 4px 4px 0;
+  transition: height 140ms ease, margin-top 140ms ease;
+}
+.p-tab_rail__button:hover::before { height: 16px; margin-top: -8px; }
+.p-tab_rail__button--active::before { height: 32px; margin-top: -16px; }
+
+/*
+ * The separator under the workspace icon, and the mistake it used to be.
+ *
+ * This container is laid out `flex-direction: row`, so a ::before with a width
+ * is not a line above the icons -- it is a *sibling of them*, 32px wide, taking
+ * its place in the row. Measured: it left the tab menu 50px wide starting at
+ * x=21 inside a 70px rail, so every icon centred itself at 46 instead of 35 and
+ * the whole column looked shoved to the right. Reported as "the bar pushes the
+ * icons", which is exactly what it was doing.
+ *
+ * Absolute, therefore: out of the row, centred by hand, and back to being a
+ * line rather than a column.
+ */
+.p-tab_rail [data-qa="team-icon"],
+.p-tab_rail [data-qa="account_switcher_team_icon"] {
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+.p-tab_rail__tab_container::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--dc-surface);
+}
+
+/*
+ * THE WORKSPACE COLUMN — the closest thing Slack has to Discord's server list.
+ *
+ * This is the one that really is a list of servers: one icon per Slack
+ * workspace you are signed in to, which is exactly what Discord's rail holds.
+ * It only appears when you have more than one, so on a single-workspace account
+ * none of this is visible and the tab rail above is as close as it gets.
+ *
+ * Slack draws these at 32px with a keyboard-shortcut badge on each. These get
+ * Discord's treatment -- a circle that rounds off on hover, the pill on the
+ * left, no badge -- at 40px rather than Discord's 48, to match the tab rail
+ * beside them and to stay inside a 60px column.
+ */
+.p-team_sidebar,
+.p-workspace_switcher_prototype {
+  background: var(--dc-rail) !important;
+}
+.p-team_sidebar__teams {
+  width: 40px !important;
+  margin: 0 auto !important;
+}
+.p-team_sidebar__item {
+  position: relative;
+  width: 40px !important;
+  height: 40px !important;
+  margin: 0 0 8px !important;
+  border-radius: 14px !important;
+}
+.c-team_icon.p-team_sidebar__image {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  transition: border-radius 140ms ease;
+}
+.p-team_sidebar__item:hover .c-team_icon.p-team_sidebar__image,
+.p-team_sidebar__item--active .c-team_icon.p-team_sidebar__image {
+  border-radius: 14px !important;
+}
+/* Slack's per-workspace shortcut badge; Discord has no equivalent. */
+.p-team_sidebar__shortcut_hint { display: none !important; }
+
+.p-team_sidebar__item::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 4px;
+  height: 0;
+  margin-top: 0;
+  background: var(--dc-bright);
+  border-radius: 0 4px 4px 0;
+  transition: height 140ms ease, margin-top 140ms ease;
+}
+.p-team_sidebar__item:hover::before { height: 16px; margin-top: -8px; }
+.p-team_sidebar__item--active::before { height: 32px; margin-top: -16px; }
+
+/*
+ * THE SIDEBAR
+ *
+ * Slack's sidebar is user-resizable and its width lives in the workspace grid,
+ * so the width is left alone; everything else follows Discord: a 48px header
+ * with a shadow under it, uppercase category labels, 32px rows in an 8px
+ * gutter.
+ */
+.p-ia4_sidebar_header {
+  height: 48px !important;
+  padding: 0 16px !important;
+  box-shadow: var(--dc-header-shadow);
+  position: relative;
+  z-index: 2;
+}
+.p-ia4_sidebar_header__title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: var(--dc-bright) !important;
+}
+
+.p-channel_sidebar__static_list__item { padding: 0 8px !important; }
+.p-channel_sidebar__channel {
+  height: 32px !important;
+  padding: 0 8px !important;
+  margin-bottom: 2px !important;
+}
+
+.p-client_container,
+.p-message_pane,
+.p-view_contents {
+  background: var(--dc-chat) !important;
+}
+
+.p-ia4_top_nav {
+  background: var(--dc-chat) !important;
+  border-bottom: none !important;
+}
+
+/* Corners: 4px on rows and controls, 8px on surfaces, circles on avatars. */
 .p-channel_sidebar__channel,
 .p-channel_sidebar__section_heading,
 .c-button,
@@ -161,13 +453,27 @@ html, body { background-color: var(--dc-bg-primary); }
 .c-message_actions__group,
 .c-wysiwyg_container,
 .c-tooltip__tip,
-.p-control_strip__circle_button {
+.c-menu {
   border-radius: 8px !important;
 }
 
-/* .c-base_icon__width_only_container carries the same tinted background as the
- * image and keeps Slack's 4px corners, so rounding only the image leaves four
- * square nubs poking out from behind it. */
+/*
+ * The buttons at the foot of the rail. Slack gives them a filled 8px box, which
+ * against these near-black surfaces reads as four grey tiles stacked in a
+ * column. Discord has nothing of the sort, so they become bare circles that
+ * only take a background under the pointer.
+ */
+.p-control_strip__circle_button {
+  border-radius: 50% !important;
+  background: transparent !important;
+}
+.p-control_strip__circle_button:hover,
+.p-control_strip__circle_button:focus-visible {
+  background: var(--dc-surface) !important;
+}
+
+/* .c-base_icon__width_only_container keeps Slack's 4px corners and the same
+ * tint as the image, so rounding only the image leaves square nubs behind it. */
 .c-avatar,
 .c-base_icon__width_only_container,
 .c-avatar img,
@@ -177,77 +483,133 @@ html, body { background-color: var(--dc-bg-primary); }
   border-radius: 50% !important;
 }
 
+/*
+ * Channel list: muted labels, a solid grey pill on the open one. Only the inner
+ * element is painted — its parent is a transparent 8px gutter.
+ */
 .p-channel_sidebar__name { color: var(--dc-muted) !important; }
 .p-channel_sidebar__static_list__item:hover .p-channel_sidebar__name { color: var(--dc-text) !important; }
-/*
- * Only the inner element is painted. Its parent
- * (.p-channel_sidebar__static_list__item--selected) is transparent and exists
- * to give the row an 8px gutter, so styling both draws a full-width slab
- * behind the inset pill.
- */
+.p-channel_sidebar__channel:hover { background: var(--dc-hover) !important; }
+
 .p-channel_sidebar__channel--selected {
   background: var(--dc-selected) !important;
 }
-.p-channel_sidebar__channel--selected .p-channel_sidebar__name {
-  color: var(--dc-header) !important;
+.p-channel_sidebar__channel--selected .p-channel_sidebar__name,
+.p-channel_sidebar__channel--unread .p-channel_sidebar__name {
+  color: var(--dc-bright) !important;
   font-weight: 500 !important;
 }
 
+.p-channel_sidebar__section_heading_label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  color: var(--dc-muted) !important;
+}
+
+/* Messages: Discord lifts the whole row and shows no separator between them. */
 .c-message_kit__background {
   border-radius: 0 !important;
   transition: background-color 60ms ease;
 }
 .c-message_kit__background:hover {
-  background: #f7f8f9 !important;
+  background: var(--dc-hover) !important;
+}
+
+/* Date dividers: a 1px rule with the label sitting on it. */
+.c-message_list__day_divider__line,
+.c-message_list__day_divider__label {
+  border-color: var(--dc-surface) !important;
+}
+.c-message_list__day_divider__label {
+  color: var(--dc-dim) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  background: var(--dc-chat) !important;
 }
 
 /*
- * The composer's box — background, border and corners — belongs to
- * .c-wysiwyg_container, three levels above [data-qa="message_input"].
- * That inner element is transparent and border-less by default, so styling it
- * draws a second box inside Slack's own.
+ * Composer. The box belongs to .c-wysiwyg_container: [data-qa="message_input"]
+ * inside it is transparent, and painting that draws a second box.
  */
 .c-wysiwyg_container {
-  background: var(--dc-composer) !important;
+  background: var(--dc-raised) !important;
   border: none !important;
   box-shadow: none !important;
 }
+.ql-placeholder,
+.c-texty_input__placeholder {
+  color: var(--dc-placeholder) !important;
+}
 
-.p-channel_sidebar { border-right: none !important; }
-.p-tab_rail { border-right: none !important; }
-.p-ia4_top_nav { border-bottom: 1px solid var(--dc-divider) !important; }
+/* Mentions and channel links: a blurple-tinted chip, exactly like Discord's. */
+.c-member_slug--link,
+.c-mrkdwn__broadcast--mention,
+.c-mrkdwn__user_group--mention,
+.c-mrkdwn__mention {
+  background: var(--dc-accent-bg) !important;
+  color: var(--dc-accent-text) !important;
+  border-radius: 3px;
+  padding: 0 2px;
+}
 
+/* Reactions: neutral pill, blurple border once you have reacted. */
+.c-reaction {
+  background: var(--dc-surface) !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+}
+.c-reaction.c-reaction--reacted {
+  background: var(--dc-accent-bg) !important;
+  border-color: var(--dc-accent) !important;
+}
+.c-reaction__count { color: var(--dc-accent-text) !important; }
+
+/* Unread badges. */
+.c-badge,
+.p-channel_sidebar__badge {
+  background: var(--dc-red) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* Unfurls: Discord's embed — a coloured bar down the left of a raised card. */
 .c-message_attachment {
-  background: var(--dc-bg-secondary) !important;
+  background: var(--dc-raised) !important;
   border: none !important;
-  border-left: 4px solid #c4c9ce !important;
+  border-left: 4px solid var(--dc-surface) !important;
   padding: 8px 16px 16px 12px !important;
 }
 .c-message_attachment__border { display: none !important; }
 
-/* Discord's light popovers are white with a shadow instead of a darker fill. */
+/*
+ * Menus and tooltips float on their own surface -- the darkest shade in the
+ * dark theme, white in the light one -- with a hairline, which is what keeps a
+ * white menu off a white conversation. The same rule reads as a subtle edge on
+ * near-black.
+ */
 .c-menu,
-.c-popover__content {
-  background: var(--dc-bg-floating) !important;
-  color: var(--dc-text) !important;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16) !important;
-}
-/* Tooltips stay dark in Discord's light theme. */
+.c-menu__items,
 .c-tooltip__tip {
-  background: #111214 !important;
-  color: #f2f3f5 !important;
+  background: var(--dc-float) !important;
+  color: var(--dc-float-text) !important;
+  border: 1px solid var(--dc-surface) !important;
 }
-.c-tooltip__subtitle { color: #b5bac1 !important; }
+.c-menu_item__button:hover {
+  background: var(--dc-accent) !important;
+  color: #ffffff !important;
+}
 
+/* Discord's scrollbars: a thumb on a darker track, both inset. */
 ::-webkit-scrollbar { width: 16px; height: 16px; }
 ::-webkit-scrollbar-thumb {
-  background: #c4c9ce;
+  background: var(--dc-scroll-thumb);
   border: 4px solid transparent;
   background-clip: content-box;
   border-radius: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--dc-bg-secondary-alt);
+  background: var(--dc-scroll-track);
   border: 4px solid transparent;
   background-clip: content-box;
   border-radius: 8px;

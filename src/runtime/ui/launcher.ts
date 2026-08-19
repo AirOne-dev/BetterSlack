@@ -7,9 +7,8 @@ import { attachTooltip } from './tooltip.js';
 import type { StyleManager } from '../themes.js';
 
 /**
- * The vertical strip at the bottom of the rail holding "Créer un nouveau", the
- * focus-mode moon and the profile avatar. `role="toolbar"`, so a button is what
- * belongs here.
+ * The vertical strip at the bottom of the rail holding "Créer un nouveau" and
+ * the profile avatar. `role="toolbar"`, so a button is what belongs here.
  */
 const CONTROL_STRIP = '.p-control_strip';
 
