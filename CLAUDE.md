@@ -107,10 +107,15 @@ The C is a file rather than a string in `build-app.mjs`. It was a template
 literal for one revision, and between JavaScript escapes, C escapes and
 AppleScript quoting inside one `execl`, nothing would compile.
 
-**pnpm, not npm.** `pnpm-workspace.yaml` carries `allowBuilds: esbuild: true` --
-pnpm refuses to run a dependency's install script unless it is named there, and
-esbuild fetches its platform binary in one, so a fresh checkout fails on every
-command that touches the bundler without it.
+**pnpm, not npm.** `pnpm-workspace.yaml` names esbuild under
+`onlyBuiltDependencies` -- pnpm refuses to run a dependency's install script
+unless it is listed there, and esbuild fetches its platform binary in one, so a
+fresh checkout fails on every command that touches the bundler without it. The
+file also needs a `packages` field (`- .`, this one repo): pnpm 11 treats the
+mere presence of a `pnpm-workspace.yaml` as a workspace and aborts with
+`packages field missing or empty` if it is absent -- so both keys are load-
+bearing, and the earlier `allowBuilds: esbuild: true` was neither a real pnpm
+key nor enough on its own.
 
 ```bash
 pnpm check             # the whole gate, in one command -- run this before pushing
