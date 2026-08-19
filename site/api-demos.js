@@ -3643,8 +3643,9 @@
     const state = {};
     for (const c of spec2.controls ?? []) state[c.key] = c.value;
     const stage = el("div", "pg__stage slack-stage");
-    stage.dataset.theme = document.getElementById("stage-theme")?.value ?? "midnight";
+    stage.dataset.theme = document.querySelector(".stage-theme")?.value ?? "midnight";
     const code = el("pre", "pg__code");
+    const controls = el("div", "pg__controls");
     const draw = () => {
       try {
         const made = spec2.render(state, { stage });
@@ -3654,13 +3655,42 @@
         stage.textContent = `this demo threw: ${err.message}`;
       }
     };
-    const parts = [stage];
     if (spec2.controls?.length) {
-      parts.push(el("div", "pg__controls", spec2.controls.map((c) => control(c, state, draw))));
+      controls.replaceChildren(...spec2.controls.map((c) => control(c, state, draw)));
     }
-    parts.push(code);
-    slot.replaceChildren(el("div", "pg", parts));
+    const preview = el("div", "pg__panel", spec2.controls?.length ? [stage, controls] : [stage]);
+    const source = el("div", "pg__panel", [code, copyButton(() => code.textContent)]);
+    source.hidden = true;
+    const tabs = el("div", "pg__tabs");
+    const tab = (label, panel, on) => {
+      const button = el("button", "pg__tab");
+      button.type = "button";
+      button.textContent = label;
+      button.setAttribute("aria-selected", String(on));
+      button.addEventListener("click", () => {
+        for (const other of tabs.querySelectorAll(".pg__tab")) other.setAttribute("aria-selected", "false");
+        button.setAttribute("aria-selected", "true");
+        preview.hidden = panel !== preview;
+        source.hidden = panel !== source;
+      });
+      return button;
+    };
+    tabs.append(tab("Preview", preview, true), tab("Code", source, false));
+    slot.replaceChildren(el("div", "pg", [tabs, preview, source]));
     draw();
+  }
+  function copyButton(text) {
+    const button = el("button", "pg__copy");
+    button.type = "button";
+    button.textContent = "Copy";
+    button.addEventListener("click", async () => {
+      const ok = await kit.copyText(text());
+      button.textContent = ok ? "Copied" : "Press \u2318C";
+      setTimeout(() => {
+        button.textContent = "Copy";
+      }, 1600);
+    });
+    return button;
   }
   var KIT = {
     el: {
@@ -4303,4 +4333,7 @@ api.helpers.badge('[data-qa="betterslack_button"]', 'unread', () => unread);`
   wireThemePickers();
   router();
   filter();
+  for (const block of document.querySelectorAll(".api-code")) {
+    block.append(copyButton(() => block.querySelector("code")?.textContent ?? ""));
+  }
 })();

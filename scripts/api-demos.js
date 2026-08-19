@@ -117,8 +117,10 @@ function playground(name, spec) {
   for (const c of spec.controls ?? []) state[c.key] = c.value;
 
   const stage = el('div', 'pg__stage slack-stage');
-  stage.dataset.theme = document.getElementById('stage-theme')?.value ?? 'midnight';
+  stage.dataset.theme = document.querySelector('.stage-theme')?.value ?? 'midnight';
   const code = el('pre', 'pg__code');
+  const controls = el('div', 'pg__controls');
+
   const draw = () => {
     try {
       const made = spec.render(state, { stage });
@@ -129,13 +131,51 @@ function playground(name, spec) {
     }
   };
 
-  const parts = [stage];
   if (spec.controls?.length) {
-    parts.push(el('div', 'pg__controls', spec.controls.map((c) => control(c, state, draw))));
+    controls.replaceChildren(...spec.controls.map((c) => control(c, state, draw)));
   }
-  parts.push(code);
-  slot.replaceChildren(el('div', 'pg', parts));
+
+  /*
+   * Preview and Code, one at a time.
+   *
+   * Both are always in the document -- switching tabs must not rebuild a demo
+   * you have just set up -- so the hidden one is hidden, not removed.
+   */
+  const preview = el('div', 'pg__panel', spec.controls?.length ? [stage, controls] : [stage]);
+  const source = el('div', 'pg__panel', [code, copyButton(() => code.textContent)]);
+  source.hidden = true;
+
+  const tabs = el('div', 'pg__tabs');
+  const tab = (label, panel, on) => {
+    const button = el('button', 'pg__tab');
+    button.type = 'button';
+    button.textContent = label;
+    button.setAttribute('aria-selected', String(on));
+    button.addEventListener('click', () => {
+      for (const other of tabs.querySelectorAll('.pg__tab')) other.setAttribute('aria-selected', 'false');
+      button.setAttribute('aria-selected', 'true');
+      preview.hidden = panel !== preview;
+      source.hidden = panel !== source;
+    });
+    return button;
+  };
+  tabs.append(tab('Preview', preview, true), tab('Code', source, false));
+
+  slot.replaceChildren(el('div', 'pg', [tabs, preview, source]));
   draw();
+}
+
+/** The copy button every code block on this page gets. */
+function copyButton(text) {
+  const button = el('button', 'pg__copy');
+  button.type = 'button';
+  button.textContent = 'Copy';
+  button.addEventListener('click', async () => {
+    const ok = await kit.copyText(text());
+    button.textContent = ok ? 'Copied' : 'Press ⌘C';
+    setTimeout(() => { button.textContent = 'Copy'; }, 1600);
+  });
+  return button;
 }
 
 /* -- the component kit ---------------------------------------------------- */
@@ -787,3 +827,8 @@ mountRoles();
 wireThemePickers();
 router();
 filter();
+
+// The examples the generator wrote, given the same affordance as the live ones.
+for (const block of document.querySelectorAll('.api-code')) {
+  block.append(copyButton(() => block.querySelector('code')?.textContent ?? ''));
+}

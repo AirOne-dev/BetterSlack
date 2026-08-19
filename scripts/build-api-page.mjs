@@ -158,6 +158,13 @@ function examples() {
 
 const THEMES = [];
 
+/*
+ * Code Highlight's own stylesheet, inlined rather than restated: its class
+ * names are the tokeniser's output, so a second copy would be a second thing
+ * to keep in step with a file nobody would think to check.
+ */
+const HIGHLIGHT_CSS = read('mods/plugins/code-highlight/highlight.css');
+
 function shell({ title, description, depth, body, active = 'api' }) {
   const up = depth ? '../' : '';
   return `<!doctype html>
@@ -171,6 +178,7 @@ function shell({ title, description, depth, body, active = 'api' }) {
 <link rel="stylesheet" href="${up}style.css">
 <link rel="stylesheet" href="${up}slack-context.css">
 <link rel="stylesheet" href="${up}api-themes.css">
+<style>${HIGHLIGHT_CSS}</style>
 </head>
 <body class="api-page">
 
