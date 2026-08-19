@@ -6,7 +6,7 @@
 import { ModManager, type BootPayload } from './manager.js';
 import { Bridge } from './rpc.js';
 import { installLauncher } from './ui/launcher.js';
-import { PANEL_CSS } from './ui/styles.js';
+import { LAUNCHER_CSS, PANEL_CSS } from './ui/styles.js';
 import { Panel } from './ui/panel.js';
 
 declare global {
@@ -95,13 +95,26 @@ async function boot(): Promise<void> {
   const bridge = new Bridge();
   const manager = new ModManager(bridge, payload);
 
+  /*
+   * Every stylesheet BetterSlack owns, before a single plugin runs.
+   *
+   * `applyInitial` waits for Slack's client and then starts the plugins, so
+   * anything installed after it lands *after* the first buttons are on screen.
+   * PANEL_CSS went in there and LAUNCHER_CSS came later still, with
+   * `installLauncher` -- and LAUNCHER_CSS is the only place a toolbar button's
+   * icon is given a size. Every mod's button therefore appeared unstyled for as
+   * long as the client took to build, then snapped into place.
+   *
+   * Both are static strings and need no DOM, so they go in first.
+   * `installLauncher` sets the same key again when it mounts the button, which
+   * is the same operation and not a second node.
+   */
+  manager.styles.set('plugin', '__panel', PANEL_CSS);
+  manager.styles.set('plugin', '__launcher', LAUNCHER_CSS);
+
   // Themes are pure CSS and can go in before the DOM exists, which is what
   // keeps Slack from flashing its default palette on the way up.
   await manager.applyInitial();
-
-  // The panel renders into the light DOM with Slack's own classes, so its
-  // stylesheet is a normal layer rather than something scoped to a shadow root.
-  manager.styles.set('plugin', '__panel', PANEL_CSS);
   const panel = new Panel(manager);
   // So a mod can open it without reaching into the page for it.
   manager.openPanel = (tab) => (tab ? panel.openAt(tab) : panel.open());

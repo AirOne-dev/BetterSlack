@@ -377,8 +377,28 @@ export default {
        * either being wrong on its own, and that is what happened while the text
        * was written once at mount and the dot was polled.
        */
+      /*
+       * Slack's own copy of your status emoji, in the button beside your avatar.
+       *
+       * It is swapped the moment you change your status, which makes it the
+       * signal to read the profile again -- the same trick the dot uses for
+       * presence. Polling would notice minutes later, and a status that never
+       * updates is the complaint this answers.
+       */
+      const statusEmojiSrc = () => {
+        const images = [...document.querySelectorAll('[data-qa="user-button"] img')];
+        const badge = images.find((img) => !AVATAR_URL.test(img.getAttribute('src') ?? ''));
+        return badge?.getAttribute('src') ?? '';
+      };
+      let seenStatusEmoji = statusEmojiSrc();
+
       const paintDot = () => {
         if (gone) return;
+        const now = statusEmojiSrc();
+        if (now !== seenStatusEmoji) {
+          seenStatusEmoji = now;
+          readProfile();
+        }
         const mine = document.querySelector('[data-qa="user-button"] .c-presence');
         const active = mine ? mine.classList.contains('c-presence--active') : null;
 
@@ -441,7 +461,15 @@ export default {
         paintDot();
       }, 300_000);
 
-      if (userId && api.slack.web.available) {
+      /*
+       * A declaration, not a const: `paintDot` above calls this, and `paintDot`
+       * runs as soon as Slack draws the rail -- which is before this point in
+       * the block. A `const` arrow would be in its temporal dead zone then, and
+       * would throw only for someone who already had a status emoji set when
+       * the strip mounted.
+       */
+      function readProfile() {
+        if (!userId || !api.slack.web.available) return;
         api.slack.web
           .users([userId])
           .then((users) => {
@@ -495,11 +523,11 @@ export default {
             // Not worth a visible failure: the avatar and availability are most
             // of what the strip is for, and both are already on screen.
             api.log.warn('could not read your profile:', err.message);
-            name.textContent = '';
           });
-      } else {
-        name.textContent = '';
       }
+
+      if (userId && api.slack.web.available) readProfile();
+      else name.textContent = '';
 
       return api.dom.h('div', {}, [me, settings]);
     });

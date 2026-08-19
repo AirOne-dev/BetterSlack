@@ -192,6 +192,15 @@ export interface SlackUser {
   [key: string]: unknown;
 }
 
+/**
+ * How long a cached profile is trusted.
+ *
+ * Two minutes: a status changes several times a day and a mod that never
+ * notices is the bug this exists to avoid, while a member list redrawn on every
+ * channel change must not mean a request per member per change.
+ */
+const DIRECTORY_TTL = 2 * 60 * 1000;
+
 export function createWebApi(): WebApi {
   /**
    * Cached per team, not once.
@@ -205,8 +214,17 @@ export function createWebApi(): WebApi {
    * a workspace switch.
    */
   let cachedTeam: string | null | undefined;
-  /** users.info answers for this session, and the workspace they belong to. */
-  const directory = new Map<string, SlackUser>();
+  /**
+   * users.info answers, the workspace they belong to, and when each arrived.
+   *
+   * Cached for a session was too long. A profile is mostly stable, but the one
+   * field on it that changes several times a day is the status -- and a mod
+   * showing a status that never updates is worse than one showing none. Held
+   * for a few minutes instead: long enough that opening the same channel twice
+   * still costs nothing, short enough that a status somebody set is not stale
+   * for the rest of the day.
+   */
+  const directory = new Map<string, { user: SlackUser; at: number }>();
   let directoryTeam: string | null | undefined;
   /** emoji.list for this workspace, and the request while it is in flight. */
   let emojiTeam: string | null | undefined;
@@ -274,14 +292,18 @@ export function createWebApi(): WebApi {
       }
 
       const wanted = [...new Set(userIds)].filter((id) => id);
-      const missing = wanted.filter((id) => !directory.has(id));
+      const now = Date.now();
+      const missing = wanted.filter((id) => {
+        const held = directory.get(id);
+        return !held || now - held.at > DIRECTORY_TTL;
+      });
       if (missing.length) {
         try {
           const res = await call<{ users?: SlackUser[] }>('users.info', {
             users: missing.join(','),
             include_locale: true,
           });
-          for (const user of res.users ?? []) directory.set(user.id, user);
+          for (const user of res.users ?? []) directory.set(user.id, { user, at: now });
         } catch {
           // The batch form is undocumented. If Slack ever stops accepting it,
           // one request each still works and is only slower.
@@ -292,14 +314,14 @@ export function createWebApi(): WebApi {
                 .catch(() => null),
             ),
           );
-          for (const user of each) if (user) directory.set(user.id, user);
+          for (const user of each) if (user) directory.set(user.id, { user, at: now });
         }
       }
 
       const out = new Map<string, SlackUser>();
       for (const id of wanted) {
-        const user = directory.get(id);
-        if (user) out.set(id, user);
+        const held = directory.get(id);
+        if (held) out.set(id, held.user);
       }
       return out;
     },

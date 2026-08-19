@@ -337,16 +337,23 @@ export class ModManager {
      */
     await waitForClient();
 
+    /*
+     * Watching <head> before the plugins run, not after.
+     *
+     * Slack rewrites <head> while it builds the client, which is exactly when
+     * the plugins are starting and writing their stylesheets. With the observer
+     * installed afterwards, anything detached in that window stayed detached
+     * until the next rewrite -- a mod on screen with none of its own CSS.
+     */
+    this.headObserver = new MutationObserver(() => this.styles.reattachOrphans());
+    this.headObserver.observe(document.head, { childList: true });
+
     for (const { record, files, id } of enabled) {
       if (!record || files === undefined || record.type === 'theme') continue;
       void id;
       await this.applyWatched(record, files);
     }
     this.applyCustomCss();
-
-    // Slack rewrites <head> on some navigations; keep our layers attached.
-    this.headObserver = new MutationObserver(() => this.styles.reattachOrphans());
-    this.headObserver.observe(document.head, { childList: true });
   }
 
   /** Tear everything down, so a newer loader can inject a fresh runtime. */

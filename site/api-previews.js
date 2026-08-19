@@ -241,6 +241,7 @@
       return null;
     }
   }
+  var DIRECTORY_TTL = 2 * 60 * 1e3;
   function createWebApi() {
     let cachedTeam;
     const directory = /* @__PURE__ */ new Map();
@@ -300,27 +301,31 @@
           directory.clear();
         }
         const wanted = [...new Set(userIds)].filter((id) => id);
-        const missing = wanted.filter((id) => !directory.has(id));
+        const now = Date.now();
+        const missing = wanted.filter((id) => {
+          const held = directory.get(id);
+          return !held || now - held.at > DIRECTORY_TTL;
+        });
         if (missing.length) {
           try {
             const res = await call("users.info", {
               users: missing.join(","),
               include_locale: true
             });
-            for (const user of res.users ?? []) directory.set(user.id, user);
+            for (const user of res.users ?? []) directory.set(user.id, { user, at: now });
           } catch {
             const each = await Promise.all(
               missing.map(
                 (id) => call("users.info", { user: id, include_locale: true }).then((res) => res.user).catch(() => null)
               )
             );
-            for (const user of each) if (user) directory.set(user.id, user);
+            for (const user of each) if (user) directory.set(user.id, { user, at: now });
           }
         }
         const out = /* @__PURE__ */ new Map();
         for (const id of wanted) {
-          const user = directory.get(id);
-          if (user) out.set(id, user);
+          const held = directory.get(id);
+          if (held) out.set(id, held.user);
         }
         return out;
       },
