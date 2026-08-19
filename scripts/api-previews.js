@@ -738,15 +738,21 @@ const MORE = {
       stage.replaceChildren(frame);
       focusChrome(frame, '[data-qa="message_input"]');
       const slack = createSlackApi('demo');
-      const button = kit.button('insert()', { variant: 'primary' });
-      button.addEventListener('click', () => {
-        slack.composer.insert(v.text);
-        slack.composer.focus();
-      });
-      stage.append(button);
+      const out = kit.el('span', { class: 'sm-hint' }, ['the fixture composer is a real contenteditable']);
+      const say = (what, ok) => { out.textContent = `${what} -> ${ok}`; };
+
+      const text = kit.button('insertText()', { variant: 'primary' });
+      text.addEventListener('click', () => say('insertText', slack.composer.insertText(v.text)));
+      const link = kit.button('insertLink()');
+      link.addEventListener('click', () => say('insertLink', slack.composer.insertLink(v.link, 'the thread')));
+      const empty = kit.button('isEmpty()');
+      empty.addEventListener('click', () => say('isEmpty', slack.composer.isEmpty()));
+
+      stage.append(text, link, empty, out);
       return undefined;
     },
   },
+
   'helpers-each': {
     render: (v, { stage }) => {
       const frame = slackChrome();
@@ -895,9 +901,13 @@ const MORE = {
   },
   'plugin-css': {
     render: (v, { stage }) => {
-      const style = document.createElement('style');
-      style.textContent = v.css;
-      return [style, kit.el('p', { class: 'pg__paint' }, ['this line is painted by the CSS beside it'])];
+      const sheet = kit.el('style');
+      sheet.textContent = v.css ?? '';
+      const target = kit.el('div', { class: 'pg__cssdemo' }, [
+        kit.el('div', { class: 'p-channel_sidebar' }, ['#\u00a0general']),
+      ]);
+      stage.replaceChildren(sheet, target, source(`api.css(\`${v.css ?? ''}\`);`, 'javascript'));
+      return undefined;
     },
   },
   'log-info': {
@@ -1561,9 +1571,14 @@ const IMITATED = {
   },
 
   'plugin-version': {
-    render: () => source(`api.version   // '${FIXTURES.plugin.manifest.version ?? '1.0.0'}'\n\n`
-      + '// A mod carries its own version and updates on its own, so a one-line\n'
-      + '// fix to a theme does not mean pulling the loader and the runtime too.'),
+    render: () => [
+      source(`api.version            // '2.0.1'  — BetterSlack's\n`
+        + `api.manifest.version   // '${FIXTURES.plugin.manifest.version ?? '1.0.0'}'  — this mod's\n\n`
+        + '// The two move independently: a mod carries its own version and updates\n'
+        + '// on its own, so a one-line fix to a theme does not mean pulling the\n'
+        + '// loader and the runtime with it.'),
+      stubbed('The BetterSlack version is whatever the client is running; the mod version is this repository\u2019s.'),
+    ],
   },
 
   'plugin-manifest': {
@@ -1633,14 +1648,17 @@ const TOOLS = {
   },
   'tools-highlight': {
     render: (v) => {
-      const chosen = v.language || detect(v.source ?? '');
+      // `auto` rather than an empty option: a select whose first entry is blank
+      // reads as a control that has not loaded.
+      const forced = v.language && v.language !== 'auto' ? v.language : '';
+      const chosen = forced || detect(v.source ?? '');
       const code = kit.el('code', { class: 'betterslack-hl' });
       code.innerHTML = chosen
         ? highlight(v.source ?? '', chosen)
         : (v.source ?? '').replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'));
       return [
         kit.el('p', { class: 'sm-hint' }, [
-          v.language
+          forced
             ? `forced to ${chosen}`
             : (chosen ? `detected: ${chosen}` : 'not confident — left alone, which is the point'),
         ]),
@@ -1785,6 +1803,28 @@ for (const slot of document.querySelectorAll('[data-demo]')) {
 // Built, then emptied: the controls stay, the demo waits for its panel to be
 // opened. See MOUNTED above for why nothing may be mounted in the background.
 for (const { teardown } of MOUNTED.values()) teardown();
+/*
+ * When this page was last touched, at the foot of it.
+ *
+ * From git, through a file the build regenerates: a date nobody has to remember
+ * to bump is a date that is still true a year from now.
+ */
+function stampDates() {
+  const dates = (typeof window !== 'undefined' && window.__API_UPDATED) || {};
+  const fr = document.documentElement.lang === 'fr';
+  for (const panel of document.querySelectorAll('.panel')) {
+    const when = dates[panel.id.replace(/^p-/, '')];
+    if (!when) continue;
+    const foot = document.createElement('p');
+    foot.className = 'panel__updated';
+    foot.dataset.en = `Last updated ${when}`;
+    foot.dataset.fr = `Mis à jour le ${when}`;
+    foot.textContent = fr ? foot.dataset.fr : foot.dataset.en;
+    (panel.querySelector('.panel__body') ?? panel).append(foot);
+  }
+}
+
+stampDates();
 wireThemePicker();
 router();
 filter();

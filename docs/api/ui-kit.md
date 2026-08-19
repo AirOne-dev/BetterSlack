@@ -14,15 +14,16 @@ available anywhere else: a mod that opens a window of its own gets a
 blank document with no stylesheet in it. This is that gap filled once,
 rather than once per mod.
 
-  const kit = api.ui.kit(childWindow.document);
-  style.textContent = api.ui.kitCss;
-  kit.card('Palette', [kit.button('Save', { variant: 'primary' })]);
-
-Everything is prefixed `sm-`, so the stylesheet is safe to inject into
-the client itself.
+Bind it to the document you mean and put `api.ui.kitCss` in that document's
+head; every class it writes is prefixed `sm-`, so the stylesheet is also safe
+to inject into the client itself.
 
 ```js
 // A window a mod opens is a blank document: no Slack stylesheet to borrow.
 const kit = api.ui.kit(child.document);
-child.document.head.append(styleWith(api.ui.kitCss));
+child.document.head.append(
+  Object.assign(child.document.createElement('style'), { textContent: api.ui.kitCss }),
+);
+
+kit.card('Palette', [kit.button('Save', { variant: 'primary', onClick: () => save() })]);
 ```

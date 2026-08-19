@@ -5,7 +5,7 @@ title: On the api object
 signature: (options: { id: string; name: string; description: string; css: string }): Promise<void>
 preview: plugin-savetheme
 control: id | text | my-theme | theme id
-control: css | text | :root { --dt_color-base-pry: #101322; } | stylesheet
+control: css | textarea | :root { --dt_color-base-pry: #101322; } | stylesheet
 ---
 
 Write a theme into the user's own mods folder, where it appears in the

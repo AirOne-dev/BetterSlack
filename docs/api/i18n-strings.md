@@ -4,20 +4,18 @@ group: i18n
 title: api.i18n
 signature: <T extends Dictionary>(tables: Tables<T>): Translate<T>
 preview: i18n-strings
-control: locale | select | en-GB |  | en-GB, fr-FR, de-DE
-control: key | select | hello |  | hello, bye, missing
+control: locale | select | en-GB | locale | en-GB, fr-FR, de-DE
+control: key | select | hello | key | hello, bye, missing
 control: name | text | Ada
 ---
 
-Build a translator.
+Build a translator from a table per language. It returns a `t(key, vars)` where
+`{count}`-style placeholders are filled from the second argument.
 
-  const t = api.i18n.strings({
-    en: { members: 'Members', online: '{count} online' },
-    fr: { members: 'Membres', online: '{count} en ligne' },
-  });
-  t('online', { count: 3 });
-
-Lookup goes exact locale ("fr-CA"), then language ("fr"), then English.
+Lookup goes exact locale first (`fr-CA`), then the language on its own (`fr`),
+then English. English is required and is the fallback both for an unknown
+language and for a key one table forgot — a key missing everywhere renders as
+the key itself, never as a blank.
 
 ```js
 const t = api.i18n.strings({

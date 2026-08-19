@@ -2,7 +2,7 @@
 name: mods
 group: app
 title: api.app
-signature: (): Array<{
+signature: (): Array<{ id, name, description, type, installed, enabled, settings }>
 preview: app-mods
 ---
 

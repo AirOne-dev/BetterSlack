@@ -2,7 +2,7 @@
 name: iconButton
 group: helpers
 title: api.helpers
-signature: (options: {
+signature: (options: { icon, label, description?, surface?, onClick }): HTMLElement
 preview: helpers-iconbutton
 control: label | text | Notes
 control: surface | select | header |  | strip, header, composer

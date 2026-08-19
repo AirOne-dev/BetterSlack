@@ -4846,12 +4846,17 @@
         stage.replaceChildren(frame);
         focusChrome(frame, '[data-qa="message_input"]');
         const slack = createSlackApi("demo");
-        const button = kit.button("insert()", { variant: "primary" });
-        button.addEventListener("click", () => {
-          slack.composer.insert(v.text);
-          slack.composer.focus();
-        });
-        stage.append(button);
+        const out = kit.el("span", { class: "sm-hint" }, ["the fixture composer is a real contenteditable"]);
+        const say2 = (what, ok) => {
+          out.textContent = `${what} -> ${ok}`;
+        };
+        const text = kit.button("insertText()", { variant: "primary" });
+        text.addEventListener("click", () => say2("insertText", slack.composer.insertText(v.text)));
+        const link = kit.button("insertLink()");
+        link.addEventListener("click", () => say2("insertLink", slack.composer.insertLink(v.link, "the thread")));
+        const empty = kit.button("isEmpty()");
+        empty.addEventListener("click", () => say2("isEmpty", slack.composer.isEmpty()));
+        stage.append(text, link, empty, out);
         return void 0;
       }
     },
@@ -5011,9 +5016,13 @@
     },
     "plugin-css": {
       render: (v, { stage }) => {
-        const style = document.createElement("style");
-        style.textContent = v.css;
-        return [style, kit.el("p", { class: "pg__paint" }, ["this line is painted by the CSS beside it"])];
+        const sheet = kit.el("style");
+        sheet.textContent = v.css ?? "";
+        const target = kit.el("div", { class: "pg__cssdemo" }, [
+          kit.el("div", { class: "p-channel_sidebar" }, ["#\xA0general"])
+        ]);
+        stage.replaceChildren(sheet, target, source(`api.css(\`${v.css ?? ""}\`);`, "javascript"));
+        return void 0;
       }
     },
     "log-info": {
@@ -5629,10 +5638,15 @@ api.css(\u2026)         // one stylesheet, keyed on it`),
       ]
     },
     "plugin-version": {
-      render: () => source(`api.version   // '${FIXTURES.plugin.manifest.version ?? "1.0.0"}'
+      render: () => [
+        source(`api.version            // '2.0.1'  \u2014 BetterSlack's
+api.manifest.version   // '${FIXTURES.plugin.manifest.version ?? "1.0.0"}'  \u2014 this mod's
 
-// A mod carries its own version and updates on its own, so a one-line
-// fix to a theme does not mean pulling the loader and the runtime too.`)
+// The two move independently: a mod carries its own version and updates
+// on its own, so a one-line fix to a theme does not mean pulling the
+// loader and the runtime with it.`),
+        stubbed("The BetterSlack version is whatever the client is running; the mod version is this repository\u2019s.")
+      ]
     },
     "plugin-manifest": {
       render: () => source(JSON.stringify(FIXTURES.plugin.manifest, null, 2), "json")
@@ -5696,12 +5710,13 @@ const kit = api.ui.kit(win.document);`)
     },
     "tools-highlight": {
       render: (v) => {
-        const chosen = v.language || detect(v.source ?? "");
+        const forced = v.language && v.language !== "auto" ? v.language : "";
+        const chosen = forced || detect(v.source ?? "");
         const code = kit.el("code", { class: "betterslack-hl" });
         code.innerHTML = chosen ? highlight(v.source ?? "", chosen) : (v.source ?? "").replace(/[<&]/g, (c) => c === "<" ? "&lt;" : "&amp;");
         return [
           kit.el("p", { class: "sm-hint" }, [
-            v.language ? `forced to ${chosen}` : chosen ? `detected: ${chosen}` : "not confident \u2014 left alone, which is the point"
+            forced ? `forced to ${chosen}` : chosen ? `detected: ${chosen}` : "not confident \u2014 left alone, which is the point"
           ]),
           kit.el("pre", { class: "api-output" }, [code])
         ];
@@ -5803,6 +5818,21 @@ const kit = api.ui.kit(win.document);`)
     else slot.remove();
   }
   for (const { teardown } of MOUNTED.values()) teardown();
+  function stampDates() {
+    const dates = typeof window !== "undefined" && window.__API_UPDATED || {};
+    const fr = document.documentElement.lang === "fr";
+    for (const panel of document.querySelectorAll(".panel")) {
+      const when = dates[panel.id.replace(/^p-/, "")];
+      if (!when) continue;
+      const foot = document.createElement("p");
+      foot.className = "panel__updated";
+      foot.dataset.en = `Last updated ${when}`;
+      foot.dataset.fr = `Mis \xE0 jour le ${when}`;
+      foot.textContent = fr ? foot.dataset.fr : foot.dataset.en;
+      (panel.querySelector(".panel__body") ?? panel).append(foot);
+    }
+  }
+  stampDates();
   wireThemePicker();
   router();
   filter();

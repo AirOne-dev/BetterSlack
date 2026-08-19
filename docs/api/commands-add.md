@@ -2,7 +2,7 @@
 name: add
 group: commands
 title: api.commands
-signature: (command: {
+signature: (command: { id, title, subtitle?, icon?, run }): Cleanup
 preview: commands-add
 control: title | text | Channel notes
 control: subtitle | text | A scratchpad for this channel

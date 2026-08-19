@@ -73,6 +73,16 @@ export function parseEntry(file, source) {
   for (const required of ['name', 'group', 'title', 'signature']) {
     if (!meta[required]) throw new Error(`${file}: missing "${required}"`);
   }
+  /*
+   * A signature is one line, and a multi-line TypeScript one pasted in leaves
+   * only its first line: `(options: {` or `(): Array<{`, which tells a reader
+   * nothing and looks like the page failed to load. Summarise the shape on one
+   * line instead -- `(options: { icon, label, onClick }): HTMLElement`.
+   */
+  if (/[{(<[,]$/.test(meta.signature.trim())) {
+    throw new Error(`${file}: signature "${meta.signature}" is cut off. `
+      + 'A signature is one line; summarise a multi-line one rather than pasting its first line.');
+  }
 
   const body = match[2];
   const fence = /```(?:js|ts|css|bash)?\n([\s\S]*?)```/.exec(body);

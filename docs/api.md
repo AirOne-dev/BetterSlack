@@ -59,7 +59,7 @@ few keys at the top, prose, and one example.
 - [`addProfileButton`](api/slack-addprofilebutton.md) — A button in a member's profile pane, given the user id when it is pressed. It appears in anything wearing Slack's profile markup, including a pane another mod drew.
 - [`addToolbarButton`](api/slack-addtoolbarbutton.md) — Add a button to one of Slack's toolbars:
 - [`avatarUrl`](api/slack-avatarurl.md) — The same avatar at another size.
-- [`composer`](api/slack-composer.md) — The message box: `insert()` types into it as though you had, and `focus()` puts the caret there. Insert rather than assign — the composer is a Quill editor, and writing to it directly loses everything else in it.
+- [`composer`](api/slack-composer.md) — The message box. `insertText` types into it as though you had, `insertLink` puts a real hyperlink at the caret, and `focus` puts the caret there in the first place — every insert focuses first, so calling it yourself is only needed when you want the caret and nothing else.
 - [`currentChannelId`](api/slack-currentchannelid.md) — The channel on screen, read out of the URL. Null when what is on screen is not a conversation. Two workspaces can use the same channel id, so compare the team as well when you keep anything per-channel.
 - [`describeMessage`](api/slack-describemessage.md) — Everything about a message that a mod usually wants, read off the element Slack drew: its channel, its timestamp, its permalink and its text.
 - [`desktop`](api/slack-desktop.md) — Slack's own translucent window, which it ships switched off.
@@ -99,8 +99,8 @@ few keys at the top, prose, and one example.
 ## api.i18n
 
 - [`language`](api/i18n-language.md) — The language on its own, without the region: `fr` for `fr-FR`. What a translation table is usually keyed by.
-- [`locale`](api/i18n-locale.md) — The app's language tag, e.g. "fr-FR". Use it for toLocaleString and friends.
-- [`strings`](api/i18n-strings.md) — Build a translator.
+- [`locale`](api/i18n-locale.md) — The app's language tag, e.g. "fr-FR". Use it for `toLocaleString` and friends.
+- [`strings`](api/i18n-strings.md) — Build a translator from a table per language. It returns a `t(key, vars)` where
 
 ## api.settings
 
@@ -151,4 +151,4 @@ few keys at the top, prose, and one example.
 - [`manifest`](api/plugin-manifest.md) — This mod's own `mod.json`, as the loader parsed it — its version, its author, the settings it declares.
 - [`onDispose`](api/plugin-ondispose.md) — Register a teardown callback. It runs when the plugin is switched off, which is the moment everything a mod started has to stop: intervals, listeners, anything it put on the page.
 - [`saveTheme`](api/plugin-savetheme.md) — Write a theme into the user's own mods folder, where it appears in the
-- [`version`](api/plugin-version.md) — BetterSlack's version, not the mod's. The mod's is in api.manifest.version.
+- [`version`](api/plugin-version.md) — BetterSlack's version, not the mod's — the mod's is `api.manifest.version`.

@@ -654,6 +654,15 @@ kbd {
   border-top: 1px solid var(--line);
 }
 
+/* The foot of every page: when the file behind it last changed. */
+.panel__updated {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font: 400 12.5px/1.5 var(--sans);
+  color: var(--muted);
+}
+
 .pg__badge-host { position: relative; display: inline-block; }
 
 /* The guide pages ---------------------------------------------------------- *

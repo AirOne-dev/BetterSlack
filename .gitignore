@@ -4,3 +4,8 @@
 
 node_modules/
 dist/
+
+# Generated on every build from git, and deliberately not committed: its
+# content is a function of the commit that writes it. See buildUpdated() in
+# scripts/build-api-page.mjs.
+site/api-updated.js
