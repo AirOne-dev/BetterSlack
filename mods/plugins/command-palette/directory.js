@@ -69,6 +69,44 @@ export function createDirectory(api, { onResults }) {
   let remote = { query: '', people: [], channels: [] };
   let timer = null;
   let searching = false;
+  /*
+   * The workspace's custom emoji, for status shortcodes.
+   *
+   * One request per workspace, held rather than awaited per row: the palette
+   * rebuilds its list on every keystroke. Null until it answers, and a status
+   * still draws then -- from what Slack sent with the profile, or from what it
+   * has already put on screen.
+   */
+  let customEmoji = null;
+  const loadEmoji = () => {
+    // Guarded, not merely caught: on a runtime older than this mod the method
+    // is missing, and calling it throws synchronously.
+    if (typeof api.slack.web?.emoji !== 'function') return;
+    Promise.resolve()
+      .then(() => api.slack.web.emoji())
+      .then((map) => { customEmoji = map; })
+      .catch(() => { customEmoji = null; });
+  };
+  loadEmoji();
+
+  /**
+   * Somebody's status, resolved when the row is read rather than when it is
+   * cached.
+   *
+   * The conversation list is built once and kept, and the workspace's emoji map
+   * arrives over the network after it: computed at cache time, every status
+   * came out with no picture and stayed that way until the cache expired. So
+   * the entry keeps the profile and the picture is looked up here, on the way
+   * out, where the map is whatever it is by then.
+   */
+  const withStatus = (entry) => {
+    if (!entry.profile || typeof api.slack.describeStatus !== 'function') return entry;
+    try {
+      return { ...entry, status: api.slack.describeStatus(entry.profile, customEmoji) };
+    } catch {
+      return entry;
+    }
+  };
 
   /** Anything held about a workspace is wrong the moment you leave it. */
   const checkTeam = () => {
@@ -78,6 +116,10 @@ export function createDirectory(api, { onResults }) {
     conversations = [];
     loadedAt = 0;
     remote = { query: '', people: [], channels: [] };
+    // Different workspace, different custom emoji: a status drawn with the last
+    // one's is a picture from somewhere the user has left.
+    customEmoji = null;
+    loadEmoji();
   };
 
   const load = async () => {
@@ -108,7 +150,10 @@ export function createDirectory(api, { onResults }) {
             title: profile.display_name || profile.real_name || user?.name || channel.user,
             // Their face. It is the whole reason a list of people is scannable.
             icon: profile.image_48 || profile.image_72 || '',
-            hint: profile.title || profile.status_text || '',
+            // The title, not the status: the status has a place of its own on
+            // the row now, and printing it twice reads as a mistake.
+            hint: profile.title || '',
+            profile,
             handle: user?.name ? `@${user.name}` : '',
           };
         }
@@ -173,7 +218,8 @@ export function createDirectory(api, { onResults }) {
           remote: true,
           title: profile.display_name || profile.real_name || item.username || item.id,
           icon: profile.image_48 || profile.image_72 || '',
-          hint: profile.title || profile.status_text || profile.real_name || '',
+          hint: profile.title || profile.real_name || '',
+          profile,
           handle: item.username ? `@${item.username}` : '',
         };
       }),
@@ -242,12 +288,13 @@ export function createDirectory(api, { onResults }) {
     /** Conversations you are in, people and channels alike. */
     conversations: () => {
       checkTeam();
-      return conversations;
+      return conversations.map(withStatus);
     },
     people: (query) => {
       checkTeam();
       const local = conversations.filter((entry) => entry.kind === 'person');
-      return narrow(local, query.trim().length >= MIN_QUERY ? remote.people : [], query);
+      return narrow(local, query.trim().length >= MIN_QUERY ? remote.people : [], query)
+        .map(withStatus);
     },
     channels: (query) => {
       checkTeam();

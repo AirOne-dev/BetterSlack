@@ -1468,9 +1468,34 @@
 }
 
 .betterslack-palette__text { flex: 1 1 auto; min-width: 0; display: block; }
+/* The name and the status on one line: the name gives way first, and the
+   status keeps its emoji whatever happens -- a half-drawn face is worse than a
+   truncated word. */
+.betterslack-palette__titleline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .betterslack-palette__title {
   display: block;
   font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.betterslack-palette__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 0 1 auto;
+  font-size: 13px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+.betterslack-palette__status_emoji { flex: 0 0 auto; width: 14px; height: 14px; object-fit: contain; }
+.betterslack-palette__status_text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1909,11 +1934,21 @@
 }
 
 /* Slack pins the top offset on .c-popover__content, so this layer is ours. */
+/*
+ * Above the dialog, not below it.
+ *
+ * A menu is opened *from* something, and often from inside one of ours -- the
+ * overflow button in a profile dialog is the case that showed this. At 1013,
+ * under the dialog's 1014, that menu drew behind the thing that opened it and
+ * the options were simply invisible. A menu is transient and always belongs on
+ * top of whatever it was summoned from; tests/requires.test.mjs holds the two
+ * in that order so a renumbering cannot quietly swap them back.
+ */
 .betterslack-menu_layer {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 1013;
+  z-index: 1015;
   will-change: transform;
 }
 .betterslack-menu_layer .c-menu {
@@ -2065,6 +2100,14 @@
 
   // src/runtime/ui/palette.ts
   var HOST_ID = "betterslack-palette";
+  function statusFor(command) {
+    const status = command.status;
+    if (!status || !status.imageUrl && !status.text) return null;
+    return h("span", { class: "betterslack-palette__status", title: status.text ?? "" }, [
+      status.imageUrl ? h("img", { class: "betterslack-palette__status_emoji", src: status.imageUrl, alt: status.emoji ?? "" }) : null,
+      status.text ? h("span", { class: "betterslack-palette__status_text" }, [status.text]) : null
+    ].filter(Boolean));
+  }
   function rank(commands, query) {
     const words2 = query.toLowerCase().split(/\s+/).filter(Boolean);
     if (words2.length === 0) return commands;
@@ -2188,7 +2231,10 @@
           }, [
             iconFor(command),
             h("span", { class: "betterslack-palette__text" }, [
-              h("span", { class: "betterslack-palette__title" }, [command.title]),
+              h("span", { class: "betterslack-palette__titleline" }, [
+                h("span", { class: "betterslack-palette__title" }, [command.title]),
+                statusFor(command)
+              ].filter(Boolean)),
               command.subtitle ? h("span", { class: "betterslack-palette__sub" }, [command.subtitle]) : null
             ].filter(Boolean)),
             command.source ? h("span", { class: "betterslack-palette__source" }, [command.source]) : null

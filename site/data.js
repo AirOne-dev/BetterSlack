@@ -226,7 +226,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Le sélecteur rapide de Slack avec tout le reste dedans : aller à n'importe quelle conversation, trouver n'importe qui, lancer les commandes de vos mods, les activer ou les régler — le tout depuis une touche, avec / @ # pour affiner. Attribuez-lui autant de raccourcis que vous voulez ; ceux que Slack utilisait déjà lui sont repris."
       },
-      "version": "1.2.0",
+      "version": "1.3.0",
       "tags": [
         "navigation",
         "keyboard",

@@ -235,3 +235,25 @@ test('the mods that declare settings really read them', () => {
     }
   }
 });
+
+test('a menu draws above a dialog, since it is opened from inside one', () => {
+  /*
+   * The overflow button in a profile dialog opens a menu. With the menu layer
+   * below the dialog it drew behind it, and the options were invisible -- a
+   * button that appears to do nothing. Asserted as a relationship rather than a
+   * pair of numbers so renumbering the stack cannot quietly swap them.
+   */
+  // Read from the source, like the backtick check above: PANEL_CSS is not built
+  // for the test bundle, and what matters is the declaration itself.
+  const css = read('src/runtime/ui/styles.ts');
+  const layerOf = (selector) => {
+    const rule = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^{]*\\{[^}]*z-index:\\s*(\\d+)`);
+    const found = rule.exec(css);
+    assert.ok(found, `${selector} still declares a z-index`);
+    return Number(found[1]);
+  };
+  assert.ok(
+    layerOf('.betterslack-menu_layer') > layerOf('.betterslack-widget_dialog'),
+    'the menu layer sits above the dialog it is opened from',
+  );
+});

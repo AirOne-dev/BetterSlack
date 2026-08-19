@@ -4,5 +4,6 @@ Slack's quick switcher with everything else in it: jump to any conversation, fin
 
 - One keystroke for conversations, people, your mods and every command a mod publishes.
 - Type / for actions, @ for people, # for channels, or nothing at all and search across the lot.
+- Anyone with a status set carries it beside their name, emoji and all — a custom workspace emoji drawn as the image the workspace has for it, animated ones included.
 - Bind as many shortcuts as you like in its settings, or press "Change the shortcuts" inside the palette and press the keys. Whatever you bind is taken from Slack if Slack had it — the palette listens before the app does.
 - It ships on ⌘K on purpose: that is the key people reach for. Slack’s own switcher stays one click away in the search field, and ⌘⇧K puts it back if you disagree.

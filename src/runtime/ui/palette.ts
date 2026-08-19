@@ -23,6 +23,24 @@ import { h, type Cleanup } from '../dom.js';
 
 const HOST_ID = 'betterslack-palette';
 
+/**
+ * A status after the title, when the row carries one.
+ *
+ * The emoji only when it resolved to a picture; the sentence is the part that
+ * always carries meaning, and a shortcode nothing could draw is never printed
+ * -- the same rule `api.slack.statusNode` follows, for the same reason.
+ */
+function statusFor(command: Command): HTMLElement | null {
+  const status = command.status;
+  if (!status || (!status.imageUrl && !status.text)) return null;
+  return h('span', { class: 'betterslack-palette__status', title: status.text ?? '' }, [
+    status.imageUrl
+      ? h('img', { class: 'betterslack-palette__status_emoji', src: status.imageUrl, alt: status.emoji ?? '' })
+      : null,
+    status.text ? h('span', { class: 'betterslack-palette__status_text' }, [status.text]) : null,
+  ].filter(Boolean) as Node[]);
+}
+
 export interface Command {
   /** Unique per mod; the runtime prefixes it with the mod id. */
   id: string;
@@ -45,6 +63,14 @@ export interface Command {
    * reads what is on screen.
    */
   always?: boolean;
+  /**
+   * Somebody's Slack status, drawn after the title the way Slack draws it.
+   *
+   * Separate from `subtitle` because it is a picture and a sentence rather than
+   * a line of text, and separate from `icon` because that is already the
+   * person's face. `api.slack.describeStatus` produces exactly this shape.
+   */
+  status?: { imageUrl?: string | null; emoji?: string | null; text?: string } | null;
   run: () => void | Promise<void>;
 }
 
@@ -267,7 +293,10 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
         }, [
           iconFor(command),
           h('span', { class: 'betterslack-palette__text' }, [
-            h('span', { class: 'betterslack-palette__title' }, [command.title]),
+            h('span', { class: 'betterslack-palette__titleline' }, [
+              h('span', { class: 'betterslack-palette__title' }, [command.title]),
+              statusFor(command),
+            ].filter(Boolean) as Node[]),
             command.subtitle
               ? h('span', { class: 'betterslack-palette__sub' }, [command.subtitle])
               : null,

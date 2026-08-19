@@ -452,9 +452,34 @@ export const PANEL_CSS = CODE_CSS + `
 }
 
 .betterslack-palette__text { flex: 1 1 auto; min-width: 0; display: block; }
+/* The name and the status on one line: the name gives way first, and the
+   status keeps its emoji whatever happens -- a half-drawn face is worse than a
+   truncated word. */
+.betterslack-palette__titleline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .betterslack-palette__title {
   display: block;
   font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.betterslack-palette__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 0 1 auto;
+  font-size: 13px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.6);
+}
+.betterslack-palette__status_emoji { flex: 0 0 auto; width: 14px; height: 14px; object-fit: contain; }
+.betterslack-palette__status_text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -893,11 +918,21 @@ export const PANEL_CSS = CODE_CSS + `
 }
 
 /* Slack pins the top offset on .c-popover__content, so this layer is ours. */
+/*
+ * Above the dialog, not below it.
+ *
+ * A menu is opened *from* something, and often from inside one of ours -- the
+ * overflow button in a profile dialog is the case that showed this. At 1013,
+ * under the dialog's 1014, that menu drew behind the thing that opened it and
+ * the options were simply invisible. A menu is transient and always belongs on
+ * top of whatever it was summoned from; tests/requires.test.mjs holds the two
+ * in that order so a renumbering cannot quietly swap them back.
+ */
 .betterslack-menu_layer {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 1013;
+  z-index: 1015;
   will-change: transform;
 }
 .betterslack-menu_layer .c-menu {

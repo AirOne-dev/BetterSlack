@@ -66,6 +66,9 @@ export default {
         ? t('directMessage')
         : (entry.kind === 'group' ? t('groupMessage') : t('channel')),
       subtitle: entry.handle && entry.hint ? `${entry.handle} · ${entry.hint}` : entry.handle || entry.hint || undefined,
+      // Somebody's Slack status, after their name, the way Slack draws it. The
+      // directory resolves the emoji; this only carries it.
+      status: entry.status ?? null,
       // Only what Slack matched server-side: a person found by their email, or
       // by a real name behind a nickname, has none of the query on screen and
       // the client ranking would drop them again. Everything local has already

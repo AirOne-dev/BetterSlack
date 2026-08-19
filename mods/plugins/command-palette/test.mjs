@@ -258,3 +258,44 @@ test('every shortcut in the setting opens it, not just the first', async () => {
     dom.cleanup();
   }
 });
+
+test('a person carries their status, emoji and all', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    web: {
+      call: async (method) => {
+        if (method === 'users.conversations') return { channels: [{ id: 'D1', is_im: true, user: 'U1' }] };
+        return { ok: true, items: [] };
+      },
+      users: async (ids) => new Map(ids.map((id) => [id, {
+        id,
+        name: 'zoe',
+        profile: {
+          display_name: 'Zoe',
+          title: 'Design',
+          status_emoji: ':palm_tree:',
+          status_text: 'On holiday',
+        },
+      }])),
+      emoji: async () => new Map([['palm_tree', 'https://emoji.example/palm.png']]),
+    },
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+    await settle(40);
+
+    const person = (await shown(recorded)).find((row) => row.title === 'Zoe');
+    assert.ok(person, 'the person is listed');
+    assert.equal(person.status?.imageUrl, 'https://emoji.example/palm.png',
+      'the emoji is resolved from the workspace map');
+    assert.equal(person.status?.text, 'On holiday');
+    // It used to be the only place the status appeared; showing it twice now
+    // would read as a mistake.
+    assert.doesNotMatch(person.subtitle ?? '', /On holiday/, 'and not repeated in the subtitle');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
