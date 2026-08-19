@@ -71,13 +71,18 @@ fi
 # entry point is not missing, it is forbidden, and a -f test reports both as
 # false. The error text is what tells them apart. (No backticks in here:
 # this whole script is a JavaScript template literal, and one would end it.)
-WHY="$(cat "$REPO/bin/betterslack.mjs" 2>&1 >/dev/null)"
+#
+# The "|| true" is load-bearing. Under set -e an assignment takes the exit
+# status of its command substitution, so WHY=$(cat missing-file) does not just
+# leave WHY empty -- it ends the script, before the alert below can say why.
+# Launching the app then did nothing at all, visibly or in the log.
+WHY="$(cat "$REPO/bin/betterslack.mjs" 2>&1 >/dev/null)" || true
 if [ -n "$WHY" ]; then
   case "$WHY" in
     *"Operation not permitted"*)
-      osascript -e 'display alert "BetterSlack" message "macOS is blocking BetterSlack from reading its own folder, because the project is in a protected place (Desktop, Documents or Downloads).\n\nEither move the project somewhere else and run pnpm build-app again, or give BetterSlack.app Full Disk Access in System Settings > Privacy & Security."' ;;
+      osascript -e 'display alert "BetterSlack" message "macOS is blocking BetterSlack from reading its own folder, because the project is somewhere it protects: the Desktop, Documents or Downloads." & return & return & "Either move the project elsewhere and run pnpm build-app again, or give BetterSlack.app Full Disk Access in System Settings > Privacy & Security."' ;;
     *)
-      osascript -e 'display alert "BetterSlack" message "BetterSlack could not be started from this folder. Check that the project is still where it was when the app was built."' ;;
+      osascript -e 'display alert "BetterSlack" message "BetterSlack could not be started from this folder." & return & return & "Check that the project is still where it was when the app was built."' ;;
   esac
   exit 1
 fi

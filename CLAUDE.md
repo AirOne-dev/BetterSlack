@@ -63,6 +63,15 @@ which is why it is not part of `pnpm test`.
 The loader also watches while it runs: if the renderer stops answering, it says
 so, names the mods that were on, and re-arms the safe-start marker.
 
+**In that launcher, `set -e` swallowed the explanation.** Under `set -e` an
+assignment takes the exit status of its command substitution, so
+`WHY="$(cat missing-file 2>&1 >/dev/null)"` does not leave `WHY` holding the
+error -- it ends the script, on that line, before the alert that was supposed
+to read `WHY` can run. Launching the app did nothing at all: no window, no
+dialog, an empty log. The guard added to explain a failure was itself the
+reason nothing was explained. `|| true` on the assignment, and both paths
+verified by running the script with a repository path that does not exist.
+
 **`pnpm build-app` cannot read a checkout on the Desktop.** macOS gates
 Desktop, Documents and Downloads per application: a terminal has that access, a
 freshly built app has not, and no prompt is shown for an unsigned one -- the
