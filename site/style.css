@@ -42,6 +42,17 @@ body {
 }
 
 img { max-width: 100%; height: auto; display: block; }
+
+/*
+ * A long word cannot widen the page.
+ *
+ * Every overflow on a phone here came from something unbreakable -- a URL in a
+ * sentence, a token in a heading -- pushing its container past the viewport,
+ * which `overflow-x: hidden` on the body then quietly clipped rather than
+ * fixed. Anywhere rather than break-word: a 40-character command with no
+ * spaces has to break somewhere.
+ */
+p, li, h1, h2, h3, figcaption, .lede, .section__lede, .note { overflow-wrap: anywhere; }
 a { color: inherit; }
 
 h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 12px; }
@@ -117,6 +128,10 @@ p { margin: 0 0 16px; color: var(--muted); }
 
 .hero {
   position: relative;
+  /* The glow bleeds 10% past each side by design; it is clipped here rather
+     than by `overflow-x: hidden` on the body, which hides every other mistake
+     along with it. */
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
   gap: clamp(24px, 4vw, 56px);
@@ -161,7 +176,9 @@ figcaption { margin-top: 10px; font-size: 13px; color: var(--muted); }
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.03);
   padding: 14px 16px;
-  max-width: 640px;
+  max-width: min(640px, 100%);
+  /* The scroll belongs to the box, so the box can be narrower than its line. */
+  overflow: hidden;
 }
 .snippet code {
   display: block;
@@ -170,7 +187,7 @@ figcaption { margin-top: 10px; font-size: 13px; color: var(--muted); }
   white-space: pre;
   overflow-x: auto;
 }
-.snippet--wide { max-width: 720px; }
+.snippet--wide { max-width: min(720px, 100%); }
 .snippet__copy {
   position: absolute; top: 10px; right: 10px;
   border: 1px solid var(--line);
@@ -187,7 +204,7 @@ figcaption { margin-top: 10px; font-size: 13px; color: var(--muted); }
 
 .strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
   gap: 1px;
   background: var(--line);
   border-block: 1px solid var(--line);
@@ -242,7 +259,7 @@ kbd {
 /* Cards ----------------------------------------------------------------- */
 
 .cards { display: grid; gap: 16px; }
-.cards--3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.cards--3 { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
 .card {
   --card-pad: 22px;
   border: 1px solid var(--line);
@@ -280,7 +297,7 @@ kbd {
 
 /* Theme gallery --------------------------------------------------------- */
 
-.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 18px; }
 .theme {
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -360,9 +377,65 @@ kbd {
 }
 
 @media (max-width: 900px) {
-  .hero, .section--split { grid-template-columns: 1fr; }
+  /*
+   * `minmax(0, 1fr)`, not `1fr`.
+   *
+   * A bare `1fr` is `minmax(auto, 1fr)`, and `auto` means min-content -- so a
+   * single unbreakable line, here the git clone command in the hero, sets the
+   * width of the whole column and pushes the page out to 569px on a 390px
+   * screen. Everything then looked clipped rather than wrapped, which is what
+   * "not responsive at all" looked like.
+   */
+  .hero, .section--split { grid-template-columns: minmax(0, 1fr); }
   .section--reverse .split__text { order: 0; }
-  .nav__links { display: none; }
+
+  /*
+   * The links move to a row of their own instead of disappearing.
+   *
+   * They used to be `display: none` below this width, which is the whole of
+   * what the site did for a phone: no navigation at all, on the only device
+   * where a long page is hard to move around.
+   */
+  .nav { flex-wrap: wrap; gap: 12px 18px; }
+  .nav__links {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .nav__links::-webkit-scrollbar { display: none; }
+  .nav__links a { white-space: nowrap; padding: 4px 0; }
+  .nav__actions { margin-left: auto; }
+  html { scroll-padding-top: 124px; }
+}
+
+@media (max-width: 620px) {
+  body { font-size: 16px; }
+  h1 { font-size: clamp(30px, 8.5vw, 38px); }
+  h2 { font-size: clamp(23px, 6.5vw, 30px); }
+  .lede, .section__lede { font-size: 16px; }
+
+  /* Tabs scroll rather than stacking into four ragged rows. */
+  .tabs__row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .tabs__row::-webkit-scrollbar { display: none; }
+  .tabs__row button { white-space: nowrap; }
+  .tabs__panel pre { padding: 14px; }
+
+  .strip__item { padding: 16px 12px; }
+  .strip__item strong { font-size: 19px; }
+
+  .cta { gap: 10px; }
+  /* A tap target, not a mouse target. */
+  .btn { padding: 12px 18px; min-height: 44px; display: inline-flex; align-items: center; }
+  .snippet { padding: 12px; }
+  .snippet code { font-size: 12px; }
+  .snippet__copy { position: static; display: block; margin-top: 10px; }
+  .wide { margin-top: 24px; }
+  .card { --card-pad: 18px; }
+  .card__shot { height: 120px; }
 }
 
 /* A mark on every card.
