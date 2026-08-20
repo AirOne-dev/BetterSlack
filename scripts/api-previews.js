@@ -1387,6 +1387,27 @@ const IMITATED = {
     },
   },
 
+  'slack-openmessage': {
+    render: (v, { stage }) => {
+      const frame = slackChrome();
+      const message = frame.querySelector('[data-qa="message_container"]');
+      const go = kit.button('Open the message', { variant: 'primary' });
+      go.addEventListener('click', () => {
+        // Slack's own flash: it fades out on its own, so re-running has to take
+        // the class off before putting it back or the second click does nothing.
+        message.classList.remove('chrome__flash');
+        void message.offsetWidth;
+        message.classList.add('chrome__flash');
+      });
+      stage.replaceChildren(frame, go, kit.el('pre', { class: 'pg__out' }, [
+        `slack://channel?team=T0EXAMPLE1&id=${v.channel}&message=${v.ts}`,
+      ]), stubbed(
+        'In the client, the desktop app routes that URL in place and highlights the message it lands on.'));
+      focusChrome(frame, '.p-message_pane');
+      return undefined;
+    },
+  },
+
   'slack-opendirectmessage': {
     render: (v, { stage }) => {
       const frame = slackChrome();

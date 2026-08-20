@@ -71,6 +71,15 @@ export interface Command {
    * person's face. `api.slack.describeStatus` produces exactly this shape.
    */
   status?: { imageUrl?: string | null; emoji?: string | null; text?: string } | null;
+  /**
+   * Leave the palette up after running.
+   *
+   * For a row that refines rather than arrives -- one that switches the mode,
+   * or hands the query on to a different provider. Closing on those makes the
+   * palette something you have to reopen to keep looking, which is the opposite
+   * of what a search field is.
+   */
+  keepOpen?: boolean;
   run: () => void | Promise<void>;
 }
 
@@ -131,6 +140,15 @@ export interface PaletteHandle extends Cleanup {
    * belongs in the list -- so it cannot know this for itself.
    */
   setBusy(on: boolean): void;
+  /**
+   * Put the palette into one of its modes, as if the prefix had been typed.
+   *
+   * So a row can be a way in: "search the messages for what you typed" is a
+   * result before it is a mode, and a palette that can only be narrowed by
+   * somebody who already knows the punctuation is narrower than it looks.
+   * `null` steps back out. Pass `query` to carry what was typed across.
+   */
+  setMode(id: string | null, query?: string): void;
 }
 
 /**
@@ -233,7 +251,7 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
 
   const run = (command: Command | undefined) => {
     if (!command) return;
-    close();
+    if (!command.keepOpen) close();
     void Promise.resolve(command.run()).catch((err: Error) => {
       console.error(`[betterslack] "${command.title}" failed`, err);
     });
@@ -482,6 +500,26 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
 
   close.refresh = () => {
     if (isPaletteOpen()) update();
+  };
+  close.setMode = (id: string | null, next?: string) => {
+    if (!isPaletteOpen()) return;
+    if (id === null) {
+      clearMode();
+      if (next !== undefined) input.value = next;
+      onInput();
+      input.focus();
+      return;
+    }
+    const found = modes.find((entry) => entry.id === id);
+    if (!found) return;
+    // Through the field, not around it: typing the prefix is the one path that
+    // sets the chip, the placeholder and the query together, and a second way
+    // in is a second way for them to disagree.
+    input.value = found.prefix + (next ?? input.value);
+    mode = null;
+    chip.setAttribute('hidden', 'hidden');
+    onInput();
+    input.focus();
   };
   close.setBusy = (on: boolean) => {
     if (busy === on) return;

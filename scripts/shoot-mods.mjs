@@ -35,13 +35,14 @@ const CHROME = new Set([
   'importe', 'nouvelle', 'nouveau', 'conversation', 'conversations',
   // The tab rail's own labels, which Slack writes and nobody chose.
   'accueil', 'activité', 'activite', 'fichiers', 'directs', 'brouillons',
-  'canaux', 'connexions', 'groupes', 'externes',
+  'canaux', 'connexions', 'groupes', 'externes', 'outils', 'modèles', 'modeles',
+  'plus', 'later', 'accueil', 'récents', 'recents',
   // Tabs above a conversation, and the day dividers and reply bars inside it.
   'marque-pages', 'épingles', 'epingles', 'canevas', 'dossier', 'aujourd',
   'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche',
   'réponse', 'réponses', 'reponse', 'reponses', 'dernière', 'derniere',
   'afficher', 'télécharger', 'telecharger', 'modifié', 'modifie',
-  'retour', 'ajouter', 'ligne', 'enregistrer', 'chargement', 'envoyer', 'channel',
+  'retour', 'ajouter', 'ajouté', 'ajoute', 'épinglé', 'epingle', 'ligne', 'enregistrer', 'chargement', 'envoyer', 'channel',
   /*
    * BetterSlack's own, which reach the audit through the palette: it lists
    * every mod's commands, and those rows are deliberately not swept -- a mod's
@@ -104,6 +105,18 @@ const SHOTS = [
       // there is no box to type into until the palette is up.
       { name: 'actions', then: 'type:/', expect: '.betterslack-palette__row' },
       { name: 'people', then: 'type:@', expect: '.betterslack-palette__row' },
+      /*
+       * There is deliberately no frame for the `>` message search.
+       *
+       * Every other frame stages something the client always has -- a list of
+       * conversations, a list of people. A message search has results only if
+       * the words happen to be in *this* workspace, and there is no word that
+       * is: `>ok` came back empty on the workspace this was written against and
+       * failed the run. A frame that depends on whose Slack is being
+       * photographed is a frame that breaks for the next person, and the rule
+       * here is that a failed staging fails the run rather than photographing
+       * nothing.
+       */
     ],
   },
   {

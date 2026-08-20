@@ -105,6 +105,13 @@ const TEXT_AREAS = [
   // A link Slack unfurled is a card with somebody's title, text and author in
   // it -- the whole card goes, not the two fields it used to be.
   '.c-message_attachment',
+  /*
+   * The rest of an unfurl. Slack draws a link preview's title, its breadcrumb
+   * and its body outside the attachment box, in `p-mrkdwn_element` -- found by
+   * the audit, with a real person's name in a `<b>` inside one and a document
+   * path ("Biz / 2. Marques, Offres & Marques Blanches") in another.
+   */
+  '.p-mrkdwn_element',
   // A bare span inside a virtual row: Slack's activity and search views put the
   // message there rather than in a message-kit block, and one slipped through.
   // Direct children only, so the sidebar rows keep their names.
@@ -182,7 +189,17 @@ function face(seed) {
 
 /** Everything this mod says, so an audit can tell its words from the room's. */
 export const VOCABULARY = [...FIRST, ...LAST, ...CHANNELS, ...SECTIONS,
-  ...WORDS.join(' ').split(/\s+/), WORKSPACE, 'example.com', 'Slack'];
+  ...WORDS.join(' ').split(/\s+/), WORKSPACE, 'example.com', 'Slack',
+  /*
+   * The invented address's own words.
+   *
+   * An audit compares what is on screen against what was there before, and
+   * anything this file writes has to be excluded or it reads as a survivor.
+   * `?ref=slack-digest&source=weekly` failed a run on the word "source",
+   * which had been in a real link on the same screen -- a false alarm, but one
+   * that stops a shoot just as dead as a real one.
+   */
+  'notes', 'ref', 'slack-digest', 'digest', 'source', 'weekly', 'build'];
 
 /** The places it sweeps, named. */
 export const AREAS = [...TEXT_AREAS, DRAFT].map((e) => (typeof e === 'string' ? e : e.sel));
@@ -265,10 +282,19 @@ export function createRedaction(options = {}) {
       replacement = fakeUrl(original);
     } else if (/^[#@]/.test(original)) {
       replacement = original[0] + pick(CHANNELS, original);
-    } else if (/^\d{1,2}\s?[h:]\s?\d{2}/.test(original) || /^\d+$/.test(original)) {
-      // Times and counts belong to nobody, and inventing them makes a screen
-      // look wrong for no gain.
+    } else if (/^\d{1,2}\s?[h:]\s?\d{2}/.test(original) || /^\d{1,4}$/.test(original)) {
+      // Times, counts and years belong to nobody, and inventing them makes a
+      // screen look wrong for no gain.
       replacement = original;
+    } else if (/^[\d\s.-]+$/.test(original)) {
+      /*
+       * A longer number is not a count. Found by the audit: two six-digit
+       * order references sat alone in message bubbles and survived every sweep,
+       * because "it is only digits" had been taken to mean "it is nobody's".
+       * Replaced digit for digit, so the bubble keeps its width.
+       */
+      replacement = original.replace(/\d/g, (digit, at) =>
+        String((hash(`${original}#${at}`) + Number(digit)) % 10));
     } else if (original.split(/\s+/).length <= 3 && /^[\p{Lu}]/u.test(original)) {
       // Something short that starts with a capital reads as a name.
       replacement = `${pick(FIRST, original)} ${pick(LAST, `${original}!`)}`;
@@ -402,7 +428,20 @@ export function createRedaction(options = {}) {
      */
     for (const row of doc.querySelectorAll('.betterslack-palette__row')) {
       const source = row.querySelector('.betterslack-palette__source')?.textContent ?? '';
-      if (!/canal|channel|message direct|direct message/i.test(source)) continue;
+      /*
+       * A row sourced "Slack" is one of the palette's own actions -- set a
+       * status, pause notifications, copy a link -- so its title is the mod's
+       * own words and must survive. Its second line is not: "Copy a link to
+       * this conversation" carries the conversation's name under it.
+       */
+      if (/^\s*slack\s*$/i.test(source)) {
+        const sub = row.querySelector('.betterslack-palette__sub');
+        if (sub) redactText(sub);
+        continue;
+      }
+      // Everything else Slack answered for: a channel, a DM, a group DM (whose
+      // title is a list of real people) and a line out of a real conversation.
+      if (!/canal|channel|message|groupe|group/i.test(source)) continue;
       const text = row.querySelector('.betterslack-palette__text');
       if (text) redactText(text);
     }

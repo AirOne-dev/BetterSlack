@@ -25,6 +25,94 @@ const SEARCH_DEBOUNCE_MS = 180;
 const CONVERSATION_LIMIT = 200;
 /** Below this, a search matches half the workspace and is not worth the round trip. */
 const MIN_QUERY = 2;
+/**
+ * How much of a message goes on its row.
+ *
+ * A deploy notification is a screenful, and a row is a glance: measured on a
+ * live workspace, the first result for "deploy" was 340 characters of commit
+ * log. The row clamps it visually either way; this keeps it out of the ranking
+ * and out of what a screen reader has to get through.
+ */
+const MESSAGE_CHARS = 140;
+/** How many conversations are remembered as recent, per workspace. */
+const RECENT_LIMIT = 24;
+
+/**
+ * Slack's markup, as the line a person reads.
+ *
+ * Everything a channel or a message carries is Slack's own mrkdwn, and a list
+ * is the one place it is never rendered: a channel purpose came out as
+ * `Point du vendredi : <https://us02web.zoom.us/j/889…>` across three lines,
+ * ampersands and all. So links become their label, entities are decoded, and
+ * the whole thing is one line -- a row is a glance, not a document.
+ */
+function plainText(value) {
+  return String(value ?? '')
+    // <url|label> is the label; <url> and <#C…|name> are what is left of them.
+    .replace(/<([^>|]+)\|([^>]+)>/g, '$2')
+    .replace(/<([^>]+)>/g, '$1')
+    // Slack sends these escaped, and only these three.
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    /*
+     * Emphasis, as emphasis rather than as punctuation. A row is plain text and
+     * cannot show bold, so the markers are noise -- `queue is *backing up*`.
+     *
+     * Only `*` and a backtick. Slack's italic marker is `_`, and half the
+     * handles in a workspace are snake_case: stripping it turns
+     * `deploy_from_main` into `deploy from main`, which is worse than leaving
+     * one asterisk in.
+     */
+    .replace(/\*(\S(?:[^*]*\S)?)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    /*
+     * A shortcode nothing can draw is never printed -- the same rule
+     * `api.slack.statusNode` follows. A row is plain text, so `:satellite:` is
+     * a word the reader has to skip, and a deploy notification carries two.
+     */
+    .replace(/:[a-z0-9_+-]+:/gi, ' ')
+    // Blockquote markers, which mean nothing on one line and come in runs.
+    .replace(/(^|\s)>+(\s|$)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * What a message says, wherever Slack put it.
+ *
+ * `text` is empty on anything an integration posted -- measured on a live
+ * workspace, every Grafana alert in the search came back with none, and eight
+ * rows reading "(no text)" is a search result nobody can choose between. The
+ * words are in the attachment, or in the blocks, so those are read in turn.
+ */
+function messageText(message) {
+  const direct = plainText(message.text);
+  if (direct) return direct;
+
+  for (const attachment of message.attachments ?? []) {
+    const said = plainText(attachment.fallback || attachment.text || attachment.title || '');
+    if (said) return said;
+  }
+
+  /*
+   * Block kit, flattened. A block holds text, or a list of elements that do,
+   * and the nesting is arbitrary -- so this walks it rather than reaching for
+   * a shape.
+   */
+  const parts = [];
+  const walk = (node) => {
+    if (!node || parts.length > 8) return;
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (typeof node !== 'object') return;
+    if (typeof node.text === 'string') parts.push(node.text);
+    else if (node.text) walk(node.text);
+    walk(node.elements);
+    walk(node.fields);
+  };
+  walk(message.blocks);
+  return plainText(parts.join(' '));
+}
 
 /**
  * A group DM, as the people in it.
@@ -67,7 +155,7 @@ export function createDirectory(api, { onResults }) {
   let conversations = [];
   let loadedAt = 0;
   /** The newest search answer, and the query it belongs to. */
-  let remote = { query: '', people: [], channels: [] };
+  let remote = { query: '', people: [], channels: [], messages: [] };
   let timer = null;
   let searching = false;
   /** True from the keystroke to the answer, debounce included. */
@@ -102,6 +190,13 @@ export function createDirectory(api, { onResults }) {
    * the entry keeps the profile and the picture is looked up here, on the way
    * out, where the map is whatever it is by then.
    */
+  /** What Slack says about a conversation right now, rather than at cache time. */
+  const withCounts = (entry) => {
+    const row = counts.get(entry.conversationId ?? entry.id);
+    if (!row?.unread) return entry;
+    return { ...entry, unread: true, mentions: row.mentions };
+  };
+
   const withStatus = (entry) => {
     if (!entry.profile || typeof api.slack.describeStatus !== 'function') return entry;
     try {
@@ -118,7 +213,10 @@ export function createDirectory(api, { onResults }) {
     team = now;
     conversations = [];
     loadedAt = 0;
-    remote = { query: '', people: [], channels: [] };
+    recents = null;
+    counts = new Map();
+    countsAt = 0;
+    remote = { query: '', people: [], channels: [], messages: [] };
     // Different workspace, different custom emoji: a status drawn with the last
     // one's is a picture from somewhere the user has left.
     customEmoji = null;
@@ -136,6 +234,83 @@ export function createDirectory(api, { onResults }) {
    * loader reads at every launch.
    */
   const store = api.helpers.cache('conversations', { keys: 4 });
+
+  /*
+   * Where you have been, which is the best guess at where you are going.
+   *
+   * `users.conversations` answers in an order of its own -- roughly when you
+   * joined -- so an untyped palette opened on the channel you joined in 2021 and
+   * never on the two you live in. Slack's own switcher is recency-ordered, and
+   * the client keeps no history a mod can read, so this keeps its own: the ids
+   * opened from the palette, newest first, per workspace.
+   *
+   * It is deliberately what *this* opened rather than what Slack thinks is
+   * recent. The list is then about the way you actually use the palette, and it
+   * is right from the first use rather than after a round trip.
+   */
+  /*
+   * Slack's own idea of where you have been, which the client asks for at boot.
+   *
+   * `client.counts` answers one record per conversation with `last_read`, the
+   * timestamp of the last message you have read there, and `has_unreads`. It is
+   * the recency the desktop client itself sorts by, it is shared across your
+   * devices, and it is one request for the whole workspace. Measured against a
+   * live workspace: 52 channels in one answer.
+   *
+   * It is not enough on its own -- `last_read` only moves when there was
+   * something new to read, so a quiet channel you open every morning stays at
+   * the bottom of it for ever. That is the half `recents` covers.
+   */
+  let counts = new Map();
+  let countsAt = 0;
+
+  const recentStore = api.helpers.cache('recents', { keys: 4 });
+  let recents = null;
+  const recentIds = () => {
+    if (recents) return recents;
+    const held = recentStore.get(team ?? 'none');
+    recents = Array.isArray(held) ? held.filter((id) => typeof id === 'string') : [];
+    return recents;
+  };
+
+  /*
+   * One key per entry, whichever list it came out of.
+   *
+   * A person is the *user* id and never the DM's: they arrive from the
+   * conversation list carrying both and from search carrying only the user, so
+   * keying on the DM would forget somebody the moment they were opened from a
+   * search. Everything else is the conversation, which is all it has.
+   */
+  const keyOf = (entry) => (entry.kind === 'person'
+    ? entry.id
+    : (entry.conversationId ?? entry.id));
+
+  /** Remember a conversation as the last place you went. */
+  const remember = (entry) => {
+    const id = typeof entry === 'string' ? entry : keyOf(entry ?? {});
+    if (!id) return;
+    const next = [id, ...recentIds().filter((other) => other !== id)].slice(0, RECENT_LIMIT);
+    recents = next;
+    recentStore.set(team ?? 'none', next);
+  };
+
+  /**
+   * Recently opened first, everything else in the order it came.
+   *
+   * Only ever a re-ordering: a switcher that *hid* what you have not opened
+   * lately would be one you cannot use to reach anything new.
+   */
+  const byRecent = (list) => {
+    const order = new Map(recentIds().map((id, at) => [id, at]));
+    const rank = (entry) => order.get(keyOf(entry)) ?? Infinity;
+    // Slack's reading, as a tie-break under our own: newest read first, and
+    // everything Slack said nothing about after everything it did.
+    const read = (entry) => -Number(counts.get(entry.conversationId ?? entry.id)?.lastRead ?? 0);
+    return list
+      .map((entry, at) => ({ entry, at, rank: rank(entry), read: read(entry) }))
+      .sort((a, b) => (a.rank - b.rank) || (a.read - b.read) || (a.at - b.at))
+      .map((row) => row.entry);
+  };
 
   /** Everything the palette draws for a conversation, and nothing else. */
   const compact = (entry) => ({
@@ -178,6 +353,34 @@ export function createDirectory(api, { onResults }) {
     if (Date.now() - loadedAt < 60_000) return;
     loadedAt = Date.now();
 
+    /*
+     * Asked for alongside the list, and never waited on: the conversations are
+     * what the palette draws, and an ordering that arrives a moment later
+     * re-sorts a list that is already on screen. Failing is fine -- the local
+     * recents still order it.
+     */
+    if (Date.now() - countsAt > 30_000) {
+      countsAt = Date.now();
+      void api.slack.web.call('client.counts').then((res) => {
+        const next = new Map();
+        for (const group of ['channels', 'mpims', 'ims']) {
+          for (const row of res?.[group] ?? []) {
+            if (!row?.id) continue;
+            next.set(row.id, {
+              lastRead: Number(row.last_read ?? 0),
+              // The conversation's newest message, which is what
+              // `conversations.mark` wants to be told you have read.
+              latest: String(row.latest ?? ''),
+              unread: row.has_unreads === true,
+              mentions: Number(row.mention_count ?? 0),
+            });
+          }
+        }
+        counts = next;
+        onResults();
+      }).catch((err) => api.log.warn('client.counts failed:', err.message));
+    }
+
     try {
       const res = await api.slack.web.call('users.conversations', {
         types: 'public_channel,private_channel,mpim,im',
@@ -202,7 +405,7 @@ export function createDirectory(api, { onResults }) {
             icon: profile.image_48 || profile.image_72 || '',
             // The title, not the status: the status has a place of its own on
             // the row now, and printing it twice reads as a mistake.
-            hint: profile.title || '',
+            hint: plainText(profile.title),
             profile,
             handle: user?.name ? `@${user.name}` : '',
           };
@@ -224,7 +427,7 @@ export function createDirectory(api, { onResults }) {
           kind: 'channel',
           title: channel.name,
           icon: channel.is_private ? '🔒' : '#',
-          hint: channel.purpose?.value || channel.topic?.value || '',
+          hint: plainText(channel.purpose?.value || channel.topic?.value),
           member: true,
         };
       });
@@ -234,9 +437,9 @@ export function createDirectory(api, { onResults }) {
     }
   };
 
-  /** One search of Slack's own index, for people and channels at once. */
+  /** One search of Slack's own index: people, channels and messages at once. */
   const searchNow = async (query) => {
-    const ask = (module) => api.slack.web.call(`search.modules.${module}`, {
+    const ask = (module, over = {}) => api.slack.web.call(`search.modules.${module}`, {
       // `module` is required as an argument as well as being in the path.
       module,
       query,
@@ -246,13 +449,22 @@ export function createDirectory(api, { onResults }) {
       highlight: 0,
       sort: 'score',
       sort_dir: 'desc',
+      ...over,
     }).catch((err) => {
       api.log.warn(`search.modules.${module} failed:`, err.message);
       return null;
     });
 
     searching = true;
-    const [people, channels] = await Promise.all([ask('people'), ask('channels')]);
+    const [people, channels, messages] = await Promise.all([
+      ask('people'),
+      ask('channels'),
+      // Messages come back nested: an item is a conversation, and the match is
+      // in `messages[0]`. Extracts on, since the line is the whole point of a
+      // message result -- a row saying only which channel it was in is a row
+      // nobody can choose between.
+      ask('messages', { extracts: 1, sort: 'timestamp' }),
+    ]);
     searching = false;
     pending = false;
     // Someone typed on while this was in flight; the newer answer wins.
@@ -260,6 +472,35 @@ export function createDirectory(api, { onResults }) {
 
     remote = {
       query,
+      messages: (messages?.items ?? []).flatMap((item) => {
+        const message = (item.messages ?? [])[0];
+        if (!message) return [];
+        // A message with nothing readable in it is a row nobody can choose
+        // between, and eight of them is a search that looks broken.
+        const said = messageText(message);
+        if (!said) return [];
+        const title = said.length > MESSAGE_CHARS ? `${said.slice(0, MESSAGE_CHARS).trimEnd()}…` : said;
+        const channel = item.channel ?? {};
+        return [{
+          id: `${channel.id}:${message.ts}`,
+          kind: 'message',
+          remote: true,
+          team: item.team,
+          channelId: channel.id,
+          ts: message.ts,
+          title,
+          /*
+           * Who and where, which is what tells two matching lines apart.
+           *
+           * A DM has no name: Slack answers with the other person's user id,
+           * and `#U02U00MA8F6` is worse than saying nothing -- the row already
+           * carries who said it.
+           */
+          hint: [message.username, channel.is_im || !channel.name ? null : `#${channel.name}`]
+            .filter(Boolean).join(' · '),
+          icon: channel.is_im ? '💬' : '#',
+        }];
+      }),
       people: (people?.items ?? []).map((item) => {
         const profile = item.profile ?? {};
         return {
@@ -270,7 +511,7 @@ export function createDirectory(api, { onResults }) {
           remote: true,
           title: profile.display_name || profile.real_name || item.username || item.id,
           icon: profile.image_48 || profile.image_72 || '',
-          hint: profile.title || profile.real_name || '',
+          hint: plainText(profile.title || profile.real_name),
           profile,
           handle: item.username ? `@${item.username}` : '',
         };
@@ -281,7 +522,7 @@ export function createDirectory(api, { onResults }) {
         remote: true,
         title: item.name,
         icon: item.is_private ? '🔒' : '#',
-        hint: item.purpose?.value || '',
+        hint: plainText(item.purpose?.value),
         member: item.is_member === true,
         members: item.member_count ?? 0,
       })),
@@ -307,7 +548,7 @@ export function createDirectory(api, { onResults }) {
       return;
     }
 
-    remote = { query: trimmed, people: [], channels: [] };
+    remote = { query: trimmed, people: [], channels: [], messages: [] };
     clearTimeout(timer);
     /*
      * Waiting starts here, not when the request goes out.
@@ -340,12 +581,15 @@ export function createDirectory(api, { onResults }) {
         || (entry.hint ?? '').toLowerCase().includes(q))
       : local;
     const seen = new Set(kept.map((entry) => entry.id));
-    return [...kept, ...found.filter((entry) => !seen.has(entry.id))];
+    return [...byRecent(kept), ...found.filter((entry) => !seen.has(entry.id))];
   };
 
   return {
     load,
     search,
+    remember,
+    /** The newest message in a conversation, as `conversations.mark` wants it. */
+    latestTs: (id) => counts.get(id)?.latest || '',
     /** Whether anything is still out: the debounce as well as the request. */
     get searching() {
       return pending || searching;
@@ -355,18 +599,31 @@ export function createDirectory(api, { onResults }) {
     /** Conversations you are in, people and channels alike. */
     conversations: () => {
       checkTeam();
-      return conversations.map(withStatus);
+      return byRecent(conversations).map(withCounts).map(withStatus);
     },
     people: (query) => {
       checkTeam();
       const local = conversations.filter((entry) => entry.kind === 'person');
       return narrow(local, query.trim().length >= MIN_QUERY ? remote.people : [], query)
+        .map(withCounts)
         .map(withStatus);
+    },
+    /*
+     * Messages, which are only ever what Slack just answered.
+     *
+     * Nothing local to narrow: a message index is not something a client keeps,
+     * so this is the one list with no half of its own to show while the search
+     * is out.
+     */
+    messages: (query) => {
+      checkTeam();
+      return query.trim().length >= MIN_QUERY ? remote.messages : [];
     },
     channels: (query) => {
       checkTeam();
       const local = conversations.filter((entry) => entry.kind !== 'person');
-      return narrow(local, query.trim().length >= MIN_QUERY ? remote.channels : [], query);
+      return narrow(local, query.trim().length >= MIN_QUERY ? remote.channels : [], query)
+        .map(withCounts);
     },
   };
 }

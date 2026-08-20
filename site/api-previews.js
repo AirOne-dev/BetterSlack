@@ -46,6 +46,7 @@
     };
     const mount = () => {
       if (disposed) return;
+      if (!globalThis.document) return;
       const container = document.querySelector(containerSelector);
       if (!container) return;
       const anchor = before ? container.querySelector(before) : null;
@@ -743,6 +744,11 @@
         const team = currentTeamId();
         if (!team) return;
         window.location.href = `slack://channel?team=${team}&id=${encodeURIComponent(channelId)}`;
+      },
+      openMessage(channelId, ts, options = {}) {
+        const team = options.team ?? currentTeamId();
+        if (!team || !ts) return;
+        window.location.href = `slack://channel?team=${encodeURIComponent(team)}&id=${encodeURIComponent(channelId)}&message=${encodeURIComponent(ts)}`;
       },
       async openDirectMessage(userId) {
         const res = await web.call("conversations.open", {
@@ -2257,7 +2263,7 @@
     };
     const run = (command) => {
       if (!command) return;
-      close();
+      if (!command.keepOpen) close();
       void Promise.resolve(command.run()).catch((err) => {
         console.error(`[betterslack] "${command.title}" failed`, err);
       });
@@ -2446,6 +2452,23 @@
     queueMicrotask(() => input.focus());
     close.refresh = () => {
       if (isPaletteOpen()) update();
+    };
+    close.setMode = (id, next) => {
+      if (!isPaletteOpen()) return;
+      if (id === null) {
+        clearMode();
+        if (next !== void 0) input.value = next;
+        onInput();
+        input.focus();
+        return;
+      }
+      const found = modes.find((entry) => entry.id === id);
+      if (!found) return;
+      input.value = found.prefix + (next ?? input.value);
+      mode = null;
+      chip.setAttribute("hidden", "hidden");
+      onInput();
+      input.focus();
     };
     close.setBusy = (on) => {
       if (busy === on) return;
@@ -5780,6 +5803,25 @@ api.slack.vipUsers()
           "Assigning that URL hands it to the desktop app\u2019s protocol handler, which routes it in place \u2014 same document, no reload."
         ));
         focusChrome(frame, ".p-channel_sidebar");
+        return void 0;
+      }
+    },
+    "slack-openmessage": {
+      render: (v, { stage }) => {
+        const frame = slackChrome();
+        const message = frame.querySelector('[data-qa="message_container"]');
+        const go = kit.button("Open the message", { variant: "primary" });
+        go.addEventListener("click", () => {
+          message.classList.remove("chrome__flash");
+          void message.offsetWidth;
+          message.classList.add("chrome__flash");
+        });
+        stage.replaceChildren(frame, go, kit.el("pre", { class: "pg__out" }, [
+          `slack://channel?team=T0EXAMPLE1&id=${v.channel}&message=${v.ts}`
+        ]), stubbed(
+          "In the client, the desktop app routes that URL in place and highlights the message it lands on."
+        ));
+        focusChrome(frame, ".p-message_pane");
         return void 0;
       }
     },

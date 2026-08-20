@@ -568,6 +568,20 @@ export interface SlackApi {
   openConversation(channelId: string): void;
 
   /**
+   * Open one message, in its conversation, highlighted.
+   *
+   * Slack's deep link takes a `message` as well as a channel, and the desktop
+   * app routes it in place: same document, right conversation, that message
+   * lit. Measured -- a search answer in another workspace opened correctly and
+   * came up highlighted.
+   *
+   * `team` is for a result from a workspace other than the one on screen, which
+   * is what a search across all of them answers with; without it the link is
+   * built for the workspace the client is showing.
+   */
+  openMessage(channelId: string, ts: string, options?: { team?: string }): void;
+
+  /**
    * Open the direct message with someone, creating it if there is none.
    *
    * `conversations.open` returns the IM's id, and opening one that did not
@@ -784,6 +798,13 @@ export function createSlackApi(pluginId: string): SlackApi {
       // Assigning location.href hands the URL to the desktop app's protocol
       // handler, which routes it internally. The page itself does not navigate.
       window.location.href = `slack://channel?team=${team}&id=${encodeURIComponent(channelId)}`;
+    },
+
+    openMessage(channelId: string, ts: string, options = {}): void {
+      const team = options.team ?? currentTeamId();
+      if (!team || !ts) return;
+      window.location.href = `slack://channel?team=${encodeURIComponent(team)}`
+        + `&id=${encodeURIComponent(channelId)}&message=${encodeURIComponent(ts)}`;
     },
 
     async openDirectMessage(userId: string): Promise<string | null> {

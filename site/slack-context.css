@@ -375,6 +375,17 @@ body.api-page .c-tooltip__tip__arrow { display: none; }
   padding: 6px 8px;
   border-radius: 6px;
 }
+/*
+ * Slack's own highlight for a message you were sent to: a wash that fades out
+ * rather than a border, so nothing on the row moves while it plays.
+ */
+.chrome [data-qa="message_container"].chrome__flash {
+  animation: chrome-flash 2.4s ease-out;
+}
+@keyframes chrome-flash {
+  0%, 55% { background: var(--dt_color-highlight, rgba(242, 199, 68, 0.28)); }
+  100% { background: transparent; }
+}
 .chrome .chrome__filler {
   display: block;
   flex: 1 1 auto;

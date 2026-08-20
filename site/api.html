@@ -135,7 +135,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">api.helpers</p>
       <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-cache">cache</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.slack</p>
-      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
+      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openmessage">openMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.ui</p>
       <ul><li><a href="#ui-confirm">confirm</a></li><li><a href="#ui-kit">kit</a></li><li><a href="#ui-kitcss">kitCss</a></li><li><a href="#ui-menu">menu</a></li><li><a href="#ui-modal">modal</a></li><li><a href="#ui-palette">palette</a></li><li><a href="#ui-toast">toast</a></li><li><a href="#ui-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.dom</p>
@@ -1150,6 +1150,23 @@ api.slack.openConversation('C0BFQCYBRAB');</code></pre>
     <pre class="api-code"><code>const channelId = await api.slack.openDirectMessage('U0EXAMPLE1');</code></pre>
   </div>
 </section>
+<section class="panel" id="p-slack-openmessage" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>openMessage</code></h1>
+    <p class="api-sig api-sig--big">(channelId: string, ts: string, options?: { team?: string }): void</p>
+  </header>
+  <div class="panel__body">
+    <p>Move the client to one message, and highlight it. The same deep link <code>openConversation</code> uses, with the message's timestamp on it: Slack routes it in place and flashes the message it lands on, the way its own search results do.</p>
+<p>The team matters. Search answers across every workspace you are signed into, so a link built without one goes to whichever client is on screen and lands on a channel id that may not exist there. Pass <code>team</code> whenever the message came from somewhere that names it; left out, it is the workspace being drawn.</p>
+    <div class="api-demo" data-demo="slack-openmessage" data-controls="[{&quot;key&quot;:&quot;channel&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;C0BFQCYBRAB&quot;,&quot;label&quot;:&quot;channel id&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;ts&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;1786386808.130969&quot;,&quot;label&quot;:&quot;message ts&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>// Slack's search gives you the conversation and the message inside it.
+const { items } = await api.slack.web.call('search.modules.messages', { module: 'messages', query: 'release' });
+const hit = items[0];
+api.slack.openMessage(hit.channel.id, hit.messages[0].ts, { team: hit.team });</code></pre>
+  </div>
+</section>
 <section class="panel" id="p-slack-openstatuseditor" hidden>
   <header class="panel__head">
     <p class="eyebrow">api.slack</p>
@@ -1411,6 +1428,7 @@ dialog.close();</code></pre>
     <p>The command palette, as a component.</p>
 <p>The list is yours: this draws it, ranks it as you type, moves with the arrow keys and closes on Escape. Nothing about what belongs in it is decided here -- the mod that opens it decides, which is what lets one plugin put Slack's own conversations and BetterSlack's actions in the same list.</p>
 <p>Because it fetches nothing, it cannot know when you are still fetching — and &quot;nothing matches&quot; is a different answer from &quot;still looking&quot;. Tell it with <code>setBusy</code> on the handle, and give it a <code>searching</code> label to show: an empty list then says it is waiting rather than that it found nothing. Waiting starts at the keystroke, not when the request goes out; a debounce in front of a search is part of the wait.</p>
+<p>A mode is a prefix that narrows the list — <code>/</code>, <code>@</code>, <code>#</code> — and it is reachable two ways. Typing the prefix turns it into a chip in front of the field; so does <code>setMode(id)</code> on the handle, which lets a row *be* the way in: &quot;search the messages for what you typed&quot; is a result before it is a mode, and a palette that can only be narrowed by somebody who already knows the punctuation is narrower than it looks. A row that refines rather than arrives sets <code>keepOpen: true</code>, or the palette closes under it. <code>setMode(null)</code> steps back out.</p>
     <div class="api-demo" data-demo="ui-palette" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const palette = api.ui.palette(
@@ -1430,7 +1448,15 @@ dialog.close();</code></pre>
 directory.onResults(() =&gt; {
   palette.setBusy(false);
   palette.refresh();
-});</code></pre>
+});
+
+// A row that hands the query on to another mode rather than going anywhere.
+{
+  id: 'search-messages',
+  title: `Search the messages for &quot;${query}&quot;`,
+  keepOpen: true,
+  run: () =&gt; palette.setMode('messages'),
+}</code></pre>
   </div>
 </section>
 <section class="panel" id="p-ui-toast" hidden>

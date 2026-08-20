@@ -273,9 +273,43 @@ a command. Everything below was found by it rather than by looking:
 - Slack's own vocabulary is not a leak. The words the audit is allowed to see
   survive are listed, in one place, in `shoot-mods.mjs`, and anything not on
   that short list still fails the run.
+- **The redactor's own words have to be excluded from the audit too.** The
+  invented address ends `?ref=slack-digest&source=weekly`, and a run failed on
+  the word "source" because a real link on the same screen had also contained
+  it. A false alarm stops a shoot exactly as dead as a real leak, so everything
+  this file writes is in `VOCABULARY`.
+- **"It is only digits" is not "it is nobody's".** A badge count and a year
+  belong to nobody and inventing them makes the screen look wrong; a six-digit
+  order reference is a customer's. Four digits or fewer are kept, longer ones
+  are replaced digit for digit so the bubble keeps its width. Found by the
+  audit, after two of them sat alone in message bubbles through every sweep.
+- **An unfurl is wider than `.c-message_attachment`.** Slack draws a link
+  preview's title, its breadcrumb and its body in `.p-mrkdwn_element` outside
+  the attachment box -- with a real name in a `<b>` inside one, which is how
+  this was found.
+- **The palette lists Slack and BetterSlack through one class**, and the badge
+  on the right is what tells them apart. Getting it wrong fails both ways: a
+  conversation left alone is somebody's name in a public screenshot, and an
+  action swept is a row of nonsense in the catalogue. A row badged Slack is one
+  of the palette's own doings -- its title is our copy and survives, its second
+  line names a real conversation and does not.
 - A mod that reads the screen once and decorates what it found -- the syntax
   highlighter -- has to be switched off and on after the sweep, or what it
   decorated is the text the sweep has replaced.
+- **A frame may not depend on whose Slack is being photographed.** Every frame
+  stages something a client always has. The palette's `>` message search has
+  results only if the words are in *this* workspace, and there is no word that
+  always is: `>ok` came back empty and failed the run, so there is deliberately
+  no frame for it.
+- **`shoot.mjs` files only what the run took.** `site/shots/mods` is also where
+  `pnpm site` puts a copy of every committed screenshot, so the folder is full
+  before a run starts: filing whatever was in it meant `--only=one-mod`
+  announced twenty-three files, and a run that failed its audit before taking a
+  single picture announced them too. It also skips `<name>-2`, `<name>-3` --
+  those are the one-picture-per-attached-window frames the loader writes
+  whenever `BETTERSLACK_SHOT` is set, and they were being filed as
+  `screenshot-2.webp` beside the real ones, where no manifest names them,
+  nothing draws them and nobody deletes them.
 
 It also carries the camera. `api.files.screenshot({ size })` is the loader
 photographing the renderer that asked -- a page cannot photograph itself -- and
@@ -765,6 +799,38 @@ tests fail below it.
   handler, which routes it in place — same document, no reload, view follows.
   Both measured. `slack://huddle?…` does nothing. `api.slack.openConversation` /
   `openUserProfile` wrap them.
+- **A message timestamp on that link highlights the message.**
+  `slack://channel?team=…&id=…&message=<ts>` routes in place *and* flashes the
+  message it lands on, the way Slack's own search results do — measured against
+  4.51, including across workspaces. `api.slack.openMessage` wraps it, and takes
+  the team, because search answers across every workspace you are signed into
+  and a link built without one lands on a channel id the current client has not
+  got.
+- **`client.counts` is where you have been, in one request.** It is what Slack's
+  own client asks for at boot, and it answers a record per conversation:
+  `last_read`, `latest`, `has_unreads`, `mention_count`. Measured: 52 channels
+  in one answer on a live workspace. It is the recency the desktop client sorts
+  by and it is shared across devices — but `last_read` only moves when there was
+  something new to read, so a quiet channel you open every morning stays at the
+  bottom of it for ever. The command palette therefore orders by its own
+  remembered list first and by `last_read` under it.
+- **A status can be set from a mod.** `users.profile.set` is allowed for an
+  `xoxc` token — verified by reading a real account's status, replacing it,
+  reading it back and restoring it. The whole profile goes as one JSON string
+  under `profile`; `status_text` as a field of its own is accepted and ignored.
+  `status_expiration` is a unix time in seconds, zero for "until I clear it".
+  `users.setPresence` (`away` / `auto`), `dnd.setSnooze` (`num_minutes`),
+  `dnd.endSnooze` and `conversations.mark` (channel plus the `latest` timestamp
+  out of `client.counts`) all exist as well.
+- **`search.modules.messages` answers conversations, not messages.** An item is
+  `{ iid, team, channel, messages }` and the match is `messages[0]`:
+  `{ ts, user, username, text, permalink, extracts, blocks }`. **`text` is empty
+  on anything an integration posted** — measured, every Grafana alert in one
+  workspace — and the words are in `attachments[].fallback` or in the blocks, so
+  a row built from `text` alone reads "(no text)" eight times over. What comes
+  back is Slack's own mrkdwn as well: `<url|label>`, `&amp;`, `*bold*`,
+  `:shortcode:` and blockquote runs all have to come off before it goes on one
+  line.
 - **VIP is a preference, not an endpoint.** `users.prefs.set` with
   `name=vip_users` and a comma-separated list of user ids; `users.prefs.get`
   reads it back. Wrapped as `api.slack.vipUsers()` / `setVip()`. Verified by

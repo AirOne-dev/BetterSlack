@@ -30,7 +30,7 @@ const SEARCHED = 260;
  * catalogue. `search` is what a real workspace answers for a query nobody in
  * your DMs matches -- the case the first version got wrong.
  */
-function mount({ conversations = [], mods = [], search = {} } = {}) {
+function mount({ conversations = [], mods = [], search = {}, counts = {} } = {}) {
   const dom = installDom();
   const calls = [];
   const { api, recorded } = createTestApi({
@@ -41,6 +41,8 @@ function mount({ conversations = [], mods = [], search = {} } = {}) {
         if (method === 'users.conversations') return { channels: conversations };
         if (method === 'search.modules.people') return { items: search.people ?? [] };
         if (method === 'search.modules.channels') return { items: search.channels ?? [] };
+        if (method === 'search.modules.messages') return { items: search.messages ?? [] };
+        if (method === 'client.counts') return counts;
         return { ok: true };
       },
       users: async (ids) => new Map(ids.map((id) => [id, {
@@ -144,7 +146,7 @@ test('one letter is not a search', async () => {
   }
 });
 
-test('/ is actions, @ is people, # is channels', async () => {
+test('/ is actions, @ is people, # is channels, > is messages', async () => {
   const { api, recorded, dom } = mount({
     conversations: [
       { id: 'C1', name: 'general' },
@@ -170,7 +172,7 @@ test('/ is actions, @ is people, # is channels', async () => {
     // The modes are declared, so the palette can show them rather than expect
     // them to be known.
     const prefixes = recorded.palettes.at(-1).labels.modes.map((mode) => mode.prefix);
-    assert.deepEqual(prefixes, ['/', '@', '#']);
+    assert.deepEqual(prefixes, ['/', '@', '#', '>']);
   } finally {
     dom.cleanup();
   }
@@ -345,6 +347,360 @@ test('a query too short to search is not a query being waited for', async () => 
       'nothing is asked for one letter, so there is nothing to wait for');
   } finally {
     for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+/*
+ * Messages, which are the one thing in the palette that is only ever Slack's
+ * answer -- a client keeps no index of what was said, so there is no local half
+ * to show while the search is out.
+ *
+ * The shape is measured rather than invented: an item is a conversation, and
+ * the match is `messages[0]`.
+ */
+test('> searches the messages, and opens the one you pick where it was said', async () => {
+  const { api, recorded, dom } = mount({
+    conversations: [{ id: 'C1', name: 'general' }],
+    search: {
+      messages: [{
+        iid: 'i1',
+        team: 'T1',
+        channel: { id: 'C7', name: 'deploys' },
+        messages: [{
+          ts: '1750000000.123456',
+          user: 'U4',
+          username: 'robin',
+          text: 'the release   is\n  out',
+          permalink: 'https://example.slack.com/archives/C7/p1750000000123456',
+        }],
+      }],
+    },
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+
+    shown(recorded, 'release', 'messages');
+    await settle(SEARCHED);
+
+    const rows = shown(recorded, 'release', 'messages');
+    assert.equal(rows.length, 1);
+    // One line: a message with newlines in it would otherwise stretch the row
+    // and push everything under it off the screen.
+    assert.equal(rows[0].title, 'the release is out');
+    assert.match(rows[0].subtitle, /robin/);
+    assert.match(rows[0].subtitle, /#deploys/);
+    assert.ok(rows[0].always, 'Slack matched it; the on-screen ranking has not got the whole message');
+
+    rows[0].run();
+    // The team travels with it: search answers across every workspace you are
+    // signed into, and a deep link without one lands in the wrong client.
+    assert.deepEqual(recorded.navigations.at(-1),
+      { kind: 'message', id: 'C7', ts: '1750000000.123456', team: 'T1' });
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('the mixed list offers the messages rather than filling up with them', async () => {
+  const { api, recorded, dom } = mount({
+    conversations: [{ id: 'C1', name: 'general' }],
+    search: {
+      messages: Array.from({ length: 20 }, (unused, i) => ({
+        team: 'T1',
+        channel: { id: 'C7', name: 'deploys' },
+        messages: [{ ts: `175000000${i}.000100`, username: 'robin', text: `release ${i}` }],
+      })),
+    },
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+
+    shown(recorded, 'release');
+    await settle(SEARCHED);
+
+    const rows = shown(recorded, 'release');
+    const messages = rows.filter((row) => /^release \d+$/.test(row.title));
+    assert.deepEqual(messages, [], 'a switcher is for going somewhere, not for reading a conversation');
+
+    const way = rows.find((row) => row.id === 'palette:messages');
+    assert.ok(way, 'but the messages are one row away');
+    assert.ok(way.keepOpen, 'switching mode is a refinement, not an arrival');
+    way.run();
+    assert.equal(recorded.palettes.at(-1).mode, 'messages');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+/*
+ * Where you have been, first.
+ *
+ * `users.conversations` answers in an order of its own, so an untyped palette
+ * opened on whatever Slack listed first -- which is roughly the channel you
+ * joined longest ago and never read.
+ */
+test('what you opened last is what the palette opens on', async () => {
+  const { api, recorded, dom } = mount({
+    conversations: [
+      { id: 'C1', name: 'general' },
+      { id: 'C2', name: 'design' },
+      { id: 'C3', name: 'releases' },
+    ],
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+
+    const before = shown(recorded).filter((row) => row.id.startsWith('slack:'));
+    assert.deepEqual(before.map((row) => row.title), ['general', 'design', 'releases']);
+
+    before.find((row) => row.title === 'releases').run();
+    press();
+    assert.deepEqual(
+      shown(recorded).filter((row) => row.id.startsWith('slack:')).map((row) => row.title),
+      ['releases', 'general', 'design']);
+
+    // A re-ordering and never a filter: a switcher that hid what you had not
+    // opened lately would be one you cannot reach anything new with.
+    assert.equal(shown(recorded).filter((row) => row.id.startsWith('slack:')).length, 3);
+  } finally {
+    dom.cleanup();
+  }
+});
+
+/*
+ * The half that changes something rather than going somewhere.
+ *
+ * Every method these rows call was measured against a live workspace first --
+ * an xoxc token is refused by more of Slack's API than it is allowed by -- so
+ * what the tests hold is the shape of the call, which is the part that can
+ * regress here.
+ */
+test('the rows about the conversation you are looking at need a conversation', async () => {
+  // The fixture's message carries this channel, and `currentChannelId` reads
+  // what is drawn before it reads the URL -- the two disagree at a cold start.
+  const HERE = 'C0BFQCYBRAB';
+  const { api, recorded, dom } = mount({
+    conversations: [{ id: HERE, name: 'general' }],
+    counts: { channels: [{ id: HERE, last_read: '100.0001', latest: '200.0002', has_unreads: true, mention_count: 2 }] },
+  });
+  try {
+    await plugin.start(api);
+    await settle(30);
+    press();
+
+    const rows = shown(recorded, '');
+    const link = rows.find((row) => row.id === 'do:copy-link');
+    assert.ok(link, 'a link to where you are, without typing anything');
+    link.run();
+    await settle();
+    assert.equal(dom.recorded.clipboard.at(-1), `https://acme.slack.com/archives/${HERE}`,
+      'built from the workspace domain the token file carries, not fetched');
+
+    const mark = rows.find((row) => row.id === 'do:mark-read');
+    assert.ok(mark, 'offered, because this one is unread');
+    mark.run();
+    await settle();
+    // Slack marks up to a timestamp, and the counts answer is where it is.
+    assert.deepEqual(
+      recorded.calls.filter((call) => call.method === 'conversations.mark').at(-1).params,
+      { channel: HERE, ts: '200.0002' });
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('a conversation with nothing new in it is not offered a mark-as-read', async () => {
+  const { api, recorded, dom } = mount({
+    conversations: [{ id: 'C0BFQCYBRAB', name: 'general' }],
+    counts: { channels: [{ id: 'C0BFQCYBRAB', last_read: '200.0002', latest: '200.0002', has_unreads: false }] },
+  });
+  try {
+    await plugin.start(api);
+    await settle(30);
+    press();
+    assert.equal(shown(recorded, '').find((row) => row.id === 'do:mark-read'), undefined);
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('a status preset is one profile write, with an expiry', async () => {
+  const { api, recorded, dom } = mount({ conversations: [] });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+
+    // Presets wait for a query: six of them on an untyped palette bury the
+    // conversations it was opened for.
+    assert.equal(shown(recorded, '').find((row) => row.id === 'do:status:statusLunch'), undefined);
+
+    const lunch = shown(recorded, 'lunch').find((row) => row.id === 'do:status:statusLunch');
+    assert.ok(lunch);
+    lunch.run();
+    await settle();
+
+    const wrote = recorded.calls.filter((call) => call.method === 'users.profile.set').at(-1);
+    // One key holding the whole profile as JSON: sending `status_text` as a
+    // field of its own is accepted and ignored.
+    const profile = JSON.parse(wrote.params.profile);
+    assert.equal(profile.status_text, 'At lunch');
+    assert.equal(profile.status_emoji, ':knife_fork_plate:');
+    const minutes = (profile.status_expiration - Math.floor(Date.now() / 1000)) / 60;
+    assert.ok(minutes > 28 && minutes < 31, `expires in half an hour, got ${minutes}`);
+
+    shown(recorded, 'clear').find((row) => row.id === 'do:status-clear').run();
+    await settle();
+    assert.deepEqual(
+      JSON.parse(recorded.calls.filter((call) => call.method === 'users.profile.set').at(-1).params.profile),
+      { status_text: '', status_emoji: '', status_expiration: 0 });
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('showing yourself as away reads the screen, not users.getPresence', async () => {
+  const { api, recorded, dom } = mount({ conversations: [] });
+  try {
+    // Slack swaps this class the moment presence changes; the API lags it by
+    // up to a minute after the window comes back to the front.
+    const button = dom.document.querySelector('[data-qa="user-button"]')
+      ?? dom.document.body.appendChild(Object.assign(dom.document.createElement('div'), {}));
+    button.setAttribute('data-qa', 'user-button');
+    button.innerHTML = '<span class="c-presence c-presence--away"></span>';
+
+    await plugin.start(api);
+    await settle();
+    press();
+
+    const row = shown(recorded, 'active').find((entry) => entry.id === 'do:presence');
+    assert.equal(row.title, 'Show yourself as active', 'away already, so the row is the way back');
+    row.run();
+    await settle();
+    assert.deepEqual(
+      recorded.calls.filter((call) => call.method === 'users.setPresence').at(-1).params,
+      // `auto`, not `active`: Slack decides from the client's own activity.
+      { presence: 'auto' });
+  } finally {
+    dom.cleanup();
+  }
+});
+
+/*
+ * ⌘K with nothing typed is the "where should I be" question.
+ *
+ * The honest answer is the conversations with something new in them -- and only
+ * then: once there is a query it is a search again, and an unread channel that
+ * does not match what you typed has no business jumping the queue.
+ */
+test('an untyped palette leads with what is waiting for you', async () => {
+  const { api, recorded, dom } = mount({
+    conversations: [
+      { id: 'C1', name: 'general' },
+      { id: 'C2', name: 'design' },
+      { id: 'C3', name: 'releases' },
+    ],
+    counts: {
+      channels: [
+        { id: 'C1', last_read: '400.0001', latest: '400.0001', has_unreads: false },
+        { id: 'C3', last_read: '100.0001', latest: '500.0001', has_unreads: true, mention_count: 3 },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    await settle(30);
+    press();
+
+    const rows = shown(recorded).filter((row) => row.id.startsWith('slack:'));
+    assert.equal(rows[0].title, 'releases');
+    assert.equal(rows[0].section, 'Waiting for you');
+    assert.match(rows[0].subtitle, /3 mentions/);
+    // Listed once, not twice: it is in the unread section instead of its own,
+    // not as well as.
+    assert.equal(rows.filter((row) => row.title === 'releases').length, 1);
+
+    // Typed, it is a search again.
+    const searched = shown(recorded, 'design').filter((row) => row.id.startsWith('slack:'));
+    assert.equal(searched[0].title, 'design');
+    assert.ok(searched.every((row) => row.section !== 'Waiting for you'));
+  } finally {
+    dom.cleanup();
+  }
+});
+
+/*
+ * What an integration posted, which is most of what a search turns up.
+ *
+ * Measured on a live workspace: every Grafana alert came back with `text: ''`
+ * and its words in an attachment, so eight rows read "(no text)" and the search
+ * looked broken. The words are in the attachment or in the blocks.
+ */
+test('a message with no text of its own is read out of its attachments and blocks', async () => {
+  const { api, recorded, dom } = mount({
+    search: {
+      messages: [
+        {
+          team: 'T1',
+          channel: { id: 'C7', name: 'warnings' },
+          messages: [{ ts: '1.1', username: 'grafana', text: '', attachments: [{ fallback: '[FIRING:1] disk usage' }] }],
+        },
+        {
+          team: 'T1',
+          channel: { id: 'C8', name: 'alerts' },
+          messages: [{
+            ts: '2.2',
+            username: 'grafana',
+            text: '',
+            blocks: [{ type: 'section', text: { type: 'mrkdwn', text: 'queue is *backing up*' } }],
+          }],
+        },
+        {
+          team: 'T1',
+          channel: { id: 'C9', name: 'quiet' },
+          messages: [{ ts: '3.3', username: 'nobody', text: '' }],
+        },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+    shown(recorded, 'disk', 'messages');
+    await settle(SEARCHED);
+
+    assert.deepEqual(
+      shown(recorded, 'disk', 'messages').map((row) => row.title),
+      ['[FIRING:1] disk usage', 'queue is backing up'],
+      'and a message with nothing readable in it is left out rather than shown empty');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('a channel purpose is one readable line, not Slack markup', async () => {
+  const { api, recorded, dom } = mount({
+    conversations: [{
+      id: 'C1',
+      name: 'tech-payment',
+      purpose: { value: 'Point Payments &amp; Prophecy :\n<https://example.com/j/889|le zoom>' },
+    }],
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+    const row = shown(recorded).find((entry) => entry.title === 'tech-payment');
+    assert.equal(row.subtitle, 'Point Payments & Prophecy : le zoom');
+  } finally {
     dom.cleanup();
   }
 });

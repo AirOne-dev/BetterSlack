@@ -50,6 +50,17 @@ async function scratchHome() {
 
 const home = await scratchHome();
 await fs.mkdir(out, { recursive: true });
+/*
+ * When this run started, so the filing below can tell its own pictures from
+ * what was already in the folder.
+ *
+ * `site/shots/mods` is also where `pnpm site` puts a copy of every mod's
+ * committed screenshot, so the folder is full before the run begins. Filing
+ * whatever is in it meant a `--only=one-mod` run announced that it had filed
+ * twenty-three, and a run that failed its redaction audit before taking a
+ * single picture still announced that it had filed them.
+ */
+const startedAt = Date.now();
 console.log(`[shots] into ${out}`);
 
 const child = spawn(process.execPath, [path.join(root, 'bin/betterslack.mjs')], {
@@ -92,7 +103,20 @@ if (forMods) {
 
   for (const file of await fs.readdir(out)) {
     if (!file.endsWith('.webp')) continue;
+    const taken = await fs.stat(path.join(out, file)).then((s_) => s_.mtimeMs, () => 0);
+    if (taken < startedAt) continue;
     const stem = file.replace(/\.webp$/, '');
+    /*
+     * `<id>-2`, `<id>-3`: two conventions in one folder.
+     *
+     * A frame is filed here as `<id>-<name>`, but `build-site.mjs` copies a
+     * mod's *second* and *third* declared screenshots into the same folder as
+     * `<id>-2` and `<id>-3`, and the loader writes one picture per attached
+     * window under the same shape. Read back as frames they were filed into the
+     * mod folder as `screenshot-2.webp` -- a file no manifest names, which
+     * nothing draws and nobody deletes. A frame is never called a number.
+     */
+    if (/-\d+$/.test(stem)) continue;
     const id = ids.find((candidate) => stem === candidate || stem.startsWith(`${candidate}-`));
     if (!id) continue;
     // The first frame is the mod's picture; the rest are numbered by the name

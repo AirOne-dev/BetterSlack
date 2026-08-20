@@ -262,6 +262,15 @@ export function createTestApi({
       onEach: (selector, handler) => {
         const seen = new WeakSet();
         const scan = () => {
+          /*
+           * The document may already be gone.
+           *
+           * jsdom delivers mutation records in a microtask, so an observer can
+           * fire after the test that installed it has torn its DOM down --
+           * which printed a ReferenceError between test files, in a run where
+           * everything passed.
+           */
+          if (!globalThis.document) return;
           for (const el of document.querySelectorAll(selector)) {
             if (seen.has(el)) continue;
             seen.add(el);
@@ -360,6 +369,8 @@ export function createTestApi({
       // performed, so a test can assert a mod called one instead of driving
       // Slack's UI to the same place.
       openConversation: (channelId) => recorded.navigations.push({ kind: 'channel', id: channelId }),
+      openMessage: (channelId, ts, options = {}) =>
+        recorded.navigations.push({ kind: 'message', id: channelId, ts, team: options.team ?? null }),
       openDirectMessage: async (userId) => {
         recorded.navigations.push({ kind: 'dm', id: userId });
         return `D-${userId}`;
@@ -497,6 +508,13 @@ export function createTestApi({
          */
         entry.busy = false;
         close.setBusy = (on) => { entry.busy = on; };
+        /*
+         * The mode is state the palette owns, so a mod that switches it can
+         * only be checked by keeping it here: a row whose whole job is to hand
+         * the query to another provider does nothing a returned list would show.
+         */
+        entry.mode = null;
+        close.setMode = (id) => { entry.mode = id; };
         return close;
       },
     },

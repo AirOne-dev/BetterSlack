@@ -119,6 +119,15 @@ export function keepMounted(
 
   const mount = () => {
     if (disposed) return;
+    /*
+     * The document may not be there.
+     *
+     * At document-start it does not exist yet -- the runtime is injected before
+     * Slack's markup -- and under a test harness it can be torn down while a
+     * mutation record is still queued, which printed a ReferenceError between
+     * files in a run where everything passed.
+     */
+    if (!globalThis.document) return;
     const container = document.querySelector(containerSelector);
     if (!container) return;
     const anchor = before ? container.querySelector(before) : null;

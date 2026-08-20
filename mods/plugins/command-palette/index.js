@@ -28,6 +28,7 @@ import { STRINGS } from './strings.js';
 import { openShortcutEditor, parseShortcuts } from './shortcuts.js';
 import { createDirectory } from './directory.js';
 import { createActions } from './actions.js';
+import { createSlackActions } from './slack.js';
 
 /** Rows per kind in the everything view, so no one kind buries the others. */
 const MIXED_LIMIT = 6;
@@ -55,9 +56,42 @@ export default {
       },
     });
     const actions = createActions(api, t);
+    const slack = createSlackActions(api, t, { directory });
+    /** BetterSlack's own rows and Slack's, as one list. */
+    const allActions = (query) => [...slack.list(query), ...actions.list(query)];
 
     /** Group DMs are not channels, and a heading that says they are misleads. */
     const sectionFor = (entry) => (entry.kind === 'group' ? t('sectionGroups') : t('sectionChannels'));
+
+    /** A message Slack found, as a row that opens it where it was said. */
+    const asMessageRow = (entry) => ({
+      id: `slack:message:${entry.id}`,
+      title: entry.title,
+      section: t('sectionMessages'),
+      icon: entry.icon,
+      source: t('message'),
+      subtitle: entry.hint || undefined,
+      // Slack matched it; the client ranking reads only what is on screen and
+      // would drop a line whose match is in a word the extract cut off.
+      always: true,
+      run: () => api.slack.openMessage(entry.channelId, entry.ts, { team: entry.team }),
+    });
+
+    /**
+     * The line under the title: who they are, and what is waiting there.
+     *
+     * A mention count goes first because it is the part that decides whether
+     * you go: "3 mentions" and "someone posted" are different errands.
+     */
+    const subtitleFor = (entry) => {
+      const said = entry.handle && entry.hint
+        ? `${entry.handle} · ${entry.hint}`
+        : entry.handle || entry.hint || '';
+      const waiting = entry.mentions > 0
+        ? (entry.mentions === 1 ? t('mention') : t('mentions', { count: entry.mentions }))
+        : '';
+      return [waiting, said].filter(Boolean).join(' · ') || undefined;
+    };
 
     /** A conversation or a person, as a row. */
     const asRow = (entry, section) => ({
@@ -68,7 +102,7 @@ export default {
       source: entry.kind === 'person'
         ? t('directMessage')
         : (entry.kind === 'group' ? t('groupMessage') : t('channel')),
-      subtitle: entry.handle && entry.hint ? `${entry.handle} · ${entry.hint}` : entry.handle || entry.hint || undefined,
+      subtitle: subtitleFor(entry),
       // Somebody's Slack status, after their name, the way Slack draws it. The
       // directory resolves the emoji; this only carries it.
       status: entry.status ?? null,
@@ -79,11 +113,17 @@ export default {
       // exempting it was worse than useless: it kept every channel you are in,
       // whatever you typed.
       always: entry.remote === true,
-      run: () => (entry.kind === 'person'
-        // The DM if there is one, and Slack creates it if there is not, which
-        // is what its own switcher does with someone you have never written to.
-        ? void api.slack.openDirectMessage(entry.id)
-        : api.slack.openConversation(entry.conversationId ?? entry.id)),
+      run: () => {
+        // Remembered before it is opened: the ordering is what this palette was
+        // used for, and the navigation may not come back (a DM Slack has to
+        // create first is a round trip that can fail).
+        directory.remember(entry);
+        return entry.kind === 'person'
+          // The DM if there is one, and Slack creates it if there is not, which
+          // is what its own switcher does with someone you have never written to.
+          ? void api.slack.openDirectMessage(entry.id)
+          : api.slack.openConversation(entry.conversationId ?? entry.id);
+      },
     });
 
     /*
@@ -105,23 +145,58 @@ export default {
        */
       handle?.setBusy(directory.searching);
 
-      if (mode === 'actions') return actions.list(query);
+      if (mode === 'actions') return allActions(query);
       if (mode === 'people') {
         return directory.people(query).map((entry) => asRow(entry, t('sectionPeople')));
       }
       if (mode === 'channels') {
         return directory.channels(query).map((entry) => asRow(entry, sectionFor(entry)));
       }
+      if (mode === 'messages') return directory.messages(query).map(asMessageRow);
 
       // Everything, in the order someone would want it: where you were going,
       // then who you meant, then what you can do.
       const people = directory.people(query);
       const channels = directory.channels(query);
       const cap = asked ? MIXED_LIMIT : MIXED_LIMIT + 2;
+      /*
+       * What is waiting for you, first, and only on an untyped palette.
+       *
+       * Opening ⌘K without typing is the "where should I be" question, and the
+       * honest answer is the conversations with something new in them. Once
+       * there is a query it is a search again and the unread ones take no
+       * precedence -- you asked for a name, not for your inbox.
+       */
+      const unread = asked
+        ? []
+        : [...channels, ...people].filter((entry) => entry.unread).slice(0, cap);
+      const isUnread = new Set(unread.map((entry) => entry.id));
+      const rest = (list) => list.filter((entry) => !isUnread.has(entry.id));
       return [
-        ...channels.slice(0, cap).map((entry) => asRow(entry, sectionFor(entry))),
-        ...people.slice(0, cap).map((entry) => asRow(entry, t('sectionPeople'))),
-        ...actions.list(query),
+        ...unread.map((entry) => asRow(entry, t('sectionUnread'))),
+        ...rest(channels).slice(0, cap).map((entry) => asRow(entry, sectionFor(entry))),
+        ...rest(people).slice(0, cap).map((entry) => asRow(entry, t('sectionPeople'))),
+        /*
+         * A way into the messages rather than the messages themselves.
+         *
+         * Mixed in, a handful of lines of somebody's conversation would crowd
+         * out the eight places you were actually going -- and a switcher is for
+         * going somewhere. One row that hands over to the mode keeps it
+         * findable without paying for it on every keystroke.
+         */
+        ...(asked && directory.messages(query).length > 0
+          ? [{
+            id: 'palette:messages',
+            title: t('searchMessages', { query: query.trim() }),
+            section: t('sectionMessages'),
+            icon: '🔎',
+            source: t('message'),
+            always: true,
+            keepOpen: true,
+            run: () => handle?.setMode('messages'),
+          }]
+          : []),
+        ...allActions(query),
       ];
     };
 
@@ -136,6 +211,7 @@ export default {
           { id: 'actions', prefix: '/', label: t('modeActions'), placeholder: t('placeholderActions') },
           { id: 'people', prefix: '@', label: t('modePeople'), placeholder: t('placeholderPeople') },
           { id: 'channels', prefix: '#', label: t('modeChannels'), placeholder: t('placeholderChannels') },
+          { id: 'messages', prefix: '>', label: t('modeMessages'), placeholder: t('placeholderMessages') },
         ],
       });
       // Refreshed behind the open palette rather than before it: a switcher

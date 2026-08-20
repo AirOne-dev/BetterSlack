@@ -222,11 +222,11 @@ window.CATALOGUE = {
     {
       "id": "command-palette",
       "name": "Command Palette",
-      "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, run any mod's commands, and switch or configure your mods -- all from one keystroke, with / @ # to narrow it down. Bind it to as many shortcuts as you like, taken from Slack if Slack had them.",
+      "description": "Slack's quick switcher with everything else in it: jump to any conversation, find anyone in the workspace, search the messages, run any mod's commands, and switch or configure your mods -- all from one keystroke, with / @ # > to narrow it down. It opens on what is waiting for you, and it sets your status, pauses your notifications and copies a link without leaving the keyboard.",
       "descriptions": {
-        "fr": "Le sélecteur rapide de Slack avec tout le reste dedans : aller à n'importe quelle conversation, trouver n'importe qui, lancer les commandes de vos mods, les activer ou les régler — le tout depuis une touche, avec / @ # pour affiner. Attribuez-lui autant de raccourcis que vous voulez ; ceux que Slack utilisait déjà lui sont repris."
+        "fr": "Le sélecteur rapide de Slack avec tout le reste dedans : aller à n'importe quelle conversation, trouver n'importe qui, chercher dans les messages, lancer les commandes de vos mods, les activer ou les régler — le tout depuis une touche, avec / @ # > pour affiner. Elle s'ouvre sur ce qui vous attend, et définit votre statut, suspend vos notifications ou copie un lien sans quitter le clavier."
       },
-      "version": "1.5.0",
+      "version": "1.6.0",
       "tags": [
         "navigation",
         "keyboard",
@@ -276,7 +276,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Ajoute un interrupteur dans la barre du haut qui remplit votre vrai Slack de gens qui n'existent pas : chaque nom, visage, message, canal, fichier et lien à l'écran est remplacé par un inventé, pour que vous puissiez capturer, partager votre écran ou faire une démo sans montrer le travail de personne. Une seconde pression et le vrai revient. Il démarre éteint, et le reste tant que vous ne demandez rien."
       },
-      "version": "1.2.0",
+      "version": "1.3.0",
       "tags": [
         "privacy",
         "screenshots",

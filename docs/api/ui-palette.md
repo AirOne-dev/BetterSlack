@@ -21,6 +21,14 @@ then says it is waiting rather than that it found nothing. Waiting starts at the
 keystroke, not when the request goes out; a debounce in front of a search is
 part of the wait.
 
+A mode is a prefix that narrows the list — `/`, `@`, `#` — and it is reachable
+two ways. Typing the prefix turns it into a chip in front of the field; so does
+`setMode(id)` on the handle, which lets a row *be* the way in: "search the
+messages for what you typed" is a result before it is a mode, and a palette that
+can only be narrowed by somebody who already knows the punctuation is narrower
+than it looks. A row that refines rather than arrives sets `keepOpen: true`, or
+the palette closes under it. `setMode(null)` steps back out.
+
 ```js
 const palette = api.ui.palette(
   (query) => {
@@ -40,4 +48,12 @@ directory.onResults(() => {
   palette.setBusy(false);
   palette.refresh();
 });
+
+// A row that hands the query on to another mode rather than going anywhere.
+{
+  id: 'search-messages',
+  title: `Search the messages for "${query}"`,
+  keepOpen: true,
+  run: () => palette.setMode('messages'),
+}
 ```

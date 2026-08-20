@@ -155,6 +155,85 @@ test('leaves BetterSlack\'s own interface alone', () => {
   }
 });
 
+/*
+ * The palette shows Slack and BetterSlack in one list, through one class.
+ *
+ * The badge on the right is what tells them apart, and getting it wrong fails
+ * in both directions: a conversation left alone is somebody's name in a public
+ * screenshot, and an action swept is a row of nonsense in the catalogue.
+ */
+test('sweeps what the palette got from Slack and spares what it wrote itself', () => {
+  const dom = installDom();
+  try {
+    const row = (source, title, sub) => {
+      const node = document.createElement('div');
+      node.className = 'betterslack-palette__row';
+      node.innerHTML = '<span class="betterslack-palette__text">'
+        + `<span class="betterslack-palette__title">${title}</span>`
+        + (sub ? `<span class="betterslack-palette__sub">${sub}</span>` : '')
+        + `</span><span class="betterslack-palette__source">${source}</span>`;
+      document.body.append(node);
+      return node;
+    };
+    const channel = row('Channel', 'alertes-payments');
+    // A group DM's title is a list of real people, and its badge says neither
+    // "channel" nor "direct message".
+    const group = row('Group', 'Robin Vasquez, Sam Okonkwo');
+    const message = row('Message', 'shipping this afternoon', 'robin · #releases');
+    // The palette's own doing-something rows: its words, over a real name.
+    const action = row('Slack', 'Copy a link to this conversation', 'alertes-payments');
+
+    const redaction = createRedaction({ document });
+    redaction.sweep({ first: true });
+
+    for (const [what, node] of [['channel', channel], ['group', group], ['message', message]]) {
+      assert.notEqual(node.querySelector('.betterslack-palette__title').textContent,
+        what === 'channel' ? 'alertes-payments'
+          : (what === 'group' ? 'Robin Vasquez, Sam Okonkwo' : 'shipping this afternoon'),
+        `the ${what} row still says what Slack said`);
+    }
+    assert.equal(action.querySelector('.betterslack-palette__title').textContent,
+      'Copy a link to this conversation', 'the mod\'s own words survive');
+    assert.notEqual(action.querySelector('.betterslack-palette__sub').textContent,
+      'alertes-payments', 'but the conversation named under them does not');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+/*
+ * "It is only digits" is not the same as "it is nobody's".
+ *
+ * Found by the audit on a real workspace: two six-digit order references sat
+ * alone in message bubbles and survived every sweep. A badge count and a year
+ * genuinely belong to nobody; an order number is a customer's.
+ */
+test('keeps counts and years, and replaces a number long enough to identify something', () => {
+  const dom = installDom();
+  try {
+    const say = (text) => {
+      const node = document.createElement('div');
+      node.className = 'p-rich_text_block';
+      node.textContent = text;
+      document.body.append(node);
+      return node;
+    };
+    const count = say('12');
+    const year = say('2026');
+    const order = say('786934');
+
+    createRedaction({ document }).sweep({ first: true });
+
+    assert.equal(count.textContent, '12');
+    assert.equal(year.textContent, '2026');
+    assert.notEqual(order.textContent, '786934');
+    // Digit for digit, so the bubble keeps the width it had.
+    assert.match(order.textContent, /^\d{6}$/);
+  } finally {
+    dom.cleanup();
+  }
+});
+
 test('will not put a stale message back over a newer one', () => {
   const dom = installDom();
   try {

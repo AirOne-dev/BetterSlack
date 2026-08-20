@@ -71,6 +71,7 @@ few keys at the top, prose, and one example.
 - [`onProfilePane`](api/slack-onprofilepane.md) — Run a handler each time a profile pane appears, with the pane and the user id it is showing. Mount per pane rather than once: a single mount fills whichever profile it reaches first and starves the other.
 - [`openConversation`](api/slack-openconversation.md) — Move the client to a conversation, without a page load.
 - [`openDirectMessage`](api/slack-opendirectmessage.md) — Open the direct message with someone, creating it if there is none.
+- [`openMessage`](api/slack-openmessage.md) — Move the client to one message, and highlight it. The same deep link
 - [`openStatusEditor`](api/slack-openstatuseditor.md) — Slack's own "set a status" dialog. There is no deep link for it and no action a mod can dispatch: the entry lives in the account menu, so this opens the menu and then presses it.
 - [`openUserProfile`](api/slack-openuserprofile.md) — Open somebody's profile, through Slack's own deep link — same document, no reload. Not every id has one: an app, or a conversation with yourself, gives a pane that never appears.
 - [`restart`](api/slack-restart.md) — Stop Slack and start it again, with the loader still driving.
