@@ -34,15 +34,14 @@ const RAIL_BUTTON_CLASS =
 /*
  * The mark.
  *
- * The mark itself, in its own colours, rather than a monogram taking
- * `currentColor` from the strip it lands in. It sits among Slack's own outline
- * icons and the one button that is not Slack's should not pretend to be -- and
- * the four colours are saturated enough to read on a light theme and a dark
- * one, which a single tint would not be.
+ * The mark, in its own colours. It sits among Slack's own outline icons and the
+ * one button that is not Slack's should not pretend to be -- and the four
+ * colours are saturated enough to read on a light theme and a dark one, which a
+ * single tint would not be.
  *
- * The trade-off is deliberate and worth writing down: it no longer dims and
- * brightens with the icons beside it on hover, because there is no one colour
- * to dim. The opacity in LAUNCHER_CSS does that instead.
+ * The trade-off is deliberate: with no single colour it cannot take
+ * `currentColor` from the strip, so it cannot dim and brighten with the icons
+ * beside it on hover. The opacity in LAUNCHER_CSS does that instead.
  */
 const ICON = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 848 848" aria-hidden="true" data-qa="betterslack-mark">
