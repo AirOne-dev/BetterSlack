@@ -1,5 +1,8 @@
 // Who and what you can jump to.
 //
+// `message.js` is the other half: this finds things, that draws what one of
+// them said.
+//
 // The first version listed `users.conversations` and nothing else, which is the
 // conversations you are already in. Typing a colleague's name found nobody
 // unless you had a DM open with them, while Slack's own switcher found them at
@@ -16,6 +19,8 @@
 // client -- same page, same objects, new team in the URL -- so a directory
 // built for one workspace is wrong for the next, and the team id is checked on
 // every read rather than trusted from boot.
+
+import { messageText } from './message.js';
 
 /** What Slack's search answers with; more than this is never asked for. */
 const REMOTE_COUNT = 8;
@@ -79,42 +84,6 @@ function plainText(value) {
 }
 
 /**
- * What a message says, wherever Slack put it.
- *
- * `text` is empty on anything an integration posted -- measured on a live
- * workspace, every Grafana alert in the search came back with none, and eight
- * rows reading "(no text)" is a search result nobody can choose between. The
- * words are in the attachment, or in the blocks, so those are read in turn.
- */
-function messageText(message) {
-  const direct = plainText(message.text);
-  if (direct) return direct;
-
-  for (const attachment of message.attachments ?? []) {
-    const said = plainText(attachment.fallback || attachment.text || attachment.title || '');
-    if (said) return said;
-  }
-
-  /*
-   * Block kit, flattened. A block holds text, or a list of elements that do,
-   * and the nesting is arbitrary -- so this walks it rather than reaching for
-   * a shape.
-   */
-  const parts = [];
-  const walk = (node) => {
-    if (!node || parts.length > 8) return;
-    if (Array.isArray(node)) { node.forEach(walk); return; }
-    if (typeof node !== 'object') return;
-    if (typeof node.text === 'string') parts.push(node.text);
-    else if (node.text) walk(node.text);
-    walk(node.elements);
-    walk(node.fields);
-  };
-  walk(message.blocks);
-  return plainText(parts.join(' '));
-}
-
-/**
  * A group DM, as the people in it.
  *
  * Slack names them `mpdm-alice--bob--carol-1`, which is a key rather than a
@@ -122,12 +91,15 @@ function messageText(message) {
  * are unreadable and unsearchable. Slack's own client shows the names, so this
  * does too.
  */
-function peopleFromMpim(name) {
+function peopleFromMpim(name, self) {
   if (typeof name !== 'string') return '';
   return name
     .replace(/^mpdm-/, '')
     .replace(/-\d+$/, '')
     .split('--')
+    // Not yourself. Slack leaves you out of the name it draws, and a list that
+    // starts with your own name every time is a list you read past.
+    .filter((handle) => !self || handle.toLowerCase() !== self.toLowerCase())
     .map((handle) => handle
       .replace(/[._]/g, ' ')
       .trim()
@@ -136,6 +108,16 @@ function peopleFromMpim(name) {
     .filter(Boolean)
     .join(', ');
 }
+
+/**
+ * True of the key Slack gives a group DM, which is not a name.
+ *
+ * `mpdm-alice--bob--carol-1`: eight of those in a list all start with the same
+ * six characters, and it comes back that way from the conversation list *and*
+ * from the channel search, which is where it was still showing.
+ */
+const isMpim = (channel) => channel?.is_mpim === true
+  || typeof channel?.name === 'string' && channel.name.startsWith('mpdm-');
 
 /**
  * A live index of conversations and of the wider directory.
@@ -169,6 +151,27 @@ export function createDirectory(api, { onResults }) {
    * has already put on screen.
    */
   let customEmoji = null;
+  /** Whoever a message search turned up, kept for the length of a session. */
+  let authors = new Map();
+  /*
+   * Your own handle, for taking you out of a group DM's name.
+   *
+   * The name Slack gives one is a list of handles, not of ids, so the only way
+   * to recognise yourself in it is to know your own -- one request, once per
+   * workspace, and the name is drawn without it either way until it lands.
+   */
+  let selfHandle = null;
+  const loadSelf = () => {
+    const id = api.slack.web.selfId;
+    if (!id) return;
+    Promise.resolve()
+      .then(() => api.slack.web.users([id]))
+      .then((map) => {
+        const found = map.get(id)?.name ?? null;
+        if (found && found !== selfHandle) { selfHandle = found; onResults(); }
+      })
+      .catch(() => undefined);
+  };
   const loadEmoji = () => {
     // Guarded, not merely caught: on a runtime older than this mod the method
     // is missing, and calling it throws synchronously.
@@ -179,6 +182,7 @@ export function createDirectory(api, { onResults }) {
       .catch(() => { customEmoji = null; });
   };
   loadEmoji();
+  loadSelf();
 
   /**
    * Somebody's status, resolved when the row is read rather than when it is
@@ -190,6 +194,18 @@ export function createDirectory(api, { onResults }) {
    * the entry keeps the profile and the picture is looked up here, on the way
    * out, where the map is whatever it is by then.
    */
+  /*
+   * A group DM's name, worked out on the way out rather than when it is cached.
+   *
+   * It is a list of handles with your own in it, and taking yours out means
+   * knowing your own handle -- which arrives over the network after the
+   * conversation list has been built and stored. Computed at cache time, every
+   * group DM kept your name in it until the cache expired.
+   */
+  const withNames = (entry) => (entry.kind === 'group' && entry.key
+    ? { ...entry, title: peopleFromMpim(entry.key, selfHandle) }
+    : entry);
+
   /** What Slack says about a conversation right now, rather than at cache time. */
   const withCounts = (entry) => {
     const row = counts.get(entry.conversationId ?? entry.id);
@@ -220,7 +236,10 @@ export function createDirectory(api, { onResults }) {
     // Different workspace, different custom emoji: a status drawn with the last
     // one's is a picture from somewhere the user has left.
     customEmoji = null;
+    selfHandle = null;
+    authors = new Map();
     loadEmoji();
+    loadSelf();
   };
 
   /*
@@ -317,6 +336,7 @@ export function createDirectory(api, { onResults }) {
     id: entry.id,
     conversationId: entry.conversationId,
     kind: entry.kind,
+    key: entry.key,
     title: entry.title,
     icon: entry.icon,
     hint: entry.hint,
@@ -415,7 +435,8 @@ export function createDirectory(api, { onResults }) {
             id: channel.id,
             conversationId: channel.id,
             kind: 'group',
-            title: peopleFromMpim(channel.name),
+            key: channel.name,
+            title: peopleFromMpim(channel.name, selfHandle),
             icon: '👥',
             hint: '',
             member: true,
@@ -477,9 +498,8 @@ export function createDirectory(api, { onResults }) {
         if (!message) return [];
         // A message with nothing readable in it is a row nobody can choose
         // between, and eight of them is a search that looks broken.
-        const said = messageText(message);
+        const said = messageText(message, { users: authors });
         if (!said) return [];
-        const title = said.length > MESSAGE_CHARS ? `${said.slice(0, MESSAGE_CHARS).trimEnd()}…` : said;
         const channel = item.channel ?? {};
         return [{
           id: `${channel.id}:${message.ts}`,
@@ -488,17 +508,28 @@ export function createDirectory(api, { onResults }) {
           team: item.team,
           channelId: channel.id,
           ts: message.ts,
-          title,
           /*
-           * Who and where, which is what tells two matching lines apart.
+           * The plain reading and the message itself.
            *
-           * A DM has no name: Slack answers with the other person's user id,
-           * and `#U02U00MA8F6` is worse than saying nothing -- the row already
-           * carries who said it.
+           * `title` is what the ranking and a screen reader get; the row draws
+           * `message` instead -- with the bold, the link's label and the emoji
+           * that the flattening throws away.
            */
-          hint: [message.username, channel.is_im || !channel.name ? null : `#${channel.name}`]
-            .filter(Boolean).join(' · '),
-          icon: channel.is_im ? '💬' : '#',
+          title: said,
+          message,
+          authorId: message.user ?? null,
+          username: message.username ?? '',
+          /*
+           * Where it was said, as a name rather than a key.
+           *
+           * A DM answers with the other person's user id and a group DM with
+           * `mpdm-a--b--c-1`; `#U02U00MA8F6` under a message is worse than
+           * saying nothing, since the row already carries who said it.
+           */
+          channelName: channel.is_im ? '' : (isMpim(channel)
+            ? peopleFromMpim(channel.name, selfHandle)
+            : channel.name ?? ''),
+          isIm: channel.is_im === true,
         }];
       }),
       people: (people?.items ?? []).map((item) => {
@@ -516,18 +547,60 @@ export function createDirectory(api, { onResults }) {
           handle: item.username ? `@${item.username}` : '',
         };
       }),
-      channels: (channels?.items ?? []).map((item) => ({
-        id: item.id,
-        kind: 'channel',
-        remote: true,
-        title: item.name,
-        icon: item.is_private ? '🔒' : '#',
-        hint: plainText(item.purpose?.value),
-        member: item.is_member === true,
-        members: item.member_count ?? 0,
-      })),
+      channels: (channels?.items ?? []).map((item) => (isMpim(item)
+        ? {
+          id: item.id,
+          kind: 'group',
+          remote: true,
+          key: item.name,
+          title: peopleFromMpim(item.name, selfHandle),
+          icon: '👥',
+          hint: '',
+          member: item.is_member === true,
+        }
+        : {
+          id: item.id,
+          kind: 'channel',
+          remote: true,
+          title: item.name,
+          icon: item.is_private ? '🔒' : '#',
+          hint: plainText(item.purpose?.value),
+          member: item.is_member === true,
+          members: item.member_count ?? 0,
+        })),
     };
+    resolveAuthors(remote.messages, messages);
     onResults();
+  };
+
+  /*
+   * The faces and the names behind a message search.
+   *
+   * Slack's search answers with a handle and a user id and nothing else, and a
+   * row that says `erwan.martin` is a row missing the two things you actually
+   * scan a list of results by: the face and the name. `web.users` is the
+   * batched `users.info`, cached per workspace, so this is one request for the
+   * whole page of results and usually none at all.
+   */
+  const resolveAuthors = (rows, raw) => {
+    const wanted = new Set();
+    for (const row of rows) if (row.authorId && !authors.has(row.authorId)) wanted.add(row.authorId);
+    // Everybody a message mentions, too: a mention draws as a name or as an id,
+    // and an id in the middle of a sentence is the raw markup showing through.
+    for (const item of raw?.items ?? []) {
+      const blocks = JSON.stringify((item.messages ?? [])[0]?.blocks ?? '');
+      for (const [, id] of blocks.matchAll(/"user_id":"(U[A-Z0-9]+)"/g)) {
+        if (!authors.has(id)) wanted.add(id);
+      }
+    }
+    if (wanted.size === 0) return;
+    Promise.resolve()
+      .then(() => api.slack.web.users([...wanted]))
+      .then((map) => {
+        for (const [id, user] of map) authors.set(id, user);
+        onResults();
+      })
+      .catch(() => undefined);
   };
 
   /**
@@ -590,6 +663,13 @@ export function createDirectory(api, { onResults }) {
     remember,
     /** The newest message in a conversation, as `conversations.mark` wants it. */
     latestTs: (id) => counts.get(id)?.latest || '',
+    /** What a row needs to draw a message: who is known, and what can be drawn. */
+    get authors() {
+      return authors;
+    },
+    get emoji() {
+      return customEmoji;
+    },
     /** Whether anything is still out: the debounce as well as the request. */
     get searching() {
       return pending || searching;
@@ -599,7 +679,7 @@ export function createDirectory(api, { onResults }) {
     /** Conversations you are in, people and channels alike. */
     conversations: () => {
       checkTeam();
-      return byRecent(conversations).map(withCounts).map(withStatus);
+      return byRecent(conversations).map(withNames).map(withCounts).map(withStatus);
     },
     people: (query) => {
       checkTeam();
@@ -621,9 +701,9 @@ export function createDirectory(api, { onResults }) {
     },
     channels: (query) => {
       checkTeam();
-      const local = conversations.filter((entry) => entry.kind !== 'person');
-      return narrow(local, query.trim().length >= MIN_QUERY ? remote.channels : [], query)
-        .map(withCounts);
+      const local = conversations.filter((entry) => entry.kind !== 'person').map(withNames);
+      const found = (query.trim().length >= MIN_QUERY ? remote.channels : []).map(withNames);
+      return narrow(local, found, query).map(withCounts);
     },
   };
 }

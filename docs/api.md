@@ -66,6 +66,7 @@ few keys at the top, prose, and one example.
 - [`describeMessage`](api/slack-describemessage.md) — Everything about a message that a mod usually wants, read off the element Slack drew: its channel, its timestamp, its permalink and its text.
 - [`describeStatus`](api/slack-describestatus.md) — Somebody's status, ready to draw: the sentence, the emoji name without its colons, an image for that emoji when one could be found, and when it clears. Null when there is no status at all, so a caller can test the result rather than three fields.
 - [`desktop`](api/slack-desktop.md) — Slack's own translucent window, which it ships switched off.
+- [`emojiUrl`](api/slack-emojiurl.md) — An image for an emoji name, or `null` when nothing can draw it. The colons are
 - [`filesFrom`](api/slack-filesfrom.md) — The files somebody shared, newest first. `limit` caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw.
 - [`hideConversation`](api/slack-hideconversation.md) — Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave.
 - [`onProfilePane`](api/slack-onprofilepane.md) — Run a handler each time a profile pane appears, with the pane and the user id it is showing. Mount per pane rather than once: a single mount fills whichever profile it reaches first and starves the other.

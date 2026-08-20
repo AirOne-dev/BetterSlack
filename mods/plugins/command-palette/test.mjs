@@ -47,7 +47,7 @@ function mount({ conversations = [], mods = [], search = {}, counts = {} } = {})
       },
       users: async (ids) => new Map(ids.map((id) => [id, {
         id,
-        name: `handle-${id}`,
+        name: id === 'U000SELF' ? 'erwan.martin' : `handle-${id}`,
         profile: { display_name: `Person ${id}`, image_48: `https://ca.slack-edge.com/${id}-48` },
       }])),
     },
@@ -390,8 +390,12 @@ test('> searches the messages, and opens the one you pick where it was said', as
     // One line: a message with newlines in it would otherwise stretch the row
     // and push everything under it off the screen.
     assert.equal(rows[0].title, 'the release is out');
-    assert.match(rows[0].subtitle, /robin/);
-    assert.match(rows[0].subtitle, /#deploys/);
+    // The face and the name, not the handle: `robin` is neither of the two
+    // things anybody scans a list of results by.
+    const sub = rows[0].subtitleNode().textContent;
+    assert.match(sub, /Person U4/);
+    assert.match(sub, /#deploys/);
+    assert.match(rows[0].icon, /U4-48$/, 'the author\'s face is the row\'s icon');
     assert.ok(rows[0].always, 'Slack matched it; the on-screen ranking has not got the whole message');
 
     rows[0].run();
@@ -700,6 +704,151 @@ test('a channel purpose is one readable line, not Slack markup', async () => {
     press();
     const row = shown(recorded).find((entry) => entry.title === 'tech-payment');
     assert.equal(row.subtitle, 'Point Payments & Prophecy : le zoom');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+/*
+ * What somebody wrote, as they wrote it.
+ *
+ * Flattened to plain text a result loses the three things that make it
+ * readable at a glance: the emphasis, the link's label instead of thirty
+ * characters of address, and the emoji. `title` stays the plain reading --
+ * that is what the ranking sorts by and what is announced -- and the row draws
+ * the message itself.
+ */
+test('a message result keeps its bold, its links, its mentions and its emoji', async () => {
+  const { api, recorded, dom } = mount({
+    search: {
+      messages: [{
+        team: 'T1',
+        channel: { id: 'C7', name: 'deploys' },
+        messages: [{
+          ts: '1750000000.000100',
+          user: 'U4',
+          username: 'robin',
+          text: '',
+          blocks: [{
+            type: 'rich_text',
+            elements: [{
+              type: 'rich_text_section',
+              elements: [
+                { type: 'text', text: 'ship ' },
+                { type: 'text', text: 'now', style: { bold: true } },
+                { type: 'text', text: ' ' },
+                { type: 'user', user_id: 'U9' },
+                { type: 'text', text: ' see ' },
+                { type: 'link', url: 'https://gitlab.example.com/a/b/-/merge_requests/719', text: '!719' },
+                { type: 'text', text: ' ' },
+                { type: 'emoji', name: 'tada', unicode: '1f389' },
+              ],
+            }],
+          }],
+        }],
+      }],
+    },
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+    shown(recorded, 'ship', 'messages');
+    await settle(SEARCHED);
+
+    const row = shown(recorded, 'ship', 'messages')[0];
+    const box = dom.document.createElement('div');
+    box.append(row.titleNode());
+
+    assert.equal(box.querySelector('b').textContent, 'now');
+    // The label, never the address: thirty characters of URL on one line is
+    // thirty characters nobody reads.
+    assert.equal(box.querySelector('.bsp-link').textContent, '!719');
+    // A mention is a person, not `<@U9>` -- and the person is looked up.
+    assert.equal(box.querySelector('.bsp-mention').textContent, '@Person U9');
+    // Slack sends the codepoints, so a standard emoji costs no request at all.
+    assert.match(box.textContent, /🎉/);
+    // A row is a button, so nothing inside it may be a link that swallows the
+    // click that opens the conversation.
+    assert.equal(box.querySelector('a'), null);
+    // And it ends where the words do: every block appends a space after itself,
+    // which on the last one leaves the title sitting a pixel off.
+    assert.equal(box.textContent, box.textContent.trimEnd());
+  } finally {
+    dom.cleanup();
+  }
+});
+
+/*
+ * `mpdm-alice--bob--carol-1` is a key, not a name.
+ *
+ * It comes back that way from the conversation list *and* from the channel
+ * search, and only the first was being turned into people.
+ */
+test('a group DM is the people in it, wherever it came from, and never you', async () => {
+  const { api, recorded, dom } = mount({
+    conversations: [{ id: 'G1', is_mpim: true, name: 'mpdm-erwan.martin--nina.lagoutte--sam.okonkwo-1' }],
+    search: {
+      channels: [{ id: 'G2', name: 'mpdm-erwan.martin--robin.vasquez-1', is_member: true }],
+    },
+  });
+  try {
+    await plugin.start(api);
+    await settle(30);
+    press();
+
+    const mine = shown(recorded).find((row) => row.id === 'slack:group:G1');
+    assert.equal(mine.title, 'Nina Lagoutte, Sam Okonkwo',
+      'Slack leaves you out of the name it draws, and so does this');
+
+    shown(recorded, 'robin');
+    await settle(SEARCHED);
+    const found = shown(recorded, 'robin').find((row) => row.id === 'slack:group:G2');
+    assert.equal(found.title, 'Robin Vasquez');
+    assert.ok(!found.title.includes('mpdm'), 'and never the key Slack files it under');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+/*
+ * A run of `>` means a quote in Slack's markup and means nothing on one line.
+ *
+ * An integration that posts its body as one mrkdwn string puts six of them in
+ * the middle of it, and they arrive in a `rich_text` block as literal
+ * characters -- whatever posted it never had its markup parsed.
+ */
+test('blockquote markers do not survive into a one-line row', async () => {
+  const { api, recorded, dom } = mount({
+    search: {
+      messages: [{
+        team: 'T1',
+        channel: { id: 'C7', name: 'deploys' },
+        messages: [{
+          ts: '1750000000.000100',
+          username: 'prodbot',
+          text: '',
+          blocks: [{
+            type: 'rich_text',
+            elements: [{
+              type: 'rich_text_section',
+              elements: [{ type: 'text', text: '[bizion] docked prod >>>>>> Refacto\n\ndu formulaire' }],
+            }],
+          }],
+        }],
+      }],
+    },
+  });
+  try {
+    await plugin.start(api);
+    await settle();
+    press();
+    shown(recorded, 'docked', 'messages');
+    await settle(SEARCHED);
+
+    const box = dom.document.createElement('div');
+    box.append(shown(recorded, 'docked', 'messages')[0].titleNode());
+    assert.equal(box.textContent, '[bizion] docked prod Refacto du formulaire');
   } finally {
     dom.cleanup();
   }

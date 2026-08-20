@@ -1519,6 +1519,27 @@ const IMITATED = {
     },
   },
 
+  'slack-emojiurl': {
+    render: (v) => {
+      const custom = new Map();
+      if (v.known && STATUS_EMOJI[v.name]) custom.set(v.name, STATUS_EMOJI[v.name]);
+      const url = createSlackApi('demo').emojiUrl(v.name, custom);
+      const line = kit.el('div', { class: 'pg__card' }, [
+        url
+          ? kit.el('img', { src: url, alt: `:${v.name}:`, style: 'width:20px;height:20px' })
+          : kit.el('span', { class: 'sm-hint' }, ['(nothing draws it)']),
+        kit.el('code', {}, [`:${v.name}:`]),
+      ]);
+      return [
+        line,
+        source(`api.slack.emojiUrl('${v.name}', custom)\n\n${JSON.stringify(url)}`, 'javascript'),
+        stubbed(url
+          ? 'Resolved from the workspace\u2019s own emoji.'
+          : 'Neither the workspace nor the page knows that name, so there is no image \u2014 and the raw shortcode is never printed in its place.'),
+      ];
+    },
+  },
+
   'slack-statusnode': {
     render: (v, { stage }) => {
       const [profile, custom] = statusFixture(v);

@@ -654,6 +654,18 @@ export interface SlackApi {
   ): SlackStatus | null;
   /** That status as a node, so two mods showing one draw the same thing. */
   statusNode(status: SlackStatus, profile?: SlackProfile | null): HTMLElement;
+  /**
+   * An image for an emoji name, or null when nothing can draw it.
+   *
+   * Three sources in order, because no single one is enough: the workspace's
+   * custom emoji if you pass the map `web.emoji()` answers, then what Slack has
+   * already drawn on screen -- every emoji it renders is an `<img>` carrying
+   * its own name in `data-stringify-emoji`, which makes the client a
+   * name-to-image table for the set the workspace actually uses. A name none of
+   * them knows draws nothing rather than the raw `:shortcode:`, which reads as
+   * a rendering that failed.
+   */
+  emojiUrl(name: string, customEmoji?: Map<string, string> | null): string | null;
   /** The channel currently open, read from the client URL. */
   currentChannelId(): string | null;
   /**
@@ -884,6 +896,11 @@ export function createSlackApi(pluginId: string): SlackApi {
     composer,
     describeStatus,
     statusNode,
+    emojiUrl: (name, customEmoji) => {
+      const clean = String(name ?? '').replace(/^:|:$/g, '').trim();
+      if (!clean) return null;
+      return imageForEmoji(clean, null, customEmoji);
+    },
     avatarUrl: (url, size) =>
       typeof url === 'string' && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
     userIdFromMessage: (message) =>

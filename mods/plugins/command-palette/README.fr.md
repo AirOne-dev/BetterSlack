@@ -5,8 +5,9 @@ Le sélecteur rapide de Slack avec tout le reste dedans : aller à n'importe que
 - Une touche pour les conversations, les personnes, les messages, vos mods et toutes les commandes publiées par un mod.
 - Tapez / pour les actions, @ pour les personnes, # pour les canaux, > pour les messages, ou rien du tout et cherchez dans l’ensemble.
 - Elle s’ouvre sur ce qui vous attend : d’abord les conversations où il y a du nouveau, avec le nombre de mentions, puis celles où vous étiez en dernier. C’est l’historique de lecture de Slack lui-même qui les classe, donc c’est juste dès la première ouverture.
-- Tapez quoi que ce soit et elle cherche aussi dans les messages de Slack — choisissez une ligne et elle ouvre la conversation sur ce message, surligné, comme le fait la recherche de Slack.
+- Tapez quoi que ce soit et elle cherche aussi dans les messages de Slack — choisissez une ligne et elle ouvre la conversation sur ce message, surligné, comme le fait la recherche de Slack. Un résultat est affiché tel qu’il a été écrit : le gras, le libellé du lien plutôt que son adresse, les mentions en personnes, les emojis en emojis. En dessous, qui l’a dit — sa photo, son nom et son statut, pas son pseudo — avec le canal et le moment.
 - Elle agit sur Slack autant qu’elle s’y déplace : définir un statut depuis un préréglage ou ouvrir la boîte de dialogue de Slack, suspendre et réactiver les notifications, vous afficher absent(e) ou actif/active, copier un lien vers l’endroit où vous êtes, le marquer comme lu.
+- Une conversation de groupe, c’est les personnes qui y sont, jamais la clé `mpdm-…` sous laquelle Slack la range, et jamais avec votre propre nom en tête de liste.
 - Les conversations vues la dernière fois sont là dès l’ouverture, confirmées derrière vous.
 - Tant que Slack n’a pas répondu, la liste le dit plutôt que d’annoncer qu’il n’y a aucun résultat — une recherche est temporisée puis part sur le réseau, et ce sont deux réponses différentes.
 - Toute personne ayant un statut le porte à côté de son nom, emoji compris — un emoji personnalisé de l’espace de travail est dessiné avec l’image que l’espace lui donne, animés compris.

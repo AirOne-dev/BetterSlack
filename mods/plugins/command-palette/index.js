@@ -29,13 +29,49 @@ import { openShortcutEditor, parseShortcuts } from './shortcuts.js';
 import { createDirectory } from './directory.js';
 import { createActions } from './actions.js';
 import { createSlackActions } from './slack.js';
+import { renderMessage } from './message.js';
 
 /** Rows per kind in the everything view, so no one kind buries the others. */
 const MIXED_LIMIT = 6;
 
+/*
+ * What a drawn message looks like inside a row.
+ *
+ * The mod's own, rather than the runtime's: the palette component knows nothing
+ * about Slack's markup, and a mod that draws something new brings the rules for
+ * drawing it. Everything is `inline` and inherits its size -- a row is one line
+ * and a `<code>` or an emoji that changes the line height makes the whole list
+ * jump as you type.
+ */
+const CSS = `
+.betterslack-palette .bsp-emoji {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.2em;
+  object-fit: contain;
+}
+.betterslack-palette .bsp-code {
+  font-family: Monaco, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--dt_color-base-inv, rgba(255, 255, 255, .08));
+  color: var(--dt_color-content-destructive, #e01e5a);
+}
+.betterslack-palette .bsp-link { color: var(--dt_color-content-highlight, #1d9bd1); }
+.betterslack-palette .bsp-mention {
+  color: var(--dt_color-content-highlight, #1d9bd1);
+  background: color-mix(in srgb, var(--dt_color-content-highlight, #1d9bd1) 14%, transparent);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.betterslack-palette .betterslack-palette__title b { font-weight: 700; }
+`;
+
 export default {
   async start(api) {
     const t = api.i18n.strings(STRINGS);
+    api.css(CSS);
     /*
      * However many the user asked for.
      *
@@ -63,14 +99,69 @@ export default {
     /** Group DMs are not channels, and a heading that says they are misleads. */
     const sectionFor = (entry) => (entry.kind === 'group' ? t('sectionGroups') : t('sectionChannels'));
 
+    /** What the message renderer needs, read at draw time rather than cached. */
+    const drawContext = () => ({
+      doc: document,
+      emoji: directory.emoji,
+      users: directory.authors,
+      emojiUrl: (name, map) => api.slack.emojiUrl?.(name, map) ?? null,
+    });
+
+    /** When something was said, as short as it can be and still be useful. */
+    const said = (ts) => {
+      const at = new Date(Number(String(ts).split('.')[0]) * 1000);
+      if (Number.isNaN(at.getTime())) return '';
+      const today = new Date();
+      const sameDay = at.toDateString() === today.toDateString();
+      return new Intl.DateTimeFormat(api.i18n.locale, sameDay
+        ? { hour: '2-digit', minute: '2-digit' }
+        : { day: 'numeric', month: 'short' }).format(at);
+    };
+
+    /**
+     * Who said it, and where.
+     *
+     * The face is the row's icon and the name is here, because that is the pair
+     * you scan a list of results by -- `erwan.martin` is neither. The status
+     * emoji comes along for the same reason it does everywhere else in this
+     * palette: it is one glyph and it says whether asking now is a good idea.
+     */
+    const whoSaidIt = (entry) => {
+      const line = document.createElement('span');
+      const author = directory.authors.get(entry.authorId);
+      const profile = author?.profile ?? {};
+      const name = profile.display_name || profile.real_name || author?.name || entry.username;
+      if (name) line.append(name);
+
+      const status = author ? api.slack.describeStatus(author, directory.emoji) : null;
+      const url = status?.emoji ? api.slack.emojiUrl?.(status.emoji, directory.emoji) : null;
+      if (url) {
+        const img = document.createElement('img');
+        img.className = 'bsp-emoji';
+        img.src = url;
+        img.alt = `:${status.emoji}:`;
+        if (status.text) img.title = status.text;
+        line.append(' ', img);
+      }
+
+      const where = entry.channelName ? `#${entry.channelName}` : '';
+      for (const part of [where, said(entry.ts)].filter(Boolean)) line.append(` · ${part}`);
+      return line;
+    };
+
     /** A message Slack found, as a row that opens it where it was said. */
     const asMessageRow = (entry) => ({
       id: `slack:message:${entry.id}`,
+      // The plain reading: what the ranking sorts by and what is announced.
       title: entry.title,
+      // And the drawn one, with the bold, the link's label and the emoji in it.
+      titleNode: () => renderMessage(entry.message, drawContext()),
+      subtitleNode: () => whoSaidIt(entry),
       section: t('sectionMessages'),
-      icon: entry.icon,
+      icon: api.slack.avatarUrl(
+        directory.authors.get(entry.authorId)?.profile?.image_48, 48,
+      ) ?? directory.authors.get(entry.authorId)?.profile?.image_48 ?? (entry.isIm ? '💬' : '#'),
       source: t('message'),
-      subtitle: entry.hint || undefined,
       // Slack matched it; the client ranking reads only what is on screen and
       // would drop a line whose match is in a word the extract cut off.
       always: true,

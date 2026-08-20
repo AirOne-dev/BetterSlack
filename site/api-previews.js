@@ -807,6 +807,11 @@
       composer,
       describeStatus,
       statusNode,
+      emojiUrl: (name, customEmoji) => {
+        const clean = String(name ?? "").replace(/^:|:$/g, "").trim();
+        if (!clean) return null;
+        return imageForEmoji(clean, null, customEmoji);
+      },
       avatarUrl: (url, size) => typeof url === "string" && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
       userIdFromMessage: (message) => userIdFromAvatarUrl(
         message.element.querySelector(".c-message_kit__avatar img, .c-avatar img")?.src
@@ -2335,10 +2340,14 @@
             iconFor(command),
             h("span", { class: "betterslack-palette__text" }, [
               h("span", { class: "betterslack-palette__titleline" }, [
-                h("span", { class: "betterslack-palette__title" }, [command.title]),
+                h("span", { class: "betterslack-palette__title" }, [
+                  command.titleNode ? command.titleNode() : command.title
+                ]),
                 statusFor(command)
               ].filter(Boolean)),
-              command.subtitle ? h("span", { class: "betterslack-palette__sub" }, [command.subtitle]) : null
+              command.subtitle || command.subtitleNode ? h("span", { class: "betterslack-palette__sub" }, [
+                command.subtitleNode ? command.subtitleNode() : command.subtitle ?? ""
+              ]) : null
             ].filter(Boolean)),
             command.source ? h("span", { class: "betterslack-palette__source" }, [command.source]) : null
           ].filter(Boolean));
@@ -5926,6 +5935,24 @@ api.slack.describeStatus(user, custom)
 
 ` + JSON.stringify(status, null, 2), "json"),
           stubbed(status?.imageUrl ? "Resolved from the workspace\u2019s own emoji." : "Nothing knows that name, so there is no image \u2014 the sentence still draws.")
+        ];
+      }
+    },
+    "slack-emojiurl": {
+      render: (v) => {
+        const custom = /* @__PURE__ */ new Map();
+        if (v.known && STATUS_EMOJI[v.name]) custom.set(v.name, STATUS_EMOJI[v.name]);
+        const url = createSlackApi("demo").emojiUrl(v.name, custom);
+        const line = kit.el("div", { class: "pg__card" }, [
+          url ? kit.el("img", { src: url, alt: `:${v.name}:`, style: "width:20px;height:20px" }) : kit.el("span", { class: "sm-hint" }, ["(nothing draws it)"]),
+          kit.el("code", {}, [`:${v.name}:`])
+        ]);
+        return [
+          line,
+          source(`api.slack.emojiUrl('${v.name}', custom)
+
+${JSON.stringify(url)}`, "javascript"),
+          stubbed(url ? "Resolved from the workspace\u2019s own emoji." : "Neither the workspace nor the page knows that name, so there is no image \u2014 and the raw shortcode is never printed in its place.")
         ];
       }
     },

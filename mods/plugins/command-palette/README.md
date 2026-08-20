@@ -5,8 +5,9 @@ Slack's quick switcher with everything else in it: jump to any conversation, fin
 - One keystroke for conversations, people, messages, your mods and every command a mod publishes.
 - Type / for actions, @ for people, # for channels, > for messages, or nothing at all and search across the lot.
 - It opens on what is waiting for you: the conversations with something new in them first, with their mention count, then the ones you were last in. Slack's own reading history orders them, so it is right on the first open rather than after you have taught it.
-- Type anything and it searches Slack's message archive too — pick a line and it opens the conversation at that message, highlighted, the way Slack's own search does.
+- Type anything and it searches Slack's message archive too — pick a line and it opens the conversation at that message, highlighted, the way Slack's own search does. A result is drawn the way it was written: the bold, the link's label instead of its address, the mentions as people, the emoji as emoji. Under it, who said it — their face, their name and their status, not their handle — with the channel and when.
 - It does things to Slack as well as moving around it: set a status from a preset or open Slack's own dialog, pause and resume notifications, show yourself away or active, copy a link to where you are, mark it as read.
+- A group message is the people in it, never the `mpdm-…` key Slack files it under, and never with your own name at the front of the list.
 - The conversations you saw last time are there the moment it opens, confirmed behind you.
 - While Slack is still being asked, the list says so rather than saying nothing matches — a search is debounced and then goes to the network, and those are two different answers.
 - Anyone with a status set carries it beside their name, emoji and all — a custom workspace emoji drawn as the image the workspace has for it, animated ones included.

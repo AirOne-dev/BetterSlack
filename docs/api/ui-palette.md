@@ -21,6 +21,15 @@ then says it is waiting rather than that it found nothing. Waiting starts at the
 keystroke, not when the request goes out; a debounce in front of a search is
 part of the wait.
 
+A row is a line of text by default, and sometimes that is a poor version of the
+truth: a message search result had bold in it, a link with a label, an emoji.
+`titleNode` and `subtitleNode` are factories that draw those halves instead —
+factories rather than nodes, because the list is rebuilt on every keystroke and
+one node cannot be in two rows. `title` stays required either way: it is what
+the ranking sorts by and what a screen reader is given. Nothing drawn may be an
+anchor — a row is a button, and a link inside one swallows the click that was
+meant to open it.
+
 A mode is a prefix that narrows the list — `/`, `@`, `#` — and it is reachable
 two ways. Typing the prefix turns it into a chip in front of the field; so does
 `setMode(id)` on the handle, which lets a row *be* the way in: "search the

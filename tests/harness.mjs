@@ -331,6 +331,18 @@ export function createTestApi({
           expiresAt: expiration > 0 ? new Date(expiration * 1000) : null,
         };
       },
+      /*
+       * The same three sources the runtime reads, in the same order: what the
+       * workspace's custom map holds, then what Slack has already drawn -- every
+       * emoji it renders carries its own name in `data-stringify-emoji`.
+       */
+      emojiUrl: (name, customEmoji) => {
+        const clean = String(name ?? '').replace(/^:|:$/g, '').trim();
+        if (!clean) return null;
+        if (customEmoji?.get(clean)) return customEmoji.get(clean);
+        const drawn = document.querySelector(`.c-emoji img[data-stringify-emoji=":${clean}:"]`);
+        return drawn?.getAttribute('src') ?? null;
+      },
       statusNode: (status, profile) => {
         const node = document.createElement('span');
         node.className = 'betterslack-status';

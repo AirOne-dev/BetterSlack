@@ -45,6 +45,19 @@ export interface Command {
   /** Unique per mod; the runtime prefixes it with the mod id. */
   id: string;
   title: string;
+  /**
+   * The title as something drawn rather than as a string.
+   *
+   * A message search result is the one row where the plain text is a poor
+   * version of the truth: what somebody wrote had bold in it, a link with a
+   * label, an emoji. `title` is still required and still what the ranking and a
+   * screen reader read -- this only replaces what is painted, and a factory
+   * rather than a node because the list is rebuilt on every keystroke and one
+   * node cannot be in two rows.
+   */
+  titleNode?: () => Node;
+  /** The same, for the line underneath. */
+  subtitleNode?: () => Node;
   /** Where it comes from, shown on the right. */
   source?: string;
   subtitle?: string;
@@ -356,11 +369,15 @@ export function openPalette(source: PaletteSource, labels: PaletteLabels): Palet
           iconFor(command),
           h('span', { class: 'betterslack-palette__text' }, [
             h('span', { class: 'betterslack-palette__titleline' }, [
-              h('span', { class: 'betterslack-palette__title' }, [command.title]),
+              h('span', { class: 'betterslack-palette__title' }, [
+                command.titleNode ? command.titleNode() : command.title,
+              ]),
               statusFor(command),
             ].filter(Boolean) as Node[]),
-            command.subtitle
-              ? h('span', { class: 'betterslack-palette__sub' }, [command.subtitle])
+            command.subtitle || command.subtitleNode
+              ? h('span', { class: 'betterslack-palette__sub' }, [
+                command.subtitleNode ? command.subtitleNode() : (command.subtitle ?? ''),
+              ])
               : null,
           ].filter(Boolean) as Node[]),
           command.source ? h('span', { class: 'betterslack-palette__source' }, [command.source]) : null,
