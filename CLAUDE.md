@@ -115,6 +115,34 @@ The C is a file rather than a string in `build-app.mjs`. It was a template
 literal for one revision, and between JavaScript escapes, C escapes and
 AppleScript quoting inside one `execl`, nothing would compile.
 
+**`launch.sh` picks a Node by version, never by position on `PATH`.** It sources
+`nvm.sh`, which puts nvm's `default` alias in front of every other node -- and
+that alias is whatever the user last pointed it at, which on the machine this
+was found on was `lts/fermium`, Node 14. The loader is modern JavaScript, so an
+old node dies parsing `dist/loader.mjs` before running a line of it, the
+`SyntaxError` goes to `~/Library/Logs/BetterSlack.log`, and a double-click does
+*nothing at all* -- the same symptom as the gated-folder failure above and as a
+Node that is missing entirely, which is why the launcher has to tell the three
+apart rather than assume the last one. So each candidate is asked its own
+version: whatever `command -v node` resolves to if it qualifies, otherwise the
+newest that does out of nvm's versions, Volta, Homebrew and `/usr/local`.
+
+Three things that shape the check:
+
+- **The floor is parsed out of `engines.node`, not repeated.** Two answers to
+  which Node this project needs is one answer too many, and the one nobody edits
+  is always the one the user meets. An `engines` range the parser cannot turn
+  into a condition fails `pnpm build-app` rather than producing a launcher that
+  accepts anything.
+- **The probe is ES5**, because it runs on the node it is judging -- including
+  the one too old to be used. Anything newer in it and every rejected node fails
+  for the wrong reason.
+- **A machine can have several nodes and none of them right.** Measured on one:
+  Homebrew 23.6, `/usr/local` 16.14, and nvm holding 14, 18, 20.18, 22.23 -- of
+  which only 22.23 satisfies the range. When nothing does, the alert names the
+  version that would have run and the range that is wanted; silence is what the
+  bug report was.
+
 **pnpm, not npm.** `pnpm-workspace.yaml` names esbuild under
 `onlyBuiltDependencies` -- pnpm refuses to run a dependency's install script
 unless it is listed there, and esbuild fetches its platform binary in one, so a

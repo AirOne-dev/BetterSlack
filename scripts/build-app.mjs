@@ -42,7 +42,35 @@ if (process.platform !== 'darwin') {
 const run = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = path.join(root, 'dist', 'BetterSlack.app');
-const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
+const { version, engines } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
+
+/**
+ * The Node floor, read out of package.json rather than repeated here.
+ *
+ * The launcher has to be able to refuse a Node that is too old (see the comment
+ * beside the check it generates), and two answers to "which Node does this
+ * project need" is one answer too many -- the one nobody edits is always the
+ * one the user meets. So the range is parsed into a condition the shipped
+ * script evaluates, and an unparseable range fails the build rather than
+ * quietly producing a launcher that accepts anything.
+ *
+ * Written against `a` and `b`, the major and minor of the node being judged.
+ */
+function nodeFloorCondition(range) {
+  const clauses = range.split('||').map((part) => {
+    const caret = part.trim().match(/^\^(\d+)\.(\d+)\./);
+    if (caret) return `(a===${caret[1]}&&b>=${caret[2]})`;
+    const atLeast = part.trim().match(/^>=(\d+)\./);
+    if (atLeast) return `a>=${atLeast[1]}`;
+    return null;
+  });
+  if (clauses.some((clause) => clause === null)) {
+    throw new Error(`cannot turn engines.node (${range}) into a launcher check`);
+  }
+  return clauses.join('||');
+}
+
+const nodeCondition = nodeFloorCondition(engines.node);
 
 await fs.rm(app, { recursive: true, force: true });
 await fs.mkdir(path.join(app, 'Contents', 'MacOS'), { recursive: true });
@@ -80,11 +108,59 @@ LOG="$HOME/Library/Logs/BetterSlack.log"
 export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$PATH"
 if [ -s "$HOME/.nvm/nvm.sh" ]; then . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1 || true; fi
 
-NODE="$(command -v node || true)"
+# The node is chosen by version, not by position, and that is the whole reason
+# this block is longer than one line.
+#
+# Sourcing nvm.sh puts nvm's *default* alias in front of every other node on
+# PATH, and that alias is whatever the user last pointed it at -- lts/fermium,
+# on the machine this was found on, which is Node 14. The loader is modern
+# JavaScript, so an old node dies parsing it before running a line of it, the
+# SyntaxError goes to the log where nothing puts it on screen, and a
+# double-click does nothing at all. That is the same symptom as every other
+# failure here, and taking the first node on PATH could not tell them apart.
+#
+# So each candidate is asked its own version. The check is ES5 on purpose: it
+# has to run on the node it is judging, including the one too old to be used.
+CHECK='var p=process.versions.node.split(".");var a=+p[0],b=+p[1],c=+p[2];if(!(${nodeCondition}))process.exit(1);process.stdout.write(String(a*1000000+b*1000+c))'
+
+NODE=""
+NODE_KEY=0
+consider() {
+  [ -x "$1" ] || return 0
+  KEY="$("$1" -e "$CHECK" 2>/dev/null)" || return 0
+  [ -n "$KEY" ] || return 0
+  if [ "$KEY" -gt "$NODE_KEY" ]; then NODE_KEY="$KEY"; NODE="$1"; fi
+  return 0
+}
+
+# What their own shell would run comes first: if it is recent enough it is the
+# one they meant. Only when it is not do we go looking, and then the newest
+# suitable one wins -- a machine with four nodes on it has them for a reason,
+# and picking the newest is the only choice that needs no explaining.
+consider "$(command -v node || true)"
 if [ -z "$NODE" ]; then
-  osascript -e 'display alert "BetterSlack" message "Node.js was not found. Install it from nodejs.org, then try again."'
+  for CANDIDATE in "$HOME"/.nvm/versions/node/*/bin/node "$HOME"/.volta/bin/node /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node; do
+    consider "$CANDIDATE"
+  done
+fi
+
+if [ -z "$NODE" ]; then
+  FOUND="$(command -v node || true)"
+  HAVE=""
+  if [ -n "$FOUND" ]; then HAVE="$("$FOUND" -v 2>/dev/null || true)"; fi
+  if [ -n "$HAVE" ]; then
+    # The version has to reach the alert, so this one is a double-quoted shell
+    # string and every AppleScript quote inside it is escaped twice over: once
+    # for this JavaScript template literal, once for the shell.
+    osascript -e "display alert \\"BetterSlack\\" message \\"The Node.js this Mac would run is $HAVE, and BetterSlack needs ${engines.node}.\\" & return & return & \\"If you use nvm, install a supported version and make it the default -- nvm install 22, then nvm alias default 22. Otherwise install Node.js from nodejs.org.\\""
+  else
+    osascript -e 'display alert "BetterSlack" message "Node.js was not found. Install it from nodejs.org, then try again."'
+  fi
   exit 1
 fi
+# Anything the loader starts should see the same node this script settled on,
+# not the one the PATH above would have handed it.
+export PATH="$(dirname "$NODE"):$PATH"
 # Ask the operating system rather than guessing: under macOS's file gate the
 # entry point is not missing, it is forbidden, and a -f test reports both as
 # false. The error text is what tells them apart. (No backticks in here:
