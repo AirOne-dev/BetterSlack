@@ -29,6 +29,17 @@ const loader = {
   format: 'esm',
   target: 'node18',
   define: { __BETTERSLACK_VERSION__: JSON.stringify(version) },
+  /*
+   * The start screen's animation, inlined here rather than in the renderer.
+   *
+   * It is ~95kB, and the renderer bundle is a string shipped over CDP and run
+   * at document-start on every navigation -- the one place in this project that
+   * is required to stay small. The loader is a file on disk that starts once,
+   * so it carries the bytes and hands them to the page when the splash asks.
+   * Inlined rather than read at runtime so an install still needs nothing but
+   * dist/, which is what stage-install.mjs checks.
+   */
+  loader: { '.webm': 'base64' },
   sourcemap: true,
   logLevel: 'info',
 };

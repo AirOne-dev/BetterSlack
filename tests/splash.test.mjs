@@ -41,6 +41,12 @@ async function withDom(html, run) {
 const hostIn = (dom) => dom.window.document.getElementById('betterslack-splash');
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Long enough for the whole exit: a 500ms floor so the screen cannot appear and
+ * vanish inside a frame, then a 260ms fade before the node is taken out.
+ */
+const EXIT_MS = 900;
+
 test('it covers the app, in a shadow root of its own', async () => {
   await withDom('<!doctype html><html><head></head><body></body></html>', async (dom) => {
     const splash = showSplash();
@@ -137,64 +143,72 @@ test('nothing in it is built while the module is being evaluated', () => {
   assert.match(source, /translator \?\?= createI18n\(\)/, 'lazily, and cached');
 });
 
-test('every shape is wrapped, because a CSS transform replaces an attribute one', async () => {
+test('the still mark is what is on screen until the animation arrives', async () => {
   /*
-   * Three of the four bars are placed by a transform attribute -- the mark is
-   * one bar drawn four times, rotated. A CSS transform on the same element
-   * replaces that attribute outright instead of composing with it, so animating
-   * the rects threw cyan, green and yellow back to their unrotated positions
-   * and the mark came apart for the whole animation. The group takes the
-   * animation and the rect keeps its placement.
+   * And what stays if it never does. The animation is asked for over the bridge
+   * rather than shipped in the runtime bundle -- that bundle is a string run at
+   * document-start on every navigation and the video is ~95kB -- so there is
+   * always a moment with no video, and there may be a boot with none at all.
    */
   await withDom('<!doctype html><html><head></head><body></body></html>', async (dom) => {
-    const splash = showSplash();
-    const svg = hostIn(dom).shadowRoot.querySelector('.mark svg');
-    const groups = [...svg.children];
-    assert.equal(groups.length, 8, 'four bars and four elbows');
-    for (const group of groups) {
-      assert.equal(group.tagName, 'g', 'each shape has a group of its own');
-      assert.equal(group.children.length, 1);
-      assert.ok(/^(rect|path)$/.test(group.firstElementChild.tagName));
-    }
-    // The placement the animation must not touch.
-    const placed = groups.filter((g) => g.firstElementChild.hasAttribute('transform'));
-    assert.equal(placed.length, 3, 'three bars are rotated copies of the first');
-    for (const group of placed) {
-      assert.equal(group.hasAttribute('transform'), false, 'and the group carries none of its own');
-    }
+    const splash = showSplash(Promise.resolve(null));
+    const stage = hostIn(dom).shadowRoot.querySelector('.stage');
+    assert.ok(stage.querySelector('.mark svg'), 'the mark is drawn immediately');
+    await wait(30);
+    assert.equal(stage.querySelector('video'), null, 'and no video was added for a refused answer');
+    assert.equal(stage.classList.contains('stage--art'), false);
     splash.done();
   });
 });
 
-test('the lap goes round the mark once, in order', () => {
+test('a refused or broken animation is never swapped in over the mark', async () => {
+  await withDom('<!doctype html><html><head></head><body></body></html>', async (dom) => {
+    // jsdom decodes nothing, so `canplay` never fires -- which is exactly the
+    // failure being guarded: the class that hides the mark is added by that
+    // event and by nothing else.
+    const splash = showSplash(Promise.resolve('AAAA'));
+    await wait(40);
+    const stage = hostIn(dom).shadowRoot.querySelector('.stage');
+    assert.ok(stage.querySelector('video'), 'the element is there');
+    assert.equal(
+      stage.classList.contains('stage--art'), false,
+      'but the mark is only hidden once the video says it can play',
+    );
+    splash.done();
+  });
+});
+
+test('an animation that arrives after the screen has gone is dropped', async () => {
+  await withDom('<!doctype html><html><head></head><body></body></html>', async (dom) => {
+    let deliver;
+    const splash = showSplash(new Promise((resolve) => { deliver = resolve; }));
+    splash.done();
+    await wait(30);
+    deliver('AAAA');
+    await wait(30);
+    // The host is still there for a moment -- there is a 500ms floor so the
+    // screen cannot blink -- but nothing may be added to it on the way out.
+    assert.equal(
+      hostIn(dom)?.shadowRoot.querySelector('video') ?? null, null,
+      'a late answer does not decorate a screen that is leaving',
+    );
+    await wait(EXIT_MS);
+    assert.equal(hostIn(dom), null, 'and then it is gone');
+  });
+});
+
+test('the video is inlined in the loader, not in the runtime', () => {
   /*
-   * The bars are the four sides of an open square, and each is drawn from the
-   * end the previous one arrived at -- cyan across the top left to right, green
-   * down the right, yellow back along the bottom, red up the left. Worked out
-   * from the drawing: the rects are 121 by 421 at x 139..260 y 289..710 and its
-   * three rotations, which is one clockwise circuit.
-   *
-   * The origins are what encode that, so they are what is checked: a lap with
-   * one of them at the wrong end is a bar that grows backwards, which reads as
-   * a stutter rather than as a mistake.
+   * src/runtime/index.ts says at the top that it runs at document-start on
+   * every navigation and must be cheap. ~95kB of video in it would be a
+   * decoration overruling that; the loader is a file on disk that starts once.
    */
-  const source = read('src/runtime/ui/splash.ts');
-  const lap = (name) => source.match(new RegExp(`@keyframes ${name} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? '';
+  const build = read('scripts/build.mjs');
+  const loaderBlock = build.slice(build.indexOf('const loader = {'), build.indexOf('const runtime = {'));
+  const runtimeBlock = build.slice(build.indexOf('const runtime = {'), build.indexOf('const runtimeModules'));
+  assert.match(loaderBlock, /'\.webm': 'base64'/, 'the loader inlines it');
+  assert.doesNotMatch(runtimeBlock, /webm/, 'the renderer bundle does not');
 
-  const ends = {
-    'lap-top': ['139px 199.5px', '560px 199.5px'],
-    'lap-right': ['648.5px 139px', '648.5px 560px'],
-    'lap-bottom': ['709px 649.5px', '288px 649.5px'],
-    'lap-left': ['199.5px 710px', '199.5px 289px'],
-  };
-  for (const [name, [from, to]] of Object.entries(ends)) {
-    const block = lap(name);
-    assert.ok(block, `${name} must exist`);
-    assert.ok(block.indexOf(from) < block.indexOf(to), `${name} grows from ${from} and leaves by ${to}`);
-  }
-
-  // A quarter of the cycle apart, so one light travels rather than four blink.
-  for (const delay of ['0s', '.55s', '1.1s', '1.65s']) {
-    assert.ok(source.includes(`animation-delay: ${delay}`), `a bar starts at ${delay}`);
-  }
+  const splash = read('src/runtime/ui/splash.ts');
+  assert.doesNotMatch(splash, /import .*\.webm/, 'and the screen is handed it rather than importing it');
 });

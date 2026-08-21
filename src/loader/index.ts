@@ -25,6 +25,8 @@ import {
 // Shared with the runtime so a theme's @import behaves the same in Slack's
 // other windows as it does in the client.
 import { inlineCssImports } from '../runtime/themes.js';
+// Inlined by the build: see the loader options in scripts/build.mjs.
+import LOADER_ART from '../../assets/loader.webm';
 import {
   ensureUserRoot,
   exportBackup,
@@ -1096,6 +1098,9 @@ class Loader {
           await session.send('Emulation.clearDeviceMetricsOverride').catch(() => undefined);
         }
       }
+
+      case 'app.art':
+        return LOADER_ART;
 
       case 'app.update': {
         /*

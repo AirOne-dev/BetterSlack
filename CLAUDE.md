@@ -1390,24 +1390,42 @@ and the sequence looks like something going wrong.
 the name on screen when nothing moves again is the one that is stuck -- which is
 the difference between "it is slow" and "it is that mod".
 
-**The animation is read out of the drawing, not invented for it.** The mark is
-one 121x421 bar drawn four times: at `x 139..260, y 289..710` and its three
-rotations, which put the others across the top, down the right and back along
-the bottom. Those four are the sides of an open square, and taken in order they
-are one clockwise lap -- so each bar grows from the end the lap arrives at,
-holds, and retracts from the far end, a quarter of a cycle apart. The origin
-flips at the instant the bar is at full length, where moving it cannot be seen.
-The four elbows stay put at half opacity and brighten as the light passes: with
-only the bars animating there is a moment in every lap when almost nothing is
-drawn, and the mark stops being a mark.
+**The animation is `assets/loader.webm`, drawn by the repository owner.** VP9
+with alpha, which Chromium plays and composites over whatever the splash's
+background is. Four things about it that were measured rather than assumed:
 
-**Do not put a CSS transform on those rects.** Three of the four are placed by a
-transform *attribute*, and the CSS property replaces it rather than composing
-with it -- so animating the rects directly threw cyan, green and yellow back to
-their unrotated positions for the whole animation, which looks exactly like a
-logo coming apart and was reported as one. `wrapShapes` puts each shape in a
-group of its own: the group takes the animation, the rect keeps its placement,
-and `ui/mark.ts` is still the only copy of the drawing.
+- **It is delivered over the bridge, not bundled into the runtime.** The
+  renderer bundle is a string run at document-start on *every* navigation and
+  its own header says it must be cheap; ~95kB of video in it would be a
+  decoration overruling that. `scripts/build.mjs` inlines the file into the
+  loader bundle instead (`loader: { '.webm': 'base64' }`), the page asks for it
+  with `app.art`, and the still mark is what is on screen for the few
+  milliseconds in between -- and what stays if the answer never comes.
+- **Slack's policy allows it.** Its CSP names `base-uri`, `object-src` and
+  `script-src` and no `default-src`, so media is unrestricted: `data:` and
+  `blob:` video both load and both decode the alpha. `data:` is used, since it
+  needs nothing revoking afterwards.
+- **Scale premultiplied, or the edges go dark.** The source is 848x848 and 2.4MB;
+  rescaling it with plain `scale` bleeds black out of the transparent pixels and
+  every shape comes back with a grey fringe, which is invisible on a dark theme
+  and obvious on a light one. To regenerate:
+
+  ```bash
+  ffmpeg -c:v libvpx-vp9 -i "logo loader.webm" \
+    -vf "format=rgba,premultiply=inplace=1,scale=192:192,unpremultiply=inplace=1,format=yuva420p" \
+    -c:v libvpx-vp9 -pix_fmt yuva420p -auto-alt-ref 0 -b:v 0 -crf 40 -an assets/loader.webm
+  ```
+
+  `-auto-alt-ref 0` is required for alpha, and `-c:v libvpx-vp9` on the *input*
+  is what makes ffmpeg decode the alpha at all -- the native decoder reports
+  `yuv420p` and silently drops it. 192 is twice the 88px the screen draws it at.
+  An animated WebP of the same frames came to 267kB against 95, so it is a video.
+- **The still mark is the whole fallback**, swapped out only on the video's
+  `canplay`. A codec that has gone, a refused request or a screen that has
+  already lifted all end with what was already drawn, and there is no second
+  animation to keep in step with the first. `prefers-reduced-motion` is honoured
+  by never asking for the video -- CSS cannot stop one playing -- and the mark
+  breathes instead.
 
 Four rules, and every one of them is about it being a decoration over somebody's
 messaging app rather than about how it looks:

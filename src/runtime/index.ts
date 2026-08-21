@@ -107,7 +107,11 @@ async function boot(): Promise<void> {
    * it in: this is a decoration, and a decoration may not be able to hold up
    * the runtime or throw inside it.
    */
-  const splash = showSplash();
+  const splash = showSplash(
+    // Asked for straight away and never waited on: the screen draws the still
+    // mark until this answers, and keeps drawing it if it never does.
+    bridge.request<string>({ type: 'app.art' }).catch(() => null),
+  );
 
   /*
    * Every stylesheet BetterSlack owns, before a single plugin runs.

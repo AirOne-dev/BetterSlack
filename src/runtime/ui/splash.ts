@@ -57,89 +57,29 @@ const CSS = `
 }
 :host(.betterslack-splash--out) { opacity: 0; pointer-events: none; }
 
-.mark { width: 84px; height: 84px; }
-.mark svg { width: 100%; height: 100%; display: block; overflow: visible; }
-
 /*
- * The mark is a circuit, and this runs a light around it.
+ * The still mark, and the animation over it.
  *
- * Worked out from the drawing rather than invented for it. The four bars are
- * 121 wide and 421 long, and each one is a side of an open square with the
- * corners left out:
- *
- *   cyan    top     y 139..260   drawn x 139 -> 560
- *   green   right   x 588..709   drawn y 139 -> 560
- *   yellow  bottom  y 589..710   drawn x 709 -> 288
- *   red     left    x 139..260   drawn y 710 -> 289
- *
- * Which is one clockwise lap, ending where it began. So each bar grows from the
- * end the lap arrives at, holds for an instant, then retracts from the far end
- * -- a stroke travelling round rather than four shapes pulsing in place. The
- * origin flips at the moment the bar is at full length, where moving it cannot
- * be seen.
- *
- * THE TRAP, and it is the reason every bar is wrapped in a group first: three
- * of the four rects are placed by a transform ATTRIBUTE, and a CSS transform
- * replaces it outright rather than composing with it. Animating the rects
- * directly threw cyan, green and yellow back to their unrotated positions for
- * the whole animation -- which looked like a logo coming apart, and was.
+ * The mark is what is on screen for the first few milliseconds, while the
+ * animation is being asked for -- and it is what stays if the answer never
+ * comes or the video will not decode. So there is never an empty box, and
+ * there is no second animation to keep in step with the first.
  */
-.mark svg > g {
-  transform-box: view-box;
-  animation-duration: 2.2s;
-  animation-timing-function: cubic-bezier(.4, 0, .2, 1);
-  animation-iteration-count: infinite;
+.stage { position: relative; width: 88px; height: 88px; }
+.mark, .art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
+.mark svg { width: 100%; height: 100%; display: block; }
+.art { opacity: 0; transition: opacity 180ms ease-out; object-fit: contain; }
 
-.mark svg > g:nth-child(3) { animation-name: lap-top;    animation-delay: 0s; }
-.mark svg > g:nth-child(5) { animation-name: lap-right;  animation-delay: .55s; }
-.mark svg > g:nth-child(7) { animation-name: lap-bottom; animation-delay: 1.1s; }
-.mark svg > g:nth-child(1) { animation-name: lap-left;   animation-delay: 1.65s; }
-
-@keyframes lap-top {
-  0%        { transform-origin: 139px 199.5px; transform: scaleX(0); }
-  20%       { transform-origin: 139px 199.5px; transform: scaleX(1); }
-  21%       { transform-origin: 560px 199.5px; transform: scaleX(1); }
-  44%, 100% { transform-origin: 560px 199.5px; transform: scaleX(0); }
-}
-@keyframes lap-right {
-  0%        { transform-origin: 648.5px 139px; transform: scaleY(0); }
-  20%       { transform-origin: 648.5px 139px; transform: scaleY(1); }
-  21%       { transform-origin: 648.5px 560px; transform: scaleY(1); }
-  44%, 100% { transform-origin: 648.5px 560px; transform: scaleY(0); }
-}
-@keyframes lap-bottom {
-  0%        { transform-origin: 709px 649.5px; transform: scaleX(0); }
-  20%       { transform-origin: 709px 649.5px; transform: scaleX(1); }
-  21%       { transform-origin: 288px 649.5px; transform: scaleX(1); }
-  44%, 100% { transform-origin: 288px 649.5px; transform: scaleX(0); }
-}
-@keyframes lap-left {
-  0%        { transform-origin: 199.5px 710px; transform: scaleY(0); }
-  20%       { transform-origin: 199.5px 710px; transform: scaleY(1); }
-  21%       { transform-origin: 199.5px 289px; transform: scaleY(1); }
-  44%, 100% { transform-origin: 199.5px 289px; transform: scaleY(0); }
-}
-
-/*
- * The four elbows are the still centre, and they are what keeps this a mark
- * rather than a spinner: with only the bars animating there is a moment in
- * every lap when almost nothing is drawn. They brighten as the light passes
- * their own corner and settle back.
- */
-.mark svg > g:nth-child(2n) {
-  opacity: .55;
-  animation: elbow 2.2s ease-in-out infinite;
-}
-.mark svg > g:nth-child(4) { animation-delay: 0s; }
-.mark svg > g:nth-child(6) { animation-delay: .55s; }
-.mark svg > g:nth-child(8) { animation-delay: 1.1s; }
-.mark svg > g:nth-child(2) { animation-delay: 1.65s; }
-
-@keyframes elbow {
-  0%, 60%, 100% { opacity: .5; }
-  18%           { opacity: 1; }
-}
+/* Swapped only once the video can actually play, so a decode that fails leaves
+   the mark where it was rather than replacing it with nothing. */
+.stage--art .art { opacity: 1; }
+.stage--art .mark { opacity: 0; }
 
 .label {
   min-height: 18px;
@@ -150,16 +90,18 @@ const CSS = `
 }
 
 /*
- * The system setting is honoured here, unlike in the Motion mod.
+ * Reduced motion is honoured by never asking for the video at all, since CSS
+ * cannot stop one playing -- see wantsStillness below. What is left is the
+ * still mark, breathing, which says "working" without moving anything.
  *
- * Installing a mod called Motion is a statement of intent about animation;
- * starting Slack is not. What is left is the same chase without the movement,
- * so the screen still says "working" to somebody who cannot have it spin.
+ * The Motion mod deliberately ignores this setting. Installing a mod called
+ * Motion is a statement of intent about animation; starting Slack is not.
+ *
+ * No backticks anywhere in this string, comments included: one closes the
+ * template literal and the runtime throws at boot with nothing styled to show
+ * for it.
  */
 @media (prefers-reduced-motion: reduce) {
-  /* No lap: the whole animation is travel. The mark stands whole and breathes,
-     which still says "working" to somebody who cannot have it move. */
-  .mark svg > g { animation: none !important; opacity: 1; }
   .mark { animation: breathe 2s ease-in-out infinite; }
   @keyframes breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 }
@@ -190,22 +132,12 @@ export interface Splash {
   done(): void;
 }
 
-/**
- * Put every shape in a group of its own, so the animation has somewhere to go.
- *
- * A CSS transform on an element *replaces* the transform attribute rather than
- * composing with it, and three of the four bars are placed by that attribute --
- * so animating the rects directly threw cyan, green and yellow back to their
- * unrotated positions and the mark came apart while it played. The group takes
- * the animation, the rect keeps its placement, and neither knows about the
- * other. It also means the one mark in `ui/mark.ts` is still the one drawn.
- */
-function wrapShapes(svg: SVGElement | null): void {
-  if (!svg) return;
-  for (const shape of [...svg.children]) {
-    const group = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
-    svg.insertBefore(group, shape);
-    group.append(shape);
+/** True when the machine has asked for as little movement as possible. */
+function wantsStillness(): boolean {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
   }
 }
 
@@ -218,7 +150,7 @@ const NOTHING: Splash = { progress: () => undefined, done: () => undefined };
  * Returns immediately. Nothing here is awaited by `boot()`: a splash that could
  * hold up the runtime would be a decoration with the power to stop the app.
  */
-export function showSplash(): Splash {
+export function showSplash(art?: Promise<string | null>): Splash {
   if (typeof document === 'undefined') return NOTHING;
 
   let host: HTMLElement | null = null;
@@ -239,21 +171,75 @@ export function showSplash(): Splash {
       const root = host.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
       style.textContent = CSS;
+      const stage = document.createElement('div');
+      stage.className = 'stage';
       const mark = document.createElement('div');
       mark.className = 'mark';
       mark.innerHTML = MARK_SVG;
-      wrapShapes(mark.querySelector('svg'));
+      stage.append(mark);
+      void playArt(stage);
       label = document.createElement('div');
       label.className = 'label';
       // Asked for again here rather than trusted from above: the first attempt
       // happened at document-start, where there is no <html> to read a language
       // off and the translator answers with nothing.
       label.textContent = pending || t('splashLoading');
-      root.append(style, mark, label);
+      root.append(style, stage, label);
       document.body.append(host);
     } catch {
       // A splash that throws must cost nothing: the app behind it is fine.
       host = null;
+    }
+  };
+
+  /**
+   * Put the animation over the mark, once there is one and it will play.
+   *
+   * Never awaited by anything that matters, and every step of it is allowed to
+   * come to nothing: the still mark underneath is the whole fallback, so a
+   * refused request, a codec that is gone or a screen that has already lifted
+   * all end the same way -- with what was already on screen.
+   */
+  const playArt = async (stage: HTMLElement): Promise<void> => {
+    // CSS cannot stop a video playing, so the setting is honoured by not asking
+    // for one. The mark breathes instead.
+    if (!art || wantsStillness()) return;
+    let base64: string | null = null;
+    try {
+      base64 = await art;
+    } catch {
+      return;
+    }
+    if (!base64 || finished || !stage.isConnected) return;
+
+    const video = document.createElement('video');
+    video.className = 'art';
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('aria-hidden', 'true');
+    /*
+     * A data: URL rather than a blob:, and both were measured against a live
+     * client -- Slack's policy names base-uri, object-src and script-src and no
+     * default-src, so media is unrestricted and either works. This one needs
+     * nothing revoking afterwards.
+     */
+    video.src = `data:video/webm;base64,${base64}`;
+    // Only then is the mark swapped out: a video that cannot decode leaves the
+    // mark on screen rather than an empty square.
+    video.addEventListener('canplay', () => stage.classList.add('stage--art'), { once: true });
+    stage.append(video);
+    /*
+     * Optional-chained on purpose: `play()` returns a promise in a browser and
+     * nothing at all where media is not implemented, and an autoplay that is
+     * refused is not a failure worth reporting -- the video is muted and looping
+     * and the still mark is underneath it either way.
+     */
+    try {
+      void video.play()?.catch(() => undefined);
+    } catch {
+      // Same again: there is nothing to do about it and nothing to say.
     }
   };
 

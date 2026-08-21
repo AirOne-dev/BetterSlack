@@ -363,6 +363,15 @@ export type Request =
    */
   | { type: 'app.screenshot'; size?: string; filename?: string }
   | { type: 'app.update' }
+  /**
+   * The start screen's animation, as base64.
+   *
+   * Asked for rather than shipped in the boot payload: that payload and the
+   * runtime bundle are both injected at document-start on every navigation, and
+   * ~95kB of video does not belong in either. The screen draws the still mark
+   * until this answers, which is a few milliseconds later.
+   */
+  | { type: 'app.art' }
   /** Everything in ~/.betterslack worth keeping, as one JSON document. */
   | { type: 'backup.export' }
   /** Put one back. Replaces settings and user mods; never touches the install. */
