@@ -1289,7 +1289,20 @@ has not changed, only the handful of properties on top of it.
 ## The design system, twice
 
 Inside the client, **borrow Slack's classes** -- the Mods panel wears
-`.c-dialog` / `.c-button` and follows every theme for nothing. Anywhere else
+`.c-dialog` / `.c-button` and follows every theme for nothing. Its fields do
+too: `.c-input_text` for every text and number input, and `.c-input_select` for
+a select. Two things that only show up once you try it:
+
+- **Slack's select is not a `<select>`.** It is a bordered button carrying
+  `.c-input_select__selected_value` and `.c-input_select__chevron` that opens a
+  `c-menu`, which is why `panel.ts` has a `selectButton` helper rather than an
+  element. A native dropdown is drawn by the operating system, so on a dark
+  theme it opens as a white rectangle in the middle of a dark dialog.
+- **Both of those classes carry `margin: 0 0 20px`**, because in Slack they are
+  form fields stacked in a column. Undoing it needs the class written **twice**
+  (`.betterslack-search.betterslack-search`): Slack's stylesheet loads after
+  BetterSlack's, so one class ties on specificity and loses on source order --
+  measured, the field kept the 20px as a gap under the toolbar. Anywhere else
 there is no stylesheet at all: a window a mod opens is a blank document. That is
 what `api.ui.kit(doc)` + `api.ui.kitCss` are for (`src/runtime/ui/kit.ts`), and
 they exist because the theme builder had rebuilt the whole system by hand and it

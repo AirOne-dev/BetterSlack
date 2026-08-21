@@ -40,6 +40,52 @@ type TabId = 'themes' | 'plugins' | 'css' | 'about';
  */
 type ShelfId = 'installed' | 'browse';
 
+/**
+ * Slack's select, which is not a `<select>`.
+ *
+ * Slack draws one as a bordered button that opens a `c-menu` -- `c-input_select`
+ * for the box, `__selected_value` for the label, `__chevron` for the arrow --
+ * and never as a native dropdown. Borrowing the classes gets the size, the
+ * radius, the focus ring and every theme for nothing; borrowing the behaviour
+ * gets a list that looks like the rest of the app rather than like whatever the
+ * operating system draws, which on a dark theme is a white rectangle.
+ *
+ * `openMenu` is the same one the row overflow uses, so there is one menu in the
+ * document at a time and Escape closes it.
+ */
+function selectButton(
+  options: Array<{ value: string; label: string }>,
+  value: string,
+  onPick: (value: string) => void,
+  extra = '',
+): HTMLElement {
+  const selected = options.find((option) => option.value === value) ?? options[0];
+  const button = h('button', {
+    class: `c-input_select betterslack-select${extra ? ` ${extra}` : ''}`,
+    type: 'button',
+    'aria-haspopup': 'listbox',
+  }, [
+    h('span', { class: 'c-input_select__selected_value' }, [selected?.label ?? '']),
+    h('span', { class: 'c-input_select__chevron betterslack-select__chevron' }),
+  ]);
+  // The arrow is markup, so it goes in as markup rather than through `h`.
+  const chevron = button.querySelector('.betterslack-select__chevron');
+  if (chevron) chevron.innerHTML = CHEVRON;
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    openMenu(button, options.map((option) => ({
+      label: option.label,
+      onSelect: () => onPick(option.value),
+    })));
+  });
+  return button;
+}
+
+/** Slack draws its own with an icon font; this is the same shape, as a path. */
+const CHEVRON = '<svg viewBox="0 0 20 20" aria-hidden="true">'
+  + '<path d="M5.5 8l4.5 4.5L14.5 8" fill="none" stroke="currentColor" '
+  + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 const SORTS: Record<ShelfId, SortId[]> = {
   // Neither install order nor "on first" means anything for a mod you have not
   // got, so Browse is offered the two that do.
@@ -425,7 +471,7 @@ export class Panel {
     const current = shelves.find((shelf) => shelf.id === this.shelf) ?? shelves[0]!;
 
     const search = h('input', {
-      class: 'betterslack-search',
+      class: 'c-input_text betterslack-search',
       type: 'text',
       placeholder: t('search'),
       spellcheck: 'false',
@@ -468,27 +514,25 @@ export class Panel {
 
     queueMicrotask(() => this.renderList(current.list, kind));
 
-    const sort = h('select', {
-      class: 'betterslack-search betterslack-sort',
-      'aria-label': t('sortLabel'),
-    }) as HTMLSelectElement;
     const SORT_LABELS: Record<SortId, string> = {
       recent: t('sortRecent'),
       az: t('sortAz'),
       za: t('sortZa'),
       enabled: t('sortEnabled'),
     };
-    for (const id of SORTS[current.id]) {
-      sort.append(h('option', { value: id }, [SORT_LABELS[id]]));
-    }
-    sort.value = this.sortFor(current.id);
-    sort.addEventListener('change', () => {
-      // Written through the loader, so it is still the order tomorrow. The list
-      // is redrawn rather than the panel re-rendered: a full render would take
-      // focus off the control that was just used.
-      void this.manager.patchSettings({ panelSort: sort.value });
-      this.renderList(current.list, kind);
-    });
+    const sort = selectButton(
+      SORTS[current.id].map((id) => ({ value: id, label: SORT_LABELS[id] })),
+      this.sortFor(current.id),
+      (picked) => {
+        // Written through the loader, so it is still the order tomorrow. The
+        // whole shelf is re-rendered rather than only the list, because the
+        // button itself has to redraw with the label that was just chosen.
+        void this.manager.patchSettings({ panelSort: picked });
+        this.render();
+      },
+      'betterslack-sort',
+    );
+    sort.setAttribute('aria-label', t('sortLabel'));
 
     return [
       h('div', { class: 'betterslack-toolbar' }, [
@@ -846,7 +890,7 @@ export class Panel {
         case 'number': {
           const input = h('input', {
             type: 'number',
-            class: 'betterslack-search betterslack-settings__input',
+            class: 'c-input_text betterslack-search betterslack-settings__input',
             ...(field.min === undefined ? {} : { min: String(field.min) }),
             ...(field.max === undefined ? {} : { max: String(field.max) }),
             ...(field.step === undefined ? {} : { step: String(field.step) }),
@@ -869,19 +913,22 @@ export class Panel {
           break;
         }
         case 'choice': {
-          const select = h('select', { class: 'betterslack-search betterslack-settings__input' }) as HTMLSelectElement;
-          for (const option of field.options) {
-            select.append(h('option', { value: option.value }, [option.label]));
-          }
-          select.value = typeof current === 'string' ? current : (field.default ?? field.options[0]!.value);
-          select.addEventListener('change', () => write(select.value));
-          control = select;
+          const chosen = typeof current === 'string'
+            ? current
+            : (field.default ?? field.options[0]!.value);
+          control = selectButton(
+            field.options,
+            chosen,
+            (picked) => write(picked),
+            'betterslack-settings__input',
+          );
+          control.setAttribute('aria-label', field.label);
           break;
         }
         default: {
           const input = h('input', {
             type: 'text',
-            class: 'betterslack-search betterslack-settings__input',
+            class: 'c-input_text betterslack-search betterslack-settings__input',
             ...(field.placeholder ? { placeholder: field.placeholder } : {}),
           }) as HTMLInputElement;
           input.value = typeof current === 'string' ? current : '';
@@ -1200,7 +1247,7 @@ export class Panel {
 
   private renderRemoteInstall(): Node {
     const input = h('input', {
-      class: 'betterslack-search',
+      class: 'c-input_text betterslack-search',
       type: 'text',
       placeholder: t('remotePlaceholder'),
       spellcheck: 'false',

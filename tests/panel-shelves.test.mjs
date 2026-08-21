@@ -87,3 +87,43 @@ test('each update notice is on the tab that owns it', () => {
   // Safe mode is not an offer; it is the reason nothing on any tab is running.
   assert.match(panel, /body\.append\(\.\.\.this\.renderSafeMode\(\)\);/);
 });
+
+test('the panel borrows Slack\'s field and Slack\'s select, and draws neither', () => {
+  /*
+   * Inside the client, borrowing beats drawing: .c-input_text and
+   * .c-input_select carry the height, the radius, the border, the 80ms focus
+   * transition and every theme, including one somebody is in the middle of
+   * editing in the theme builder.
+   *
+   * And Slack's select is not a `select`. It is a bordered button that opens a
+   * c-menu, which is why there is a helper rather than an element: a native
+   * dropdown is drawn by the operating system, so on a dark theme it comes up
+   * as a white rectangle in the middle of a dark dialog.
+   */
+  const panel = read('src/runtime/ui/panel.ts');
+
+  assert.doesNotMatch(panel, /h\('select'/, 'no native dropdown anywhere in the panel');
+  assert.match(panel, /class: .c-input_select betterslack-select/, 'the select is Slack\'s');
+  assert.match(panel, /openMenu\(button, options\.map/, 'and it opens Slack\'s menu');
+
+  // Every text field, not only the filter: two looks in one dialog is worse
+  // than either of them.
+  const fields = [...panel.matchAll(/h\('input', \{[\s\S]{0,300}?\n\s*\}\)/g)]
+    .map((match) => match[0])
+    // A colour input is a swatch the browser draws; there is nothing of Slack's
+    // to borrow for it.
+    .filter((block) => /type: '(text|number)'/.test(block));
+  assert.ok(fields.length >= 3, 'the shelf filter, the remote field and the settings inputs');
+  for (const field of fields) {
+    assert.match(field, /c-input_text/, `a field that is not Slack's: ${field.slice(0, 70)}`);
+  }
+});
+
+test('Slack\'s form margin is undone, and doubled to win', () => {
+  // .c-input_text and .c-input_select both carry margin 0 0 20px, because in
+  // Slack they are form fields stacked in a column. Slack's stylesheet loads
+  // after ours, so a single class ties on specificity and loses on order --
+  // measured: the field kept the 20px, as a gap under the search box.
+  const styles = read('src/runtime/ui/styles.ts');
+  assert.match(styles, /\.betterslack-search\.betterslack-search,\s*\n\.betterslack-select\.betterslack-select \{\s*\n\s*margin: 0;/);
+});

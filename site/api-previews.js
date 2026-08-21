@@ -1282,33 +1282,50 @@
  * floor of 200px the sort drops to its own line instead when there is no room.
  */
 .betterslack-filterbar .betterslack-search { flex: 1 1 200px; min-width: 0; }
-/*
- * Both selectors, and both needed: the sort wears the search field's class to
- * borrow its look, and that class sets width 100%. Written as a bare
- * .betterslack-sort this loses on source order and the control came out exactly
- * as wide as the field beside it -- measured, 300px against 300px.
- */
-.betterslack-filterbar .betterslack-sort { flex: 0 0 auto; width: auto; cursor: pointer; }
+.betterslack-filterbar .betterslack-select { flex: 0 0 auto; }
 
-.betterslack-search {
-  /* Fills its line rather than fighting for the remainder of one. */
-  display: block;
-  width: 100%;
-  min-width: 0;
-  padding: 8px 12px;
-  border-radius: 4px;
+/*
+ * What is left of a style that used to draw the whole field.
+ *
+ * Slack's own text input is .c-input_text and its own select is .c-input_select
+ * -- a bordered button that opens a menu, never a native dropdown -- so both
+ * are borrowed rather than drawn, the way the dialog and the buttons already
+ * are. Height, radius, border, background, the 80ms focus transition and every
+ * theme come with them.
+ *
+ * The one thing that has to be undone is the margin: both of Slack's carry
+ * 0 0 20px, because in Slack they are form fields stacked in a column, and here
+ * they sit on a toolbar.
+ */
+/*
+ * The class is doubled to win, and that is the whole reason.
+ *
+ * Slack's stylesheet is loaded after BetterSlack's, so a single class ties on
+ * specificity and loses on source order -- measured: the field kept the 20px
+ * bottom margin .c-input_text gives a form field, which on a toolbar is a gap
+ * under the search box and nothing below it.
+ */
+.betterslack-search.betterslack-search,
+.betterslack-select.betterslack-select {
+  margin: 0;
   font-family: inherit;
+}
+.betterslack-search { display: block; width: 100%; min-width: 0; }
+
+.betterslack-select {
+  /* Slack sets padding 0 on the box and pads the parts inside it instead. */
+  gap: 8px;
+  padding: 0 8px 0 12px;
   font-size: 15px;
-  line-height: 1.46667;
   color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
-  background: transparent;
-  border: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.3);
 }
-.betterslack-search:focus {
-  outline: none;
-  border-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
-  box-shadow: 0 0 0 1px rgba(var(--sk_highlight, 18, 100, 163), 1);
+.betterslack-select .c-input_select__selected_value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.betterslack-select__chevron { display: flex; flex: 0 0 auto; opacity: 0.7; }
+.betterslack-select__chevron svg { width: 16px; height: 16px; display: block; }
 /* The CSS box is api.ui's code editor. It brings its own metrics -- the painted
  * copy and the textarea have to agree on every one of them -- so only the
  * colours are set here, from Slack's tokens, which is what makes it follow the
