@@ -4,6 +4,30 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.0.1 — 2026-08-21
+
+### Added
+
+- **runtime:** a start screen, up until the last mod is in
+- **panel:** the mark at the head of the dialog
+- **panel:** two shelves and a sort, and each notice on its tab
+- **updates:** a badge for anything out of date, refreshed hourly
+
+### Fixed
+
+- **panel:** focus is a border, not a halo
+- **updates:** say which version, not how many commits
+- **member-sidebar:** a mod that meant to touch channels broke four Slack views
+- **install:** a Node that passes engines may still not run pnpm
+
+### Changed
+
+- **panel:** borrow Slack's field and Slack's select
+
+### Documentation
+
+- the registry a client reads can lag a release, and why
+
 ## 3.0.0 — 2026-08-21
 
 Installing BetterSlack is one script now, and a mod can say which BetterSlack
