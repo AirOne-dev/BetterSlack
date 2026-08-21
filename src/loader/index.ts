@@ -54,7 +54,14 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..');
 const BUILTIN_MODS_ROOT = path.join(REPO_ROOT, 'mods');
 const RUNTIME_BUNDLE = path.join(HERE, 'runtime.js');
-const VERSION = '2.0.0';
+/**
+ * Written in by the build from package.json -- see scripts/build.mjs. A
+ * constant here is one `pnpm release` does not bump, and the update check
+ * compares it against the published package.json: a stale one reports an
+ * update for ever and installing it changes nothing.
+ */
+declare const __BETTERSLACK_VERSION__: string;
+const VERSION = __BETTERSLACK_VERSION__;
 
 /** Where a copy of this checks whether it is current. */
 /*

@@ -15,7 +15,13 @@ src/runtime/   Renderer: themes, plugin host, Mods panel, plugin API
 src/shared/    The protocol between the two
 mods/          Themes and plugins, one folder each
 tests/         Shared test harness (jsdom + a recording fake api)
+install.sh     What a user runs: macOS and Linux
+install.ps1    What a user runs: Windows
 ```
+
+**A user never runs pnpm.** Everything under Commands below is for working on
+BetterSlack; installing it is one script that needs nothing installed first.
+Keep the two apart in every document -- that separation is the point.
 
 ## Commands
 
@@ -63,20 +69,86 @@ which is why it is not part of `pnpm test`.
 The loader also watches while it runs: if the renderer stops answering, it says
 so, names the mods that were on, and re-arms the safe-start marker.
 
-**In that launcher, `set -e` swallowed the explanation.** Under `set -e` an
-assignment takes the exit status of its command substitution, so
-`WHY="$(cat missing-file 2>&1 >/dev/null)"` does not leave `WHY` holding the
-error -- it ends the script, on that line, before the alert that was supposed
-to read `WHY` can run. Launching the app did nothing at all: no window, no
-dialog, an empty log. The guard added to explain a failure was itself the
-reason nothing was explained. `|| true` on the assignment, and both paths
-verified by running the script with a repository path that does not exist.
+## Installing is one script, and the checkout is not part of it
+
+`install.sh` (macOS and Linux) and `install.ps1` (Windows) are what a user runs.
+`git clone` then one command, with nothing installed first -- not Node, not
+pnpm. Everything below was measured while making that true.
+
+**The three installers share one answer about what an install is.**
+`scripts/stage-install.mjs` copies `package.json`, `bin/`, `dist/`, `mods/` and
+`scripts/node-ok.cjs` into `~/.betterslack/app` and writes `node-path` beside
+them. Three installers each with their own list, in three languages, is three
+lists that drift the first time one is edited.
+
+**It is 6 MB because the loader bundle imports nothing but `node:` built-ins**,
+so an install needs no `node_modules` at all. That is a claim about the bundle
+rather than a fact of nature, so staging *checks* it and refuses to produce an
+install whose loader has an import it cannot satisfy -- naming the import. The
+failure it prevents is the one this whole installer exists to prevent: a
+module-not-found at startup, in a log, where nothing puts it on screen.
+
+**`ws` was a dependency and was never imported.** The loader uses
+`--remote-debugging-pipe` and no WebSocket. Removing it is what made the
+paragraph above true.
+
+**A Node is chosen by version, never by position on `PATH`.** Sourcing `nvm.sh`
+puts nvm's `default` alias in front of everything, and that alias is whatever
+the user last pointed it at -- `lts/fermium` on the machine this was found on,
+which is Node 14. The loader is modern JavaScript, so an old Node dies parsing
+it before running a line, the `SyntaxError` goes to the log, and a double-click
+does *nothing at all*. That is the same symptom as a missing Node and as a
+refused folder, which is why every launcher here has to tell them apart rather
+than assume the last one.
+
+`scripts/node-ok.cjs` is the single judge, used by all three installers and all
+three launchers. Two rules shape it:
+
+- **It reads the range out of `package.json`.** Two answers to which Node this
+  needs is one answer too many, and the copy nobody edits is the one the user
+  meets.
+- **It is ES5 CommonJS** -- no arrow functions, no template literals, no `let`.
+  It runs on the Node it is judging, including one far too old to be used.
+  Anything newer in it and an old Node fails on a syntax error instead of being
+  told it is old. Verified against Node 14, 18, 20.18, 22.23 and 23.6 on one
+  machine: only 22.23 was accepted, which is what `engines` says.
+
+**A Node that is downloaded is verified before it is unpacked.**
+`nodejs.org/download/release/latest-v22.x/SHASUMS256.txt` names the exact file
+and its digest in one request, so no version is pinned in a script to go stale
+and nothing has to parse JSON on a machine that has no Node yet. Match the
+architecture slug anchored at both ends: `darwin-x64` contains the substring
+`win-x64`, and the same file lists `win-x64/node_pdb.zip`.
+
+**The launchers read `node-path`; they do not go looking.** A GUI process gets
+none of the user's shell PATH. If the recorded Node has gone -- an nvm version
+pruned, a Homebrew upgrade -- they fall back to a scan judged by the same
+`node-ok.cjs`, staged beside the app for exactly that, and rewrite `node-path`
+with what they found.
+
+**The in-app updater knows the two shapes apart.** A checkout is replaced by the
+new tree; an install is re-staged from it, using the *new* copy's
+`stage-install.mjs` rather than the running one's idea of what an install
+contains. Handing a staged install the whole source tree would undo what it is,
+and every later update would then need a package manager on `PATH` -- which an
+install that fetched its own Node has no reason to have. The `exec` calls carry
+`dirname(process.execPath)` on `PATH` for the same reason: `corepack` and `npm`
+live beside the Node that is running, and nowhere a shell would look.
+
+**The version reaches the loader from `package.json`, through the build.** It
+was a constant in `src/loader/index.ts`, which `pnpm release` does not touch, so
+it sat at the first release's number while `package.json` moved on. The update
+check compares the two: a stale constant reports an update for ever, and
+installing it clears nothing.
+
+### The macOS app
 
 **A bundle whose executable is a shell script is not an application**, as far
 as the gate on Desktop, Documents and Downloads is concerned. The process macOS
-sees is `/bin/bash`, a platform binary with no identity of its own, so the read
-is refused outright and there is nothing to grant. Measured with throwaway
-bundles, in order:
+sees is `/bin/bash`, a platform binary with no identity of its own, so the
+access is refused outright and there is nothing to grant. It matters because
+`api.files.save` writes to `~/Downloads`. Measured with throwaway bundles, in
+order:
 
 | bundle | result |
 | --- | --- |
@@ -87,61 +159,53 @@ bundles, in order:
 | Mach-O executable exec'ing the same script | same |
 
 So `Contents/MacOS/betterslack` is compiled from `scripts/launcher.c`, and
-execs `Contents/Resources/launch.sh`. Three things follow, each of which was a
-bug report before it was written down:
+execs `Contents/Resources/launch.sh`. Two things follow:
 
-- **The app cannot live in the gated folder either.** `dist/` is inside the
-  repository, so an app built there cannot read its own `launch.sh`, `execl`
-  fails, `main` returns, and a double-click does *nothing at all* -- no window,
-  no dialog, no log. `pnpm build-app --install` copies it to `/Applications`,
-  where it reads itself normally and only the project needs permission. That
-  folder is `root:admin` and group-writable, so an administrator needs no
-  password; the elevation is attempted **only after** an ordinary copy has been
-  refused, since asking up front is a password prompt for something that does
-  not need one. When it is needed, the removal, the copy and the signing all
-  happen inside the one elevated shell -- split across the two, the copy would
-  be root-owned and the signature would then fail as the user. And a path
-  travels through two parsers there: `do shell script` takes an AppleScript
-  string and hands it to `/bin/sh`, so it needs quoting for both.
 - **The stub explains rather than dying.** Running another program is not
   gated, only reading a file is, so it can still reach `osascript` even when it
   cannot read its own launcher.
 - **The grant lasts until the next build.** An ad-hoc signature identifies a
-  bundle by its contents, so rebuilding asks again. That is fine for a user who
-  builds once and invisible to anyone iterating on the launcher -- which is how
-  a working app turned into a silent one mid-session, twice.
+  bundle by its contents, so installing again asks again. That is fine for a
+  user who installs once and invisible to anyone iterating on the launcher --
+  which is how a working app turned into a silent one mid-session, twice.
+
+The app lives in `/Applications`, which is `root:admin` and group-writable, so
+an administrator needs no password; the elevation is attempted **only after** an
+ordinary copy has been refused, since asking up front is a password prompt for
+something that does not need one. When it is needed, the removal, the copy and
+the signing all happen inside the one elevated shell -- split across the two,
+the copy would be root-owned and the signature would then fail as the user. And
+a path travels through two parsers there: `do shell script` takes an AppleScript
+string and hands it to `/bin/sh`, so it needs quoting for both.
 
 The C is a file rather than a string in `build-app.mjs`. It was a template
 literal for one revision, and between JavaScript escapes, C escapes and
 AppleScript quoting inside one `execl`, nothing would compile.
 
-**`launch.sh` picks a Node by version, never by position on `PATH`.** It sources
-`nvm.sh`, which puts nvm's `default` alias in front of every other node -- and
-that alias is whatever the user last pointed it at, which on the machine this
-was found on was `lts/fermium`, Node 14. The loader is modern JavaScript, so an
-old node dies parsing `dist/loader.mjs` before running a line of it, the
-`SyntaxError` goes to `~/Library/Logs/BetterSlack.log`, and a double-click does
-*nothing at all* -- the same symptom as the gated-folder failure above and as a
-Node that is missing entirely, which is why the launcher has to tell the three
-apart rather than assume the last one. So each candidate is asked its own
-version: whatever `command -v node` resolves to if it qualifies, otherwise the
-newest that does out of nvm's versions, Volta, Homebrew and `/usr/local`.
+### Linux and Windows
 
-Three things that shape the check:
+`scripts/build-desktop.mjs` writes three files under `~/.local` -- the command,
+the `.desktop` entry and the icon -- so nothing needs a password and
+uninstalling is deleting them. `StartupNotify=false`, because the loader drives
+Slack rather than opening a window of its own and the desktop would otherwise
+show a busy cursor waiting for one that never arrives. The launcher runs in the
+foreground when there is a terminal and in the background when there is not.
 
-- **The floor is parsed out of `engines.node`, not repeated.** Two answers to
-  which Node this project needs is one answer too many, and the one nobody edits
-  is always the one the user meets. An `engines` range the parser cannot turn
-  into a condition fails `pnpm build-app` rather than producing a launcher that
-  accepts anything.
-- **The probe is ES5**, because it runs on the node it is judging -- including
-  the one too old to be used. Anything newer in it and every rejected node fails
-  for the wrong reason.
-- **A machine can have several nodes and none of them right.** Measured on one:
-  Homebrew 23.6, `/usr/local` 16.14, and nvm holding 14, 18, 20.18, 22.23 -- of
-  which only 22.23 satisfies the range. When nothing does, the alert names the
-  version that would have run and the range that is wanted; silence is what the
-  bug report was.
+`install.ps1` writes `betterslack.cmd` (run it from a terminal, output on
+screen) and `betterslack.vbs` (what the Start menu shortcut points at: same
+command, no console, output appended to a log). A shortcut aimed straight at
+`node.exe` flashes a console on every launch and leaves one open for as long as
+Slack runs. The `.vbs` checks the Node *before* launching, because from a
+shortcut there is no console for an error to appear in.
+
+Two PowerShell traps, both hit here: splatting the tail of a one-element array
+asks for `$a[1..0]`, which is a descending range and hands the array back
+*reversed* rather than empty; and PowerShell 5.1 still defaults to TLS 1.0, so
+`Invoke-WebRequest` to nodejs.org fails with an error that says nothing about
+protocols.
+
+**Linux and Windows are written and reviewed, not executed.** Only macOS has
+been run end to end.
 
 **pnpm, not npm.** `pnpm-workspace.yaml` names esbuild under
 `onlyBuiltDependencies` -- pnpm refuses to run a dependency's install script
@@ -160,8 +224,7 @@ pnpm new-mod plugin my-plugin "What a user gets"   # a mod that already passes
 pnpm release patch     # bumps, writes CHANGELOG.md from the commits, tags
 pnpm test:live         # boots real Slack and checks what loaded
 pnpm build             # both bundles + dist/download.mjs
-pnpm build-app         # macOS: dist/BetterSlack.app, a launcher for this checkout
-pnpm start             # launch Slack with mods
+pnpm start             # launch Slack with mods, from this checkout
 pnpm test              # every mod's tests
 pnpm test -- <id>  # one mod
 pnpm test:core         # loader and runtime unit tests

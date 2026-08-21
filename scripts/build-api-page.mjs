@@ -203,6 +203,18 @@ const ALIASES = {
   ts: 'typescript', tsx: 'typescript',
   sh: 'bash', shell: 'bash', console: 'bash', zsh: 'bash',
   yml: 'yaml', md: 'markdown', text: 'plain', txt: 'plain',
+  /*
+   * PowerShell is declared uncoloured rather than left to fail.
+   *
+   * install.ps1 has to appear in the guide, and the tokeniser has no PowerShell
+   * grammar. Adding one would mean teaching the mod to *detect* PowerShell as
+   * well -- Slack sends a code block with nothing to say what is in it -- or
+   * Code Highlight's own count of the languages it handles becomes a claim that
+   * is false everywhere except this page. Mapping it here is the honest middle:
+   * the block is grey on purpose, and the label above it still reads PowerShell,
+   * so it is a language we do not colour rather than a block that failed to.
+   */
+  powershell: 'plain', ps1: 'plain',
 };
 
 function languageOf(written) {

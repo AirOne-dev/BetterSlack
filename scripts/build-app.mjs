@@ -1,19 +1,21 @@
 #!/usr/bin/env node
-// Builds dist/BetterSlack.app — a thin macOS wrapper that starts the loader
-// without leaving a terminal window open.
+// Builds dist/BetterSlack.app -- the macOS launcher for an installed
+// BetterSlack, and puts it in /Applications with --install.
 //
-// It is a launcher, not a bundle: it runs the loader from this checkout, so the
-// repository has to stay where it is. That is a deliberate simplification over
-// vendoring a Node runtime into the app.
+// install.sh calls this; it is not something a user runs directly. It makes a
+// launcher, not a bundle: the app starts what install.sh staged into
+// ~/.betterslack/app, so this file's only job is to be a double-clickable thing
+// that finds it.
 //
 // **The bundle's executable is a real binary, and that is the whole point.**
 //
-// macOS gates Desktop, Documents and Downloads per application. An app whose
-// executable is a shell script is not an application as far as that gate is
-// concerned -- the process it sees is /bin/bash, a platform binary with no
-// identity of its own -- so the read is refused outright, with no prompt, and
-// `tccutil` does not even have a record of the bundle to reset. Measured with
-// four throwaway bundles:
+// macOS gates Desktop, Documents and Downloads per application, and BetterSlack
+// writes to Downloads -- that is where api.files.save puts a saved avatar or a
+// screenshot. An app whose executable is a shell script is not an application
+// as far as that gate is concerned: the process it sees is /bin/bash, a
+// platform binary with no identity of its own, so the write is refused outright
+// with no prompt, and tccutil does not even have a record of the bundle to
+// reset. Measured with four throwaway bundles:
 //
 //   script executable, unsigned            -> refused
 //   script executable, ad-hoc signed       -> refused
@@ -21,11 +23,10 @@
 //   Mach-O executable                      -> allowed, no prompt at all
 //   Mach-O executable exec'ing the script  -> allowed
 //
-// So `Contents/MacOS/betterslack` is a three-line C stub that execs
-// `Contents/Resources/launch.sh`, and everything below it inherits the app's
-// identity. Without a compiler on the machine the old shape still gets built,
-// and then the gate applies again -- which is what the warning at the end is
-// about.
+// So Contents/MacOS/betterslack is a small C stub that execs
+// Contents/Resources/launch.sh, and everything below it inherits the app's
+// identity. Without a compiler the old shape still gets built, and then the
+// gate applies again -- which is what the warning at the end is about.
 
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
@@ -42,35 +43,7 @@ if (process.platform !== 'darwin') {
 const run = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const app = path.join(root, 'dist', 'BetterSlack.app');
-const { version, engines } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
-
-/**
- * The Node floor, read out of package.json rather than repeated here.
- *
- * The launcher has to be able to refuse a Node that is too old (see the comment
- * beside the check it generates), and two answers to "which Node does this
- * project need" is one answer too many -- the one nobody edits is always the
- * one the user meets. So the range is parsed into a condition the shipped
- * script evaluates, and an unparseable range fails the build rather than
- * quietly producing a launcher that accepts anything.
- *
- * Written against `a` and `b`, the major and minor of the node being judged.
- */
-function nodeFloorCondition(range) {
-  const clauses = range.split('||').map((part) => {
-    const caret = part.trim().match(/^\^(\d+)\.(\d+)\./);
-    if (caret) return `(a===${caret[1]}&&b>=${caret[2]})`;
-    const atLeast = part.trim().match(/^>=(\d+)\./);
-    if (atLeast) return `a>=${atLeast[1]}`;
-    return null;
-  });
-  if (clauses.some((clause) => clause === null)) {
-    throw new Error(`cannot turn engines.node (${range}) into a launcher check`);
-  }
-  return clauses.join('||');
-}
-
-const nodeCondition = nodeFloorCondition(engines.node);
+const { version } = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
 
 await fs.rm(app, { recursive: true, force: true });
 await fs.mkdir(path.join(app, 'Contents', 'MacOS'), { recursive: true });
@@ -88,104 +61,64 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleIconFile</key><string>icon.icns</string>
   <key>LSMinimumSystemVersion</key><string>12.0</string>
   <key>LSUIElement</key><true/>
-  <!-- Shown if macOS ever does ask. It does not, for this shape of app, but a
-       missing usage description is a silent denial on some releases. -->
-  <key>NSDesktopFolderUsageDescription</key><string>BetterSlack reads the project folder it was built from.</string>
-  <key>NSDocumentsFolderUsageDescription</key><string>BetterSlack reads the project folder it was built from.</string>
-  <key>NSDownloadsFolderUsageDescription</key><string>BetterSlack reads the project folder it was built from.</string>
+  <!-- Shown when a mod saves a file: api.files.save writes to Downloads, which
+       is one of the folders macOS asks about. -->
+  <key>NSDesktopFolderUsageDescription</key><string>BetterSlack saves files you ask a mod to download.</string>
+  <key>NSDocumentsFolderUsageDescription</key><string>BetterSlack saves files you ask a mod to download.</string>
+  <key>NSDownloadsFolderUsageDescription</key><string>BetterSlack saves files you ask a mod to download.</string>
 </dict>
 </plist>
 `;
 
-// `command -v node` rather than a hardcoded path: Homebrew, nvm, Volta and the
-// official installer all put it somewhere different, and a GUI launch does not
-// get the user's interactive shell PATH.
+/*
+ * The launcher reads the Node the installer settled on; it does not go looking.
+ *
+ * A GUI process gets none of the user's shell PATH, and the first node on the
+ * PATH it does get is nvm's default alias -- an old one on plenty of machines,
+ * and on some too old to parse the loader at all, which fails as a SyntaxError
+ * in a log file nothing puts on screen. install.sh has already found a Node that
+ * satisfies engines; ~/.betterslack/app/node-path is where it wrote it down.
+ *
+ * The fallback exists because that Node can go away -- an nvm version pruned, a
+ * Homebrew upgrade -- and "reinstall" is a poor answer when another perfectly
+ * good Node is sitting right there. node-ok.cjs, staged beside the app, is the
+ * same judge the installer used, so the two cannot disagree.
+ *
+ * No backticks anywhere below: this is a JavaScript template literal and one
+ * would end it.
+ */
 const launcher = `#!/bin/bash
 set -e
-REPO="${root}"
+APP="$HOME/.betterslack/app"
 LOG="$HOME/Library/Logs/BetterSlack.log"
 
-export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$PATH"
-if [ -s "$HOME/.nvm/nvm.sh" ]; then . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1 || true; fi
+NODE="$(cat "$APP/node-path" 2>/dev/null || true)"
 
-# The node is chosen by version, not by position, and that is the whole reason
-# this block is longer than one line.
-#
-# Sourcing nvm.sh puts nvm's *default* alias in front of every other node on
-# PATH, and that alias is whatever the user last pointed it at -- lts/fermium,
-# on the machine this was found on, which is Node 14. The loader is modern
-# JavaScript, so an old node dies parsing it before running a line of it, the
-# SyntaxError goes to the log where nothing puts it on screen, and a
-# double-click does nothing at all. That is the same symptom as every other
-# failure here, and taking the first node on PATH could not tell them apart.
-#
-# So each candidate is asked its own version. The check is ES5 on purpose: it
-# has to run on the node it is judging, including the one too old to be used.
-CHECK='var p=process.versions.node.split(".");var a=+p[0],b=+p[1],c=+p[2];if(!(${nodeCondition}))process.exit(1);process.stdout.write(String(a*1000000+b*1000+c))'
-
-NODE=""
-NODE_KEY=0
-consider() {
-  [ -x "$1" ] || return 0
-  KEY="$("$1" -e "$CHECK" 2>/dev/null)" || return 0
-  [ -n "$KEY" ] || return 0
-  if [ "$KEY" -gt "$NODE_KEY" ]; then NODE_KEY="$KEY"; NODE="$1"; fi
-  return 0
-}
-
-# What their own shell would run comes first: if it is recent enough it is the
-# one they meant. Only when it is not do we go looking, and then the newest
-# suitable one wins -- a machine with four nodes on it has them for a reason,
-# and picking the newest is the only choice that needs no explaining.
-consider "$(command -v node || true)"
-if [ -z "$NODE" ]; then
-  for CANDIDATE in "$HOME"/.nvm/versions/node/*/bin/node "$HOME"/.volta/bin/node /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node; do
-    consider "$CANDIDATE"
+if [ ! -x "$NODE" ] && [ -f "$APP/scripts/node-ok.cjs" ]; then
+  for CANDIDATE in \\
+    "$HOME"/.betterslack/runtime/node/bin/node \\
+    "$(command -v node || true)" \\
+    "$HOME"/.nvm/versions/node/*/bin/node \\
+    /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node
+  do
+    if [ -x "$CANDIDATE" ] && "$CANDIDATE" "$APP/scripts/node-ok.cjs" >/dev/null 2>&1; then
+      NODE="$CANDIDATE"
+      printf '%s\\n' "$NODE" > "$APP/node-path"
+      break
+    fi
   done
 fi
 
-if [ -z "$NODE" ]; then
-  FOUND="$(command -v node || true)"
-  HAVE=""
-  if [ -n "$FOUND" ]; then HAVE="$("$FOUND" -v 2>/dev/null || true)"; fi
-  if [ -n "$HAVE" ]; then
-    # The version has to reach the alert, so this one is a double-quoted shell
-    # string and every AppleScript quote inside it is escaped twice over: once
-    # for this JavaScript template literal, once for the shell.
-    osascript -e "display alert \\"BetterSlack\\" message \\"The Node.js this Mac would run is $HAVE, and BetterSlack needs ${engines.node}.\\" & return & return & \\"If you use nvm, install a supported version and make it the default -- nvm install 22, then nvm alias default 22. Otherwise install Node.js from nodejs.org.\\""
-  else
-    osascript -e 'display alert "BetterSlack" message "Node.js was not found. Install it from nodejs.org, then try again."'
-  fi
+if [ ! -f "$APP/bin/betterslack.mjs" ]; then
+  osascript -e 'display alert "BetterSlack" message "BetterSlack is not installed." & return & return & "Clone the repository and run ./install.sh again."'
   exit 1
 fi
-# Anything the loader starts should see the same node this script settled on,
-# not the one the PATH above would have handed it.
-export PATH="$(dirname "$NODE"):$PATH"
-# Ask the operating system rather than guessing: under macOS's file gate the
-# entry point is not missing, it is forbidden, and a -f test reports both as
-# false. The error text is what tells them apart. (No backticks in here:
-# this whole script is a JavaScript template literal, and one would end it.)
-#
-# The "|| true" is load-bearing. Under set -e an assignment takes the exit
-# status of its command substitution, so WHY=$(cat missing-file) does not just
-# leave WHY empty -- it ends the script, before the alert below can say why.
-# Launching the app then did nothing at all, visibly or in the log.
-WHY="$(cat "$REPO/bin/betterslack.mjs" 2>&1 >/dev/null)" || true
-if [ -n "$WHY" ]; then
-  case "$WHY" in
-    *"Operation not permitted"*)
-      osascript -e 'display alert "BetterSlack" message "macOS is blocking BetterSlack from reading its own folder, because the project is somewhere it protects: the Desktop, Documents or Downloads." & return & return & "Either move the project elsewhere and run pnpm build-app again, or give BetterSlack.app Full Disk Access in System Settings > Privacy & Security."' ;;
-    *)
-      osascript -e 'display alert "BetterSlack" message "BetterSlack could not be started from this folder." & return & return & "Check that the project is still where it was when the app was built."' ;;
-  esac
-  exit 1
-fi
-if [ ! -f "$REPO/dist/loader.mjs" ]; then
-  osascript -e 'display alert "BetterSlack" message "BetterSlack is not built. Run pnpm install && pnpm build in the repository."'
+if [ ! -x "$NODE" ]; then
+  osascript -e 'display alert "BetterSlack" message "BetterSlack cannot find a Node.js it can run on." & return & return & "Run ./install.sh again from the repository; it fetches one if this machine has none."'
   exit 1
 fi
 
-exec "$NODE" "$REPO/bin/betterslack.mjs" >>"$LOG" 2>&1
+exec "$NODE" "$APP/bin/betterslack.mjs" >>"$LOG" 2>&1
 `;
 
 await fs.writeFile(path.join(app, 'Contents', 'Info.plist'), plist, 'utf8');
@@ -194,7 +127,7 @@ await fs.writeFile(path.join(app, 'Contents', 'Info.plist'), plist, 'utf8');
  * The binary first, the script beside it.
  *
  * If there is no compiler the old shape is written instead -- the script as the
- * executable -- which works everywhere except the folders macOS gates.
+ * executable -- which launches fine and is refused access to Downloads.
  */
 let compiled = false;
 try {
@@ -217,33 +150,24 @@ await fs.copyFile(
  * Signed ad-hoc, which is not about trust.
  *
  * It gives the bundle a stable identity, so any access the user grants it in
- * System Settings survives the next `pnpm build-app`. Without one, macOS treats
- * each rebuild as a different application and the permission is lost.
+ * System Settings survives the next build. Without one, macOS treats each
+ * rebuild as a different application and the permission is lost.
  */
 await run('codesign', ['--force', '--deep', '--sign', '-', app])
   .catch((err) => console.warn(`could not sign the app: ${err.message.split('\n')[0]}`));
 
 console.log(`built ${app}`);
 
-/*
- * Where it has to live to work.
- *
- * `dist/` is inside the repository, and if the repository is on the Desktop
- * then so is the app -- which cannot then read its own launcher, let alone the
- * project. Copied into /Applications it reads itself fine, and the only thing
- * left needing permission is the project, which macOS will ask about once.
- */
 const installed = '/Applications/BetterSlack.app';
 
 /*
  * Two quotings, and both are needed.
  *
- * `do shell script` takes an AppleScript string and hands it to /bin/sh, so a
- * path travels through two parsers. Escaping only the AppleScript literal
- * leaves the shell to split `/Users/me/my projects/...` into three arguments
- * and delete something else; quoting only for the shell leaves the AppleScript
- * literal unterminated. This project's own path has no space in it today, which
- * is exactly why this would have gone unnoticed.
+ * do shell script takes an AppleScript string and hands it to /bin/sh, so a
+ * path travels through two parsers. Escaping only the AppleScript literal leaves
+ * the shell to split a path with a space in it into several arguments and delete
+ * something else; quoting only for the shell leaves the AppleScript literal
+ * unterminated.
  */
 const forShell = (text) => `'${text.replace(/'/g, `'\\''`)}'`;
 const asAppleScript = (text) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -251,12 +175,12 @@ const asAppleScript = (text) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\
 /**
  * Copy it in, asking for an administrator only if the plain copy is refused.
  *
- * /Applications is `root:admin` and `drwxrwxr-x`, so on a Mac whose owner is an
+ * /Applications is root:admin and group-writable, so on a Mac whose owner is an
  * administrator -- which is most of them -- this needs no password at all.
- * Asking for one up front would be a password prompt for something that does
- * not need one, so the escalation happens only after the ordinary copy has
- * actually been refused, and the terminal says what is about to be asked and
- * why before macOS puts its own dialog on screen.
+ * Asking for one up front would be a password prompt for something that does not
+ * need one, so the escalation happens only after the ordinary copy has actually
+ * been refused, and the terminal says what is about to be asked and why before
+ * macOS puts its own dialog on screen.
  *
  * Everything the elevated shell does is done there: removing the old bundle,
  * copying the new one and signing it. Split across the two, the copy would be
@@ -276,7 +200,7 @@ async function install() {
     await fs.rm(installed, { recursive: true, force: true });
     await fs.cp(app, installed, { recursive: true });
     await run('codesign', ['--force', '--deep', '--sign', '-', installed]).catch(() => undefined);
-    console.log(`\ninstalled ${installed}`);
+    console.log(`installed ${installed}`);
     return;
   } catch (err) {
     const code = err?.code;
@@ -299,12 +223,12 @@ async function install() {
 
   try {
     await run('osascript', ['-e', `do shell script ${asAppleScript(script)} with administrator privileges`]);
-    console.log(`\ninstalled ${installed}`);
+    console.log(`installed ${installed}`);
   } catch (err) {
     console.error(
       `\ncould not install into /Applications: ${err.message.split('\n')[0]}`
-      + `\nThe app is still built at ${app}. Move it yourself, or run`
-      + '\n"pnpm build-app --install" again and allow the prompt.',
+      + `\nThe app is still built at ${app}. Move it yourself, or run install.sh`
+      + '\nagain and allow the prompt.',
     );
     process.exitCode = 1;
   }
@@ -312,32 +236,11 @@ async function install() {
 
 if (process.argv.includes('--install')) await install();
 
-const GATED = ['Desktop', 'Documents', 'Downloads'].map((name) => path.join(homedir(), name));
-const gated = GATED.some((dir) => root === dir || root.startsWith(`${dir}${path.sep}`));
-
-if (!compiled && gated) {
+if (!compiled) {
   console.warn(
-    '\nThis project is in a folder macOS gates per application, and without a\n'
-    + 'compiler the app is a shell script, which that gate refuses outright. Install\n'
-    + 'the Xcode command line tools (xcode-select --install) and build again, or move\n'
-    + 'the project somewhere like ~/code.',
-  );
-} else if (gated && !process.argv.includes('--install')) {
-  console.warn(
-    `\nThis project is in a folder macOS gates per application, so the app cannot be\n`
-    + `run from ${path.relative(root, app)} -- it cannot read its own launcher there, and a\n`
-    + `double-click does nothing at all. Run "pnpm build-app --install" to put a copy in\n`
-    + `/Applications and open it from there; macOS will ask once about the project.`,
+    '\nThere is no C compiler on this machine, so the app is a shell script. It\n'
+    + 'launches fine, but macOS refuses it access to Downloads, which is where a\n'
+    + 'mod saves a file. Install the Xcode command line tools\n'
+    + '(xcode-select --install) and run install.sh again to fix that.',
   );
 }
-
-if (gated) {
-  console.log(
-    '\nmacOS asks about the project the first time, and remembers the answer for as\n'
-    + 'long as the app is not rebuilt: an ad-hoc signature identifies a bundle by its\n'
-    + 'contents, so building again asks again.',
-  );
-}
-
-console.log('Unsigned: the first launch needs right-click -> Open.');
-console.log('Logs: ~/Library/Logs/BetterSlack.log');

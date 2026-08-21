@@ -60,7 +60,7 @@
 
     <div class="snippet" data-copy>
       <code>git clone https://github.com/AirOne-dev/BetterSlack.git &amp;&amp; cd BetterSlack
-pnpm install &amp;&amp; pnpm build &amp;&amp; pnpm start</code>
+./install.sh</code>
       <button class="snippet__copy" type="button" data-en="Copy" data-fr="Copier">Copy</button>
     </div>
   </div>
@@ -120,9 +120,9 @@ $                        # nothing</code></pre>
     </article>
     <article class="card">
       <h3 data-en="A way back out" data-fr="Une porte de sortie">A way back out</h3>
-      <p data-en="A mod that wedges the renderer cannot lock you out: the next start applies nothing on its own, pnpm start --safe forces it, and a mod that throws twice is skipped until you switch it back on."
-         data-fr="Un mod qui bloque le renderer ne peut pas vous enfermer : le démarrage suivant n’applique rien de lui-même, pnpm start --safe le force, et un mod qui échoue deux fois est ignoré jusqu’à ce que vous le réactiviez.">
-        A mod that wedges the renderer cannot lock you out: the next start applies nothing on its own, pnpm start --safe forces it, and a mod that throws twice is skipped until you switch it back on.
+      <p data-en="A mod that wedges the renderer cannot lock you out: the next start applies nothing on its own, --safe forces it, and a mod that throws twice is skipped until you switch it back on."
+         data-fr="Un mod qui bloque le renderer ne peut pas vous enfermer : le démarrage suivant n’applique rien de lui-même, --safe le force, et un mod qui échoue deux fois est ignoré jusqu’à ce que vous le réactiviez.">
+        A mod that wedges the renderer cannot lock you out: the next start applies nothing on its own, --safe forces it, and a mod that throws twice is skipped until you switch it back on.
       </p>
     </article>
   </div>
@@ -361,29 +361,34 @@ const { state } = await api.slack.web.availability('U1');   // 'active' | 'away'
 <section class="section" id="install">
   <h2 data-en="Install" data-fr="Installation">Install</h2>
   <p class="section__lede"
-     data-en="Node 18+ (22+ through Corepack), pnpm, and the Slack desktop app. corepack enable gets you pnpm."
-     data-fr="Node 18+ (22+ via Corepack), pnpm, et l’application Slack. corepack enable vous donne pnpm.">
-    Node 18+ (22+ through Corepack), pnpm, and the Slack desktop app. corepack enable gets you pnpm.
+     data-en="The Slack desktop app, and nothing else. Not Node, not pnpm — the installer fetches what it needs and keeps it to itself."
+     data-fr="L’application Slack, et rien d’autre. Ni Node, ni pnpm — l’installeur récupère ce qu’il lui faut et le garde pour lui.">
+    The Slack desktop app, and nothing else. Not Node, not pnpm — the installer fetches what it needs and keeps it to itself.
   </p>
 
   <div class="snippet snippet--wide" data-copy>
     <code>git clone https://github.com/AirOne-dev/BetterSlack.git
 cd BetterSlack
-pnpm install &amp;&amp; pnpm build
-pnpm start</code>
+./install.sh</code>
     <button class="snippet__copy" type="button" data-en="Copy" data-fr="Copier">Copy</button>
   </div>
 
   <p class="note"
-     data-en="pnpm start restarts Slack with BetterSlack attached and stays running — mods are active as long as it does. Nothing is installed on a fresh setup: open the panel with ⌘⇧M and install what you want from Browse."
-     data-fr="pnpm start relance Slack avec BetterSlack attaché et reste ouvert — les mods sont actifs tant qu’il tourne. Rien n’est installé au départ : ouvrez le panneau avec ⌘⇧M et installez ce que vous voulez depuis Parcourir.">
-    pnpm start restarts Slack with BetterSlack attached and stays running — mods are active as long as it does. Nothing is installed on a fresh setup: open the panel with ⌘⇧M and install what you want from Browse.
+     data-en="macOS and Linux. On Windows, run install.ps1 in PowerShell instead."
+     data-fr="macOS et Linux. Sur Windows, lancez plutôt install.ps1 dans PowerShell.">
+    macOS and Linux. On Windows, run install.ps1 in PowerShell instead.
   </p>
 
   <p class="note"
-     data-en="On macOS, pnpm build-app puts a BetterSlack.app in dist/ so you can start it from Spotlight or your login items instead of a terminal. It runs this checkout rather than bundling it, so keep the folder where it is."
-     data-fr="Sur macOS, pnpm build-app dépose un BetterSlack.app dans dist/ pour le lancer depuis Spotlight ou vos ouvertures de session plutôt qu’un terminal. Il exécute ce dépôt au lieu de l’embarquer : gardez donc le dossier où il est.">
-    On macOS, pnpm build-app puts a BetterSlack.app in dist/ so you can start it from Spotlight or your login items instead of a terminal. It runs this checkout rather than bundling it, so keep the folder where it is.
+     data-en="It finds a Node recent enough to run the loader, downloads one if the machine has none, builds, and installs about 6 MB into ~/.betterslack (plus ~190 MB if it had to fetch a Node, kept to itself). Then the clone can be deleted — the install does not refer back to it. Afterwards BetterSlack is an ordinary application: Spotlight, the Dock, your login items, the Start menu."
+     data-fr="Il trouve un Node assez récent pour le loader, en télécharge un si la machine n’en a pas, compile, et installe environ 6 Mo dans ~/.betterslack (plus ~190 Mo s’il a dû récupérer un Node, gardé pour lui). Le clone peut ensuite être supprimé : l’installation n’y renvoie plus. BetterSlack devient une application comme une autre : Spotlight, le Dock, vos ouvertures de session, le menu Démarrer.">
+    It finds a Node recent enough to run the loader, downloads one if the machine has none, builds, and installs about 6 MB into ~/.betterslack (plus ~190 MB if it had to fetch a Node, kept to itself). Then the clone can be deleted — the install does not refer back to it. Afterwards BetterSlack is an ordinary application: Spotlight, the Dock, your login items, the Start menu.
+  </p>
+
+  <p class="note"
+     data-en="Starting it restarts Slack with your mods attached and keeps running as long as Slack does. Nothing is enabled on a fresh install: open the panel with ⌘⇧M and pick what you want from Browse."
+     data-fr="Le lancer relance Slack avec vos mods attachés, et il tourne tant que Slack tourne. Rien n’est activé au départ : ouvrez le panneau avec ⌘⇧M et choisissez ce que vous voulez depuis Parcourir.">
+    Starting it restarts Slack with your mods attached and keeps running as long as Slack does. Nothing is enabled on a fresh install: open the panel with ⌘⇧M and pick what you want from Browse.
   </p>
 
   <figure class="wide">

@@ -8,88 +8,106 @@ BetterSlack drives the Slack desktop app over the Chrome DevTools Protocol and
 injects a runtime into it. It never modifies `Slack.app`, so a Slack update
 cannot break your install.
 
-## What you need
-
-Node **20.19+, 22.13+ or 24+**, and pnpm. It has to be pnpm: esbuild fetches its
-platform binary in an install script, and `pnpm-workspace.yaml` is what allows
-that script to run. `corepack enable` is enough to get it — that wants Node 22+,
-since pnpm 11 refuses to run on anything older when Node is what runs it.
-
-## Run it
+## Install it
 
 ```bash
 git clone https://github.com/AirOne-dev/BetterSlack.git
 cd BetterSlack
-nvm use
-pnpm install && pnpm build
-pnpm start
+./install.sh
 ```
 
-`nvm use` is optional and only does anything if you use nvm — there is a
-`.nvmrc` in the repository pinning the version CI runs, so it saves you finding
-out from an error message which Node this wants.
+On Windows, in PowerShell:
 
-`pnpm build` is **not** optional, which is worth saying because the other two
-are obvious and this one is not. The loader and the runtime are TypeScript,
-`dist/` is not committed, and `bin/betterslack.mjs` refuses to start without
-`dist/loader.mjs`. You need it once after cloning and again after any change
-under `src/`. You never need it for a change under `mods/`: the loader watches
-that folder and broadcasts what changed into the running client, with no
-restart at all.
-
-`pnpm start` restarts Slack with BetterSlack attached and stays running. Mods
-are active as long as it does, so leave that terminal open — it is also where
-the page's own errors are printed, which is how a mod that threw at boot tells
-you so.
-
-Nothing is installed on a fresh setup. The repository is a catalogue, not a set
-of pre-installed mods: open the panel with **⌘⇧M** and install what you want
-from **Browse**.
-
-## On macOS, without a terminal
-
-```bash
-pnpm build-app --install
+```powershell
+git clone https://github.com/AirOne-dev/BetterSlack.git
+cd BetterSlack
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-That puts a **BetterSlack.app** in `/Applications`, so it starts from
-Spotlight, the Dock or your login items.
+That is all of it. There is no step before this one: nothing needs to be
+installed first, not Node and not pnpm.
 
-`/Applications` is owned by root but writable by the `admin` group, so on a Mac
-whose owner is an administrator — most of them — this needs no password at all.
-Where it does, macOS asks for one, and the terminal says beforehand what it is
-for: copying the bundle in and signing it there. Nothing else runs with those
-rights, nothing outside that folder is touched, and cancelling leaves the app in
-`dist/` and changes nothing.
+## What it actually does
 
-An older copy in `~/Applications` is removed on the way, since two launchers
-with the same name means Spotlight offering whichever it indexed first. It is a launcher rather than a bundle —
-it runs this checkout, so keep the project folder where it is.
+Worth knowing, because an installer that will not say is an installer you have
+to take on trust.
 
-Two things it needs. A C compiler at build time (`xcode-select --install`),
-because the bundle's executable has to be a real binary: macOS gates Desktop,
-Documents and Downloads per application, and an app whose executable is a shell
-script is not an application as far as that gate is concerned — the process it
-sees is `/bin/bash`. And, if the project lives in one of those three folders,
-macOS asks once for permission to read it. Say yes.
+It finds a Node that satisfies this project's `engines` — and finds it by
+version, not by taking the first `node` on your `PATH`, which on a machine with
+nvm is whatever its `default` alias points at and is frequently too old. If
+there is no usable one it downloads the current LTS from nodejs.org into
+`~/.betterslack/runtime`, checks it against the digest published beside it, and
+keeps it to itself: nothing is added to your `PATH` and no other project sees
+it.
 
-Do not run the copy left in `dist/`. An app inside a gated folder cannot read
-even its own launcher, and a double-click does nothing at all.
+Then it gets pnpm from Corepack, which ships inside Node, at the exact version
+`package.json` pins. It has to be pnpm — esbuild fetches its platform binary in
+an install script, and `pnpm-workspace.yaml` is what allows that script to run.
+
+Then it builds, and copies the result into `~/.betterslack/app`: the two
+bundles, the entry point and the mod catalogue, about 6 MB. A Node it had to
+download sits beside it in `~/.betterslack/runtime` and is a further ~190 MB.
+
+Finally it makes something you can double-click — `BetterSlack.app` in
+`/Applications` on macOS, a `.desktop` entry and a `betterslack` command on
+Linux, a Start menu shortcut on Windows.
+
+Everything is written under your home directory, with one exception the
+installer announces before it happens: copying the app into `/Applications` on
+macOS. That folder is owned by root and writable by the `admin` group, so on a
+Mac whose owner is an administrator — most of them — it needs no password at
+all. Where it does, macOS asks, and the terminal has already said what for.
+
+**The clone is not part of the install and can be deleted.** Nothing in
+`~/.betterslack/app` refers back to it. Keep it only if you intend to work on
+BetterSlack itself.
+
+## Run it
+
+Start BetterSlack the way you start any application: Spotlight, the Dock, your
+login items, the Start menu, your desktop's applications menu.
+
+It restarts Slack with BetterSlack attached and keeps running for as long as
+Slack does. Nothing is enabled on a fresh install — the repository is a
+catalogue, not a set of pre-installed mods. Open the panel with **⌘⇧M** and
+install what you want from **Browse**.
+
+## Update, and uninstall
+
+Run the installer again. It rebuilds from the clone you have, so `git pull`
+first if you want the newest version. BetterSlack can also update itself from
+the panel, which fetches the current source, builds it and re-stages the
+install without touching anything else.
+
+To uninstall, delete `~/.betterslack` and the launcher: the app in
+`/Applications`, or `~/.local/bin/betterslack` and
+`~/.local/share/applications/betterslack.desktop`, or the Start menu shortcut.
 
 ## If something goes wrong
 
+**Look at the log first.** It is at `~/Library/Logs/BetterSlack.log` on macOS
+and `~/.betterslack/betterslack.log` on Linux and Windows, and it holds the
+page's own errors as well as the loader's — which is how a mod that threw at
+boot tells you so.
+
+Nothing is applied after a run that never reported itself healthy, so a mod that
+wedges the renderer cannot lock you out. A mod that throws on start is named on
+its own row in the panel, and is skipped after two failures until you switch it
+off and on again.
+
+To start with everything off deliberately:
+
 ```bash
-pnpm start --safe
+# Linux
+betterslack --safe
+
+# macOS: the app takes no flags, so run the loader with the Node the installer
+# recorded when it staged the install
+"$(cat ~/.betterslack/app/node-path)" ~/.betterslack/app/bin/betterslack.mjs --safe
 ```
 
-That applies nothing. So does the next start after a run that never reported
-itself healthy — a mod that wedges the renderer cannot lock you out. A mod that
-throws on start is named on its own row, and is skipped after two failures until
-you switch it off and on again.
-
-```bash
-pnpm test:live
-```
-
-Boots the real Slack, asks the runtime what actually loaded, and turns the
-answer into an exit code. It closes Slack afterwards.
+On macOS, two things are worth knowing. The first launch needs right-click →
+**Open**, because the app is unsigned. And if you had no C compiler when you
+ran the installer, the app is a shell script rather than a real binary: it
+launches, but macOS refuses it access to `~/Downloads`, which is where a mod
+saves a file. `xcode-select --install`, then run the installer again.

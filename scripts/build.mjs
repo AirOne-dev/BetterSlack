@@ -3,11 +3,22 @@
 //   dist/loader.mjs  - the Node process that launches Slack and drives CDP
 //   dist/runtime.js  - the IIFE injected into the Slack renderer
 import * as esbuild from 'esbuild';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const root = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const watch = process.argv.includes('--watch');
+
+/*
+ * The version reaches the loader from package.json, and only from there.
+ *
+ * It was a constant in src/loader/index.ts, which `pnpm release` does not touch
+ * -- so it sat at the number of the first release while package.json moved on.
+ * The update check compares this against the published package.json, so a stale
+ * constant means the app reports an update that installing can never clear.
+ */
+const { version } = JSON.parse(readFileSync(`${root}/package.json`, 'utf8'));
 
 /** @type {esbuild.BuildOptions} */
 const loader = {
@@ -17,8 +28,7 @@ const loader = {
   platform: 'node',
   format: 'esm',
   target: 'node18',
-  // ws ships native-ish optional deps; keep it out of the bundle.
-  external: ['ws'],
+  define: { __BETTERSLACK_VERSION__: JSON.stringify(version) },
   sourcemap: true,
   logLevel: 'info',
 };

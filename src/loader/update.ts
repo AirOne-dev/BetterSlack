@@ -221,18 +221,39 @@ async function unpackUpdate({ root, repo, branch }: ApplyOptions): Promise<Updat
 
     // node_modules is not in the archive, and installing into the temporary
     // copy before the swap keeps the window where nothing works to one rename.
+    //
+    // PATH carries the directory of the Node currently running this. An install
+    // that fetched its own Node has that Node nowhere on the PATH a shell would
+    // hand back, so `corepack` and `npm` -- which live beside it -- would not be
+    // found, and the update would fail on a machine that is working perfectly.
+    const env = {
+      ...process.env,
+      PATH: `${path.dirname(process.execPath)}${path.delimiter}${process.env.PATH ?? ''}`,
+    };
     const install = await packageManagerCommand(fresh);
-    await exec(`${install} install`, { cwd: fresh, timeout: 300_000 });
-    await exec(`${install} run build`, { cwd: fresh, timeout: 300_000 });
+    await exec(`${install} install`, { cwd: fresh, timeout: 300_000, env });
+    await exec(`${install} run build`, { cwd: fresh, timeout: 300_000, env });
+
+    /*
+     * A checkout is replaced by the new tree; an install is re-staged from it.
+     *
+     * Handing the whole source tree to an install would undo what it is: 6 MB of
+     * bundles and catalogue would become that plus src/ and 61 MB of
+     * node_modules, and every later update would then need a package manager on
+     * PATH -- which an install that fetched its own Node has no reason to have.
+     */
+    const replacement = (await isStagedInstall(root))
+      ? await stageFrom(fresh, work, env)
+      : fresh;
 
     await fs.rm(previous, { recursive: true, force: true });
     await fs.rename(root, previous);
     try {
-      await fs.rename(fresh, root);
+      await fs.rename(replacement, root);
     } catch (err) {
       // Cross-device: the temporary directory is on another filesystem. Copy,
       // which is slower and always works.
-      await fs.cp(fresh, root, { recursive: true });
+      await fs.cp(replacement, root, { recursive: true });
       void err;
     }
     await fs.rm(previous, { recursive: true, force: true });
@@ -247,6 +268,37 @@ async function unpackUpdate({ root, repo, branch }: ApplyOptions): Promise<Updat
   } finally {
     await fs.rm(work, { recursive: true, force: true }).catch(() => undefined);
   }
+}
+
+/**
+ * Is this an install rather than a checkout?
+ *
+ * install.sh stages the bundles, the entry point and the mod catalogue into
+ * ~/.betterslack/app and leaves the source where it was, so an install has
+ * dist/ and no src/. Asked rather than recorded, because a settings file can be
+ * hand-edited and the layout on disk cannot lie about itself.
+ */
+async function isStagedInstall(root: string): Promise<boolean> {
+  const has = (name: string) =>
+    fs.stat(path.join(root, name)).then(() => true).catch(() => false);
+  return (await has('dist')) && !(await has('src'));
+}
+
+/**
+ * Build the replacement for a staged install, using the new copy's own staging
+ * script rather than this one's idea of what an install contains -- the update
+ * being installed is the authority on that, which is what lets the shape of an
+ * install change in a later version without stranding everyone on this one.
+ */
+async function stageFrom(fresh: string, work: string, env: NodeJS.ProcessEnv): Promise<string> {
+  const home = path.join(work, 'staged');
+  const script = path.join(fresh, 'scripts', 'stage-install.mjs');
+  await exec(
+    `${JSON.stringify(process.execPath)} ${JSON.stringify(script)}`
+      + ` --home ${JSON.stringify(home)} --node ${JSON.stringify(process.execPath)}`,
+    { cwd: fresh, timeout: 120_000, env },
+  );
+  return path.join(home, 'app');
 }
 
 /** pnpm when there is a pnpm lockfile, npm otherwise. */

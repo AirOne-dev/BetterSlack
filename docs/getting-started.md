@@ -12,31 +12,31 @@ Then: [test it](#test-your-mod) and [ship it](#ship-it).
 
 ## Just run it
 
-Requires **Node 20.19+, 22.13+ or 24+**, pnpm, and the Slack desktop app. That
-floor is jsdom's, which the test harness uses — it `require()`s an ES module and
-needs a Node that allows it — and `package.json` states the same range. Node 22+
-if pnpm comes from Corepack, because pnpm 11 refuses to run on anything older
-when Node is what runs it. `corepack enable` gets you pnpm; `npm i -g pnpm` and Homebrew's
-standalone binary work too. It has to be pnpm — esbuild fetches its platform
-binary in an install script, and `pnpm-workspace.yaml` is what allows that
-script to run.
+You need the Slack desktop app. You do not need anything else — not Node, not
+pnpm. The installer sorts that out.
 
 ```bash
 git clone https://github.com/AirOne-dev/BetterSlack.git
 cd BetterSlack
-nvm use                 # optional; .nvmrc pins the version CI uses
-pnpm install && pnpm build
-pnpm start
+./install.sh
 ```
 
-`pnpm build` is not optional: the loader and the runtime are TypeScript, `dist/`
-is not committed, and `bin/betterslack.mjs` refuses to start without
-`dist/loader.mjs`. You need it once after cloning and again after any change
-under `src/` — never for a change under `mods/`, which hot-reloads into the
-running client.
+On Windows, in PowerShell:
 
-`pnpm start` closes Slack, starts it again with BetterSlack attached, and stays
-running. Leave that terminal open — mods are only active while it runs.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+It finds a Node recent enough to run the loader, downloads one into
+`~/.betterslack/runtime` if the machine has none, builds, and puts the result in
+`~/.betterslack/app` — about 6 MB, plus ~190 MB for a Node it had to fetch. Then
+it makes something you can double-click:
+`BetterSlack.app` in `/Applications`, a menu entry and a `betterslack` command on
+Linux, a Start menu shortcut on Windows. **The clone is not part of the install
+and can be deleted afterwards.**
+
+Start it like any other application. It closes Slack, starts it again with
+BetterSlack attached, and keeps running for as long as Slack does.
 
 You should see, in Slack:
 
@@ -46,49 +46,41 @@ You should see, in Slack:
 Nothing is installed on a fresh setup. Open the panel → **Plugins** or
 **Themes** → **Browse** → *Install*, then flip the switch to turn it on.
 
+If it does not start, the log says why: `~/Library/Logs/BetterSlack.log` on
+macOS, `~/.betterslack/betterslack.log` on Linux and Windows.
+
 <details>
 <summary>Slack isn't where BetterSlack expects it</summary>
 
+`BETTERSLACK_SLACK_PATH` names the executable, and the loader reads it at every
+launch:
+
 ```bash
-BETTERSLACK_SLACK_PATH=/path/to/Slack pnpm start
+launchctl setenv BETTERSLACK_SLACK_PATH /path/to/Slack   # macOS, for the app
+BETTERSLACK_SLACK_PATH=/path/to/Slack betterslack        # Linux, one run
 ```
 </details>
 
 <details>
-<summary>Start it without a terminal (macOS)</summary>
+<summary>What macOS asks, and why</summary>
 
-```bash
-pnpm build-app --install    # /Applications/BetterSlack.app
-```
+The first launch needs right-click → **Open**, because the app is unsigned.
 
-A launcher rather than a bundle: it holds the path to this checkout and runs it,
-so the folder has to stay where it is. Output goes to
-`~/Library/Logs/BetterSlack.log`, and it runs without a Dock icon, like the
-loader itself.
+Beyond that, one thing is worth having before you run the installer: a C
+compiler, which you have if `xcode-select --install` has ever been run. The
+bundle's executable is a small binary stub that launches the shell script beside
+it, and that indirection is the difference between an app macOS will let write
+to `~/Downloads` — where `api.files.save` puts a file a mod saves — and one it
+refuses outright. A bundle whose executable *is* a shell script is not an
+application as far as that gate is concerned: the process it sees is
+`/bin/bash`, so the write fails with no prompt and nothing to grant.
 
-It is unsigned, so the first launch needs right-click → Open.
+Without a compiler the script-only shape is still built and still launches;
+only saving a file is refused. The installer says so when it falls back.
 
-**It needs a C compiler**, which you have if `xcode-select --install` has ever
-been run. The bundle's executable is a small stub that launches the shell script
-beside it, and that indirection is the difference between an app macOS lets read
-your project and one it refuses: a bundle whose executable *is* a shell script
-is not an application as far as the Desktop/Documents/Downloads gate is
-concerned — the process it sees is `/bin/bash` — so the read fails, with no
-prompt and nothing to grant.
-
-**`--install` is not decoration.** `dist/` is inside the project, so if the
-project is in one of those folders then so is the app, and it cannot read even
-its own launcher: exec fails and a double-click does nothing whatsoever. From
-`/Applications` it reads itself normally, and the only thing left to ask about
-is the project — which macOS does, once.
-
-It remembers that answer for as long as the app is not rebuilt. An ad-hoc
-signature identifies a bundle by its contents, so `pnpm build-app` again means
-being asked again.
-
-Without a compiler the script-only shape is still built, and works provided the
-project is not in one of those three folders. The build says so when it falls
-back.
+macOS remembers what you allow for as long as the app is not rebuilt: an ad-hoc
+signature identifies a bundle by its contents, so running the installer again
+means being asked again.
 </details>
 
 ---
@@ -466,14 +458,14 @@ rejected.** Read it before you write, not after.
 
 | Symptom | Cause |
 | --- | --- |
-| Mods stop working | The `pnpm start` terminal was closed. Mods live as long as the loader. |
+| Mods stop working | BetterSlack stopped. Mods live exactly as long as the loader does, so quitting it (or closing the `pnpm start` terminal) takes them with it. |
 | Your mod is not in the panel | `id` must equal the folder name. Run `pnpm check-structure -- <id>`. |
 | Edits do not show up | Hot reload is off, or the mod is not enabled. Check the About tab. |
 | A theme changes messages but not the sidebar | You only overrode the first token family — see [themes.md](themes.md). |
 | `eval is not allowed` | Slack's CSP. There is no way around it; restructure. |
 | `Failed to fetch` on a Slack CDN URL | No CORS headers. Use `api.files.save`. |
 | Nothing in the console | Install the **DevTools** plugin, or press ⌘⌥I. |
-| Slack comes up grey, or the panel never appears | A mod wedged the renderer. The next start applies nothing on its own; `pnpm start --safe` forces it. Switch the suspect off, then start again. |
+| Slack comes up grey, or the panel never appears | A mod wedged the renderer. The next start applies nothing on its own; `--safe` forces it. Switch the suspect off, then start again. |
 | A mod's row says it is not running | It threw during `start()`. Two failures and it is skipped at boot — switching it off and on again clears the count. |
 | ⌘K opens Slack's switcher, not BetterSlack's | The **Command Palette** plugin is not installed or not enabled. Its own settings can move it to ⌘⇧K instead. |
 

@@ -77,47 +77,50 @@ shows the tokens behind it. It writes ordinary CSS you can commit.
 
 ## Install
 
-Requires **Node 20.19+, 22.13+ or 24+** and pnpm. That floor is jsdom's, which
-the test harness uses: it `require()`s an ES module, so it needs a Node that
-allows that. Node 22+ if you get pnpm through Corepack, since
-pnpm 11 refuses to run on anything older when it is Node that runs it. Corepack
-ships with Node, so `corepack enable` is enough; `npm i -g pnpm` and Homebrew's
-standalone binary work too. It has to be pnpm: esbuild fetches its platform
-binary in an install script, and only `pnpm-workspace.yaml` says which scripts
-may run.
-
 ```bash
 git clone https://github.com/AirOne-dev/BetterSlack.git
 cd BetterSlack
-nvm use                 # optional; .nvmrc pins the version CI uses
-pnpm install && pnpm build
-pnpm start
+./install.sh                 # macOS and Linux
 ```
 
-`pnpm build` is not optional: the loader and the runtime are TypeScript, `dist/`
-is not committed, and `bin/betterslack.mjs` refuses to start without
-`dist/loader.mjs`. You need it once after cloning and again after any change
-under `src/` — never for a change under `mods/`, which hot-reloads into the
-running client.
+On Windows, in PowerShell:
 
-`pnpm start` restarts Slack with BetterSlack attached and stays running — mods are
-active as long as it does. Nothing is installed on a fresh setup: open the panel
-and install what you want from **Browse**.
+```powershell
+git clone https://github.com/AirOne-dev/BetterSlack.git
+cd BetterSlack
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
 
-On macOS, `pnpm build-app --install` puts a **BetterSlack.app** in
-`/Applications` so you can start it from Spotlight, the Dock or your login items
-instead of a terminal. On a Mac whose owner is an administrator that needs no
-password; on one where it does, macOS asks, and the terminal says beforehand
-what the password is for — copying the bundle in and signing it there, and
-nothing else. It is a launcher rather than a bundle — it runs
-this checkout, so keep the project folder where it is.
+That is the whole thing. Nothing has to be installed first -- not Node, not
+pnpm. The installer uses a Node already on the machine if there is one recent
+enough and downloads one into `~/.betterslack/runtime` if there is not, verifies
+it against the checksum nodejs.org publishes, builds, and puts the result in
+`~/.betterslack/app`.
 
-Two things it needs. A C compiler at build time (`xcode-select --install`),
-because the bundle's executable has to be a real binary rather than a shell
-script. And, if the project lives on your Desktop or in Documents or Downloads,
-macOS will ask once for permission to read it — say yes. Do not run the copy
-left in `dist/`: an app inside one of those folders cannot read even its own
-launcher, and a double-click does nothing at all.
+BetterSlack itself is about 6 MB. A Node it had to download is a further ~190 MB
+and is kept to itself — nothing is added to your `PATH` and no other project
+sees it. Nothing is written outside your home
+directory, with one exception the installer announces before it happens: on
+macOS the app is copied into `/Applications`, which needs a password only on a
+Mac whose owner is not an administrator.
+
+**Then delete the clone if you like.** The install does not refer back to it.
+Keep it only to work on BetterSlack itself.
+
+Afterwards BetterSlack is an ordinary application: Spotlight, the Dock, your
+login items, the Start menu, your desktop's applications menu. Starting it
+restarts Slack with your mods attached and keeps running for as long as Slack
+does. Nothing is enabled on a fresh install -- open the panel and pick what you
+want from **Browse**.
+
+To update, or to move to a newer Node, run `./install.sh` again. To uninstall,
+delete `~/.betterslack` and the launcher (`/Applications/BetterSlack.app`, or
+`~/.local/bin/betterslack` and its `.desktop` file, or the Start menu shortcut).
+
+Two notes for macOS. The first launch needs right-click -> **Open**, because the
+app is unsigned. And a C compiler (`xcode-select --install`) is worth having
+before you run the installer: without one the app still launches, but macOS
+refuses it access to `~/Downloads`, which is where a mod saves a file.
 
 **→ [docs/getting-started.md](docs/getting-started.md)** covers running it,
 writing a theme, writing a plugin, testing and shipping.
@@ -154,14 +157,25 @@ GitHub when there is not.
 
 ## If something goes wrong
 
-`pnpm start --safe` applies nothing, and so does the next start after a run that
-never reported itself healthy — a mod that wedges the renderer cannot lock you
-out. A mod that throws on start is named on its own row, and is skipped after two
-failures until you switch it off and on again.
+Nothing is applied after a run that never reported itself healthy — a mod that
+wedges the renderer cannot lock you out. A mod that throws on start is named on
+its own row, and is skipped after two failures until you switch it off and on
+again.
+
+To start with every mod off deliberately, run the launcher with `--safe`:
 
 ```bash
-pnpm test:live        # boots the real Slack and checks what actually loaded
+# Linux: the command the installer put on your PATH
+betterslack --safe
+
+# macOS: the app has no way to pass a flag, so run the loader directly, with
+# the Node the installer recorded
+"$(cat ~/.betterslack/app/node-path)" ~/.betterslack/app/bin/betterslack.mjs --safe
 ```
+
+If it does not start at all, the log says why. It is at
+`~/Library/Logs/BetterSlack.log` on macOS and `~/.betterslack/betterslack.log`
+on Linux and Windows.
 
 ## How it works
 
@@ -220,6 +234,21 @@ in a theme) from inside its own folder.
 | [Contributing](CONTRIBUTING.md) | Review rules and the PR checklist |
 
 ## Development
+
+Everything below is for working on BetterSlack itself, and it is the only place
+in this project that asks anything of your machine. Using BetterSlack needs
+`install.sh`; changing it needs a checkout, Node and pnpm.
+
+```bash
+git clone https://github.com/AirOne-dev/BetterSlack.git && cd BetterSlack
+corepack enable && pnpm install && pnpm build
+pnpm start                        # launch Slack with mods, from this checkout
+```
+
+`pnpm build` is not optional: the loader and the runtime are TypeScript and
+`dist/` is not committed. Run it after cloning and after any change under
+`src/` — never for a change under `mods/`, which hot-reloads into the running
+client.
 
 ```bash
 pnpm check                        # everything below that CI would run, in one go
