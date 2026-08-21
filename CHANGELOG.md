@@ -4,6 +4,27 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.0.4 — 2026-08-21
+
+### Added
+
+- **Hovering a status emoji says what it means.** The member column and the
+  account strip show a status as a picture and nothing else — there is no room
+  for the sentence in a row that narrow — so hovering one now opens the tooltip
+  Slack's own sidebar opens: the emoji, the status, and when it runs out. It
+  wraps at the width Slack's does, and the emoji in the strip opens one tooltip
+  rather than two.
+
+### Fixed
+
+- **The mouse cursor flickered between arrow and pointer, on almost anything.**
+  Introduced by the tooltip above and fixed here, so 3.0.4 is worth taking if
+  you installed 3.0.3. A tooltip registered its scroll, resize and keydown
+  listeners for as long as its element existed, and the member column attaches
+  one per row and rebuilds them every time you change channel — so the listeners
+  piled up on a page that scrolls constantly. Four channel changes left 38 of
+  them behind; there are none now unless a tooltip is actually on screen.
+
 ## 3.0.3 — 2026-08-21
 
 ### Fixed
