@@ -58,6 +58,55 @@ test('a checkout level with its remote is not behind', async () => {
   }
 });
 
+test('a checkout names the published version, so the notice need not count commits', async () => {
+  /*
+   * "Four commits behind" is true and means nothing to somebody who has never
+   * made one -- and a git checkout is what install.sh leaves behind, so it is
+   * not a developer's install by any means. The fetch has already brought the
+   * ref down, so reading package.json out of it costs nothing.
+   */
+  const { origin, clone, root, cleanup } = scratch();
+  try {
+    const other = path.join(root, 'other');
+    execFileSync('git', ['clone', origin, other], { stdio: 'ignore' });
+    git(other, 'config', 'user.email', 'test@example.com');
+    git(other, 'config', 'user.name', 'Test');
+    writeFileSync(path.join(other, 'package.json'), JSON.stringify({ version: '1.1.0' }));
+    git(other, 'add', '.');
+    git(other, 'commit', '-m', 'release: 1.1.0');
+    git(other, 'push');
+
+    const status = await check(clone);
+    assert.equal(status.behind, true);
+    assert.equal(status.latest, '1.1.0', 'two numbers to show, not a count');
+  } finally {
+    cleanup();
+  }
+});
+
+test('a branch that moved without a release has no version to name', async () => {
+  // And there the count of changes is the only honest measure there is:
+  // "1.0.0 is out, you have 1.0.0" would be worse than saying nothing.
+  const { origin, clone, root, cleanup } = scratch();
+  try {
+    const other = path.join(root, 'other');
+    execFileSync('git', ['clone', origin, other], { stdio: 'ignore' });
+    git(other, 'config', 'user.email', 'test@example.com');
+    git(other, 'config', 'user.name', 'Test');
+    writeFileSync(path.join(other, 'fix.txt'), 'a fix');
+    git(other, 'add', '.');
+    git(other, 'commit', '-m', 'fix: something');
+    git(other, 'push');
+
+    const status = await check(clone);
+    assert.equal(status.behind, true);
+    assert.equal(status.latest, undefined, 'the version did not move, so it is not claimed');
+    assert.equal(status.commits, 1, 'the count is what is left');
+  } finally {
+    cleanup();
+  }
+});
+
 test('a checkout behind its remote says how far, and what is in it', async () => {
   const { origin, clone, root, cleanup } = scratch();
   try {

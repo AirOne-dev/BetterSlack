@@ -1369,7 +1369,7 @@ export class Panel {
         return h('div', { class: 'betterslack-row betterslack-row--notice' }, [
           h('div', { class: 'betterslack-row__meta' }, [
             h('div', { class: 'betterslack-row__name' }, [
-              t('modUpdateTitle', { name: update.name, version: update.to }),
+              t('modUpdateTitle', { name: update.name, current: update.from, version: update.to }),
             ]),
             h('div', { class: 'betterslack-row__desc betterslack-row__requires--missing' }, [
               t('modUpdateBlocked', {
@@ -1404,10 +1404,10 @@ export class Panel {
 
       return h('div', { class: 'betterslack-row betterslack-row--notice' }, [
         h('div', { class: 'betterslack-row__meta' }, [
-          h('div', { class: 'betterslack-row__name' }, [t('modUpdateTitle', { name: update.name, version: update.to })]),
-          h('div', { class: 'betterslack-row__desc' }, [
-            t('modUpdateBody', { current: update.from }),
+          h('div', { class: 'betterslack-row__name' }, [
+            t('modUpdateTitle', { name: update.name, current: update.from, version: update.to }),
           ]),
+          h('div', { class: 'betterslack-row__desc' }, [t('modUpdateBody')]),
         ]),
         h('div', { class: 'betterslack-row__actions' }, [button, status]),
       ]);
@@ -1454,15 +1454,35 @@ export class Panel {
     const status = this.manager.update;
     if (!status || !status.behind) return [];
 
+    const current = this.manager.info.version;
+
+    /*
+     * Two numbers, not a count of commits.
+     *
+     * "Four commits behind" is true and means nothing to somebody who has never
+     * made one -- and a git checkout is what `install.sh` leaves behind, so it
+     * is not a developer's install by any means. Both kinds of install now name
+     * the published version, and the title carries it the way a mod's row does.
+     *
+     * The count survives for the one case where there is no version to name: a
+     * branch that has moved without a release on it, where "3.0.0 is out, you
+     * have 3.0.0" would be worse than counting changes.
+     */
+    const title = status.latest
+      ? t('updateTitleVersion', { current, latest: status.latest })
+      : t('updateTitle');
+
     // What will happen, in the words of the install it will happen to: a
     // checkout is pulled, a downloaded copy is replaced from GitHub. Someone
     // about to press this should know which.
     const detail = status.kind === 'git'
-      ? t('updateGit', {
-        count: status.commits ?? 0,
-        headline: status.headline ? t('updateHeadline', { subject: status.headline }) : '',
-      })
-      : t('updatePackage', { latest: status.latest ?? '?', current: this.manager.info.version });
+      ? (status.latest
+        ? t('updateGit')
+        : t('updateGitCount', {
+          count: status.commits ?? 0,
+          headline: status.headline ? t('updateHeadline', { subject: status.headline }) : '',
+        }))
+      : t('updatePackage');
 
     /*
      * The progress line, under the buttons rather than beside them.
@@ -1522,7 +1542,7 @@ export class Panel {
     return [
       h('div', { class: 'betterslack-row betterslack-row--notice' }, [
         h('div', { class: 'betterslack-row__meta' }, [
-          h('div', { class: 'betterslack-row__name' }, [t('updateTitle')]),
+          h('div', { class: 'betterslack-row__name' }, [title]),
           h('div', { class: 'betterslack-row__desc' }, [
             status.note ? `${detail} — ${status.note}` : detail,
           ]),

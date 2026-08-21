@@ -59,10 +59,17 @@ export const PANEL_STRINGS = {
     skippedTitle: '{count} mod folder(s) were skipped',
     skippedBody: 'These are in the mods folder but could not be read, so they are not listed above. The message says which file and why.',
     updateTitle: 'An update is available',
-    updateGit: '{count} commit(s) behind{headline}. Updating pulls and rebuilds.',
+    /**
+     * Both numbers, where the eye lands. Used whenever the published version is
+     * known, which is nearly always; the body then says only what will happen.
+     */
+    updateTitleVersion: 'BetterSlack {current} → {latest}',
+    updateGit: 'Updating fetches that version and rebuilds.',
+    /** No version to name: a branch that moved without a release on it. */
+    updateGitCount: '{count} change(s) since this copy{headline}. Updating fetches them and rebuilds.',
     updateHeadline: ' — latest: {subject}',
     updatePackage:
-      'Version {latest} is out; this is {current}. Updating downloads it from GitHub and replaces this copy — your mods and settings are kept, they live outside it.',
+      'Updating downloads that version from GitHub and replaces this copy — your mods and settings are kept, they live outside it.',
     updateGo: 'Update and restart',
     updateWorking: 'Updating…',
     updateGitHub: 'Open GitHub',
@@ -74,8 +81,8 @@ export const PANEL_STRINGS = {
     /** The dot on a tab and on the launcher. Read out; never drawn as words. */
     updateAvailable: 'Update available',
 
-    modUpdateTitle: '{name} {version} is out',
-    modUpdateBody: 'You have {current}. Updating replaces this mod alone, and reapplies it if it is on.',
+    modUpdateTitle: '{name} {current} → {version}',
+    modUpdateBody: 'Updating replaces this mod alone, and reapplies it if it is on.',
     modUpdateGo: 'Update',
     modUpdateWorking: 'Downloading…',
     modUpdateBlocked:
@@ -184,10 +191,13 @@ export const PANEL_STRINGS = {
     skippedTitle: '{count} dossier(s) de mod ignoré(s)',
     skippedBody: 'Ils sont dans le dossier mods mais n’ont pas pu être lus, donc ils ne sont pas listés ci-dessus. Le message indique quel fichier et pourquoi.',
     updateTitle: 'Une mise à jour est disponible',
-    updateGit: '{count} commit(s) de retard{headline}. Mettre à jour récupère les commits et reconstruit.',
+    updateTitleVersion: 'BetterSlack {current} → {latest}',
+    updateGit: 'Mettre à jour récupère cette version et reconstruit.',
+    updateGitCount:
+      '{count} changement(s) depuis votre copie{headline}. Mettre à jour les récupère et reconstruit.',
     updateHeadline: ' — dernier : {subject}',
     updatePackage:
-      'La version {latest} est disponible ; vous êtes en {current}. Mettre à jour la télécharge depuis GitHub et remplace cette copie — vos mods et vos réglages sont conservés, ils sont stockés ailleurs.',
+      'Mettre à jour télécharge cette version depuis GitHub et remplace cette copie — vos mods et vos réglages sont conservés, ils sont stockés ailleurs.',
     updateGo: 'Mettre à jour et relancer',
     updateWorking: 'Mise à jour…',
     updateGitHub: 'Ouvrir GitHub',
@@ -198,9 +208,8 @@ export const PANEL_STRINGS = {
 
     updateAvailable: 'Mise à jour disponible',
 
-    modUpdateTitle: '{name} {version} est sorti',
-    modUpdateBody:
-      'Vous êtes en {current}. Mettre à jour ne remplace que ce mod, et le réapplique s’il est activé.',
+    modUpdateTitle: '{name} {current} → {version}',
+    modUpdateBody: 'Mettre à jour ne remplace que ce mod, et le réapplique s’il est activé.',
     modUpdateGo: 'Mettre à jour',
     modUpdateWorking: 'Téléchargement…',
     modUpdateBlocked:

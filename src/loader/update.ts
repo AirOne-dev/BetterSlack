@@ -109,6 +109,31 @@ export async function checkForUpdate({ root, version, repo, branch }: CheckOptio
     const commits = Number.parseInt(behindText ?? '0', 10) || 0;
     const headline = commits > 0 ? await git(root, `log -1 --format=%s ${upstream}`) : null;
 
+    /*
+     * The version on the other end, so a checkout can say the same thing a
+     * downloaded copy says: "3.0.0, and you have 2.9.1".
+     *
+     * "Four commits behind" is a true sentence that means nothing to anybody
+     * who does not work on this, and most people running BetterSlack do not --
+     * a checkout is what `install.sh` leaves behind, not a sign of a developer.
+     * It costs no network: the fetch above already brought the ref down, and
+     * this reads package.json out of it.
+     *
+     * Set only when it really is newer. A checkout can be behind by commits
+     * that did not bump anything -- this repository's own master usually is --
+     * and "3.0.0 is out, you have 3.0.0" is worse than counting changes.
+     */
+    const published = commits > 0 ? await git(root, `show ${upstream}:package.json`) : null;
+    let latest: string | undefined;
+    if (published) {
+      try {
+        const candidate = (JSON.parse(published) as { version?: string }).version;
+        if (typeof candidate === 'string' && isNewer(candidate, version)) latest = candidate;
+      } catch {
+        // A package.json that will not parse is not worth a failed update check.
+      }
+    }
+
     // Only offer to pull when the pull would be a fast-forward. Local work in
     // progress is not something an update button should be resolving.
     const dirty = (await git(root, 'status --porcelain')) ?? '';
@@ -118,6 +143,7 @@ export async function checkForUpdate({ root, version, repo, branch }: CheckOptio
       kind: 'git',
       behind: commits > 0,
       commits,
+      latest,
       headline: headline ?? undefined,
       updatable: commits > 0 && ahead === 0 && dirty === '',
       note: commits > 0 && (ahead > 0 || dirty !== '')

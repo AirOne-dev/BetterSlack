@@ -404,6 +404,15 @@ export interface UpdateStatus {
   kind: 'git' | 'package' | 'unknown';
   behind: boolean;
   commits?: number;
+  /**
+   * The published version, when it is genuinely newer than the one running.
+   *
+   * Filled in for both kinds of install, so the notice can say "3.1.0, and you
+   * have 3.0.0" rather than counting commits at somebody who has never made
+   * one. Absent when the branch has moved without the version moving with it,
+   * which is the ordinary state of a default branch between releases -- there,
+   * the count of changes is the only honest measure there is.
+   */
   latest?: string;
   headline?: string;
   note?: string;

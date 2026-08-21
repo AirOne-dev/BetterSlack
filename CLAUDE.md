@@ -1383,6 +1383,16 @@ are load-bearing rather than tidy:
 - **Hourly, not at boot only.** This is somebody's messaging app, left running
   for days; a check that answers once is a badge that is right for a minute.
   An hour is two requests -- `git fetch` and one registry read -- for a dot.
+- **The notice names two versions, not a count of commits.** "Four commits
+  behind" is true and means nothing to somebody who has never made one -- and a
+  git checkout is what `install.sh` leaves behind, so it is not a developer's
+  install by any means. Both kinds of install fill in `latest` (the checkout
+  reads `package.json` out of the ref the fetch already brought down, at no
+  extra cost), and the title is `BetterSlack 3.0.0 -> 3.1.0`, the same shape a
+  mod's row uses. `latest` is set **only when it is genuinely newer**: a branch
+  moves without a release on it all the time -- this one's master usually has --
+  and there the count of changes is the only honest measure there is, so that is
+  what the fallback says.
 - **`findModUpdates` answers `null` when it could not ask**, and an empty list
   only when it did. They were the same value, which was harmless while the
   answer was only ever drawn as rows in an open panel: now one hourly sweep
