@@ -4,6 +4,28 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.0.2 — 2026-08-21
+
+### Changed
+
+- **The start screen is animated properly now.** The mark on it is a drawn loop
+  rather than one assembled out of the SVG's own shapes. It plays with a
+  transparent background over whatever your theme paints, and falls back to the
+  still mark if it cannot be played — including when your machine has asked for
+  reduced motion, where it is deliberately not played at all.
+
+### Fixed
+
+- **The start screen drew the mark wrong while it animated.** Three of its four
+  arms are placed by a transform attribute, and a CSS transform replaces that
+  rather than adding to it, so those three jumped back to unrotated positions
+  for as long as the animation ran. It looked like a logo coming apart, and was.
+
+### Other
+
+- A pushed tag now becomes a release on GitHub, with this file's section for
+  that version as its notes. Nothing to copy by hand.
+
 ## 3.0.1 — 2026-08-21
 
 ### Added
