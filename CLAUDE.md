@@ -1302,7 +1302,16 @@ a select. Two things that only show up once you try it:
   form fields stacked in a column. Undoing it needs the class written **twice**
   (`.betterslack-search.betterslack-search`): Slack's stylesheet loads after
   BetterSlack's, so one class ties on specificity and loses on source order --
-  measured, the field kept the 20px as a gap under the toolbar. Anywhere else
+  measured, the field kept the 20px as a gap under the toolbar.
+- **Slack's focus is a halo, and the panel does not use it.** The rule is two
+  stacked shadows -- `0 0 0 1px` plus `0 0 0 5px` at 30% -- with the border set
+  transparent underneath, so what is left is a glow floating where the edge was.
+  On a form of one field at a time that reads as attention; on a toolbar of two
+  controls it reads as a light left on. The border shows focus instead: already
+  there, already animating over the same 80ms, and still visible to anyone
+  arriving by keyboard, which is the one thing removing a focus indicator may
+  not cost. Doubling the class is needed here too -- `.c-input_text:focus`
+  scores a class and a pseudo-class. Anywhere else
 there is no stylesheet at all: a window a mod opens is a blank document. That is
 what `api.ui.kit(doc)` + `api.ui.kitCss` are for (`src/runtime/ui/kit.ts`), and
 they exist because the theme builder had rebuilt the whole system by hand and it

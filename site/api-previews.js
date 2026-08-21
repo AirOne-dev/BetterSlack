@@ -1312,6 +1312,33 @@
 }
 .betterslack-search { display: block; width: 100%; min-width: 0; }
 
+/*
+ * Focus, without Slack's halo.
+ *
+ * Slack draws focus as two stacked shadows -- a 1px ring and a 5px spread at
+ * 30% opacity -- and sets the border transparent underneath them, so what is
+ * left is a soft glow floating where the field's edge was. On a form that is
+ * one field at a time it reads as attention; on a toolbar of two controls it
+ * reads as a light left on.
+ *
+ * The border does the work instead: it is already there, it already animates
+ * over the same 80ms, and it stays visible for anyone arriving by keyboard --
+ * which is the one thing removing a focus indicator may not cost.
+ *
+ * The class is doubled here for the same reason it is above, and one more: this
+ * has to beat Slack's own focus rule, which scores a class and a pseudo-class.
+ * No backticks in this file, comments included -- one closes the template
+ * literal and the runtime throws at boot with nothing styled to show for it.
+ */
+.betterslack-search.betterslack-search:focus,
+.betterslack-search.betterslack-search:focus-within,
+.betterslack-select.betterslack-select:focus,
+.betterslack-select.betterslack-select:focus-within {
+  box-shadow: none;
+  outline: none;
+  border-color: rgba(var(--sk_highlight, 18, 100, 163), 1);
+}
+
 .betterslack-select {
   /* Slack sets padding 0 on the box and pads the parts inside it instead. */
   gap: 8px;

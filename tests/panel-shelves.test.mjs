@@ -127,3 +127,25 @@ test('Slack\'s form margin is undone, and doubled to win', () => {
   const styles = read('src/runtime/ui/styles.ts');
   assert.match(styles, /\.betterslack-search\.betterslack-search,\s*\n\.betterslack-select\.betterslack-select \{\s*\n\s*margin: 0;/);
 });
+
+test('focus is a border, not a halo', () => {
+  /*
+   * Slack draws focus as two stacked shadows -- a 1px ring and a 5px spread at
+   * 30% -- and sets the border transparent underneath, so what is left floats
+   * where the field's edge was. Read off the live stylesheet:
+   *
+   *   .c-input_text:focus { box-shadow: 0 0 0 1px var(--sk_focused-shadow-color),
+   *     0 0 0 5px color-mix(in srgb, var(--sk_focused-shadow-color) 30%, transparent) }
+   *
+   * The border replaces it: still visible for anyone arriving by keyboard,
+   * which is the one thing taking a focus indicator away may not cost.
+   */
+  const styles = read('src/runtime/ui/styles.ts');
+  const rule = styles.match(/\.betterslack-search\.betterslack-search:focus,[\s\S]*?\}/);
+  assert.ok(rule, 'there must be a focus rule of our own');
+  assert.match(rule[0], /box-shadow: none;/, 'the halo goes');
+  assert.match(rule[0], /border-color: rgba\(var\(--sk_highlight/, 'and the border shows focus instead');
+  // A class and a pseudo-class is what Slack's rule scores; one of ours ties
+  // and loses on source order, since its stylesheet loads after ours.
+  assert.match(rule[0], /\.betterslack-select\.betterslack-select:focus/, 'doubled, to beat it');
+});
