@@ -256,7 +256,7 @@ async function unpackUpdate({ root, repo, branch }: ApplyOptions): Promise<Updat
       ...process.env,
       PATH: `${path.dirname(process.execPath)}${path.delimiter}${process.env.PATH ?? ''}`,
     };
-    const install = await packageManagerCommand(fresh);
+    const install = await packageManagerCommand(fresh, env);
     await exec(`${install} install`, { cwd: fresh, timeout: 300_000, env });
     await exec(`${install} run build`, { cwd: fresh, timeout: 300_000, env });
 
@@ -290,17 +290,37 @@ async function unpackUpdate({ root, repo, branch }: ApplyOptions): Promise<Updat
     const stranded = await fs.stat(previous).then(() => true).catch(() => false);
     const gone = !(await fs.stat(root).then(() => true).catch(() => false));
     if (stranded && gone) await fs.rename(previous, root).catch(() => undefined);
-    /*
-     * The panel shows this verbatim, and a failed exec puts its entire command
-     * line in the message -- two absolute paths and a temporary directory, which
-     * tells a reader nothing and hides the one line that would have. Keep the
-     * cause, drop the invocation.
-     */
-    const message = (err as Error).message.split('\n')[0] ?? 'update failed';
-    return { ok: false, detail: message.replace(/^Command failed: .*$/, 'the update could not be built here') };
+    return { ok: false, detail: describeFailure(err) };
   } finally {
     await fs.rm(work, { recursive: true, force: true }).catch(() => undefined);
   }
+}
+
+/**
+ * What to put on the row, out of a failed command.
+ *
+ * `exec` rejects with the invocation as the *first* line and the cause on the
+ * ones after it -- two absolute paths and a temporary directory, then the
+ * sentence somebody could act on. Taking the first line and replacing it with
+ * "the update could not be built here" therefore threw away the only useful
+ * part, and that is how a missing corepack reached a real user as a shrug.
+ *
+ * So: the last thing the command said, which is where a tool puts its
+ * conclusion, and the generic line only when it said nothing at all.
+ */
+export function describeFailure(err: unknown): string {
+  const error = err as { message?: string; stderr?: string; stdout?: string };
+  const said = [error.stderr, error.stdout, error.message]
+    .filter((text): text is string => typeof text === 'string' && text.trim() !== '')
+    .flatMap((text) => text.split('\n'))
+    .map((line) => line.trim())
+    // The invocation itself is noise; every other line is a candidate.
+    .filter((line) => line !== '' && !line.startsWith('Command failed:'));
+
+  const last = said.at(-1);
+  if (!last) return 'the update could not be built here';
+  // Long enough to be a stack trace or a wall of npm output: keep it readable.
+  return last.length > 200 ? `${last.slice(0, 197)}...` : last;
 }
 
 /**
@@ -353,16 +373,45 @@ async function stageFrom(
 }
 
 /** pnpm when there is a pnpm lockfile, npm otherwise. */
-async function packageManagerCommand(root: string): Promise<string> {
+/**
+ * How to run pnpm here, asked in the environment the install will actually use.
+ *
+ * Three rungs, and the third exists because the second stopped being true:
+ * **corepack no longer ships with Node.** It was removed in Node 25, whose bin
+ * directory holds `node`, `npm` and `npx` and nothing else -- so an install
+ * whose recorded Node is a 25 answered "command not found" here and the update
+ * failed on a machine that was working perfectly. Reported from a real one.
+ *
+ * `npx` is beside every Node there has ever been, and it fetches the pinned
+ * pnpm on demand, which is exactly what corepack was doing. It is the last
+ * rung rather than a probe: probing it means downloading pnpm to ask whether
+ * pnpm can be downloaded.
+ *
+ * The environment matters as much as the order. This used to ask a bare `exec`
+ * whether `pnpm --version` worked -- the ambient one, which for an app launched
+ * from the Dock carries none of the user's shell PATH -- and then run the answer
+ * with a different PATH entirely.
+ */
+export async function packageManagerCommand(root: string, env: NodeJS.ProcessEnv): Promise<string> {
   const hasPnpmLock = await fs
     .stat(path.join(root, 'pnpm-lock.yaml'))
     .then(() => true)
     .catch(() => false);
   if (!hasPnpmLock) return 'npm';
-  return (await exec('pnpm --version', { timeout: 5_000 }).then(() => true).catch(() => false))
-    ? 'pnpm'
-    // corepack ships with Node, so a machine with no pnpm on PATH still has one.
-    : 'corepack pnpm';
+
+  const works = (command: string) =>
+    exec(command, { timeout: 20_000, env, cwd: root }).then(() => true).catch(() => false);
+
+  if (await works('pnpm --version')) return 'pnpm';
+  if (await works('corepack --version')) return 'corepack pnpm';
+
+  // The exact one the tree pins, so the update builds with what the repository
+  // builds with rather than with whatever is newest today.
+  const pinned = await fs
+    .readFile(path.join(root, 'package.json'), 'utf8')
+    .then((text) => (JSON.parse(text) as { packageManager?: string }).packageManager)
+    .catch(() => undefined);
+  return `npx --yes ${pinned && pinned.startsWith('pnpm@') ? pinned : 'pnpm'}`;
 }
 
 async function pullUpdate(root: string): Promise<UpdateResult> {

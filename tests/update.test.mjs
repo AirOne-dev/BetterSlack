@@ -12,7 +12,9 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { applyUpdate, checkForUpdate, isNewer } from '../dist/update.mjs';
+import {
+  applyUpdate, checkForUpdate, describeFailure, isNewer, packageManagerCommand,
+} from '../dist/update.mjs';
 
 /*
  * store.ts resolves the home directory once, when it is imported, which is
@@ -363,4 +365,75 @@ test('a panel preference written is a panel preference read back', async () => {
 
   await mergeSettings({ panelSort: 'recent' });
   assert.equal((await readSettings()).panelSort, 'recent');
+});
+
+
+/*
+ * How the update finds pnpm, which is where it broke on a real machine.
+ *
+ * The install records the Node it will run under, and the updater prepends that
+ * Node's directory to PATH so corepack and npm -- which live beside it -- are
+ * reachable. That stopped being true: corepack was removed from Node in 25,
+ * whose bin directory holds node, npm and npx and nothing else. So the fallback
+ * answered "command not found" and the panel said the update could not be built
+ * here, on a machine that was working perfectly.
+ */
+function tree(files) {
+  const at = mkdtempSync(path.join(tmpdir(), 'betterslack-pm-'));
+  for (const [name, body] of Object.entries(files)) writeFileSync(path.join(at, name), body);
+  return at;
+}
+
+/** A PATH with no pnpm and no corepack on it: a Node 25 bin, in effect. */
+const bare = () => ({ HOME: process.env.HOME, PATH: `${tree({})}:/usr/bin:/bin` });
+
+test('with no pnpm and no corepack, it reaches for the pinned pnpm through npx', async () => {
+  // npx is beside every Node there has ever been, and fetches pnpm on demand,
+  // which is exactly what corepack was doing.
+  const at = tree({
+    'pnpm-lock.yaml': "lockfileVersion: '9.0'\n",
+    'package.json': JSON.stringify({ name: 'betterslack', packageManager: 'pnpm@11.5.2' }),
+  });
+  assert.equal(await packageManagerCommand(at, bare()), 'npx --yes pnpm@11.5.2');
+});
+
+test('an unpinned tree still gets pnpm, just not a version of it', async () => {
+  const at = tree({
+    'pnpm-lock.yaml': "lockfileVersion: '9.0'\n",
+    'package.json': JSON.stringify({ name: 'betterslack' }),
+  });
+  assert.equal(await packageManagerCommand(at, bare()), 'npx --yes pnpm');
+});
+
+test('a tree with no pnpm lockfile is npm, as it always was', async () => {
+  const at = tree({ 'package.json': JSON.stringify({ name: 'betterslack' }) });
+  assert.equal(await packageManagerCommand(at, bare()), 'npm');
+});
+
+test('the reason a build failed survives into the panel', () => {
+  /*
+   * exec rejects with the invocation on the first line and the cause after it.
+   * Taking the first line and replacing it with a generic sentence threw away
+   * the only useful part -- which is how a missing corepack reached a user as a
+   * shrug rather than as three words they could have searched for.
+   */
+  assert.equal(
+    describeFailure({
+      message: 'Command failed: corepack pnpm install\n/bin/sh: corepack: command not found\n',
+      stderr: '/bin/sh: corepack: command not found\n',
+    }),
+    '/bin/sh: corepack: command not found',
+  );
+
+  // The invocation alone is not an explanation, so the generic line stays for
+  // the case where the command really said nothing.
+  assert.equal(
+    describeFailure({ message: 'Command failed: pnpm run build' }),
+    'the update could not be built here',
+  );
+  assert.equal(describeFailure(new Error('')), 'the update could not be built here');
+
+  // A wall of output is trimmed rather than pasted into a row.
+  const long = describeFailure({ stderr: `x${'y'.repeat(500)}` });
+  assert.ok(long.length <= 200 && long.endsWith('...'));
 });

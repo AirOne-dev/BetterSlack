@@ -160,6 +160,40 @@ pruned, a Homebrew upgrade -- they fall back to a scan judged by the same
 `node-ok.cjs`, staged beside the app for exactly that, and rewrite `node-path`
 with what they found.
 
+**corepack no longer ships with Node, and the updater assumed it did.** It was
+removed in Node 25: that bin directory holds `node`, `npm` and `npx` and nothing
+else. The update path's fallback was `corepack pnpm` -- with a comment saying
+corepack ships inside Node, which had been true -- so an install whose recorded
+Node is a 25 answered `command not found` and the panel said the update could
+not be built here, on a machine that was working perfectly. Reported from a real
+one, against a published release.
+
+`packageManagerCommand` now tries `pnpm`, then `corepack`, then
+`npx --yes <the pinned pnpm>`, and asks **in the environment the install will
+actually run in** -- it used to probe `pnpm --version` through a bare `exec`,
+which for an app launched from the Dock carries none of the user's shell PATH,
+and then run the answer with a different PATH entirely. `npx` is beside every
+Node there has ever been and fetches the pinned pnpm on demand, which is exactly
+what corepack was doing; it is the last rung rather than a probed one, since
+probing it means downloading pnpm to ask whether pnpm can be downloaded.
+Measured end to end with only a Node 25 on `PATH`: install and build both
+complete.
+
+**`install.sh` is not affected but is wasteful there**, and it is worth knowing
+before someone reports it as the same bug: `pnpm_ok` simply rejects a Node it
+cannot find corepack or pnpm for, so a machine with only Node 25 falls through
+to downloading Node 22 -- which does ship corepack. It works; it costs 190 MB
+that the machine did not need to spend.
+
+**A failed command's first line is the invocation, not the reason.** `exec`
+rejects with `Command failed: <the whole command line>` and the cause on the
+lines after it, so taking the first line and replacing it with a sentence of our
+own threw away the only useful part -- which is how a missing corepack reached a
+user as a shrug rather than as three words they could have searched for.
+`describeFailure` takes the *last* thing the command said, since that is where a
+tool puts its conclusion, and falls back to the generic line only when it said
+nothing at all.
+
 **The in-app updater knows the two shapes apart.** A checkout is replaced by the
 new tree; an install is re-staged from it, using the *new* copy's
 `stage-install.mjs` rather than the running one's idea of what an install
