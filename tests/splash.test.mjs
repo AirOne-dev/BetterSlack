@@ -136,3 +136,65 @@ test('nothing in it is built while the module is being evaluated', () => {
   );
   assert.match(source, /translator \?\?= createI18n\(\)/, 'lazily, and cached');
 });
+
+test('every shape is wrapped, because a CSS transform replaces an attribute one', async () => {
+  /*
+   * Three of the four bars are placed by a transform attribute -- the mark is
+   * one bar drawn four times, rotated. A CSS transform on the same element
+   * replaces that attribute outright instead of composing with it, so animating
+   * the rects threw cyan, green and yellow back to their unrotated positions
+   * and the mark came apart for the whole animation. The group takes the
+   * animation and the rect keeps its placement.
+   */
+  await withDom('<!doctype html><html><head></head><body></body></html>', async (dom) => {
+    const splash = showSplash();
+    const svg = hostIn(dom).shadowRoot.querySelector('.mark svg');
+    const groups = [...svg.children];
+    assert.equal(groups.length, 8, 'four bars and four elbows');
+    for (const group of groups) {
+      assert.equal(group.tagName, 'g', 'each shape has a group of its own');
+      assert.equal(group.children.length, 1);
+      assert.ok(/^(rect|path)$/.test(group.firstElementChild.tagName));
+    }
+    // The placement the animation must not touch.
+    const placed = groups.filter((g) => g.firstElementChild.hasAttribute('transform'));
+    assert.equal(placed.length, 3, 'three bars are rotated copies of the first');
+    for (const group of placed) {
+      assert.equal(group.hasAttribute('transform'), false, 'and the group carries none of its own');
+    }
+    splash.done();
+  });
+});
+
+test('the lap goes round the mark once, in order', () => {
+  /*
+   * The bars are the four sides of an open square, and each is drawn from the
+   * end the previous one arrived at -- cyan across the top left to right, green
+   * down the right, yellow back along the bottom, red up the left. Worked out
+   * from the drawing: the rects are 121 by 421 at x 139..260 y 289..710 and its
+   * three rotations, which is one clockwise circuit.
+   *
+   * The origins are what encode that, so they are what is checked: a lap with
+   * one of them at the wrong end is a bar that grows backwards, which reads as
+   * a stutter rather than as a mistake.
+   */
+  const source = read('src/runtime/ui/splash.ts');
+  const lap = (name) => source.match(new RegExp(`@keyframes ${name} \\{[\\s\\S]*?\\n\\}`))?.[0] ?? '';
+
+  const ends = {
+    'lap-top': ['139px 199.5px', '560px 199.5px'],
+    'lap-right': ['648.5px 139px', '648.5px 560px'],
+    'lap-bottom': ['709px 649.5px', '288px 649.5px'],
+    'lap-left': ['199.5px 710px', '199.5px 289px'],
+  };
+  for (const [name, [from, to]] of Object.entries(ends)) {
+    const block = lap(name);
+    assert.ok(block, `${name} must exist`);
+    assert.ok(block.indexOf(from) < block.indexOf(to), `${name} grows from ${from} and leaves by ${to}`);
+  }
+
+  // A quarter of the cycle apart, so one light travels rather than four blink.
+  for (const delay of ['0s', '.55s', '1.1s', '1.65s']) {
+    assert.ok(source.includes(`animation-delay: ${delay}`), `a bar starts at ${delay}`);
+  }
+});

@@ -57,47 +57,89 @@ const CSS = `
 }
 :host(.betterslack-splash--out) { opacity: 0; pointer-events: none; }
 
-.mark { width: 76px; height: 76px; animation: turn 9s linear infinite; }
-.mark svg { width: 100%; height: 100%; display: block; }
+.mark { width: 84px; height: 84px; }
+.mark svg { width: 100%; height: 100%; display: block; overflow: visible; }
 
 /*
- * Each arm and its elbow, breathing in turn.
+ * The mark is a circuit, and this runs a light around it.
  *
- * The scale is about the mark's own centre rather than each shape's, so an arm
- * grows outward along the axis it already lies on instead of swelling in place
- * -- which is what makes this read as the mark assembling rather than as four
- * shapes pulsing. That is why the origin is written in the drawing's own
- * coordinates and needs transform-box view-box to be understood in them.
+ * Worked out from the drawing rather than invented for it. The four bars are
+ * 121 wide and 421 long, and each one is a side of an open square with the
+ * corners left out:
+ *
+ *   cyan    top     y 139..260   drawn x 139 -> 560
+ *   green   right   x 588..709   drawn y 139 -> 560
+ *   yellow  bottom  y 589..710   drawn x 709 -> 288
+ *   red     left    x 139..260   drawn y 710 -> 289
+ *
+ * Which is one clockwise lap, ending where it began. So each bar grows from the
+ * end the lap arrives at, holds for an instant, then retracts from the far end
+ * -- a stroke travelling round rather than four shapes pulsing in place. The
+ * origin flips at the moment the bar is at full length, where moving it cannot
+ * be seen.
+ *
+ * THE TRAP, and it is the reason every bar is wrapped in a group first: three
+ * of the four rects are placed by a transform ATTRIBUTE, and a CSS transform
+ * replaces it outright rather than composing with it. Animating the rects
+ * directly threw cyan, green and yellow back to their unrotated positions for
+ * the whole animation -- which looked like a logo coming apart, and was.
  */
-.mark svg > * {
+.mark svg > g {
   transform-box: view-box;
-  transform-origin: 424px 424px;
-  animation: arm 1.7s ease-in-out infinite;
+  animation-duration: 2.2s;
+  animation-timing-function: cubic-bezier(.4, 0, .2, 1);
+  animation-iteration-count: infinite;
 }
-.mark svg > :nth-child(1), .mark svg > :nth-child(2) { animation-delay: 0s; }
-.mark svg > :nth-child(3), .mark svg > :nth-child(4) { animation-delay: .13s; }
-.mark svg > :nth-child(5), .mark svg > :nth-child(6) { animation-delay: .26s; }
-.mark svg > :nth-child(7), .mark svg > :nth-child(8) { animation-delay: .39s; }
+
+.mark svg > g:nth-child(3) { animation-name: lap-top;    animation-delay: 0s; }
+.mark svg > g:nth-child(5) { animation-name: lap-right;  animation-delay: .55s; }
+.mark svg > g:nth-child(7) { animation-name: lap-bottom; animation-delay: 1.1s; }
+.mark svg > g:nth-child(1) { animation-name: lap-left;   animation-delay: 1.65s; }
+
+@keyframes lap-top {
+  0%        { transform-origin: 139px 199.5px; transform: scaleX(0); }
+  20%       { transform-origin: 139px 199.5px; transform: scaleX(1); }
+  21%       { transform-origin: 560px 199.5px; transform: scaleX(1); }
+  44%, 100% { transform-origin: 560px 199.5px; transform: scaleX(0); }
+}
+@keyframes lap-right {
+  0%        { transform-origin: 648.5px 139px; transform: scaleY(0); }
+  20%       { transform-origin: 648.5px 139px; transform: scaleY(1); }
+  21%       { transform-origin: 648.5px 560px; transform: scaleY(1); }
+  44%, 100% { transform-origin: 648.5px 560px; transform: scaleY(0); }
+}
+@keyframes lap-bottom {
+  0%        { transform-origin: 709px 649.5px; transform: scaleX(0); }
+  20%       { transform-origin: 709px 649.5px; transform: scaleX(1); }
+  21%       { transform-origin: 288px 649.5px; transform: scaleX(1); }
+  44%, 100% { transform-origin: 288px 649.5px; transform: scaleX(0); }
+}
+@keyframes lap-left {
+  0%        { transform-origin: 199.5px 710px; transform: scaleY(0); }
+  20%       { transform-origin: 199.5px 710px; transform: scaleY(1); }
+  21%       { transform-origin: 199.5px 289px; transform: scaleY(1); }
+  44%, 100% { transform-origin: 199.5px 289px; transform: scaleY(0); }
+}
 
 /*
- * A shimmer, not a scatter.
- *
- * The scale was .82 for one revision and a still frame of it looks like four
- * loose shapes rather than one mark: pulled that far toward the centre, an arm
- * no longer reads as belonging where it is. .93 keeps every shape recognisably
- * in place and lets the opacity carry the chase, which is what the eye follows
- * anyway.
- *
- * The dim end of that chase is .42 rather than .25 for the same reason: below
- * about a third, an arm against this background is gone rather than quiet, and
- * what is left reads as a logo with pieces missing instead of one with a wave
- * running over it. The mark has to stay a mark the whole way round.
+ * The four elbows are the still centre, and they are what keeps this a mark
+ * rather than a spinner: with only the bars animating there is a moment in
+ * every lap when almost nothing is drawn. They brighten as the light passes
+ * their own corner and settle back.
  */
-@keyframes arm {
-  0%, 100% { opacity: .42; transform: scale(.93); }
-  40%      { opacity: 1;   transform: scale(1); }
+.mark svg > g:nth-child(2n) {
+  opacity: .55;
+  animation: elbow 2.2s ease-in-out infinite;
 }
-@keyframes turn { to { transform: rotate(360deg); } }
+.mark svg > g:nth-child(4) { animation-delay: 0s; }
+.mark svg > g:nth-child(6) { animation-delay: .55s; }
+.mark svg > g:nth-child(8) { animation-delay: 1.1s; }
+.mark svg > g:nth-child(2) { animation-delay: 1.65s; }
+
+@keyframes elbow {
+  0%, 60%, 100% { opacity: .5; }
+  18%           { opacity: 1; }
+}
 
 .label {
   min-height: 18px;
@@ -115,8 +157,11 @@ const CSS = `
  * so the screen still says "working" to somebody who cannot have it spin.
  */
 @media (prefers-reduced-motion: reduce) {
-  .mark { animation: none; }
-  @keyframes arm { 0%, 100% { opacity: .3; } 40% { opacity: 1; } }
+  /* No lap: the whole animation is travel. The mark stands whole and breathes,
+     which still says "working" to somebody who cannot have it move. */
+  .mark svg > g { animation: none !important; opacity: 1; }
+  .mark { animation: breathe 2s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 }
 `;
 
@@ -143,6 +188,25 @@ export interface Splash {
   progress(name: string, done: number, total: number): void;
   /** Fade and remove. Safe to call twice, and before it ever appeared. */
   done(): void;
+}
+
+/**
+ * Put every shape in a group of its own, so the animation has somewhere to go.
+ *
+ * A CSS transform on an element *replaces* the transform attribute rather than
+ * composing with it, and three of the four bars are placed by that attribute --
+ * so animating the rects directly threw cyan, green and yellow back to their
+ * unrotated positions and the mark came apart while it played. The group takes
+ * the animation, the rect keeps its placement, and neither knows about the
+ * other. It also means the one mark in `ui/mark.ts` is still the one drawn.
+ */
+function wrapShapes(svg: SVGElement | null): void {
+  if (!svg) return;
+  for (const shape of [...svg.children]) {
+    const group = svg.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
+    svg.insertBefore(group, shape);
+    group.append(shape);
+  }
 }
 
 /** A splash that was never wanted, for the paths that must not branch. */
@@ -178,6 +242,7 @@ export function showSplash(): Splash {
       const mark = document.createElement('div');
       mark.className = 'mark';
       mark.innerHTML = MARK_SVG;
+      wrapShapes(mark.querySelector('svg'));
       label = document.createElement('div');
       label.className = 'label';
       // Asked for again here rather than trusted from above: the first attempt

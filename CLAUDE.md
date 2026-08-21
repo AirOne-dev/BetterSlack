@@ -1390,6 +1390,25 @@ and the sequence looks like something going wrong.
 the name on screen when nothing moves again is the one that is stuck -- which is
 the difference between "it is slow" and "it is that mod".
 
+**The animation is read out of the drawing, not invented for it.** The mark is
+one 121x421 bar drawn four times: at `x 139..260, y 289..710` and its three
+rotations, which put the others across the top, down the right and back along
+the bottom. Those four are the sides of an open square, and taken in order they
+are one clockwise lap -- so each bar grows from the end the lap arrives at,
+holds, and retracts from the far end, a quarter of a cycle apart. The origin
+flips at the instant the bar is at full length, where moving it cannot be seen.
+The four elbows stay put at half opacity and brighten as the light passes: with
+only the bars animating there is a moment in every lap when almost nothing is
+drawn, and the mark stops being a mark.
+
+**Do not put a CSS transform on those rects.** Three of the four are placed by a
+transform *attribute*, and the CSS property replaces it rather than composing
+with it -- so animating the rects directly threw cyan, green and yellow back to
+their unrotated positions for the whole animation, which looks exactly like a
+logo coming apart and was reported as one. `wrapShapes` puts each shape in a
+group of its own: the group takes the animation, the rect keeps its placement,
+and `ui/mark.ts` is still the only copy of the drawing.
+
 Four rules, and every one of them is about it being a decoration over somebody's
 messaging app rather than about how it looks:
 
