@@ -157,7 +157,14 @@ await run('node scripts/build-registry.mjs');
  */
 await run('node scripts/build-site.mjs');
 
-await run('git add package.json CHANGELOG.md site/ docs/api/ mods/registry.json');
+/*
+ * `docs/` whole, not `docs/api/`.
+ *
+ * docs/api.md is generated from that folder and sits beside it, so a list
+ * naming only the folder leaves it modified and uncommitted -- and the next
+ * `pnpm check` reports a dirty tree for a drift the release itself caused.
+ */
+await run('git add package.json CHANGELOG.md site/ docs/ mods/registry.json');
 await run(`git commit -m "release: ${version}"`);
 await run(`git tag -a v${version} -m "${version}"`);
 
