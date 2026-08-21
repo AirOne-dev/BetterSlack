@@ -81,6 +81,16 @@ pnpm. Everything below was measured while making that true.
 them. Three installers each with their own list, in three languages, is three
 lists that drift the first time one is edited.
 
+**git is not a dependency, and nothing may make it one.** It is one way to get
+the folder and that is all: `install.sh` and `install.ps1` never call it -- the
+header of each says so -- staging does not, and an install updates itself from
+the branch tarball rather than by pulling. `update.ts` reaches for git only
+behind `isCheckout()`, which is false for `~/.betterslack/app`, and every one of
+those calls fails soft. Verified by unpacking
+`codeload.github.com/.../tar.gz/refs/heads/master`: a complete tree with
+`install.sh` in it and no `.git`. Most people do not have git, so a step that
+needed it would be the one step this installer exists to avoid.
+
 **It is 6 MB because the loader bundle imports nothing but `node:` built-ins**,
 so an install needs no `node_modules` at all. That is a claim about the bundle
 rather than a fact of nature, so staging *checks* it and refuses to produce an
@@ -1373,7 +1383,12 @@ the runtime along with it.
 both -- its own version and the registry -- at start and every hour after
 (`UPDATE_SWEEP_MS`), and pushes each answer: `update.status` and `mods.updates`.
 `ModManager` holds them, `notify()` repaints the launcher's badge, and the panel
-puts a dot on the tab that owns it: Themes, Plugins or About. Three things that
+puts a dot on the tab that owns it: Themes, Plugins or About -- **which is also
+where the notice itself is drawn.** It used to be on every tab, and that was
+right while there was no badge: a notice you have to go looking for is a notice
+nobody finds. With a count on the launcher and a dot on the tab, a plugin's
+update sitting on the Themes tab is the thing that reads as a mistake. Safe mode
+stays on every tab; it is not an offer, it is the reason nothing is running. Three things that
 are load-bearing rather than tidy:
 
 - **The count is the manager's, not the panel's.** The mod list used to live in
@@ -1516,6 +1531,29 @@ directly and they follow every theme exactly. A shadow root reimplementing the
 look from tokens lands close but never right. The trade-off is deliberate: a
 theme that restyles `.c-dialog` restyles them too. Toasts stay in a shadow root, since Slack has no toast to borrow from and
 an unreadable error message is worse than an off-brand one.
+
+**Two shelves, and a sort.** Installed and Browse. There was an Enabled shelf
+between them and it was a filter wearing a tab's clothes: everything on it was
+on Installed as well, so the same mod sat in two places and switching one off
+made it vanish from under the pointer. What it was for is one of the sort orders
+now -- newest first, A-Z, Z-A, switched-on first -- and Browse is offered only
+the two that mean anything for a mod nobody has yet.
+
+- **`recent` needed no timestamp.** `settings.installed` lists ids in the order
+  they were installed, because that is how `setModInstalled` appends them, so
+  the record already existed and nothing had to be migrated for mods installed
+  months before the sort did. A mod not on that list sorts to the *end*:
+  `indexOf` answers -1, and Browse is entirely made of those.
+- **The sort is a preference, so it is in `settings.json`** -- somebody who
+  wants their list alphabetical wants it alphabetical tomorrow. The search box
+  and the tag chips stay in the panel: you clear those. `readSettings` builds
+  its object key by key rather than spreading what it parsed, so a new key has
+  to be named there or it is written and gone by the next read.
+- **Sorting lives in `ui/sort.ts`**, not in the panel, so it can be tested
+  against the real function rather than through assertions on the source of a
+  1500-line file. `localeCompare`, never `<`: a code-point compare files every
+  accented name after Z, which reads as a list that is nearly sorted and
+  therefore as one that is broken.
 
 **Every mod has a page**, reached by clicking its name: its icon, its version
 and author, its description in the reader's language, a screenshot with a

@@ -1253,6 +1253,31 @@
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.12);
 }
 
+/*
+ * The search field and the sort, on one line.
+ *
+ * The shelves keep a line of their own -- pills and a field sharing one leaves
+ * a stub of an input pinned to the right edge on a narrow dialog. This pairing
+ * is the other way round: the sort is as wide as its longest option and never
+ * wider, so the field takes the rest and the line reads as one filter bar.
+ */
+.betterslack-filterbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/*
+ * A basis rather than auto, with wrapping: the dialog is 880px until the window
+ * is small, and there it falls back to the viewport less 32px. Given a share of
+ * whatever is left, the field became a stub beside a control twice its width --
+ * which is the same failure that put the shelves on a line of their own. With a
+ * floor of 200px the sort drops to its own line instead when there is no room.
+ */
+.betterslack-filterbar .betterslack-search { flex: 1 1 200px; min-width: 0; }
+/*
+ * Both selectors, and both needed: the sort wears the search field's class to
+ * borrow its look, and that class sets width 100%. Written as a bare
+ * .betterslack-sort this loses on source order and the control came out exactly
+ * as wide as the field beside it -- measured, 300px against 300px.
+ */
+.betterslack-filterbar .betterslack-sort { flex: 0 0 auto; width: auto; cursor: pointer; }
+
 .betterslack-search {
   /* Fills its line rather than fighting for the remainder of one. */
   display: block;

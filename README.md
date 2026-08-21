@@ -91,8 +91,28 @@ cd BetterSlack
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
+**No git? You do not need it.** `git clone` is one way to get the folder and
+nothing here needs the other things git can do -- the installer never calls it,
+and an install updates itself from GitHub's tarball rather than by pulling.
+Download the ZIP from the green **Code** button, unpack it, and run the same
+installer; or in a terminal:
+
+```bash
+curl -fsSL https://codeload.github.com/AirOne-dev/BetterSlack/tar.gz/refs/heads/master | tar xz
+cd BetterSlack-master
+./install.sh
+```
+
+```powershell
+# Windows
+Invoke-WebRequest https://codeload.github.com/AirOne-dev/BetterSlack/zip/refs/heads/master -OutFile bs.zip
+Expand-Archive bs.zip -DestinationPath .
+cd BetterSlack-master
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
 That is the whole thing. Nothing has to be installed first -- not Node, not
-pnpm. The installer uses a Node already on the machine if there is one recent
+pnpm, not git. The installer uses a Node already on the machine if there is one recent
 enough and downloads one into `~/.betterslack/runtime` if there is not, verifies
 it against the checksum nodejs.org publishes, builds, and puts the result in
 `~/.betterslack/app`.

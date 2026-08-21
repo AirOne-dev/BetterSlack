@@ -24,10 +24,27 @@ import { closeMenu, openMenu } from './menu.js';
 import { mountCounts } from '../dom.js';
 import { createI18n } from '../i18n.js';
 import { renderMarkdown } from './markdown.js';
+import { sortMods, type SortId } from './sort.js';
 import { PANEL_STRINGS } from './strings.js';
 
 type TabId = 'themes' | 'plugins' | 'css' | 'about';
-type ShelfId = 'installed' | 'enabled' | 'browse';
+/*
+ * Two shelves, not three.
+ *
+ * There was an Enabled one between them, and it was a filter wearing a tab's
+ * clothes: everything on it was on Installed as well, so the same mod sat in
+ * two places and switching one off made it vanish from under the pointer. What
+ * it was actually for -- "show me what is on" -- is a sort order now, next to
+ * the others.
+ */
+type ShelfId = 'installed' | 'browse';
+
+const SORTS: Record<ShelfId, SortId[]> = {
+  // Neither install order nor "on first" means anything for a mod you have not
+  // got, so Browse is offered the two that do.
+  browse: ['az', 'za'],
+  installed: ['recent', 'az', 'za', 'enabled'],
+};
 
 const HOST_ID = 'betterslack-panel';
 /** The shared menu's layer, so Escape can tell it apart from the panel. */
@@ -320,12 +337,24 @@ export class Panel {
 
   private renderBody(body: HTMLElement): void {
     const mods = this.manager.list();
-    // Above whatever tab is open, not tucked behind About: a notice you have to
-    // go looking for is a notice nobody finds. It renders as nothing at all
-    // unless this copy is genuinely behind.
+    /*
+     * Each notice on the tab that owns it: BetterSlack's own under About, a
+     * theme's under Themes, a plugin's under Plugins.
+     *
+     * That only works because the tab wears a dot when it has one and the
+     * launcher wears the count -- a notice you have to go looking for is a
+     * notice nobody finds, and without the badge these had to be on every tab
+     * to be seen at all. With it, putting a plugin's update on the Themes tab
+     * is the thing that reads as a mistake.
+     *
+     * Safe mode stays everywhere. It is not an offer, it is the reason nothing
+     * on any tab is running.
+     */
     body.append(...this.renderSafeMode());
-    body.append(...this.renderUpdate());
-    body.append(...this.renderModUpdates());
+    if (this.tab === 'about') body.append(...this.renderUpdate());
+    if (this.tab === 'themes' || this.tab === 'plugins') {
+      body.append(...this.renderModUpdates(this.tab === 'themes' ? 'theme' : 'plugin'));
+    }
 
     if (this.detail) {
       const mod = mods.find((entry) => entry.id === this.detail);
@@ -361,7 +390,6 @@ export class Panel {
     const installed = mods.filter((m) => this.manager.isInstalled(m.id));
     const shelves: { id: ShelfId; label: string; list: ModRecord[] }[] = [
       { id: 'installed', label: t('installed'), list: installed },
-      { id: 'enabled', label: t('enabled'), list: installed.filter((m) => this.manager.isEnabled(m.id)) },
       { id: 'browse', label: t('browse'), list: mods.filter((m) => !this.manager.isInstalled(m.id)) },
     ];
 
@@ -428,12 +456,44 @@ export class Panel {
 
     queueMicrotask(() => this.renderList(current.list, kind));
 
+    const sort = h('select', {
+      class: 'betterslack-search betterslack-sort',
+      'aria-label': t('sortLabel'),
+    }) as HTMLSelectElement;
+    const SORT_LABELS: Record<SortId, string> = {
+      recent: t('sortRecent'),
+      az: t('sortAz'),
+      za: t('sortZa'),
+      enabled: t('sortEnabled'),
+    };
+    for (const id of SORTS[current.id]) {
+      sort.append(h('option', { value: id }, [SORT_LABELS[id]]));
+    }
+    sort.value = this.sortFor(current.id);
+    sort.addEventListener('change', () => {
+      // Written through the loader, so it is still the order tomorrow. The list
+      // is redrawn rather than the panel re-rendered: a full render would take
+      // focus off the control that was just used.
+      void this.manager.patchSettings({ panelSort: sort.value });
+      this.renderList(current.list, kind);
+    });
+
     return [
-      h('div', { class: 'betterslack-toolbar' }, [tabs, search]),
+      h('div', { class: 'betterslack-toolbar' }, [
+        tabs,
+        h('div', { class: 'betterslack-filterbar' }, [search, sort]),
+      ]),
       ...(this.shelf === 'browse' ? [this.renderRemoteInstall(), ...this.renderSkipped()] : []),
       ...(tags.length > 1 ? [filters] : []),
       h('div', { class: 'betterslack-list' }),
     ];
+  }
+
+  /** The sort in force on this shelf, falling back where one does not apply. */
+  private sortFor(shelf: ShelfId): SortId {
+    const wanted = this.manager.getSettings().panelSort as SortId | undefined;
+    const allowed = SORTS[shelf];
+    return wanted && allowed.includes(wanted) ? wanted : allowed[0]!;
   }
 
   private renderList(mods: ModRecord[], kind: 'theme' | 'plugin'): void {
@@ -446,13 +506,16 @@ export class Panel {
           `${m.name} ${m.description} ${(m.tags ?? []).join(' ')}`.toLowerCase().includes(query))
       : mods;
     if (this.tag) list = list.filter((mod) => (mod.tags ?? []).includes(this.tag!));
+    list = sortMods(list, this.sortFor(this.shelf), {
+      installedOrder: this.manager.getSettings().installed,
+      isEnabled: (id) => this.manager.isEnabled(id),
+    });
 
     host.replaceChildren();
 
     if (list.length === 0) {
       const messages: Record<ShelfId, string> = {
         installed: t('nothingInstalled'),
-        enabled: t('nothingEnabled'),
         browse: t('allInstalled'),
       };
       host.append(h('div', { class: 'betterslack-empty' }, [
@@ -1351,11 +1414,11 @@ export class Panel {
    *
    * Separate from the app's own update on purpose: mods change far more often
    * than the loader does, and making a theme fix wait for a release of the
-   * whole project is what this is for. Checked once when the panel first opens,
-   * because it is a network round trip and nobody wants one per render.
+   * whole project is what this is for. The loader sweeps hourly and the manager
+   * holds the answer; this only draws the ones belonging to the open tab.
    */
-  private renderModUpdates(): Node[] {
-    const updates = this.manager.modUpdates;
+  private renderModUpdates(kind: 'theme' | 'plugin'): Node[] {
+    const updates = this.manager.modUpdates.filter((update) => update.type === kind);
     if (updates.length === 0) return [];
 
     const rows = updates.map((update) => {

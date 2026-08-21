@@ -5,6 +5,10 @@
 #   git clone https://github.com/AirOne-dev/BetterSlack.git
 #   cd BetterSlack && ./install.sh
 #
+# git is not one of the things this needs -- it is only one way to get the
+# folder here. A ZIP from GitHub, or curl piped into tar, lands the same tree,
+# and an install updates itself from the branch tarball rather than by pulling.
+#
 # It asks nothing of the machine beyond a shell, curl and tar. Node and pnpm are
 # found if they are there and fetched into ~/.betterslack/runtime if they are
 # not, so "install Node first" is never an instruction anybody has to follow.

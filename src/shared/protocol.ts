@@ -264,6 +264,19 @@ export interface Settings {
   /** Reapply mods automatically when their file changes on disk. */
   hotReload: boolean;
   /**
+   * How the panel orders a shelf: `recent`, `az`, `za` or `enabled`.
+   *
+   * Kept here rather than in the panel, because it is a preference and not a
+   * filter -- somebody who wants their list alphabetical wants it alphabetical
+   * tomorrow too. The search box and the tag chips are the other way round and
+   * stay where they are: you clear those.
+   *
+   * A string rather than a union, so a settings file written by a newer build
+   * cannot make an older one refuse to parse: the panel falls back to the
+   * default when it does not recognise the value.
+   */
+  panelSort?: string;
+  /**
    * Consecutive failures per mod, cleared as soon as one applies cleanly.
    *
    * A mod that throws on start is skipped after the second time rather than
@@ -297,6 +310,7 @@ export const DEFAULT_SETTINGS: Settings = {
   modSettings: {},
   customCss: '',
   hotReload: true,
+  panelSort: 'recent',
   modFailures: {},
   slackPrefs: {},
 };

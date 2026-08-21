@@ -5,6 +5,10 @@
         cd BetterSlack
         powershell -ExecutionPolicy Bypass -File .\install.ps1
 
+    git is not one of the things this needs -- it is only one way to get the
+    folder here. GitHub's Download ZIP lands the same tree, and an install
+    updates itself from the branch tarball rather than by pulling.
+
     The counterpart of install.sh, and it makes the same promise: nothing has to
     be installed first. Node is found if it is there and fetched into
     %USERPROFILE%\.betterslack\runtime if it is not, pnpm comes from Corepack,

@@ -55,6 +55,10 @@ export async function readSettings(): Promise<Settings> {
         parsed.modSettings && typeof parsed.modSettings === 'object' ? parsed.modSettings : {},
       customCss: typeof parsed.customCss === 'string' ? parsed.customCss : '',
       hotReload: typeof parsed.hotReload === 'boolean' ? parsed.hotReload : true,
+      // Named here or dropped here: this builds the object key by key rather
+      // than spreading what it parsed, so a key nobody adds to this list is
+      // written by the panel and gone by the next read.
+      panelSort: typeof parsed.panelSort === 'string' ? parsed.panelSort : DEFAULT_SETTINGS.panelSort,
       modFailures:
         parsed.modFailures && typeof parsed.modFailures === 'object' ? parsed.modFailures : {},
       slackPrefs:

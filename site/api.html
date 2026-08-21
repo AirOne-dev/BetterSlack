@@ -174,7 +174,17 @@ cd BetterSlack
 <pre class="api-code" data-lang="plain" data-label="powershell"><code>git clone https://github.com/AirOne-dev/BetterSlack.git
 cd BetterSlack
 powershell -ExecutionPolicy Bypass -File .\install.ps1</code></pre>
-<p>That is all of it. There is no step before this one: nothing needs to be installed first, not Node and not pnpm.</p>
+<p>That is all of it. There is no step before this one: nothing needs to be installed first, not Node, not pnpm, and not git.</p>
+<h2>Without git</h2>
+<p><code>git clone</code> is one way to get the folder, and it is the only thing git is used for: the installer never calls it, and an install updates itself from GitHub's tarball rather than by pulling. So the green <strong>Code</strong> button's <strong>Download ZIP</strong> works just as well — unpack it and run the same installer — or, in a terminal:</p>
+<pre class="api-code" data-lang="bash" data-label="bash"><code>curl -fsSL https://codeload.github.com/AirOne-dev/BetterSlack/tar.gz/refs/heads/master | tar xz
+cd BetterSlack-master
+./install.sh</code></pre>
+<pre class="api-code" data-lang="plain" data-label="powershell"><code>Invoke-WebRequest https://codeload.github.com/AirOne-dev/BetterSlack/zip/refs/heads/master -OutFile bs.zip
+Expand-Archive bs.zip -DestinationPath .
+cd BetterSlack-master
+powershell -ExecutionPolicy Bypass -File .\install.ps1</code></pre>
+<p>The only difference afterwards is which route the update button takes: a copy that came from a clone is pulled, one that did not is replaced from the branch tarball. Both are one button, and both keep your mods and settings, which live in <code>~/.betterslack</code> and never inside the install.</p>
 <h2>What it actually does</h2>
 <p>Worth knowing, because an installer that will not say is an installer you have to take on trust.</p>
 <p>It finds a Node that satisfies this project's <code>engines</code> — and finds it by version, not by taking the first <code>node</code> on your <code>PATH</code>, which on a machine with nvm is whatever its <code>default</code> alias points at and is frequently too old. If there is no usable one it downloads the current LTS from nodejs.org into <code>~/.betterslack/runtime</code>, checks it against the digest published beside it, and keeps it to itself: nothing is added to your <code>PATH</code> and no other project sees it.</p>

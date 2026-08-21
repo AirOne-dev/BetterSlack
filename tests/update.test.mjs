@@ -21,7 +21,7 @@ import { applyUpdate, checkForUpdate, isNewer } from '../dist/update.mjs';
  */
 const BACKUP_HOME = mkdtempSync(path.join(tmpdir(), 'betterslack-home-'));
 process.env.BETTERSLACK_HOME = BACKUP_HOME;
-const { exportBackup, importBackup } = await import('../dist/store.mjs');
+const { exportBackup, importBackup, mergeSettings, readSettings } = await import('../dist/store.mjs');
 
 const git = (cwd, ...args) =>
   execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -348,4 +348,19 @@ test('a folder with no mod.json is refused rather than half-installed', async ()
   const result = await inspectRemote('https://github.com/AirOne-dev/BetterSlack/tree/master/docs');
   if (!('error' in result)) assert.fail('docs/ is not a mod');
   assert.match(result.error, /mod\.json/);
+});
+
+
+test('a panel preference written is a panel preference read back', async () => {
+  /*
+   * readSettings builds its object key by key rather than spreading what it
+   * parsed -- deliberately, so a hand-edited file cannot crash boot -- which
+   * means a key nobody adds to that list is written by the panel and gone by
+   * the next read. It would have looked like a sort order that will not stick.
+   */
+  await mergeSettings({ panelSort: 'za' });
+  assert.equal((await readSettings()).panelSort, 'za');
+
+  await mergeSettings({ panelSort: 'recent' });
+  assert.equal((await readSettings()).panelSort, 'recent');
 });

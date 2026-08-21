@@ -25,7 +25,32 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 That is all of it. There is no step before this one: nothing needs to be
-installed first, not Node and not pnpm.
+installed first, not Node, not pnpm, and not git.
+
+## Without git
+
+`git clone` is one way to get the folder, and it is the only thing git is used
+for: the installer never calls it, and an install updates itself from GitHub's
+tarball rather than by pulling. So the green **Code** button's **Download ZIP**
+works just as well — unpack it and run the same installer — or, in a terminal:
+
+```bash
+curl -fsSL https://codeload.github.com/AirOne-dev/BetterSlack/tar.gz/refs/heads/master | tar xz
+cd BetterSlack-master
+./install.sh
+```
+
+```powershell
+Invoke-WebRequest https://codeload.github.com/AirOne-dev/BetterSlack/zip/refs/heads/master -OutFile bs.zip
+Expand-Archive bs.zip -DestinationPath .
+cd BetterSlack-master
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+The only difference afterwards is which route the update button takes: a copy
+that came from a clone is pulled, one that did not is replaced from the branch
+tarball. Both are one button, and both keep your mods and settings, which live
+in `~/.betterslack` and never inside the install.
 
 ## What it actually does
 
