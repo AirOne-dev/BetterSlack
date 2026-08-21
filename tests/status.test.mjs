@@ -186,3 +186,50 @@ test('it wraps where Slack wraps', () => {
   assert.match(source, /c-tooltip__tip--large/);
   assert.doesNotMatch(source, /c-tooltip__tip--small/);
 });
+
+test('a tooltip that is not showing holds no listeners on window or document', async () => {
+  /*
+   * The one that got out. `statusNode` attaches a tooltip per row, and a member
+   * column redraws on every channel change -- so with the global listeners
+   * registered for the life of the trigger, every redraw left twenty more
+   * capture-phase `scroll` handlers on `window` that nothing removed. Measured
+   * on a live client: four channel changes put 38 of them there, on a page that
+   * scrolls constantly. It was reported as a mouse cursor flickering between
+   * arrow and pointer, which is what hit-testing behind a busy scroll handler
+   * looks like.
+   *
+   * One tooltip is visible at a time, so there is at most one set of these, and
+   * none at all while nothing is hovered.
+   */
+  await withDom(async () => {
+    const counts = { scroll: 0, resize: 0, keydown: 0 };
+    for (const [target, type] of [[window, 'scroll'], [window, 'resize'], [document, 'keydown']]) {
+      const add = target.addEventListener.bind(target);
+      const remove = target.removeEventListener.bind(target);
+      target.addEventListener = (kind, fn, opts) => {
+        if (kind === type) counts[type] += 1;
+        return add(kind, fn, opts);
+      };
+      target.removeEventListener = (kind, fn, opts) => {
+        if (kind === type) counts[type] -= 1;
+        return remove(kind, fn, opts);
+      };
+    }
+
+    // Twenty rows' worth, as one redraw of a member column would build.
+    const nodes = [];
+    for (let i = 0; i < 20; i += 1) {
+      const node = statusNode(describeStatus(profileWith()), profileWith(), { showText: false });
+      document.body.append(node);
+      nodes.push(node);
+    }
+    assert.deepEqual(counts, { scroll: 0, resize: 0, keydown: 0 }, 'nothing global until one shows');
+
+    const tip = await hover(nodes[0]);
+    assert.ok(tip);
+    assert.deepEqual(counts, { scroll: 1, resize: 1, keydown: 1 }, 'one set while one is up');
+
+    nodes[0].dispatchEvent(new window.MouseEvent('mouseleave'));
+    assert.deepEqual(counts, { scroll: 0, resize: 0, keydown: 0 }, 'and none once it is gone');
+  });
+});

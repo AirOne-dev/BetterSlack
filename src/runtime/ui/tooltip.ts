@@ -136,6 +136,23 @@ export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cl
   const show = (): void => {
     if (layer || !trigger.isConnected) return;
     layer = build();
+    /*
+     * The listeners that are not on the trigger go on here, and come off in
+     * `hide()`.
+     *
+     * They used to be registered once per tooltip, for the life of the trigger,
+     * and `statusNode` attaches one per row -- so every redraw of a member
+     * column left twenty more capture-phase `scroll` handlers on `window` that
+     * nothing ever removed. Measured on a live client: four channel changes put
+     * 38 of them there, on a page that scrolls constantly, and it was reported
+     * as a mouse cursor flickering between arrow and pointer.
+     *
+     * One tooltip is visible at a time, so this way there is at most one set,
+     * and none at all while nothing is hovered.
+     */
+    document.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('scroll', onLeave, true);
+    window.addEventListener('resize', onLeave);
     // Measure before placing, so the first frame is not drawn in the corner.
     layer.style.visibility = 'hidden';
     document.body.append(layer);
@@ -146,6 +163,11 @@ export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cl
   const hide = (): void => {
     clearTimeout(timer);
     timer = undefined;
+    if (layer) {
+      document.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('scroll', onLeave, true);
+      window.removeEventListener('resize', onLeave);
+    }
     layer?.remove();
     layer = null;
   };
@@ -173,12 +195,11 @@ export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cl
   trigger.addEventListener('click', onLeave);
   trigger.addEventListener('focus', onFocus);
   trigger.addEventListener('blur', onLeave);
-  document.addEventListener('keydown', onKeyDown, true);
-  // A scroll or resize would leave the layer stranded where it was.
-  window.addEventListener('scroll', onLeave, true);
-  window.addEventListener('resize', onLeave);
+  // A scroll or resize would leave the layer stranded where it was, so those
+  // are watched -- but only while there is a layer. See `show`.
 
   return () => {
+    // `hide` takes the global ones off, if this tooltip is the one showing.
     hide();
     trigger.removeEventListener('mouseenter', onEnter);
     trigger.removeEventListener('mouseleave', onLeave);
@@ -186,8 +207,5 @@ export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cl
     trigger.removeEventListener('click', onLeave);
     trigger.removeEventListener('focus', onFocus);
     trigger.removeEventListener('blur', onLeave);
-    document.removeEventListener('keydown', onKeyDown, true);
-    window.removeEventListener('scroll', onLeave, true);
-    window.removeEventListener('resize', onLeave);
   };
 }
