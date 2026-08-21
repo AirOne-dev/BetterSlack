@@ -54,7 +54,19 @@ const SHOW_DELAY_MS = 150;
 const EDGE_OVERLAP = 4;
 const VIEWPORT_MARGIN = 8;
 
+/**
+ * One tooltip per element, so attaching twice replaces rather than stacks.
+ *
+ * A caller with a node it keeps and re-describes -- the strip in Slack's rail
+ * re-attaches when the status changes -- would otherwise leave the old
+ * listeners on it, and hovering after five changes would open five layers.
+ * A WeakMap so an element that goes out of the document takes its entry with
+ * it.
+ */
+const attached = new WeakMap<HTMLElement, Cleanup>();
+
 export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cleanup {
+  attached.get(trigger)?.();
   const { title, subtitle, placement = 'right', delayMs = SHOW_DELAY_MS, icon } = options;
 
   // A native title would show *as well as* this one.
@@ -198,7 +210,7 @@ export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cl
   // A scroll or resize would leave the layer stranded where it was, so those
   // are watched -- but only while there is a layer. See `show`.
 
-  return () => {
+  const detach = (): Cleanup => () => {
     // `hide` takes the global ones off, if this tooltip is the one showing.
     hide();
     trigger.removeEventListener('mouseenter', onEnter);
@@ -207,5 +219,12 @@ export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cl
     trigger.removeEventListener('click', onLeave);
     trigger.removeEventListener('focus', onFocus);
     trigger.removeEventListener('blur', onLeave);
+    // Only if this one is still the element's: a later attach has already
+    // replaced the entry, and clearing it would drop that one instead.
+    if (attached.get(trigger) === cleanup) attached.delete(trigger);
   };
+
+  const cleanup = detach();
+  attached.set(trigger, cleanup);
+  return cleanup;
 }
