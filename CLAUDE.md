@@ -1138,6 +1138,17 @@ tests fail below it.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
+  **`--large` is the only modifier Slack styles**, and its one rule is
+  `max-width: 400px`; `--small` has no rule at all, which is why a long status
+  ran off the edge of the window in a single line where Slack's own wrapped.
+  Read out of the live stylesheet -- `site/slack-context.css` had invented a
+  `--small` with a smaller font, so the docs page was not showing what the
+  client shows.
+- **A real pointer cannot photograph a tooltip.** `shoot`'s `hover` moves the
+  pointer and captures in the same breath, and the tooltip is 150ms behind it,
+  so the frame always comes back empty. Clicking is worse: `mousedown` is one of
+  the things that hides one. Dispatch a synthetic `mouseenter` and read the DOM
+  -- the warning above is about *Slack's* tooltip code, and this one is ours.
 
 ## The plugin API
 
@@ -1179,6 +1190,17 @@ Shape of it:
   `en` and `fr`, and `tests/i18n.test.mjs` fails a mod whose tables do not cover
   the same keys.
 - `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
+
+**One hover per target.** `api.slack.statusNode` attaches the status tooltip
+itself -- the emoji, the sentence, and when it runs out, which is what Slack's
+own sidebar shows. A caller that has made the status into a control passes
+`tooltipOn` (the element the pointer is really aiming at, since a 15px picture
+leaves its padding silent) and `hint` (what clicking does, as the last line).
+The strip in Slack's rail had its own tooltip on the button as well, so one
+emoji opened two popovers. The order inside is the sentence, then the action,
+then the emoji's own name **last** -- the name is there so a picture nobody
+could draw is still findable, and it says nothing at all to a reader who can see
+the picture.
 
 **A plugin writes CSS through two nodes, not one.** `api.css` replaces the
 plugin's stylesheet whole -- that is the contract, and it is right, since a mod

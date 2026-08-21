@@ -563,12 +563,23 @@ export default {
        * The status emoji beside the name, which is what Slack's own member list
        * shows -- the sentence is too long for a row this narrow and goes in the
        * tooltip instead.
+       *
+       * `showText` rather than an edited copy of the status. Handing this a
+       * status with the text blanked took the sentence away from the tooltip as
+       * well, so the row had a little picture on it and no way of finding out
+       * what it meant -- which is the whole reason the emoji is there.
+       *
+       * Left, because this column is against the right edge of the window and a
+       * tooltip opening right would be pinned to it.
        */
       const status = statusOf(user);
       // Only when there is a picture: an emoji nothing resolved draws nothing,
       // and an empty node would still take the row's spare width.
       if (status?.imageUrl) {
-        const node = api.slack.statusNode({ ...status, text: '' }, user.profile);
+        const node = api.slack.statusNode(status, user.profile, {
+          showText: false,
+          placement: 'left',
+        });
         node.classList.add('betterslack-members__status');
         button.append(node);
       }

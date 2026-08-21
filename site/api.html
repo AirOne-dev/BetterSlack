@@ -1359,20 +1359,24 @@ const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
   <header class="panel__head">
     <p class="eyebrow">api.slack</p>
     <h1><code>statusNode</code></h1>
-    <p class="api-sig api-sig--big">(status: SlackStatus, profile?: SlackProfile): HTMLElement</p>
+    <p class="api-sig api-sig--big">(status: SlackStatus, profile?: SlackProfile, options?: StatusNodeOptions): HTMLElement</p>
     <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
     <p>That status as a node, so the two mods that show one draw the same thing. An image when an emoji resolved, the unicode character when Slack sent one, and the sentence beside it.</p>
-<p>Never the raw shortcode. <code>:tada:</code> on screen reads as a rendering that failed, which is also what Slack does with an emoji it cannot draw — the name goes in the element's <code>title</code> instead, so it is still there to be found. The sentence is drawn either way: it is the half carrying the meaning, and an emoji nobody could resolve is no reason to drop it.</p>
+<p>Never the raw shortcode. <code>:tada:</code> on screen reads as a rendering that failed, which is also what Slack does with an emoji it cannot draw — the name goes in the tooltip instead, so it is still there to be found. The sentence is drawn either way: it is the half carrying the meaning, and an emoji nobody could resolve is no reason to drop it.</p>
+<p><strong>Hovering it opens Slack's own kind of tooltip</strong>, with the emoji, the sentence, and when it runs out — which is what Slack's sidebar does and the reason the emoji alone is enough in a narrow row. <code>showText: false</code> keeps the picture and drops the sentence from the row *without* dropping it from the tooltip; pass the whole status rather than one with the text blanked, or the tooltip has nothing left to say. <code>placement</code> moves the tooltip for a column against the right edge of the window.</p>
 <p>Its stylesheet ships with the runtime rather than with each mod. Two of them show a status, and one that is 15px here and 20px there is exactly the drift this pair exists to stop.</p>
-    <div class="api-demo" data-demo="slack-statusnode" data-controls="[{&quot;key&quot;:&quot;text&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;On holiday&quot;,&quot;label&quot;:&quot;status text&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;emoji&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;palm_tree&quot;,&quot;label&quot;:&quot;status emoji&quot;,&quot;options&quot;:[&quot;palm_tree&quot;,&quot;glitch_crab&quot;,&quot;tada&quot;,&quot;no_such_emoji&quot;]},{&quot;key&quot;:&quot;known&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;the workspace knows it&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <div class="api-demo" data-demo="slack-statusnode" data-controls="[{&quot;key&quot;:&quot;text&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;On holiday&quot;,&quot;label&quot;:&quot;status text&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;emoji&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;palm_tree&quot;,&quot;label&quot;:&quot;status emoji&quot;,&quot;options&quot;:[&quot;palm_tree&quot;,&quot;glitch_crab&quot;,&quot;tada&quot;,&quot;no_such_emoji&quot;]},{&quot;key&quot;:&quot;known&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;the workspace knows it&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;showText&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;draw the sentence in the row&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;expires&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:false,&quot;label&quot;:&quot;the status runs out&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const status = api.slack.describeStatus(user, await api.slack.web.emoji());
 if (status) {
-  const node = api.slack.statusNode(status, user.profile);
-  if (status.expiresAt) node.title += ` (until ${status.expiresAt.toLocaleTimeString()})`;
-  row.append(node);
+  // A row this narrow has no space for the sentence, and no need: it is in the
+  // tooltip, with the expiry under it.
+  row.append(api.slack.statusNode(status, user.profile, {
+    showText: false,
+    placement: 'left',
+  }));
 }</code></pre>
   </div>
 </section>

@@ -1214,6 +1214,19 @@ export const LAUNCHER_CSS = `
   vertical-align: -2px;
 }
 .betterslack-status__emoji--char { font-size: 14px; line-height: 15px; }
+
+/*
+ * The same emoji again, inside a tooltip.
+ *
+ * Slack draws one there at the size of the sentence beside it rather than at
+ * the size it had in the row -- the row's is a marker, the tooltip's is part of
+ * the reading. Sized here rather than in the tooltip's own block because these
+ * are the status classes, and the picture is the status.
+ */
+.betterslack-tooltip__heading { display: flex; align-items: center; gap: 6px; }
+.betterslack-tooltip__icon { flex: 0 0 auto; display: flex; align-items: center; }
+.betterslack-tooltip__icon .betterslack-status__emoji { width: 16px; height: 16px; }
+.betterslack-tooltip__icon .betterslack-status__emoji--char { font-size: 15px; line-height: 16px; }
 .betterslack-status__text {
   min-width: 0;
   overflow: hidden;

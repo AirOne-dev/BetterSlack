@@ -8,7 +8,9 @@
 
 import type { Cleanup } from './dom.js';
 import { h, keepMounted, onEach, waitFor } from './dom.js';
+import { createI18n } from './i18n.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
+import { PANEL_STRINGS } from './ui/strings.js';
 import { createWebApi, currentTeamId, drawnChannelId, userIdFromAvatarUrl, type SlackProfile, type WebApi } from './web-api.js';
 
 /** Hover toolbar that appears over a message. */
@@ -321,7 +323,44 @@ function imageForEmoji(
  * and the sentence beside it is drawn either way -- that is the half carrying
  * the meaning.
  */
-export function statusNode(status: SlackStatus, profile?: SlackProfile | null): HTMLElement {
+export interface StatusNodeOptions {
+  /**
+   * Draw the sentence beside the emoji. False leaves the picture alone -- and
+   * the sentence still reaches the reader, through the tooltip.
+   *
+   * Both mods that show a status in a narrow row used to blank the text by
+   * handing this an edited copy of the status, which also took it away from the
+   * tooltip: the row then had a little picture on it and no way at all to find
+   * out what it meant.
+   */
+  showText?: boolean;
+  /** Which side the tooltip opens on. Rows in a right-hand column want left. */
+  placement?: Placement;
+  /**
+   * A line under the status saying what clicking it does.
+   *
+   * For a caller that has made the status into a control. Without it the strip
+   * in Slack's rail had two tooltips over one emoji -- its own saying what the
+   * button does, and this one saying what the status is -- which is two
+   * popovers for one 15px target.
+   */
+  hint?: string;
+  /**
+   * Hang the hover on this element instead of the node itself.
+   *
+   * When the status is inside a button, the button is what the pointer is
+   * aiming at: a tooltip on the 15px picture leaves the padding around it
+   * silent. Passing the button puts one tooltip on the whole target.
+   */
+  tooltipOn?: HTMLElement;
+}
+
+export function statusNode(
+  status: SlackStatus,
+  profile?: SlackProfile | null,
+  options: StatusNodeOptions = {},
+): HTMLElement {
+  const { showText = true, placement = 'right', hint, tooltipOn } = options;
   const node = h('span', { class: 'betterslack-status' });
   if (status.emoji) {
     const unicode = profile?.status_emoji_display_info?.find((e) => e.unicode)?.unicode;
@@ -339,9 +378,68 @@ export function statusNode(status: SlackStatus, profile?: SlackProfile | null): 
       ]));
     }
   }
-  if (status.text) node.append(h('span', { class: 'betterslack-status__text' }, [status.text]));
-  node.title = [status.text, status.emoji ? `:${status.emoji}:` : ''].filter(Boolean).join(' ');
+  if (showText && status.text) {
+    node.append(h('span', { class: 'betterslack-status__text' }, [status.text]));
+  }
+
+  /*
+   * Slack's own answer to "what does that little picture mean".
+   *
+   * Hovering a status emoji in its sidebar opens a tooltip with the emoji, the
+   * sentence, and when it runs out. This is the same, through the same
+   * `attachTooltip` that reproduces Slack's tooltip from its own classes -- a
+   * native `title` was what this had, and it is a different thing: unstyled,
+   * a second late, one line, and it does not follow the theme.
+   */
+  /*
+   * The sentence, then what clicking does, then the emoji's own name.
+   *
+   * The name is the last resort rather than the first: it is there so a picture
+   * nobody could draw is still findable, and it means nothing to a reader who
+   * can see the picture. A status with an emoji and no text put `:mc-fire:` at
+   * the top of the strip's tooltip with "set a status" underneath it, which is
+   * the wrong way round -- measured on a live client.
+   */
+  const title = status.text || hint || (status.emoji ? `:${status.emoji}:` : '');
+  if (title) {
+    attachTooltip(tooltipOn ?? node, {
+      title,
+      subtitle: [
+        status.expiresAt ? untilSentence(status.expiresAt) : '',
+        // Not repeated when it is already the title.
+        status.text ? hint ?? '' : '',
+      ],
+      placement,
+      icon: node.querySelector('.betterslack-status__emoji') ?? undefined,
+    });
+  }
   return node;
+}
+
+/**
+ * "Until Sun 30 August, 17:00", in the reader's language.
+ *
+ * Slack writes its own as "Jusqu'à dim., 30 août, 17 h" -- its formatting, not
+ * the platform's -- so this is the same sentence rather than the same glyphs.
+ * `Intl` is what makes it right in a language nobody here has thought about.
+ */
+function untilSentence(when: Date): string {
+  let locale = 'en';
+  try {
+    locale = createI18n().locale;
+  } catch {
+    // No document to read a language off yet: English is the fallback anyway.
+  }
+  const day = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'long' });
+  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' });
+  return statusStrings()('statusUntil', { when: `${day.format(when)}, ${time.format(when)}` });
+}
+
+/** Built on first use: this module is evaluated before there is a document. */
+let statusTranslator: ReturnType<ReturnType<typeof createI18n>['strings']> | null = null;
+function statusStrings(): ReturnType<ReturnType<typeof createI18n>['strings']> {
+  statusTranslator ??= createI18n().strings(PANEL_STRINGS);
+  return statusTranslator;
 }
 
 /** The member profile flexpane, and the avatar that identifies whose it is. */
@@ -667,7 +765,11 @@ export interface SlackApi {
     customEmoji?: Map<string, string> | null,
   ): SlackStatus | null;
   /** That status as a node, so two mods showing one draw the same thing. */
-  statusNode(status: SlackStatus, profile?: SlackProfile | null): HTMLElement;
+  statusNode(
+    status: SlackStatus,
+    profile?: SlackProfile | null,
+    options?: StatusNodeOptions,
+  ): HTMLElement;
   /**
    * An image for an emoji name, or null when nothing can draw it.
    *

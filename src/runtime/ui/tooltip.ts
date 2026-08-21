@@ -28,10 +28,26 @@ export type Placement = 'right' | 'left' | 'top' | 'bottom';
 
 export interface TooltipOptions {
   title: string;
-  subtitle?: string;
+  /**
+   * The dimmer line under the title, or several of them.
+   *
+   * An array because a status tooltip has two things to say under the sentence
+   * -- when it runs out, and what clicking it does -- and joining them with a
+   * separator makes one long line out of two short ones.
+   */
+  subtitle?: string | string[];
   placement?: Placement;
   /** Hover delay in ms. Slack's own is ~150; keyboard focus skips it. */
   delayMs?: number;
+  /**
+   * A node drawn before the title, on the same line.
+   *
+   * For the one thing Slack puts inside a tooltip that is not words: the emoji
+   * of a status, which is how its own sidebar answers "what does that little
+   * picture mean". Cloned on every build rather than moved, since one trigger
+   * can show its tooltip many times and a node can only be in one place.
+   */
+  icon?: Node;
 }
 
 const SHOW_DELAY_MS = 150;
@@ -39,23 +55,35 @@ const EDGE_OVERLAP = 4;
 const VIEWPORT_MARGIN = 8;
 
 export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cleanup {
-  const { title, subtitle, placement = 'right', delayMs = SHOW_DELAY_MS } = options;
+  const { title, subtitle, placement = 'right', delayMs = SHOW_DELAY_MS, icon } = options;
 
   // A native title would show *as well as* this one.
   trigger.removeAttribute('title');
-  trigger.setAttribute('aria-label', subtitle ? `${title}. ${subtitle}` : title);
+  const lines = (subtitle === undefined ? [] : [subtitle].flat()).filter((line) => line !== '');
+  trigger.setAttribute('aria-label', [title, ...lines].join('. '));
 
   let layer: HTMLElement | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const build = (): HTMLElement => {
+    const heading = icon
+      ? h('div', { class: 'betterslack-tooltip__heading' }, [
+        h('span', { class: 'betterslack-tooltip__icon' }, [icon.cloneNode(true)]),
+        h('span', {}, [title]),
+      ])
+      : h('div', {}, [title]);
+
     const tip = h('div', {
-      class: `c-tooltip__tip c-tooltip__tip--${placement} c-tooltip__tip--small`,
+      // `--large` rather than `--small`, which is not a class Slack styles at
+      // all: the only rule either of them has is `--large { max-width: 400px }`,
+      // and without it a long status ran off the edge of the window in one line
+      // where Slack's own tooltip wraps. Read out of the live stylesheet.
+      class: `c-tooltip__tip c-tooltip__tip--${placement} c-tooltip__tip--large`,
       'data-qa': 'tooltip-tip',
       'data-sk': 'tooltip',
-    }, [h('div', {}, [title])]);
+    }, [heading]);
 
-    if (subtitle) tip.append(h('div', { class: 'c-tooltip__subtitle' }, [subtitle]));
+    for (const line of lines) tip.append(h('div', { class: 'c-tooltip__subtitle' }, [line]));
     tip.append(h('div', { class: 'c-tooltip__tip__arrow', 'data-qa': 'tooltip-tip-arrow' }));
 
     // The outer layer is ours, not Slack's `.c-popover__content`: that class

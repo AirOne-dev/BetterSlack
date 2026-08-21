@@ -84,6 +84,14 @@ export const PANEL_STRINGS = {
     /** The dot on a tab and on the launcher. Read out; never drawn as words. */
     updateAvailable: 'Update available',
 
+    /**
+     * The second line of a status tooltip. Slack words its own the same way,
+     * and this is the app's dictionary rather than a mod's because the node it
+     * goes on comes from api.slack.statusNode -- shared, so it cannot reach any
+     * one mod's strings.
+     */
+    statusUntil: 'Until {when}',
+
     /** The start screen, under the mark. */
     splashLoading: 'Starting up…',
     splashStarting: 'Starting {name} — {done} of {total}',
@@ -217,6 +225,8 @@ export const PANEL_STRINGS = {
     updateFailed: 'Mise à jour impossible : {reason}',
 
     updateAvailable: 'Mise à jour disponible',
+
+    statusUntil: 'Jusqu’à {when}',
 
     splashLoading: 'Démarrage…',
     splashStarting: 'Démarrage de {name} — {done} sur {total}',

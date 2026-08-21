@@ -130,7 +130,7 @@ test('the panel speaks both languages, and asks for nothing it does not have', a
    * screen has its own translator over the same table, and a key it asked for
    * and nobody had defined would be a screen-wide logo with a raw key under it.
    */
-  const source = ['src/runtime/ui/panel.ts', 'src/runtime/ui/splash.ts']
+  const source = ['src/runtime/ui/panel.ts', 'src/runtime/ui/splash.ts', 'src/runtime/slack-api.ts']
     .map((rel) => readFileSync(path.join(root, rel), 'utf8'))
     .join('\n');
   const asked = new Set([...source.matchAll(/\bt\('([a-zA-Z0-9_]+)'/g)].map((m) => m[1]));

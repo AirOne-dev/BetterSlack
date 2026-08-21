@@ -114,23 +114,58 @@
     return element;
   }
 
+  // src/runtime/i18n.ts
+  function detectLocale() {
+    const declared = document.documentElement?.getAttribute("lang");
+    if (declared && declared.trim()) return declared.trim();
+    return navigator.language || "en";
+  }
+  function interpolate(text, vars) {
+    if (!vars) return text;
+    return text.replace(/\{(\w+)\}/g, (whole, name) => name in vars ? String(vars[name]) : whole);
+  }
+  function createI18n(locale = detectLocale()) {
+    const language = locale.split(/[-_]/)[0].toLowerCase();
+    return {
+      locale,
+      language,
+      strings(tables) {
+        const exact = tables[locale] ?? tables[locale.replace("_", "-")];
+        const byLanguage = tables[language];
+        return (key, vars) => {
+          const value = exact?.[key] ?? byLanguage?.[key] ?? tables.en[key];
+          return interpolate(value ?? key, vars);
+        };
+      }
+    };
+  }
+
   // src/runtime/ui/tooltip.ts
   var SHOW_DELAY_MS = 150;
   var EDGE_OVERLAP = 4;
   var VIEWPORT_MARGIN = 8;
   function attachTooltip(trigger, options) {
-    const { title, subtitle, placement = "right", delayMs = SHOW_DELAY_MS } = options;
+    const { title, subtitle, placement = "right", delayMs = SHOW_DELAY_MS, icon } = options;
     trigger.removeAttribute("title");
-    trigger.setAttribute("aria-label", subtitle ? `${title}. ${subtitle}` : title);
+    const lines = (subtitle === void 0 ? [] : [subtitle].flat()).filter((line) => line !== "");
+    trigger.setAttribute("aria-label", [title, ...lines].join(". "));
     let layer = null;
     let timer;
     const build = () => {
+      const heading = icon ? h("div", { class: "betterslack-tooltip__heading" }, [
+        h("span", { class: "betterslack-tooltip__icon" }, [icon.cloneNode(true)]),
+        h("span", {}, [title])
+      ]) : h("div", {}, [title]);
       const tip = h("div", {
-        class: `c-tooltip__tip c-tooltip__tip--${placement} c-tooltip__tip--small`,
+        // `--large` rather than `--small`, which is not a class Slack styles at
+        // all: the only rule either of them has is `--large { max-width: 400px }`,
+        // and without it a long status ran off the edge of the window in one line
+        // where Slack's own tooltip wraps. Read out of the live stylesheet.
+        class: `c-tooltip__tip c-tooltip__tip--${placement} c-tooltip__tip--large`,
         "data-qa": "tooltip-tip",
         "data-sk": "tooltip"
-      }, [h("div", {}, [title])]);
-      if (subtitle) tip.append(h("div", { class: "c-tooltip__subtitle" }, [subtitle]));
+      }, [heading]);
+      for (const line of lines) tip.append(h("div", { class: "c-tooltip__subtitle" }, [line]));
       tip.append(h("div", { class: "c-tooltip__tip__arrow", "data-qa": "tooltip-tip-arrow" }));
       return h("div", {
         class: "betterslack-tooltip",
@@ -215,6 +250,239 @@
       window.removeEventListener("resize", onLeave);
     };
   }
+
+  // src/runtime/ui/strings.ts
+  var PANEL_STRINGS = {
+    en: {
+      title: "BetterSlack",
+      close: "Close",
+      themes: "Themes",
+      plugins: "Plugins",
+      css: "Custom CSS",
+      about: "About",
+      installed: "Installed",
+      browse: "Browse",
+      search: "Search mods\u2026",
+      noMatch: "Nothing matches that search.",
+      allInstalled: "Everything in the catalogue is already installed.",
+      nothingInstalled: "Nothing installed yet \u2014 the Browse shelf is where you start.",
+      sortLabel: "Sort",
+      sortRecent: "Recently installed",
+      sortAz: "Name A\u2013Z",
+      sortZa: "Name Z\u2013A",
+      sortEnabled: "Switched on first",
+      byLine: "v{version} \xB7 by {author}",
+      filterAll: "All",
+      backToList: "\u2039 All mods",
+      settingsTitle: "Settings",
+      install: "Install",
+      enable: "Enable",
+      disable: "Disable",
+      remove: "Remove",
+      notRunning: "not running",
+      settingsCount: "Settings ({count})",
+      settingsHide: "Hide settings",
+      uses: "Uses {names}",
+      needs: "Needs {names}",
+      enableIt: "Enable it",
+      enableThem: "Enable them",
+      enableAll: "Enable all {count}",
+      notInCatalogue: "Not in the catalogue: {names}",
+      cancel: "Cancel",
+      requiresTitle: "{name} needs {count} plugin(s)",
+      requiresBody: "A theme is CSS. This one needs behaviour CSS cannot do, which lives in plugins \u2014 code that keeps running after the theme is switched off. Enabling them is your call.",
+      safeTitle: "Safe mode \u2014 nothing is loaded",
+      safeAsked: "Started with --safe. Your mods are untouched; start again without it to load them.",
+      safeCrashed: "{reason}. Switch off whatever you suspect, then start BetterSlack again.",
+      skippedTitle: "{count} mod folder(s) were skipped",
+      skippedBody: "These are in the mods folder but could not be read, so they are not listed above. The message says which file and why.",
+      updateTitle: "An update is available",
+      /**
+       * Both numbers, where the eye lands. Used whenever the published version is
+       * known, which is nearly always; the body then says only what will happen.
+       */
+      updateTitleVersion: "BetterSlack {current} \u2192 {latest}",
+      updateGit: "Updating fetches that version and rebuilds.",
+      /** No version to name: a branch that moved without a release on it. */
+      updateGitCount: "{count} change(s) since this copy{headline}. Updating fetches them and rebuilds.",
+      updateHeadline: " \u2014 latest: {subject}",
+      updatePackage: "Updating downloads that version from GitHub and replaces this copy \u2014 your mods and settings are kept, they live outside it.",
+      updateGo: "Update and restart",
+      updateWorking: "Updating\u2026",
+      updateGitHub: "Open GitHub",
+      updatePulling: "Pulling and rebuilding\u2026",
+      updateDownloading: "Downloading and rebuilding\u2026",
+      updateDone: "Updated. Slack is restarting\u2026",
+      updateFailed: "Could not update: {reason}",
+      /** The dot on a tab and on the launcher. Read out; never drawn as words. */
+      updateAvailable: "Update available",
+      /**
+       * The second line of a status tooltip. Slack words its own the same way,
+       * and this is the app's dictionary rather than a mod's because the node it
+       * goes on comes from api.slack.statusNode -- shared, so it cannot reach any
+       * one mod's strings.
+       */
+      statusUntil: "Until {when}",
+      /** The start screen, under the mark. */
+      splashLoading: "Starting up\u2026",
+      splashStarting: "Starting {name} \u2014 {done} of {total}",
+      modUpdateTitle: "{name} {current} \u2192 {version}",
+      modUpdateBody: "Updating replaces this mod alone, and reapplies it if it is on.",
+      modUpdateGo: "Update",
+      modUpdateWorking: "Downloading\u2026",
+      modUpdateBlocked: "{name} {version} needs BetterSlack {needs}, and this is {running}. Update BetterSlack first \u2014 taking it now would leave a mod calling things this version does not have.",
+      slackTooOld: "Written against Slack {wanted}, and this is {have}. It may not find what it expects.",
+      cssHint: "Applied after every theme, so it always wins. Slack exposes its palette as CSS custom properties (--dt_color-*), which is a steadier target than its class names.",
+      cssSave: "Save and apply",
+      cssApplied: "Applied.",
+      aboutBody: "BetterSlack injects into the Slack renderer over the Chrome DevTools Protocol, carried on a private pipe rather than a debugging port \u2014 nothing listens on the network. It does not modify Slack.app, so Slack updates cannot break your install, but mods stay loaded only while the loader runs.",
+      hotReload: "Hot reload",
+      hotReloadHint: "Reapply a mod as soon as its file changes on disk.",
+      version: "Version",
+      catalogue: "Catalogue",
+      yourMods: "Your mods",
+      transport: "Transport",
+      repository: "Repository",
+      contribute: "Submit a mod",
+      remoteHint: "Install from a GitHub URL \u2014 a repository, or a folder inside one.",
+      remotePlaceholder: "github.com/someone/their-mods/tree/main/my-plugin",
+      remoteFetch: "Read it",
+      remoteReading: "Reading\u2026",
+      remoteInstalling: "Installing\u2026",
+      remoteInstalled: "{name} installed. It is off until you switch it on.",
+      remoteAccept: "Install anyway",
+      remoteFrom: "From",
+      remoteKind: "Kind",
+      remoteScripts: "Code that will run",
+      remoteNoScripts: "none \u2014 this one is stylesheets only",
+      remoteSize: "Size",
+      remoteBadge: "unreviewed",
+      remoteBadgeHint: "From {source}. Nobody in this project has read it.",
+      remoteWarningPlugin: "This is somebody else\u2019s code, and nobody here has read it. A plugin runs unsandboxed in your signed-in Slack: it can read every message you can, and the session token. Install it only if you trust whoever wrote it.",
+      remoteWarningTheme: "This is somebody else\u2019s theme, and nobody here has read it. A theme is CSS, so it cannot read your messages \u2014 but it can hide or fake parts of the interface. Install it only if you trust whoever wrote it.",
+      backupTitle: "Backup",
+      backupHint: "Your settings and the mods you wrote or installed yourself. Catalogue mods come back with the project, so they are not in it.",
+      backupExport: "Save a backup",
+      backupImport: "Restore one",
+      backupSaved: "Saved to your downloads.",
+      backupWorking: "Restoring\u2026",
+      backupRestored: "Restored {detail}.",
+      diagTitle: "What the mods cost",
+      diagHint: "Time spent starting, and how often Slack has undone each mod\u2019s work.",
+      diagTiming: "{ms} ms \xB7 {mounts} mounts",
+      diagCopy: "Copy a report",
+      diagCopied: "Copied",
+      diagCopyFailed: "Could not copy"
+    },
+    fr: {
+      title: "BetterSlack",
+      close: "Fermer",
+      themes: "Th\xE8mes",
+      plugins: "Plugins",
+      css: "CSS personnalis\xE9",
+      about: "\xC0 propos",
+      installed: "Install\xE9s",
+      browse: "Parcourir",
+      search: "Rechercher un mod\u2026",
+      noMatch: "Aucun r\xE9sultat pour cette recherche.",
+      allInstalled: "Tout le catalogue est d\xE9j\xE0 install\xE9.",
+      nothingInstalled: "Rien d\u2019install\xE9 pour l\u2019instant \u2014 tout commence dans l\u2019onglet Parcourir.",
+      sortLabel: "Trier",
+      sortRecent: "Install\xE9s r\xE9cemment",
+      sortAz: "Nom A\u2013Z",
+      sortZa: "Nom Z\u2013A",
+      sortEnabled: "Activ\xE9s d\u2019abord",
+      byLine: "v{version} \xB7 par {author}",
+      filterAll: "Tous",
+      backToList: "\u2039 Tous les mods",
+      settingsTitle: "R\xE9glages",
+      install: "Installer",
+      enable: "Activer",
+      disable: "D\xE9sactiver",
+      remove: "Retirer",
+      notRunning: "n\u2019a pas d\xE9marr\xE9",
+      settingsCount: "R\xE9glages ({count})",
+      settingsHide: "Masquer les r\xE9glages",
+      uses: "Utilise {names}",
+      needs: "N\xE9cessite {names}",
+      enableIt: "Activer le plugin",
+      enableThem: "Activer les plugins",
+      enableAll: "Activer les {count} plugins",
+      notInCatalogue: "Absent du catalogue : {names}",
+      cancel: "Annuler",
+      requiresTitle: "{name} n\xE9cessite {count} plugin(s)",
+      requiresBody: "Un th\xE8me, c\u2019est du CSS. Celui-ci a besoin d\u2019un comportement que le CSS ne permet pas, et ce comportement rel\xE8ve des plugins \u2014 du code qui continue de s\u2019ex\xE9cuter une fois le th\xE8me d\xE9sactiv\xE9. \xC0 vous de d\xE9cider de les activer.",
+      safeTitle: "Mode sans \xE9chec \u2014 rien n\u2019est charg\xE9",
+      safeAsked: "D\xE9marr\xE9 avec --safe. Vos mods sont intacts ; relancez sans l\u2019option pour les charger.",
+      safeCrashed: "{reason}. D\xE9sactivez ce que vous suspectez, puis relancez BetterSlack.",
+      skippedTitle: "{count} dossier(s) de mod ignor\xE9(s)",
+      skippedBody: "Ils sont dans le dossier mods mais n\u2019ont pas pu \xEAtre lus, donc ils ne sont pas list\xE9s ci-dessus. Le message indique quel fichier et pourquoi.",
+      updateTitle: "Une mise \xE0 jour est disponible",
+      updateTitleVersion: "BetterSlack {current} \u2192 {latest}",
+      updateGit: "Mettre \xE0 jour r\xE9cup\xE8re cette version et reconstruit.",
+      updateGitCount: "{count} changement(s) depuis votre copie{headline}. Mettre \xE0 jour les r\xE9cup\xE8re et reconstruit.",
+      updateHeadline: " \u2014 dernier : {subject}",
+      updatePackage: "Mettre \xE0 jour t\xE9l\xE9charge cette version depuis GitHub et remplace cette copie \u2014 vos mods et vos r\xE9glages sont conserv\xE9s, ils sont stock\xE9s ailleurs.",
+      updateGo: "Mettre \xE0 jour et relancer",
+      updateWorking: "Mise \xE0 jour\u2026",
+      updateGitHub: "Ouvrir GitHub",
+      updatePulling: "R\xE9cup\xE9ration et reconstruction\u2026",
+      updateDownloading: "T\xE9l\xE9chargement et reconstruction\u2026",
+      updateDone: "Mis \xE0 jour. Slack red\xE9marre\u2026",
+      updateFailed: "Mise \xE0 jour impossible : {reason}",
+      updateAvailable: "Mise \xE0 jour disponible",
+      statusUntil: "Jusqu\u2019\xE0 {when}",
+      splashLoading: "D\xE9marrage\u2026",
+      splashStarting: "D\xE9marrage de {name} \u2014 {done} sur {total}",
+      modUpdateTitle: "{name} {current} \u2192 {version}",
+      modUpdateBody: "Mettre \xE0 jour ne remplace que ce mod, et le r\xE9applique s\u2019il est activ\xE9.",
+      modUpdateGo: "Mettre \xE0 jour",
+      modUpdateWorking: "T\xE9l\xE9chargement\u2026",
+      modUpdateBlocked: "{name} {version} n\xE9cessite BetterSlack {needs}, et vous avez {running}. Mettez d'abord BetterSlack \xE0 jour \u2014 sinon ce mod appellerait des choses que cette version n'a pas.",
+      slackTooOld: "\xC9crit pour Slack {wanted}, et vous avez {have}. Il peut ne pas trouver ce qu'il attend.",
+      cssHint: "Appliqu\xE9 apr\xE8s tous les th\xE8mes, il l\u2019emporte donc toujours. Slack expose sa palette en propri\xE9t\xE9s CSS personnalis\xE9es (--dt_color-*), une cible plus stable que ses noms de classe.",
+      cssSave: "Enregistrer et appliquer",
+      cssApplied: "Appliqu\xE9.",
+      aboutBody: "BetterSlack s\u2019injecte dans le processus de rendu de Slack via le Chrome DevTools Protocol, achemin\xE9 par un pipe priv\xE9 plut\xF4t que par un port de d\xE9bogage \u2014 rien n\u2019\xE9coute sur le r\xE9seau. Slack.app n\u2019est jamais modifi\xE9 : une mise \xE0 jour de Slack ne peut donc pas casser votre installation, mais les mods ne restent charg\xE9s que tant que le loader s\u2019ex\xE9cute.",
+      hotReload: "Rechargement \xE0 chaud",
+      hotReloadHint: "R\xE9appliquer un mod d\xE8s que son fichier change sur le disque.",
+      version: "Version",
+      catalogue: "Catalogue",
+      yourMods: "Vos mods",
+      transport: "Transport",
+      repository: "D\xE9p\xF4t",
+      contribute: "Proposer un mod",
+      remoteHint: "Installer depuis une URL GitHub \u2014 un d\xE9p\xF4t, ou un dossier dedans.",
+      remotePlaceholder: "github.com/quelquun/ses-mods/tree/main/mon-plugin",
+      remoteFetch: "Examiner",
+      remoteReading: "Analyse\u2026",
+      remoteInstalling: "Installation\u2026",
+      remoteInstalled: "{name} est install\xE9, et restera d\xE9sactiv\xE9 tant que vous ne l\u2019activerez pas.",
+      remoteAccept: "Installer quand m\xEAme",
+      remoteFrom: "Provenance",
+      remoteKind: "Type",
+      remoteScripts: "Code qui s\u2019ex\xE9cutera",
+      remoteNoScripts: "aucun \u2014 uniquement des feuilles de style",
+      remoteSize: "Taille",
+      remoteBadge: "non relu",
+      remoteBadgeHint: "Depuis {source}. Personne dans ce projet ne l\u2019a lu.",
+      remoteWarningPlugin: "C\u2019est le code de quelqu\u2019un d\u2019autre, que personne ici n\u2019a relu. Un plugin s\u2019ex\xE9cute sans isolation dans votre session Slack : il peut lire tous les messages auxquels vous avez acc\xE8s, ainsi que votre jeton de session. Ne l\u2019installez que si vous faites confiance \xE0 son auteur.",
+      remoteWarningTheme: "C\u2019est le th\xE8me de quelqu\u2019un d\u2019autre, que personne ici n\u2019a lu. Un th\xE8me est du CSS, il ne peut donc pas lire vos messages \u2014 mais il peut masquer ou falsifier des parties de l\u2019interface. Ne l\u2019installez que si vous faites confiance \xE0 son auteur.",
+      backupTitle: "Sauvegarde",
+      backupHint: "Vos r\xE9glages, et les mods que vous avez \xE9crits ou install\xE9s vous-m\xEAme. Ceux du catalogue reviennent avec le projet : ils ne figurent pas dans la sauvegarde.",
+      backupExport: "Enregistrer une sauvegarde",
+      backupImport: "Restaurer une sauvegarde",
+      backupSaved: "Enregistr\xE9 dans vos t\xE9l\xE9chargements.",
+      backupWorking: "Restauration\u2026",
+      backupRestored: "{detail} \u2014 restaur\xE9.",
+      diagTitle: "Ce que co\xFBtent les mods",
+      diagHint: "Temps pass\xE9 au d\xE9marrage, et nombre de fois o\xF9 Slack a d\xE9fait le travail de chaque mod.",
+      diagTiming: "{ms} ms \xB7 {mounts} remontages",
+      diagCopy: "Copier un rapport",
+      diagCopied: "Copi\xE9",
+      diagCopyFailed: "Copie impossible"
+    }
+  };
 
   // src/runtime/web-api.ts
   var CONFIG_KEY = "localConfig_v2";
@@ -567,7 +835,8 @@
     if (sent?.display_url) return sent.display_url;
     return customEmoji?.get(name) ?? harvestEmoji().get(name) ?? null;
   }
-  function statusNode(status, profile) {
+  function statusNode(status, profile, options = {}) {
+    const { showText = true, placement = "right", hint, tooltipOn } = options;
     const node = h("span", { class: "betterslack-status" });
     if (status.emoji) {
       const unicode = profile?.status_emoji_display_info?.find((e) => e.unicode)?.unicode;
@@ -585,9 +854,38 @@
         ]));
       }
     }
-    if (status.text) node.append(h("span", { class: "betterslack-status__text" }, [status.text]));
-    node.title = [status.text, status.emoji ? `:${status.emoji}:` : ""].filter(Boolean).join(" ");
+    if (showText && status.text) {
+      node.append(h("span", { class: "betterslack-status__text" }, [status.text]));
+    }
+    const title = status.text || hint || (status.emoji ? `:${status.emoji}:` : "");
+    if (title) {
+      attachTooltip(tooltipOn ?? node, {
+        title,
+        subtitle: [
+          status.expiresAt ? untilSentence(status.expiresAt) : "",
+          // Not repeated when it is already the title.
+          status.text ? hint ?? "" : ""
+        ],
+        placement,
+        icon: node.querySelector(".betterslack-status__emoji") ?? void 0
+      });
+    }
     return node;
+  }
+  function untilSentence(when) {
+    let locale = "en";
+    try {
+      locale = createI18n().locale;
+    } catch {
+    }
+    const day = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "long" });
+    const time = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
+    return statusStrings()("statusUntil", { when: `${day.format(when)}, ${time.format(when)}` });
+  }
+  var statusTranslator = null;
+  function statusStrings() {
+    statusTranslator ?? (statusTranslator = createI18n().strings(PANEL_STRINGS));
+    return statusTranslator;
   }
   var PROFILE_PANE = '[data-qa="member_profile_pane"]';
   var PROFILE_AVATAR = ".p-r_member_profile__avatar__img";
@@ -2255,6 +2553,19 @@
   vertical-align: -2px;
 }
 .betterslack-status__emoji--char { font-size: 14px; line-height: 15px; }
+
+/*
+ * The same emoji again, inside a tooltip.
+ *
+ * Slack draws one there at the size of the sentence beside it rather than at
+ * the size it had in the row -- the row's is a marker, the tooltip's is part of
+ * the reading. Sized here rather than in the tooltip's own block because these
+ * are the status classes, and the picture is the status.
+ */
+.betterslack-tooltip__heading { display: flex; align-items: center; gap: 6px; }
+.betterslack-tooltip__icon { flex: 0 0 auto; display: flex; align-items: center; }
+.betterslack-tooltip__icon .betterslack-status__emoji { width: 16px; height: 16px; }
+.betterslack-tooltip__icon .betterslack-status__emoji--char { font-size: 15px; line-height: 16px; }
 .betterslack-status__text {
   min-width: 0;
   overflow: hidden;
@@ -3616,32 +3927,6 @@
         return (...args) => {
           clearTimeout(timer);
           timer = setTimeout(() => fn(...args), ms);
-        };
-      }
-    };
-  }
-
-  // src/runtime/i18n.ts
-  function detectLocale() {
-    const declared = document.documentElement?.getAttribute("lang");
-    if (declared && declared.trim()) return declared.trim();
-    return navigator.language || "en";
-  }
-  function interpolate(text, vars) {
-    if (!vars) return text;
-    return text.replace(/\{(\w+)\}/g, (whole, name) => name in vars ? String(vars[name]) : whole);
-  }
-  function createI18n(locale = detectLocale()) {
-    const language = locale.split(/[-_]/)[0].toLowerCase();
-    return {
-      locale,
-      language,
-      strings(tables) {
-        const exact = tables[locale] ?? tables[locale.replace("_", "-")];
-        const byLanguage = tables[language];
-        return (key, vars) => {
-          const value = exact?.[key] ?? byLanguage?.[key] ?? tables.en[key];
-          return interpolate(value ?? key, vars);
         };
       }
     };
@@ -5696,10 +5981,11 @@ onFresh fired: ${JSON.stringify(fresh)}`;
     tada: "mark.svg"
   };
   function statusFixture(v) {
+    const EXPIRES_AT = Date.UTC(2026, 7, 30, 15, 0) / 1e3;
     const profile = {
       status_text: v.text ?? "",
       status_emoji: v.emoji ? `:${v.emoji}:` : "",
-      status_expiration: 0
+      status_expiration: v.expires ? EXPIRES_AT : 0
     };
     const custom = /* @__PURE__ */ new Map();
     if (v.known && STATUS_EMOJI[v.emoji]) custom.set(v.emoji, STATUS_EMOJI[v.emoji]);
@@ -6068,10 +6354,13 @@ ${JSON.stringify(url)}`, "javascript"),
           kit.el("span", { class: "chrome__avatar", "data-seed": "U0EXAMPLE1" }),
           kit.el("div", {}, [
             kit.el("div", { class: "chrome__who" }, ["Robin Vasquez"]),
-            slack.statusNode(status, profile)
+            slack.statusNode(status, profile, { showText: v.showText !== false })
           ])
         ]);
-        return [row, stubbed("The node, its stylesheet and its rules are the shipped ones.")];
+        return [
+          row,
+          stubbed("The node, its stylesheet and its rules are the shipped ones. Hover it.")
+        ];
       }
     },
     /* -- the loader's side -------------------------------------------------- */

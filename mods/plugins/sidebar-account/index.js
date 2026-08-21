@@ -311,7 +311,16 @@ export default {
         event.preventDefault();
         void api.slack.openStatusEditor?.();
       });
-      api.helpers.tooltip(nameEmoji, t('editStatus'));
+      /*
+       * One tooltip on the button, not two over one emoji.
+       *
+       * `statusNode` brings its own -- the status, and when it runs out -- and
+       * this button had its own saying what clicking it does, so a 15px target
+       * opened two popovers. The status one is hung on the button below
+       * (`tooltipOn`) with the action as its last line, and this one is only
+       * for the case where there is no status to describe.
+       */
+      let clearEditTip = api.helpers.tooltip(nameEmoji, t('editStatus'));
       const nameLine = api.dom.h('div', { class: 'betterslack-me__nameline' }, [name, nameEmoji]);
       // Filled in by paintDot, which is the only thing that writes this line.
       // It used to be read once here, from Slack's screen-reader label, and
@@ -424,8 +433,18 @@ export default {
          */
         if (customStatus?.emoji && nameEmoji.firstChild !== customStatus.emoji) {
           nameEmoji.replaceChildren(customStatus.emoji);
+          /*
+           * And the plain one comes off, because the status node has hung its
+           * own on this same button and two listeners on one element is two
+           * popovers. Whichever is on says what clicking does -- the status one
+           * as its last line, this one as its only one.
+           */
+          clearEditTip?.();
+          clearEditTip = null;
         } else if (!customStatus?.emoji && nameEmoji.firstChild) {
           nameEmoji.replaceChildren();
+          // Back to a button with nothing to describe but itself.
+          clearEditTip ??= api.helpers.tooltip(nameEmoji, t('editStatus'));
         }
         const next = customStatus?.text || (resolved ? word : '');
         if (status.textContent !== next) status.textContent = next;
@@ -509,9 +528,23 @@ export default {
                 customStatus = described
                   ? {
                     text: described.text,
-                    // Only the emoji: the sentence has a line of its own below.
+                    /*
+                     * Only the emoji: the sentence has a line of its own below.
+                     *
+                     * Through `showText` rather than by blanking the text on a
+                     * copy -- that took it away from the tooltip too, and the
+                     * tooltip is where the expiry is said. The strip sits at
+                     * the bottom of the rail, so the tooltip opens to the right
+                     * as everything else in that rail does.
+                     */
                     emoji: described.imageUrl
-                      ? api.slack.statusNode({ ...described, text: '' }, profile)
+                      ? api.slack.statusNode(described, profile, {
+                        showText: false,
+                        // The button is what the pointer aims at; the picture
+                        // inside it is 15px and leaves its padding silent.
+                        tooltipOn: nameEmoji,
+                        hint: t('editStatus'),
+                      })
                       : null,
                   }
                   : null;

@@ -270,7 +270,13 @@ body.api-page .c-tooltip__tip {
   box-shadow: var(--slack-shadow);
   pointer-events: none;
 }
-body.api-page .c-tooltip__tip--small { font-size: 12px; padding: 6px 10px; }
+/*
+ * Slack styles exactly one of these modifiers, and it is this one: read out of
+ * the live stylesheet, `--large { max-width: 400px }` is the only rule either
+ * `--small` or `--large` has. Without it a long status ran off the edge in a
+ * single line where Slack's own tooltip wraps.
+ */
+body.api-page .c-tooltip__tip--large { max-width: 400px; }
 body.api-page .c-tooltip__subtitle {
   display: block;
   margin-top: 2px;
