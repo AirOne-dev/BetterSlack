@@ -4,6 +4,34 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.0.3 — 2026-08-21
+
+### Fixed
+
+- **Updating from the panel failed with "the update could not be built here"**
+  on any machine whose Node is a 25. corepack was removed from Node in that
+  version — its `bin` holds `node`, `npm` and `npx` and nothing else — and the
+  update built itself with `corepack pnpm`. It now falls back to `npx` and the
+  pinned pnpm, which needs nothing the machine has not already got.
+
+  **If you are seeing that message, this release cannot reach you through the
+  update button.** The button builds the new version using the code that is
+  already running, so the fault is in the copy doing the updating. Run the
+  installer once and it is over:
+
+  ```bash
+  cd <where you cloned BetterSlack> && ./install.sh
+  ```
+
+  Updating from the panel works normally after that. Nothing you have installed
+  or configured is touched — it lives in `~/.betterslack`, which the installer
+  does not go near.
+
+- **A failed update now says what went wrong.** The message put the command that
+  failed on screen and threw away the line underneath it, which was the reason.
+  That is why the fault above read as a shrug rather than as three words you
+  could have searched for.
+
 ## 3.0.2 — 2026-08-21
 
 ### Changed
