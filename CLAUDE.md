@@ -1617,6 +1617,20 @@ wrongly allowed -- and it corrects itself, so it is not worth defeating the
 cache for. Do not debug it as a fetch problem: compare `curl` and `curl
 --compressed` before suspecting the code.
 
+**And the two obvious ways round it have been tried, so do not try them again.**
+A cache-busting query string and a `Cache-Control: no-cache` request header both
+come back `x-cache: HIT` -- neither shifts it, and the only thing in that URL's
+`vary` that would is `Authorization`, which means a token an ordinary user has
+no reason to hold.
+
+`api.github.com/repos/.../contents/<file>` **is** fresher: `max-age=60` rather
+than 300, and with `Accept: application/vnd.github.raw` it hands back the file
+itself. It was written, measured, and deliberately taken back out. Unauthenticated
+it allows **60 requests an hour per IP**, and this is a workplace tool: an office
+behind one address is every BetterSlack in the building sharing that allowance,
+where the cost of running out is a check that reports no update at all. Five
+minutes that fails safe beats one minute that fails for everybody at once.
+
 **The catalogue itself is never at risk**, and that is worth knowing before
 looking for bugs here: `mods/` ships inside the install, so a catalogue mod
 always matches the app it came with. The mismatch exists only along the
