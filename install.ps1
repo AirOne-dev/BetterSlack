@@ -48,39 +48,112 @@ function Die  { param($m) Write-Host "==> $m" -ForegroundColor Red; exit 1 }
 # arithmetic here.
 
 $Node = $null
-$NodeKey = 0
+$UseCorepack = $false
+$Corepack = $null
+$PnpmVersion = $null
 
-function Consider {
+# node-ok.cjs prints a sortable version key for a Node it accepts, and nothing
+# at all for one it does not.
+function Rank {
     param($Candidate)
     if (-not $Candidate) { return }
     if (-not (Test-Path -LiteralPath $Candidate -PathType Leaf)) { return }
     $key = & $Candidate (Join-Path $Repo 'scripts\node-ok.cjs') 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $key) { return }
-    if ([int]$key -gt $script:NodeKey) {
-        $script:NodeKey = [int]$key
-        $script:Node = $Candidate
-    }
+    [pscustomobject]@{ Key = [int]$key; Path = $Candidate }
 }
 
-# What the user's own shell would run comes first; only then do we go looking.
+# What the user's own shell would run comes first: if it can build this, it is
+# the one they meant. Everything else follows, newest qualifying copy first. It
+# has to be a list rather than a single winner, because satisfying engines is
+# not the whole of the question -- see Test-Pnpm below.
+$Ordered = @()
 $onPath = Get-Command node.exe -ErrorAction SilentlyContinue
-if ($onPath) { Consider $onPath.Source }
+if ($onPath) { $Ordered += (Rank $onPath.Source) }
 
-if (-not $Node) {
-    $candidates = @(
-        (Join-Path $Runtime 'node\node.exe'),
-        (Join-Path $env:ProgramFiles 'nodejs\node.exe'),
-        (Join-Path ${env:ProgramFiles(x86)} 'nodejs\node.exe'),
-        (Join-Path $env:LOCALAPPDATA 'Volta\bin\node.exe')
-    )
-    # nvm-windows and fnm keep one directory per version; take them all and let
-    # the judge above sort out which are usable.
-    foreach ($root in @((Join-Path $env:APPDATA 'nvm'), (Join-Path $env:LOCALAPPDATA 'fnm\node-versions'))) {
-        if (Test-Path -LiteralPath $root) {
-            $candidates += (Get-ChildItem -LiteralPath $root -Recurse -Filter 'node.exe' -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
-        }
+$candidates = @(
+    (Join-Path $Runtime 'node\node.exe'),
+    (Join-Path $env:ProgramFiles 'nodejs\node.exe'),
+    (Join-Path ${env:ProgramFiles(x86)} 'nodejs\node.exe'),
+    (Join-Path $env:LOCALAPPDATA 'Volta\bin\node.exe')
+)
+# nvm-windows and fnm keep one directory per version; take them all and let the
+# judge above sort out which are usable.
+foreach ($root in @((Join-Path $env:APPDATA 'nvm'), (Join-Path $env:LOCALAPPDATA 'fnm\node-versions'))) {
+    if (Test-Path -LiteralPath $root) {
+        $candidates += (Get-ChildItem -LiteralPath $root -Recurse -Filter 'node.exe' -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
     }
-    foreach ($c in $candidates) { Consider $c }
+}
+$Ordered += (@($candidates | ForEach-Object { Rank $_ }) | Where-Object { $_ } | Sort-Object -Property Key -Descending)
+
+# The node on PATH is usually one of the copies found below it as well.
+$seen = @{}
+$unique = @()
+foreach ($entry in $Ordered) {
+    if ($entry -and -not $seen.ContainsKey($entry.Path)) {
+        $seen[$entry.Path] = $true
+        $unique += $entry
+    }
+}
+$Ordered = $unique
+
+# ---------------------------------------------------------------------------
+# ...and that can run the pnpm this project pins
+# ---------------------------------------------------------------------------
+#
+# packageManager names one exact pnpm, and that pnpm has a Node floor of its
+# own which is higher than the app's: pnpm 11 requires node:sqlite, which
+# arrived in Node 22.5, while engines.node still admits 20.19 because that is
+# all the loader and the tests need. "Satisfies engines" therefore does not mean
+# "can build this checkout", and the gap is not theoretical: measured on a Mac
+# whose shell node was 20.20.2, where install.sh announced that Node as usable
+# and the install then died with ERR_UNKNOWN_BUILTIN_MODULE out of pnpm's own
+# bundle, with fourteen newer Nodes sitting unused.
+#
+# The check is to run pnpm rather than to write its floor down here. A second
+# version number in the repository is one nobody bumps when packageManager
+# moves, and the release where they forget is the release that needed it.
+#
+# It has to be pnpm at all because esbuild fetches its platform binary in an
+# install script, and only pnpm-workspace.yaml says which install scripts may
+# run. Corepack ships inside Node, so asking it for the pinned pnpm needs
+# nothing installed -- and this first call is also what downloads it.
+
+# This may be running unattended, and a prompt nobody answers looks like a hang.
+$env:COREPACK_ENABLE_DOWNLOAD_PROMPT = '0'
+
+function Test-Pnpm {
+    param($NodePath)
+    $dir = Split-Path -Parent $NodePath
+    $corepack = Join-Path $dir 'corepack.cmd'
+    if (Test-Path -LiteralPath $corepack) { $kind = 'corepack' }
+    elseif (Get-Command pnpm -ErrorAction SilentlyContinue) { $kind = 'own' }
+    else { return $false }
+
+    $savedPath = $env:PATH
+    $savedPref = $ErrorActionPreference
+    # A native command writing to stderr -- which pnpm does, warnings and all --
+    # is an error to a 'Stop' preference, and turning down a perfectly good Node
+    # over a warning is the failure this check exists to prevent.
+    $ErrorActionPreference = 'Continue'
+    $env:PATH = "$dir;$env:PATH"
+    try {
+        if ($kind -eq 'corepack') { $version = & $corepack pnpm --version 2>$null }
+        else { $version = & pnpm --version 2>$null }
+    }
+    catch { $version = $null }
+    finally { $env:PATH = $savedPath; $ErrorActionPreference = $savedPref }
+
+    if ($LASTEXITCODE -ne 0 -or -not $version) { return $false }
+    $script:UseCorepack = ($kind -eq 'corepack')
+    $script:Corepack = $corepack
+    $script:PnpmVersion = ("$(@($version)[-1])").Trim()
+    return $true
+}
+
+foreach ($entry in $Ordered) {
+    if (Test-Pnpm $entry.Path) { $Node = $entry.Path; break }
+    Warn "Node $(& $entry.Path -v) satisfies this project's engines but cannot run its pnpm; looking for one that can."
 }
 
 # ---------------------------------------------------------------------------
@@ -95,7 +168,11 @@ if (-not $Node) {
 function Get-NodeRuntime {
     $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win-arm64' } else { 'win-x64' }
     $base = "https://nodejs.org/download/release/latest-v$NodeLine"
-    Say "No usable Node found. Fetching the current $NodeLine LTS build for $arch..."
+    if ($Ordered.Count) {
+        Say "No Node on this machine can build BetterSlack. Fetching the current $NodeLine LTS build for $arch..."
+    } else {
+        Say "No usable Node found. Fetching the current $NodeLine LTS build for $arch..."
+    }
 
     try { $sums = (Invoke-WebRequest -Uri "$base/SHASUMS256.txt" -UseBasicParsing).Content }
     catch { Die "could not reach nodejs.org to download Node: $_" }
@@ -128,35 +205,25 @@ function Get-NodeRuntime {
         if (-not (Test-Path -LiteralPath $script:Node)) { Die 'the Node archive unpacked without a usable binary.' }
         & $script:Node (Join-Path $Repo 'scripts\node-ok.cjs') | Out-Null
         if ($LASTEXITCODE -ne 0) { Die "the Node that was downloaded does not satisfy this project's engines." }
+        if (-not (Test-Pnpm $script:Node)) {
+            Die 'pnpm would not run even on a freshly downloaded Node. Corepack fetches it, so check the network.'
+        }
     }
     finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 if (-not $Node) { Get-NodeRuntime }
-Say "Node: $(& $Node -v) ($Node)"
-
-# ---------------------------------------------------------------------------
-# pnpm, from Corepack, at the version package.json pins
-# ---------------------------------------------------------------------------
-#
-# Corepack ships inside Node, so this needs nothing installed and gets the exact
-# pnpm named by packageManager. It has to be pnpm: esbuild fetches its platform
-# binary in an install script, and only pnpm-workspace.yaml says which install
-# scripts may run.
 
 $NodeDir = Split-Path -Parent $Node
 $env:PATH = "$NodeDir;$env:PATH"
-# This may be running unattended, and a prompt nobody answers looks like a hang.
-$env:COREPACK_ENABLE_DOWNLOAD_PROMPT = '0'
 
-$Corepack = Join-Path $NodeDir 'corepack.cmd'
-$UseCorepack = Test-Path -LiteralPath $Corepack
-if (-not $UseCorepack) {
-    if (Get-Command pnpm -ErrorAction SilentlyContinue) {
-        Warn 'Corepack is missing; falling back to the pnpm already on this machine.'
-    } else {
-        Die "neither Corepack nor pnpm is available. Corepack ships with Node -- try 'corepack enable'."
-    }
+Say "Node: $(& $Node -v) ($Node)"
+if ($UseCorepack) {
+    Say "pnpm: $PnpmVersion (Corepack)"
+} else {
+    # Not the pinned version, so say so rather than letting a lockfile mismatch
+    # surface later as an install error with no obvious cause.
+    Warn "Corepack is missing; using the pnpm already on this machine ($PnpmVersion) rather than the pinned one."
 }
 
 # A function rather than an array of command words: splatting the tail of a

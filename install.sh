@@ -53,20 +53,25 @@ need tar
 # package.json so this script has no version math in it.
 
 NODE=""
-NODE_KEY=0
+PNPM=""
+PNPM_KIND=""
+PNPM_VERSION=""
 
-consider() {
+# node-ok.cjs prints a sortable version key for a Node it accepts, and nothing
+# at all for one it does not.
+rank() {
   [ -n "${1:-}" ] && [ -x "$1" ] || return 0
   key="$("$1" "$REPO/scripts/node-ok.cjs" 2>/dev/null)" || return 0
   [ -n "$key" ] || return 0
-  if [ "$key" -gt "$NODE_KEY" ]; then NODE_KEY="$key"; NODE="$1"; fi
-  return 0
+  printf '%s %s\n' "$key" "$1"
 }
 
-# What the user's own shell would run comes first: if it qualifies, it is the
-# one they meant. Only then do we go rummaging, newest qualifying copy wins.
-consider "$(command -v node 2>/dev/null || true)"
-if [ -z "$NODE" ]; then
+# What the user's own shell would run comes first: if it can build this, it is
+# the one they meant. Everything else follows, newest qualifying copy first.
+# It has to be a *list* rather than a single winner, because satisfying engines
+# is not the whole of the question -- see pnpm_ok below.
+CANDIDATES="$(
+  rank "$(command -v node 2>/dev/null || true)"
   for candidate in \
     "$RUNTIME"/node/bin/node \
     "$HOME"/.nvm/versions/node/*/bin/node \
@@ -74,9 +79,71 @@ if [ -z "$NODE" ]; then
     "$HOME"/.local/share/fnm/node-versions/*/installation/bin/node \
     /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node
   do
-    consider "$candidate"
-  done
-fi
+    rank "$candidate"
+  done | sort -rn
+)"
+# The shell's own node is usually one of the copies found below it as well.
+CANDIDATES="$(printf '%s\n' "$CANDIDATES" | awk 'NF && !seen[$0]++')"
+
+# ---------------------------------------------------------------------------
+# ...and that can run the pnpm this project pins
+# ---------------------------------------------------------------------------
+#
+# packageManager names one exact pnpm, and that pnpm has a Node floor of its
+# own which is higher than the app's: pnpm 11 requires node:sqlite, which
+# arrived in Node 22.5, while engines.node still admits 20.19 because that is
+# all the loader and the tests need. "Satisfies engines" therefore does not mean
+# "can build this checkout", and the gap is not theoretical: measured on a Mac
+# whose shell node was 20.20.2, where this script announced that Node as usable
+# and the install then died with ERR_UNKNOWN_BUILTIN_MODULE out of pnpm's own
+# bundle -- with fourteen newer Nodes sitting unused under ~/.nvm.
+#
+# The check is to run pnpm rather than to write its floor down here. A second
+# version number in the repository is one nobody bumps when packageManager
+# moves, and the release where they forget is the release that needed it.
+#
+# It has to be pnpm at all because esbuild fetches its platform binary in an
+# install script, and only pnpm-workspace.yaml says which install scripts may
+# run. Corepack ships inside Node, so asking it for the pinned pnpm needs
+# nothing installed -- and this first call is also what downloads it, before
+# anything that matters depends on it being there.
+#
+# COREPACK_ENABLE_DOWNLOAD_PROMPT=0 because this may be running unattended, and
+# a prompt nobody answers looks exactly like a hang.
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
+pnpm_ok() {
+  bin="$(dirname "$1")"
+  if [ -x "$bin/corepack" ]; then
+    kind=corepack; cmd="$bin/corepack pnpm"
+  elif command -v corepack >/dev/null 2>&1; then
+    kind=corepack; cmd="corepack pnpm"
+  elif command -v pnpm >/dev/null 2>&1; then
+    kind=own; cmd="pnpm"
+  else
+    return 1
+  fi
+  version="$(PATH="$bin:$PATH" $cmd --version 2>/dev/null)" || return 1
+  [ -n "$version" ] || return 1
+  PNPM="$cmd"
+  PNPM_KIND="$kind"
+  PNPM_VERSION="$version"
+}
+
+# Positional parameters rather than a loop over an unquoted expansion: the
+# splitting has to be on newlines, since a home directory may contain a space,
+# and IFS cannot stay that way while the loop is running commands of its own.
+saved_ifs="$IFS"
+IFS='
+'
+set -- $CANDIDATES
+IFS="$saved_ifs"
+
+for entry in "$@"; do
+  candidate="${entry#* }"
+  if pnpm_ok "$candidate"; then NODE="$candidate"; break; fi
+  warn "Node $("$candidate" -v) satisfies this project's engines but cannot run its pnpm; looking for one that can."
+done
 
 # ---------------------------------------------------------------------------
 # ...or one fetched, checksummed, and kept to ourselves
@@ -98,7 +165,11 @@ download_node() {
   esac
 
   base="https://nodejs.org/download/release/latest-v$NODE_LINE"
-  say "No usable Node found. Fetching the current $NODE_LINE LTS build for $slug..."
+  if [ -n "$CANDIDATES" ]; then
+    say "No Node on this machine can build BetterSlack. Fetching the current $NODE_LINE LTS build for $slug..."
+  else
+    say "No usable Node found. Fetching the current $NODE_LINE LTS build for $slug..."
+  fi
 
   sums="$(curl -fsSL --retry 3 "$base/SHASUMS256.txt")" \
     || die "could not reach nodejs.org to download Node."
@@ -131,39 +202,23 @@ download_node() {
   [ -x "$NODE" ] || die "the Node archive unpacked without a usable binary."
   "$NODE" "$REPO/scripts/node-ok.cjs" >/dev/null \
     || die "the Node that was downloaded does not satisfy this project's engines."
+  pnpm_ok "$NODE" \
+    || die "pnpm would not run even on a freshly downloaded Node. Corepack fetches it, so check the network."
 }
 
 [ -n "$NODE" ] || download_node
-say "Node: $("$NODE" -v) ($NODE)"
-
-# ---------------------------------------------------------------------------
-# pnpm, from Corepack, at the version package.json pins
-# ---------------------------------------------------------------------------
-#
-# Corepack ships inside Node, so this needs nothing installed and gets the exact
-# pnpm named by packageManager rather than whichever one is on the machine. It
-# has to be pnpm: esbuild fetches its platform binary in an install script, and
-# only pnpm-workspace.yaml says which install scripts may run.
-#
-# COREPACK_ENABLE_DOWNLOAD_PROMPT=0 because this may be running unattended, and
-# a prompt nobody answers looks exactly like a hang.
 
 NODE_BIN="$(dirname "$NODE")"
 PATH="$NODE_BIN:$PATH"
 export PATH
-export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
-if [ -x "$NODE_BIN/corepack" ]; then
-  PNPM="$NODE_BIN/corepack pnpm"
-elif command -v corepack >/dev/null 2>&1; then
-  PNPM="corepack pnpm"
-elif command -v pnpm >/dev/null 2>&1; then
+say "Node: $("$NODE" -v) ($NODE)"
+if [ "$PNPM_KIND" = corepack ]; then
+  say "pnpm: $PNPM_VERSION (Corepack)"
+else
   # Not the pinned version, so say so rather than letting a lockfile mismatch
   # surface later as an install error with no obvious cause.
-  warn "Corepack is missing; falling back to the pnpm already on this machine ($(pnpm --version))."
-  PNPM="pnpm"
-else
-  die "neither Corepack nor pnpm is available. Corepack ships with Node -- try 'corepack enable'."
+  warn "Corepack is missing; using the pnpm already on this machine ($PNPM_VERSION) rather than the pinned one."
 fi
 
 say "Installing build dependencies..."

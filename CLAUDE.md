@@ -113,6 +113,19 @@ three launchers. Two rules shape it:
   told it is old. Verified against Node 14, 18, 20.18, 22.23 and 23.6 on one
   machine: only 22.23 was accepted, which is what `engines` says.
 
+**Passing that judge is not enough to *build* the checkout, and the two
+installers check the second half by running it.** `packageManager` names one
+exact pnpm, and that pnpm has a Node floor of its own which is higher than the
+app's: pnpm 11 requires `node:sqlite`, added in Node 22.5, while `engines.node`
+still admits 20.19 because that is all the loader and the tests need. Measured
+on a Mac whose shell node was 20.20.2 -- announced as usable, then
+`ERR_UNKNOWN_BUILTIN_MODULE` out of pnpm's own bundle at the install step, with
+fourteen newer Nodes sitting unused under `~/.nvm`. So the installers rank
+*every* qualifying Node (the shell's first, then newest first) and take the
+first one that can print `pnpm --version`, falling back to downloading one.
+Writing pnpm's floor down beside `engines` instead would be a second number
+nobody bumps when `packageManager` moves.
+
 **A Node that is downloaded is verified before it is unpacked.**
 `nodejs.org/download/release/latest-v22.x/SHASUMS256.txt` names the exact file
 and its digest in one request, so no version is pinned in a script to go stale
