@@ -1361,6 +1361,18 @@ cannot exist without a version.
   Declaring `needsBetterSlack` covers that gap; `validate-mods` fails a
   declaration below the computed floor, naming the calls responsible.
 
+**The registry a client reads can lag a release by a few minutes, and that is
+GitHub rather than a bug.** `raw.githubusercontent.com` serves it with
+`max-age=300` and `vary: Accept-Encoding`, so the gzip copy and the identity
+copy are separate cache entries that expire independently -- and Node's `fetch`
+always asks for compression while `curl` without `--compressed` does not.
+Measured minutes after 3.0.0 was tagged: `curl` read `3.0.0` and every Node
+fetch read `unreleased` from the same URL, until the compressed entry caught up
+20 seconds later. It fails in the safe direction -- a mod is refused, never
+wrongly allowed -- and it corrects itself, so it is not worth defeating the
+cache for. Do not debug it as a fetch problem: compare `curl` and `curl
+--compressed` before suspecting the code.
+
 **The catalogue itself is never at risk**, and that is worth knowing before
 looking for bugs here: `mods/` ships inside the install, so a catalogue mod
 always matches the app it came with. The mismatch exists only along the
