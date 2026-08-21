@@ -1136,7 +1136,7 @@ if (api.slack.desktop.needsRestart('windowVibrancy')) await api.slack.restart();
     <p class="eyebrow">api.slack</p>
     <h1><code>emojiUrl</code></h1>
     <p class="api-sig api-sig--big">(name: string, customEmoji?: Map&lt;string, string&gt;): string | null</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.0.0</p>
   </header>
   <div class="panel__body">
     <p>An image for an emoji name, or <code>null</code> when nothing can draw it. The colons are optional — <code>tada</code> and <code>:tada:</code> are the same question.</p>
@@ -1231,7 +1231,7 @@ api.slack.openConversation('C0BFQCYBRAB');</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>openMessage</code></h1>
     <p class="api-sig api-sig--big">(channelId: string, ts: string, options?: { team?: string }): void</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.0.0</p>
   </header>
   <div class="panel__body">
     <p>Move the client to one message, and highlight it. The same deep link <code>openConversation</code> uses, with the message's timestamp on it: Slack routes it in place and flashes the message it lands on, the way its own search results do.</p>

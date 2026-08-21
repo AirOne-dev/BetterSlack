@@ -4,6 +4,78 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.0.0 — 2026-08-21
+
+Installing BetterSlack is one script now, and a mod can say which BetterSlack
+it needs.
+
+Nothing in the plugin API changed: `betterslackApi` is still 1, and no method
+was removed or renamed. The major number is about the front door — where an
+install lives and how you get one.
+
+### Installing
+
+- **`./install.sh` on macOS and Linux, `install.ps1` on Windows.** Clone the
+  repository, run it, done. Nothing has to be installed first — not Node, not
+  pnpm. If the machine has no Node recent enough, the installer fetches the
+  current LTS from nodejs.org, checks it against the digest published beside it,
+  and keeps it to itself: nothing is added to your `PATH` and no other project
+  sees it.
+- **An install lives in `~/.betterslack/app` and weighs about 6 MB.** It does not
+  refer back to the clone, so the clone can be deleted once the installer has
+  run. Keep it only to work on BetterSlack itself.
+- **Linux and Windows have launchers at last.** Linux gets an applications-menu
+  entry and a `betterslack` command; Windows gets a Start menu shortcut, plus a
+  `.cmd` to run from a terminal when you want to watch it work. Everything is
+  written under your home directory.
+- **`pnpm build-app` is gone.** The installer builds the macOS app itself. Every
+  remaining `pnpm` command is for working on BetterSlack, not for using it.
+- Updating is running the installer again. Uninstalling is deleting
+  `~/.betterslack` and the launcher.
+
+### Mods say which BetterSlack they need
+
+- **Worked out from the API a mod calls**, not written down and forgotten. Every
+  entry in the reference now records the release it arrived in, and a mod's
+  floor is the highest of the ones it touches.
+- **An update that needs a newer BetterSlack is refused, and says so** — naming
+  the version wanted and the version you have. A mod updates itself out of the
+  catalogue into whatever version you are running, so before this a mod that
+  started calling something new simply broke on the first click, with an error
+  that read as "this plugin is broken".
+- **`slackVersion` is compared.** Every mod declared the Slack it was written
+  against and nothing ever read it. A mod's page now says so when it names a
+  Slack newer than the one running — and says nothing where the running version
+  cannot be read honestly, rather than inventing a mismatch.
+
+### Fixed
+
+- **The macOS app could do nothing at all when you double-clicked it.** It ran
+  the first `node` on the launcher's `PATH`, which on a machine with nvm is
+  whatever `default` points at — frequently a version too old to parse
+  BetterSlack, which then died on a syntax error into a log file nothing puts on
+  screen. A Node is chosen by version now, and when none is suitable you get a
+  dialog naming what is needed instead of silence.
+- **BetterSlack reported version 2.0.0 whatever it was.** The number was a
+  constant `pnpm release` never touched, and the update check compares it
+  against the published one: it announced an update permanently, and installing
+  that update could never clear it.
+- **A failed update no longer gives its entire command line as the reason**, and
+  it puts a working copy in place rather than refusing when the version being
+  moved to predates the new install layout.
+- **Instructions naming commands that do not exist**: the launcher's own dialog
+  pointed at `pnpm build-app --install`, `pnpm new-mod` ended by telling authors
+  to run `pnpm test:mod`, which has never been a script, and an install with no
+  source tree was told to rebuild itself.
+
+### Upgrading from 2.x
+
+- Run `./install.sh` once. An app bundle built the old way keeps working from
+  its checkout, but the checkout-anchored layout is no longer what anything
+  describes, and the installer replaces it in place.
+- If you scripted `pnpm build-app`, call `./install.sh` instead.
+- Mods need no changes.
+
 ## 2.1.0 — 2026-08-19
 
 ### Added

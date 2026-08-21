@@ -261,7 +261,7 @@
           }
         }
       ],
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.0.0",
       "path": "plugins/command-palette"
     },
     {

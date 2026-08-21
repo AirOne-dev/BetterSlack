@@ -70,13 +70,13 @@ from exactly these numbers and what the mod calls.
 - [`describeMessage`](api/slack-describemessage.md) — Everything about a message that a mod usually wants, read off the element Slack drew: its channel, its timestamp, its permalink and its text. _(since 2.0.1)_
 - [`describeStatus`](api/slack-describestatus.md) — Somebody's status, ready to draw: the sentence, the emoji name without its colons, an image for that emoji when one could be found, and when it clears. Null when there is no status at all, so a caller can test the result rather than three fields. _(since 2.1.0)_
 - [`desktop`](api/slack-desktop.md) — Slack's own translucent window, which it ships switched off. _(since 2.0.1)_
-- [`emojiUrl`](api/slack-emojiurl.md) — An image for an emoji name, or `null` when nothing can draw it. The colons are _(unreleased)_
+- [`emojiUrl`](api/slack-emojiurl.md) — An image for an emoji name, or `null` when nothing can draw it. The colons are _(since 3.0.0)_
 - [`filesFrom`](api/slack-filesfrom.md) — The files somebody shared, newest first. `limit` caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw. _(since 2.0.1)_
 - [`hideConversation`](api/slack-hideconversation.md) — Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave. _(since 2.0.1)_
 - [`onProfilePane`](api/slack-onprofilepane.md) — Run a handler each time a profile pane appears, with the pane and the user id it is showing. Mount per pane rather than once: a single mount fills whichever profile it reaches first and starves the other. _(since 2.0.1)_
 - [`openConversation`](api/slack-openconversation.md) — Move the client to a conversation, without a page load. _(since 2.0.1)_
 - [`openDirectMessage`](api/slack-opendirectmessage.md) — Open the direct message with someone, creating it if there is none. _(since 2.0.1)_
-- [`openMessage`](api/slack-openmessage.md) — Move the client to one message, and highlight it. The same deep link _(unreleased)_
+- [`openMessage`](api/slack-openmessage.md) — Move the client to one message, and highlight it. The same deep link _(since 3.0.0)_
 - [`openStatusEditor`](api/slack-openstatuseditor.md) — Slack's own "set a status" dialog. There is no deep link for it and no action a mod can dispatch: the entry lives in the account menu, so this opens the menu and then presses it. _(since 2.1.0)_
 - [`openUserProfile`](api/slack-openuserprofile.md) — Open somebody's profile, through Slack's own deep link — same document, no reload. Not every id has one: an app, or a conversation with yourself, gives a pane that never appears. _(since 2.0.1)_
 - [`restart`](api/slack-restart.md) — Stop Slack and start it again, with the loader still driving. _(since 2.0.1)_
