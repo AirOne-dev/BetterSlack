@@ -108,9 +108,17 @@ export class StyleManager {
   /**
    * Anchors that keep the layers in a stable order even though Slack appends
    * its own <style> tags to <head> at arbitrary times.
+   *
+   * Null before the document has a head. The runtime is injected at
+   * document-start, so that is a real state and not a defensive gesture:
+   * reading `querySelector` off it threw, the whole bundle failed at boot, and
+   * the mods arrived through the loader's re-injection instead -- against a DOM
+   * Slack had already half built, which is where both renderer freezes came
+   * from. It was silent because that fallback works.
    */
-  private anchorFor(layer: Layer): HTMLElement {
+  private anchorFor(layer: Layer): HTMLElement | null {
     const head = document.head;
+    if (!head) return null;
     let anchor = head.querySelector<HTMLElement>(`meta[${ATTR}-anchor="${layer}"]`);
     if (anchor) return anchor;
     anchor = document.createElement('meta');
@@ -122,6 +130,38 @@ export class StyleManager {
       if (node) head.append(node);
     }
     return anchor;
+  }
+
+  /** Layers whose stylesheets were written before there was a head to hold them. */
+  private waiting = new Map<string, Layer>();
+  private watcher: MutationObserver | null = null;
+
+  /**
+   * Hold a stylesheet until there is a document to put it in, then place it
+   * through the ordinary anchor path so the layer order still holds.
+   *
+   * `document.documentElement` is itself null this early, and the Document node
+   * is observable -- it sees <html> arrive -- which is the same fallback
+   * `waitForClient` and `dom.waitFor` take.
+   */
+  private attachWhenReady(layer: Layer, key: string): void {
+    this.waiting.set(key, layer);
+    if (this.watcher) return;
+    const flush = (): boolean => {
+      if (!document.head) return false;
+      for (const [pending, pendingLayer] of this.waiting) {
+        const node = this.nodes.get(pending);
+        if (!node || this.suppressed.has(pendingLayer)) continue;
+        this.anchorFor(pendingLayer)?.before(node);
+      }
+      this.waiting.clear();
+      this.watcher?.disconnect();
+      this.watcher = null;
+      return true;
+    };
+    if (flush()) return;
+    this.watcher = new MutationObserver(() => { flush(); });
+    this.watcher.observe(document.documentElement ?? document, { childList: true, subtree: true });
   }
 
   set(layer: Layer, id: string, css: string): void {
@@ -139,7 +179,8 @@ export class StyleManager {
     }
     // Insert just before the *next* layer's anchor so ordering holds.
     const anchor = this.anchorFor(layer);
-    anchor.before(node);
+    if (anchor) anchor.before(node);
+    else this.attachWhenReady(layer, key);
   }
 
   /**
@@ -162,7 +203,7 @@ export class StyleManager {
     }
     this.suppressed.delete(layer);
     for (const [key, node] of this.nodes) {
-      if (key.startsWith(`${layer}:`)) this.anchorFor(layer).before(node);
+      if (key.startsWith(`${layer}:`)) this.anchorFor(layer)?.before(node);
     }
   }
 
@@ -191,7 +232,7 @@ export class StyleManager {
       // A suppressed layer is detached on purpose; putting it back here would
       // undo the suppression on the next thing Slack does to <head>.
       if (this.suppressed.has(layer)) continue;
-      this.anchorFor(layer).before(node);
+      this.anchorFor(layer)?.before(node);
     }
   }
 

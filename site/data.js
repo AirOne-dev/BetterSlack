@@ -328,7 +328,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Une colonne des membres du canal courant à droite du fil, séparée entre en ligne et hors ligne, où cliquer sur quelqu'un ouvre son profil Slack."
       },
-      "version": "1.6.0",
+      "version": "1.6.1",
       "tags": [
         "members",
         "sidebar",

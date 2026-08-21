@@ -827,3 +827,56 @@ test('a dragged width is clamped, and written once at the end', async () => {
     dom.cleanup();
   }
 });
+
+test('stays out of the views that are not conversations', async () => {
+  /*
+   * Repertoires, Fils de discussion, Brouillons et envoyes and Appels d'equipe
+   * all render into `.p-view_contents--primary`, and unlike a channel they
+   * stack a header above their content in it. The column used to mount there
+   * anyway -- `currentChannelId()` answers with any message Slack has drawn,
+   * and those views draw plenty -- and the stylesheet then laid the header and
+   * the content side by side. Measured on Repertoires: a 52px header became a
+   * 1631px column down the left, with 243px of content beside it.
+   */
+  const dom = installDom();
+  const stub = web();
+  const { api, recorded } = createApi({ web: stub.web });
+  try {
+    dom.dom.reconfigure({ url: 'https://app.slack.com/client/T0EXAMPLE1/later' });
+    await plugin.start(api);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const column = document.getElementById('betterslack-member-column');
+    assert.ok(column, 'it still mounts, so nothing has to be remounted on the way back');
+    assert.equal(column.hidden, true, 'and it is hidden, which is what the stylesheet keys off');
+    assert.equal(
+      stub.calls.filter((c) => c.method === 'conversations.members').length,
+      0,
+      'and Slack is not asked for the members of a route -- `LATER` is not a channel',
+    );
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('the side-by-side layout travels with the column, not with the mod', () => {
+  // Unconditional, `flex-direction: row` on that pane is the single line that
+  // broke four of Slack's own views. Both rules have to be scoped to a pane
+  // that is actually holding a visible column.
+  const css = FILES['column.css'];
+  const rows = css.match(/^\.p-view_contents--primary[^\n{]*/gm) ?? [];
+  assert.ok(rows.length >= 2, 'the pane is still laid out');
+  for (const selector of rows) {
+    assert.match(
+      selector,
+      /:has\(> #betterslack-member-column:not\(\[hidden\]\)\)/,
+      `unscoped rule on the primary pane: ${selector.trim()}`,
+    );
+  }
+  assert.match(
+    css,
+    /#betterslack-member-column\[hidden\] \{ display: none !important; \}/,
+    'and hidden has to beat the display flex the column sets on itself',
+  );
+});

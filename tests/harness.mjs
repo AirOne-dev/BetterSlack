@@ -435,8 +435,10 @@ export function createTestApi({
       currentChannelId: () => {
         const drawn = document.querySelector('[data-qa="message_container"][data-msg-channel-id]');
         if (drawn) return drawn.getAttribute('data-msg-channel-id').toUpperCase();
-        const match = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i);
-        return match ? match[1].toUpperCase() : null;
+        // Case-sensitive, like the runtime: Slack's other views are lowercase
+        // routes, and matching them answered `LATER` as though it were a channel.
+        const match = location.pathname.match(/\/client\/[^/]+\/([CDG][A-Z0-9]{2,})(?:\/|$)/);
+        return match ? match[1] : null;
       },
       currentTeamId: () => {
         const fromUrl = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i)?.[1] ?? null;

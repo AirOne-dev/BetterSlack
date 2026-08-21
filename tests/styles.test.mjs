@@ -108,3 +108,47 @@ test('a mod using both keeps both, which is what the bug was', async () => {
     assert.ok(sheets.plugin.includes('betterslack-fixture-indicator'), 'and really does draw its indicator');
   });
 });
+
+test('a stylesheet written before the document has a head is not lost', async () => {
+  /*
+   * The runtime is injected at document-start, so `document.head` is genuinely
+   * null there -- and reading `querySelector` off it threw, which took the
+   * whole bundle down at evaluation. It was silent because the loader's
+   * re-injection fallback works: the mods arrived anyway, against a DOM Slack
+   * had already half built, which is exactly where both renderer freezes came
+   * from. Seen twice in four launches of a real client.
+   */
+  const dom = new JSDOM('<!doctype html><html></html>');
+  const { document: doc } = dom.window;
+  doc.documentElement.remove();
+  // MutationObserver as well as the document: this is the one path in
+  // StyleManager that has to wait for the page to arrive, so it is the one that
+  // needs it.
+  const keys = ['document', 'window', 'MutationObserver'];
+  const previous = keys.map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]);
+  for (const key of keys) {
+    Object.defineProperty(globalThis, key, { value: dom.window[key] ?? dom.window, configurable: true, writable: true });
+  }
+  try {
+    const styles = new StyleManager();
+    // No head, no documentElement: the state the document-start script sees.
+    assert.equal(doc.head, null, 'the fixture really is a document with no head');
+    styles.set('plugin', 'fixture', '.betterslack-fixture { color: red }');
+
+    // Slack's own markup arrives, the way it does a moment later.
+    const html = doc.createElement('html');
+    html.append(doc.createElement('head'), doc.createElement('body'));
+    doc.append(html);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const node = doc.head.querySelector('style[data-betterslack-style="plugin:fixture"]');
+    assert.ok(node, 'the stylesheet lands once there is a head to land in');
+    assert.match(node.textContent, /betterslack-fixture/);
+  } finally {
+    for (const [key, descriptor] of previous) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+    dom.window.close();
+  }
+});

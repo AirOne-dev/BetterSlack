@@ -421,6 +421,7 @@
   var MESSAGE = '[data-qa="message_container"]';
   var COMPOSER_EDITOR = ".ql-editor";
   var COMPOSER = '[data-qa="message_input"]';
+  var CONVERSATION_ROUTE = /\/client\/[^/]+\/([CDG][A-Z0-9]{2,})(?:\/|$)/;
   var TOOLBARS = {
     /** Bottom strip of the rail: "Créer un nouveau", focus mode, avatar. */
     controlStrip: {
@@ -817,7 +818,7 @@
         message.element.querySelector(".c-message_kit__avatar img, .c-avatar img")?.src
       ),
       currentChannelId: () => {
-        const fromUrl = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i)?.[1]?.toUpperCase() ?? null;
+        const fromUrl = location.pathname.match(CONVERSATION_ROUTE)?.[1] ?? null;
         return drawnChannelId()?.toUpperCase() ?? fromUrl;
       },
       currentTeamId: () => currentTeamId(),

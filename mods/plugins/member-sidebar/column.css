@@ -4,9 +4,32 @@
  * template literal, so it is a real stylesheet an editor can highlight. The ids
  * are spelled out here and declared in index.js; keep the two in step.
  */
-/* The pane is a column of one child; making it a row leaves room beside it. */
-.p-view_contents--primary { flex-direction: row !important; }
-.p-view_contents--primary > div:not(#betterslack-member-column) { flex: 1 1 auto; min-width: 0; }
+/*
+ * The pane is a column of one child; making it a row leaves room beside it.
+ *
+ * Both rules are scoped to a pane that is actually holding the column, and the
+ * column hides itself outside a conversation. Unconditional, they were the one
+ * line that broke four of Slack's own views: Repertoires, Fils de discussion,
+ * Brouillons et envoyes and Appels d'equipe all stack a header *above* their
+ * content in this same pane, and a row lays the two side by side. Measured on
+ * Repertoires in a 2560-wide window: the 52px header became a 1631px-wide
+ * column down the left with the content squeezed into 243px beside it.
+ *
+ * So the layout travels with the column rather than with the mod being on --
+ * `:has()` is what makes that possible, and it is a hard requirement here.
+ */
+.p-view_contents--primary:has(> #betterslack-member-column:not([hidden])) {
+  flex-direction: row !important;
+}
+.p-view_contents--primary:has(> #betterslack-member-column:not([hidden]))
+  > div:not(#betterslack-member-column) { flex: 1 1 auto; min-width: 0; }
+
+/*
+ * The column sets display flex below, which beats the browser's own rule for
+ * the hidden attribute -- so hiding it takes a rule of its own or it stays on
+ * screen as a 250px empty strip in every view that has no members.
+ */
+#betterslack-member-column[hidden] { display: none !important; }
 
 #betterslack-member-column {
   /* Overridden inline once a width has been dragged or restored. */

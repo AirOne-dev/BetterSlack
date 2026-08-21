@@ -46,6 +46,24 @@ import { STRINGS } from './strings.js';
 // Also spelled out in column.css, which cannot interpolate.
 const COLUMN_ID = 'betterslack-member-column';
 
+/**
+ * Is the client showing a conversation at all?
+ *
+ * A different question from `api.slack.currentChannelId()`, which answers
+ * *which* one and falls back to any message Slack has drawn. Fils de
+ * discussion, Brouillons et envoyes and Activite all draw messages belonging to
+ * a dozen channels, so that fallback says "a channel" in a view that has none,
+ * and the column mounted into every one of them.
+ *
+ * The address answers this honestly even at a cold start, when it is still
+ * naming the workspace the user left: the id may be stale, but the shape of the
+ * view is not. Slack's own views are lowercase routes -- `later`, `dms`,
+ * `activity-inbox` -- and a conversation is an uppercase C, D or G id, so the
+ * pattern is case-sensitive on purpose.
+ */
+const CONVERSATION_ROUTE = /\/client\/[^/]+\/[CDG][A-Z0-9]{2,}(?:\/|$)/;
+const inConversation = () => CONVERSATION_ROUTE.test(location.pathname);
+
 /** Members to render at most. Slack pages `conversations.members` beyond this. */
 const MEMBER_LIMIT_DEFAULT = 100;
 
@@ -813,7 +831,11 @@ export default {
        */
       const list = api.dom.h('div', { class: 'betterslack-members__list' });
       column.append(makeResizer(column), list);
-      const channel = currentChannelId();
+      // Hidden until the view is known to be a conversation. The stylesheet
+      // keys the whole side-by-side layout off this attribute, so a column that
+      // mounts into Repertoires costs nothing and changes nothing.
+      column.hidden = !inConversation();
+      const channel = inConversation() ? currentChannelId() : null;
       if (channel) void render(list, channel);
       return column;
     });
@@ -823,6 +845,39 @@ export default {
     // MutationObserver on the header it would otherwise take.
     let seenTeam = currentTeamId();
     let seen = currentChannelId();
+
+    /*
+     * Show or hide the column for the view the client is on, and say whether
+     * there is a conversation to list.
+     *
+     * Separate from the channel check below, and always ahead of it: leaving a
+     * conversation for Fils de discussion does not necessarily change what
+     * `currentChannelId()` answers -- that view draws messages, and the drawn
+     * channel is what the runtime reads -- so an early return on "same channel"
+     * would leave the column, and with it the side-by-side layout, in a view
+     * that has no members.
+     */
+    const syncView = () => {
+      const here = inConversation();
+      const column = document.getElementById(COLUMN_ID);
+      if (column) column.hidden = !here;
+      // So that coming back redraws, rather than trusting a list left behind.
+      if (!here) seen = null;
+      return here;
+    };
+
+    /*
+     * The Navigation API fires 40ms before Slack repaints, where a poll notices
+     * after it has finished -- so the column goes with the view instead of a
+     * second late, which on these views is a second of Slack's own header laid
+     * down the left. The poll below is the fallback and the backstop.
+     */
+    const nav = typeof window === 'undefined' ? null : window.navigation;
+    if (typeof nav?.addEventListener === 'function') {
+      nav.addEventListener('currententrychange', syncView);
+      api.onDispose(() => nav.removeEventListener('currententrychange', syncView));
+    }
+
     const watcher = api.helpers.poll(() => {
       const team = currentTeamId();
       if (team !== seenTeam) {
@@ -841,10 +896,11 @@ export default {
         // URL, and then nothing below would notice anything had changed.
         seen = null;
       }
+      if (!syncView()) return;
+      const column = document.getElementById(COLUMN_ID);
       const channel = currentChannelId();
       if (channel === seen) return;
       seen = channel;
-      const column = document.getElementById(COLUMN_ID);
       const list = column?.querySelector('.betterslack-members__list');
       if (list && channel) void render(list, channel);
     }, 1000);

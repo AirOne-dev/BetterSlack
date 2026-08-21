@@ -766,6 +766,23 @@ tests fail below it.
   nothing else. `api.slack.currentChannelId()` prefers the drawn channel the
   same way. **No mod should parse that URL itself**; three did, and all three
   were wrong at boot.
+
+  **A route is not a channel, and the pattern has to be case-sensitive.** The
+  third segment is a conversation id only when it is an uppercase `C`, `D` or
+  `G` id; Slack's own views are lowercase words -- `later`, `dms`,
+  `activity-inbox`, `unified-files`, `platform`, `threads`. Read with a
+  case-insensitive `[A-Z0-9]+` they all came back as channels, so
+  `currentChannelId()` answered `LATER`, and the member column asked Slack for
+  the members of it on every one of those views and logged `channel_not_found`
+  each time. `tests/slack-routes.test.mjs` holds the runtime and the harness to
+  the same pattern.
+
+  **"Which conversation" and "is this a conversation at all" are two
+  questions.** The drawn-channel fallback answers the first and must not be
+  asked the second: Fils de discussion, Brouillons et envoyés and Activité all
+  draw messages belonging to a dozen channels, so it says "a channel" in a view
+  that has none. The address answers the second honestly even at a cold start --
+  the id may be stale, but the shape of the view is not.
 - **Switching workspace does not reload the client.** Same page, same mods,
   same api objects, new team id in the URL. Anything a mod cached at boot then
   belongs to the workspace the user has left. `web-api.ts` keys its config on
@@ -864,7 +881,17 @@ tests fail below it.
 - **`.p-client_workspace__tabpanel` is a named-area grid** (`"…--sidebar
   …--primary"`) whose column widths carry the resizable sidebar. Do not override
   its template. To add a column, flip `.p-view_contents--primary` to
-  `flex-direction: row` and append to it.
+  `flex-direction: row` and append to it -- **scoped to a pane that is actually
+  holding your column**, with `:has(> #your-column:not([hidden]))`. That pane is
+  not only the conversation: Répertoires, Fils de discussion, Brouillons et
+  envoyés and Appels d'équipe all render into it, and unlike a channel they
+  stack a header *above* their content. Unconditional, that one line laid the
+  header down the left of each of them -- measured on Répertoires in a
+  2560-wide window, a 52px header became a 1631px column with 243px of content
+  beside it, which is four of Slack's own views broken by a mod that only ever
+  meant to touch channels. `:has()` is supported in Slack 4.51 (measured:
+  `CSS.supports('selector(:has(> div))')` is true), so the layout can travel
+  with the column rather than with the mod being switched on.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
 - **`.p-resizer` is Slack's drag handle, and it can be borrowed.** Measured on
@@ -1284,6 +1311,15 @@ fixed: `waitForClient` and `dom.waitFor` both called
 `observer.observe(document.documentElement, …)`, which throws on `null` for the
 same reason. Both now observe `document.documentElement ?? document` -- the
 Document node is observable and sees `<html>` itself arrive.
+
+There is a third, and it is `document.head`: `StyleManager.anchorFor` read
+`querySelector` off it, which is `null` at document-start, so `boot()` threw
+before a single stylesheet was written -- seen twice in four launches of a real
+client, printed as `boot failed TypeError` and then covered up by the same
+re-injection fallback. `set()` now holds the node and attaches it through the
+ordinary anchor path once a head exists, so the layer order still holds.
+`tests/styles.test.mjs` builds a document with no `documentElement` at all and
+watches the stylesheet land.
 
 Build translators, read attributes and observe elements lazily or defensively;
 assume nothing on the page exists yet.

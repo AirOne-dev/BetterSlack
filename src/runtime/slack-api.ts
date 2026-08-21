@@ -22,6 +22,20 @@ const COMPOSER_EDITOR = '.ql-editor';
 const COMPOSER = '[data-qa="message_input"]';
 
 /**
+ * A conversation in the address bar, and only a conversation.
+ *
+ * The pattern is deliberately case-sensitive. Slack's other views are routes
+ * spelled in lowercase words -- `/client/T.../later`, `/dms`,
+ * `/activity-inbox`, `/unified-files`, `/platform` -- and a case-insensitive
+ * `[A-Z0-9]+` matched every one of them, so `currentChannelId()` answered
+ * `LATER` and `DMS` as though they were channels. Measured: the member column
+ * asked Slack for the members of `PLATFORM` on every one of those views and
+ * logged `channel_not_found` each time. A conversation id is an uppercase
+ * `C`, `D` or `G` followed by more of the same, which no route can be.
+ */
+const CONVERSATION_ROUTE = /\/client\/[^/]+\/([CDG][A-Z0-9]{2,})(?:\/|$)/;
+
+/**
  * The three other places a mod can put a button, with the Slack button classes
  * that make it look native in each. Anchoring on `data-qa` where possible.
  *
@@ -918,8 +932,7 @@ export function createSlackApi(pluginId: string): SlackApi {
        * drawn yet, and while the two agree it makes no difference which is
        * read.
        */
-      const fromUrl = location.pathname.match(/\/client\/[^/]+\/([A-Z0-9]+)/i)?.[1]?.toUpperCase()
-        ?? null;
+      const fromUrl = location.pathname.match(CONVERSATION_ROUTE)?.[1] ?? null;
       return drawnChannelId()?.toUpperCase() ?? fromUrl;
     },
     currentTeamId: () => currentTeamId(),
