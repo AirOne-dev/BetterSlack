@@ -1311,16 +1311,17 @@ A mod carries its own version, and `mod-updates.ts` compares the installed ones
 against `mods/registry.json` on the default branch. Updating one fetches its
 folder through GitHub's contents API and goes through the same install path the
 Browse shelf uses, which re-validates the manifest loader-side -- files off the
-network are untrusted whichever button asked for them. Before this, a one-line
-fix to a theme meant pulling the loader and the runtime with it.
+network are untrusted whichever button asked for them. That separation is the
+whole point: without it, a one-line fix to a theme means pulling the loader and
+the runtime along with it.
 
 ## The panel speaks both languages
 
 `ui/strings.ts` is the panel's dictionary and `tests/i18n.test.mjs` holds it to
 the rule mods are held to: en and fr must cover the same keys, everything the
 panel asks for must exist, and a bare English sentence left in `panel.ts` fails
-the test. It was English-only until now, around mods that were required to be
-bilingual.
+the test. The panel is held to it because mods are: an app that asks every mod
+for two languages and ships one itself is not a rule, it is a preference.
 
 **The palette is a mod, not the app.** `mods/plugins/command-palette` binds the
 shortcut and assembles the list; the runtime only provides the component

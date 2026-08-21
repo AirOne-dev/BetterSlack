@@ -31,8 +31,8 @@ static void explain(void) {
         "display alert \"BetterSlack\" message "
         "\"BetterSlack cannot read its own files, because it is inside a folder macOS "
         "protects: the Desktop, Documents or Downloads.\" & return & return & "
-        "\"Move BetterSlack.app to your Applications folder and open it from there — "
-        "pnpm build-app --install does that for you.\"",
+        "\"Move BetterSlack.app to your Applications folder and open it from there, "
+        "or run install.sh again from the repository, which puts it there for you.\"",
         (char *)NULL);
 }
 

@@ -175,7 +175,7 @@ Created ${rel}
 
 Next:
   pnpm registry                 # add it to the catalogue, and commit that
-  pnpm test:mod ${id}
+  pnpm test -- ${id}
   pnpm check-structure ${id}
   pnpm start                    # then install it from the Browse shelf
 `);

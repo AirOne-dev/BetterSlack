@@ -243,7 +243,7 @@ async function unpackUpdate({ root, repo, branch }: ApplyOptions): Promise<Updat
      * PATH -- which an install that fetched its own Node has no reason to have.
      */
     const replacement = (await isStagedInstall(root))
-      ? await stageFrom(fresh, work, env)
+      ? (await stageFrom(fresh, work, env)) ?? fresh
       : fresh;
 
     await fs.rm(previous, { recursive: true, force: true });
@@ -264,7 +264,14 @@ async function unpackUpdate({ root, repo, branch }: ApplyOptions): Promise<Updat
     const stranded = await fs.stat(previous).then(() => true).catch(() => false);
     const gone = !(await fs.stat(root).then(() => true).catch(() => false));
     if (stranded && gone) await fs.rename(previous, root).catch(() => undefined);
-    return { ok: false, detail: (err as Error).message.split('\n')[0] ?? 'update failed' };
+    /*
+     * The panel shows this verbatim, and a failed exec puts its entire command
+     * line in the message -- two absolute paths and a temporary directory, which
+     * tells a reader nothing and hides the one line that would have. Keep the
+     * cause, drop the invocation.
+     */
+    const message = (err as Error).message.split('\n')[0] ?? 'update failed';
+    return { ok: false, detail: message.replace(/^Command failed: .*$/, 'the update could not be built here') };
   } finally {
     await fs.rm(work, { recursive: true, force: true }).catch(() => undefined);
   }
@@ -290,9 +297,27 @@ async function isStagedInstall(root: string): Promise<boolean> {
  * being installed is the authority on that, which is what lets the shape of an
  * install change in a later version without stranding everyone on this one.
  */
-async function stageFrom(fresh: string, work: string, env: NodeJS.ProcessEnv): Promise<string> {
+async function stageFrom(
+  fresh: string,
+  work: string,
+  env: NodeJS.ProcessEnv,
+): Promise<string | null> {
   const home = path.join(work, 'staged');
   const script = path.join(fresh, 'scripts', 'stage-install.mjs');
+
+  /*
+   * A version that does not know how to stage is not a failed update.
+   *
+   * Moving to a branch or a tag older than staging -- or forward to one that
+   * has renamed it -- leaves this script absent, and the tree that was just
+   * built is a perfectly good BetterSlack either way. Answering null puts the
+   * whole tree in place instead: fatter than an install means to be, and
+   * working, which is the right way round. Refusing here would strand somebody
+   * on the version they were trying to leave.
+   */
+  const usable = await fs.stat(script).then(() => true).catch(() => false);
+  if (!usable) return null;
+
   await exec(
     `${JSON.stringify(process.execPath)} ${JSON.stringify(script)}`
       + ` --home ${JSON.stringify(home)} --node ${JSON.stringify(process.execPath)}`,
