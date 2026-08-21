@@ -8,11 +8,15 @@
 import { existsSync, promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { floorForMod, loadSinceTable, compareVersions } from './api-floor.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modsRoot = path.join(root, 'mods');
 const API_VERSION = 1;
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,48}$/;
+
+/* Read once: parsing 103 documentation entries per mod would be 22 times the work. */
+const sinceTable = loadSinceTable();
 
 const problems = [];
 const seenIds = new Map();
@@ -117,6 +121,29 @@ for (const kind of ['themes', 'plugins']) {
 
     if (manifest.type !== type) fail(`"type" must be "${type}"`);
     if (manifest.betterslackApi !== API_VERSION) fail(`"betterslackApi" must be ${API_VERSION}`);
+
+    /*
+     * A declared floor may raise the computed one and may never lower it.
+     *
+     * Raising is how an author covers what reading the source cannot see -- a
+     * member reached through a computed name, or one whose behaviour changed
+     * without its name changing. Lowering would be a promise the code cannot
+     * keep, and the registry would publish it to every older install as an
+     * update that is safe to take.
+     */
+    const declared = manifest.needsBetterSlack;
+    if (declared !== undefined) {
+      if (typeof declared !== 'string'
+          || (declared !== 'unreleased' && !/^\d+\.\d+\.\d+$/.test(declared))) {
+        fail('"needsBetterSlack" must be a version like 2.1.0, or "unreleased"');
+      } else {
+        const { floor, from } = floorForMod(modDir, sinceTable);
+        if (compareVersions(declared, floor) < 0) {
+          fail(`"needsBetterSlack" says ${declared}, but this mod calls ${from.join(', ')}, `
+            + `which needs ${floor}`);
+        }
+      }
+    }
 
     const previous = seenIds.get(manifest.id);
     if (previous) fail(`id "${manifest.id}" is already used by ${previous}`);

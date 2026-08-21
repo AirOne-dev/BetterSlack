@@ -3,6 +3,7 @@ name: setVip
 group: slack
 title: api.slack
 signature: (userId: string, isVip: boolean): Promise<boolean>
+since: 2.0.1
 preview: slack-setvip
 control: vips | text | U0EXAMPLE1 | starting list
 ---

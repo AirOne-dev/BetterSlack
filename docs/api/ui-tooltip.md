@@ -3,6 +3,7 @@ name: tooltip
 group: ui
 title: api.ui
 signature: (element: HTMLElement, options: TooltipOptions): Cleanup
+since: 2.0.1
 preview: ui-tooltip
 control: title | text | Channel notes
 control: subtitle | text | ⌘⇧N

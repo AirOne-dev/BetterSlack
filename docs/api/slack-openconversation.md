@@ -3,6 +3,7 @@ name: openConversation
 group: slack
 title: api.slack
 signature: (channelId: string): void
+since: 2.0.1
 preview: slack-openconversation
 control: channel | text | C0EXAMPLE1 | channel id
 control: name | text | design | its name

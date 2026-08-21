@@ -3,6 +3,7 @@ name: screenshot
 group: files
 title: api.files
 signature: (options?: { size?: string; filename?: string }): Promise<{ path: string; bytes: number }>
+since: 2.0.1
 preview: files-screenshot
 control: filename | text | slack-1440x900.webp | saved as
 control: size | select | 1440x900 | size | 1440x900, 1280x800, 880x560

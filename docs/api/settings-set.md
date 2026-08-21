@@ -3,6 +3,7 @@ name: set
 group: settings
 title: api.settings
 signature: (key: string, value: unknown): Promise<void>
+since: 2.0.1
 preview: settings-set
 control: key | text | memberLimit
 control: value | number | 200

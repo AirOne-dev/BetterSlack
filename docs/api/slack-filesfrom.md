@@ -3,6 +3,7 @@ name: filesFrom
 group: slack
 title: api.slack
 signature: (userId: string, limit?: number): Promise<Array<Record<string, unknown>>>
+since: 2.0.1
 preview: slack-filesfrom
 control: user | select | U0EXAMPLE1 | user id | U0EXAMPLE1, U0EXAMPLE2, U0EXAMPLE3
 control: limit | number | 2 | limit

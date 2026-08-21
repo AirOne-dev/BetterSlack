@@ -3,6 +3,7 @@ name: info
 group: log
 title: api.log
 signature: : (...args: unknown[]) => void
+since: 2.0.1
 preview: log-info
 control: message | text | loaded 23 mods
 ---

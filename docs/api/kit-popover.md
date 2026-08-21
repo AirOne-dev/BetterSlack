@@ -3,6 +3,7 @@ name: popover
 group: kit
 title: Component kit
 signature: (content: HTMLElement, anchor: HTMLElement, options?: { onClose?: () => void }): Popover
+since: 2.0.1
 preview: kit-popover
 control: label | text | Open a popover
 ---

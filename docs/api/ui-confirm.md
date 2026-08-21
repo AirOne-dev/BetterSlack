@@ -3,6 +3,7 @@ name: confirm
 group: ui
 title: api.ui
 signature: (options: ConfirmOptions): Promise<boolean>
+since: 2.0.1
 preview: ui-confirm
 control: title | text | Remove Midnight?
 control: body | text | Its files go with it.

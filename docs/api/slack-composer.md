@@ -3,6 +3,7 @@ name: composer
 group: slack
 title: api.slack
 signature: : { element(), focus(), caretToEnd(), insertText(text), insertLink(url, text), isEmpty() }
+since: 2.0.1
 preview: slack-composer
 control: text | text | shipping this afternoon | text to insert
 control: link | text | https://github.com/AirOne-dev/BetterSlack | link to insert

@@ -3,6 +3,7 @@ name: hotkey
 group: helpers
 title: api.helpers
 signature: (combo: string, handler: () => void, options?: { when?: () => boolean }): Cleanup
+since: 2.0.1
 preview: helpers-hotkey
 control: combo | text | mod+shift+y
 ---

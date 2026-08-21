@@ -3,6 +3,7 @@ name: save
 group: files
 title: api.files
 signature: (url: string, filename: string): Promise<{ path: string; bytes: number }>
+since: 2.0.1
 preview: files-save
 control: url | text | https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-…-512 | url
 control: filename | text | robin-original.jpg | saved as

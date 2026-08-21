@@ -3,6 +3,7 @@ name: describeMessage
 group: slack
 title: api.slack
 signature: (element: HTMLElement): MessageRef
+since: 2.0.1
 preview: slack-describemessage
 ---
 

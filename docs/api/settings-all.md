@@ -3,6 +3,7 @@ name: all
 group: settings
 title: api.settings
 signature: (): Record<string, unknown>
+since: 2.0.1
 preview: settings-all
 ---
 

@@ -3,6 +3,7 @@ name: input
 group: kit
 title: Component kit
 signature: (props?: Record<string, unknown>): HTMLInputElement
+since: 2.0.1
 preview: kit-input
 control: value | text | Midnight
 control: placeholder | text | Theme name

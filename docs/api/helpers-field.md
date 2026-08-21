@@ -3,6 +3,7 @@ name: field
 group: helpers
 title: api.helpers
 signature: (label: string, value: string | Node): HTMLElement
+since: 2.0.1
 preview: helpers-field
 control: label | text | Time zone
 control: value | text | Europe/Paris

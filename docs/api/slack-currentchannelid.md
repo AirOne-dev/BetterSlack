@@ -3,6 +3,7 @@ name: currentChannelId
 group: slack
 title: api.slack
 signature: (): string | null
+since: 2.0.1
 preview: slack-currentchannelid
 ---
 

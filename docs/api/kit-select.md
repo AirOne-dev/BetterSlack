@@ -3,6 +3,7 @@ name: select
 group: kit
 title: Component kit
 signature: (options: Option[], config?: SelectOptions): HTMLSelectElement
+since: 2.0.1
 preview: kit-select
 control: options | text | dark, light, follow the system
 control: value | text | dark

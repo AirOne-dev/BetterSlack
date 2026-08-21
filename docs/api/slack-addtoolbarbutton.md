@@ -3,6 +3,7 @@ name: addToolbarButton
 group: slack
 title: api.slack
 signature: (toolbar: ToolbarName, button: ToolbarButton): Cleanup
+since: 2.0.1
 preview: slack-addtoolbarbutton
 control: toolbar | select | controlStrip | toolbar | controlStrip, composer, channelHeader
 control: label | text | Channel notes

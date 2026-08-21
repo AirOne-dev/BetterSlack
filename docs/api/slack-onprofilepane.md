@@ -3,6 +3,7 @@ name: onProfilePane
 group: slack
 title: api.slack
 signature: (handler: (pane: ProfilePane) => void): Cleanup
+since: 2.0.1
 preview: slack-onprofilepane
 control: title | text | Local notes | section title
 ---

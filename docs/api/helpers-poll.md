@@ -3,6 +3,7 @@ name: poll
 group: helpers
 title: api.helpers
 signature: (handler: () => void | Promise<void>, everyMs: number): Cleanup
+since: 2.0.1
 preview: helpers-poll
 control: ms | number | 1000 | milliseconds
 ---

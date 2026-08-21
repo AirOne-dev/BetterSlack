@@ -3,6 +3,7 @@ name: openUserProfile
 group: slack
 title: api.slack
 signature: (userId: string): void
+since: 2.0.1
 preview: slack-openuserprofile
 control: user | text | U0EXAMPLE2 | user id
 ---

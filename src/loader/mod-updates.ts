@@ -21,6 +21,12 @@ interface RegistryEntry {
   type: 'theme' | 'plugin';
   version: string;
   path?: string;
+  /**
+   * The oldest BetterSlack that version of the mod can run on, computed from
+   * the API it calls -- see scripts/api-floor.mjs. Published in the registry
+   * because the registry is what an older install reads.
+   */
+  needsBetterSlack?: string;
 }
 
 export interface ModUpdate {
@@ -30,6 +36,28 @@ export interface ModUpdate {
   from: string;
   /** What the branch has. */
   to: string;
+  /**
+   * Set when the new version needs a BetterSlack newer than this one.
+   *
+   * The update is still reported rather than hidden. A mod that quietly stops
+   * updating is a mod the reader thinks is up to date; one that says "needs
+   * 2.2.0, you have 2.1.0" tells them what to do about it.
+   */
+  blockedBy?: { needs: string; running: string };
+}
+
+/**
+ * Is `needs` newer than the BetterSlack running?
+ *
+ * `unreleased` is what a mod gets when it calls something that is on the
+ * default branch and in no release: newer than anything anybody can be running,
+ * so it is refused everywhere until a release is cut. That is the honest
+ * answer -- the call really does not exist in any published build.
+ */
+function outOfReach(needs: string | undefined, running: string): boolean {
+  if (!needs) return false;
+  if (needs === 'unreleased') return true;
+  return isNewerVersion(needs, running);
 }
 
 export interface RemoteSource {
@@ -76,6 +104,7 @@ export function isNewerVersion(candidate: string, current: string): boolean {
 export async function findModUpdates(
   installed: ModRecord[],
   source: RemoteSource,
+  runningVersion: string,
 ): Promise<ModUpdate[]> {
   const registry = await getJson<{ mods?: RegistryEntry[] }>(raw(source, 'mods/registry.json'));
   if (!registry?.mods) return [];
@@ -85,7 +114,11 @@ export async function findModUpdates(
   for (const mod of installed) {
     const entry = published.get(mod.id);
     if (!entry || !isNewerVersion(entry.version, mod.version)) continue;
-    updates.push({ id: mod.id, name: mod.name, from: mod.version, to: entry.version });
+    const update: ModUpdate = { id: mod.id, name: mod.name, from: mod.version, to: entry.version };
+    if (outOfReach(entry.needsBetterSlack, runningVersion)) {
+      update.blockedBy = { needs: entry.needsBetterSlack!, running: runningVersion };
+    }
+    updates.push(update);
   }
   return updates;
 }
@@ -105,6 +138,24 @@ interface ContentEntry {
  * runtime starts reading. Tests are skipped -- they run in Node against the
  * shared harness and would never load in the app anyway.
  */
+/**
+ * Would installing this published version leave a mod that cannot run?
+ *
+ * Asked again at the moment of updating rather than trusted from the listing:
+ * the panel's list can be minutes old, and the check that matters is the one
+ * immediately before the files are written.
+ */
+export async function updateIsReachable(
+  id: string,
+  source: RemoteSource,
+  runningVersion: string,
+): Promise<{ ok: true } | { ok: false; needs: string }> {
+  const registry = await getJson<{ mods?: RegistryEntry[] }>(raw(source, 'mods/registry.json'));
+  const entry = registry?.mods?.find((mod) => mod.id === id);
+  if (!entry || !outOfReach(entry.needsBetterSlack, runningVersion)) return { ok: true };
+  return { ok: false, needs: entry.needsBetterSlack! };
+}
+
 export async function fetchModFiles(
   source: RemoteSource,
   folder: string,

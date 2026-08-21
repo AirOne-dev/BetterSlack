@@ -3,6 +3,7 @@ name: list
 group: themes
 title: api.themes
 signature: (): Array<{ id: string; name: string; description: string; enabled: boolean }>
+since: 2.0.1
 preview: themes-list
 ---
 

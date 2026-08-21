@@ -3,6 +3,7 @@ name: CHECKER
 group: kit
 title: Component kit
 signature: : string
+since: 2.0.1
 preview: kit-checker
 ---
 

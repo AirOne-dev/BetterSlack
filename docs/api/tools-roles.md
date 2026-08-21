@@ -3,6 +3,7 @@ name: derivePalette
 group: tools
 title: Tools
 signature: (background: Colour, accent: Colour): Palette
+since: 2.0.1
 preview: tools-roles
 control: background | text | #1a1a1e
 control: accent | text | #536aed

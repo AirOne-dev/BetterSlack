@@ -3,6 +3,7 @@ name: mount
 group: helpers
 title: api.helpers
 signature: (container: string, id: string, factory: () => HTMLElement, options?: { before?: string }): Cleanup
+since: 2.0.1
 preview: helpers-mount
 ---
 

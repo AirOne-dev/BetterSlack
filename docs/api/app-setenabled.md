@@ -3,6 +3,7 @@ name: setEnabled
 group: app
 title: api.app
 signature: (id: string, enabled: boolean): Promise<void>
+since: 2.0.1
 preview: app-setenabled
 control: enabled | boolean | false | on
 ---

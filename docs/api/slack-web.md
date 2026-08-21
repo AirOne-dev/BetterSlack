@@ -3,6 +3,7 @@ name: web
 group: slack
 title: api.slack
 signature: : WebApi
+since: 2.0.1
 preview: slack-web
 control: user | select | U0EXAMPLE1 | user id | U0EXAMPLE1, U0EXAMPLE2, U0EXAMPLE3
 ---

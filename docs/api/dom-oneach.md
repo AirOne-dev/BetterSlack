@@ -3,6 +3,7 @@ name: onEach
 group: dom
 title: api.dom
 signature: : <T extends Element = Element>(selector: string, handler: (element: T) => void) => Cleanup
+since: 2.0.1
 preview: dom-oneach
 ---
 

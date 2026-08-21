@@ -3,6 +3,7 @@ name: add
 group: commands
 title: api.commands
 signature: (command: { id, title, subtitle?, icon?, run }): Cleanup
+since: 2.0.1
 preview: commands-add
 control: title | text | Channel notes
 control: subtitle | text | A scratchpad for this channel

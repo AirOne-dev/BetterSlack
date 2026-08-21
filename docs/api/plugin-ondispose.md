@@ -3,6 +3,7 @@ name: onDispose
 group: plugin
 title: On the api object
 signature: (fn: Cleanup): void
+since: 2.0.1
 preview: plugin-ondispose
 ---
 

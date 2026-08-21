@@ -3,6 +3,7 @@ name: setInstalled
 group: app
 title: api.app
 signature: (id: string, installed: boolean): Promise<void>
+since: 2.0.1
 preview: app-setinstalled
 ---
 

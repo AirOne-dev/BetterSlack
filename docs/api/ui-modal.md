@@ -3,6 +3,7 @@ name: modal
 group: ui
 title: api.ui
 signature: (options: ModalOptions): ModalHandle
+since: 2.0.1
 preview: ui-modal
 control: title | text | Channel notes
 control: body | text | Kept on this machine only. Nothing is sent anywhere.

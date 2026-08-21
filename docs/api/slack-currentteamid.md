@@ -3,6 +3,7 @@ name: currentTeamId
 group: slack
 title: api.slack
 signature: (): string | null
+since: 2.1.0
 preview: slack-currentteamid
 ---
 

@@ -3,6 +3,7 @@ name: source
 group: themes
 title: api.themes
 signature: (id: string): Promise<string>
+since: 2.0.1
 preview: themes-source
 ---
 

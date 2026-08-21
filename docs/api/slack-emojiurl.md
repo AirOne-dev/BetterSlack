@@ -3,6 +3,7 @@ name: emojiUrl
 group: slack
 title: api.slack
 signature: (name: string, customEmoji?: Map<string, string>): string | null
+since: unreleased
 preview: slack-emojiurl
 control: name | select | glitch_crab | emoji name | glitch_crab, tada, no_such_emoji
 control: known | boolean | true | the workspace knows it

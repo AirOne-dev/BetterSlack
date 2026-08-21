@@ -111,6 +111,36 @@ await fs.writeFile(path.join(root, 'package.json'), `${JSON.stringify(manifest, 
 await fs.writeFile(changelogPath, changelog);
 
 /*
+ * Every API entry marked `unreleased` is now released, and this is the moment
+ * it gets its number.
+ *
+ * A new entry is written `since: unreleased` because the version it will ship
+ * in is not decided when it is added -- and that word is what makes a mod using
+ * it refuse to install on any published build, correctly, since the call really
+ * is in none of them. Cutting the release is exactly when that stops being
+ * true, so stamping it anywhere else would mean remembering to.
+ */
+const apiDir = path.join(root, 'docs', 'api');
+let stamped = 0;
+for (const file of await fs.readdir(apiDir)) {
+  if (!file.endsWith('.md')) continue;
+  const at = path.join(apiDir, file);
+  const text = await fs.readFile(at, 'utf8');
+  if (!/^since: unreleased$/m.test(text)) continue;
+  await fs.writeFile(at, text.replace(/^since: unreleased$/m, `since: ${version}`));
+  stamped += 1;
+}
+if (stamped) console.log(`marked ${stamped} API entr(ies) as since ${version}`);
+
+/*
+ * And the registry, which publishes what each mod needs. Those floors are
+ * computed from the `since` values just stamped, so a registry built before
+ * this point still says `unreleased` -- and every mod that used a new call
+ * would stay uninstallable for everyone after the release that fixed it.
+ */
+await run('node scripts/build-registry.mjs');
+
+/*
  * The site carries the version too.
  *
  * `site/data.js` is generated from the catalogue and holds the number, and it
@@ -120,7 +150,7 @@ await fs.writeFile(changelogPath, changelog);
  */
 await run('node scripts/build-site.mjs');
 
-await run('git add package.json CHANGELOG.md site/');
+await run('git add package.json CHANGELOG.md site/ docs/api/ mods/registry.json');
 await run(`git commit -m "release: ${version}"`);
 await run(`git tag -a v${version} -m "${version}"`);
 

@@ -3,6 +3,7 @@ name: text
 group: assets
 title: api.assets
 signature: (path: string): string
+since: 2.0.1
 preview: assets-text
 control: file | select | index.js | file | index.js, mod.json
 ---

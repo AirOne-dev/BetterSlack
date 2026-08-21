@@ -3,6 +3,7 @@ name: openMod
 group: app
 title: api.app
 signature: (id: string): void
+since: 2.0.1
 preview: app-openmod
 control: id | text | channel-notes | mod id
 ---

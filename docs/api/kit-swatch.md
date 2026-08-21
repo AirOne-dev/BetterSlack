@@ -3,6 +3,7 @@ name: swatch
 group: kit
 title: Component kit
 signature: (css: string, options?: { size?: 'sm' | 'md' | 'lg' }): HTMLElement
+since: 2.0.1
 preview: kit-swatch
 control: colour | text | rgba(97, 31, 105, 0.55)
 control: size | select | lg |  | sm, md, lg

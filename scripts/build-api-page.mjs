@@ -423,6 +423,9 @@ function panel(entry) {
     <p class="eyebrow">${escape(entry.title)}</p>
     <h1><code>${escape(entry.name)}</code></h1>
     <p class="api-sig api-sig--big">${escape(entry.signature)}</p>
+    <p class="api-since">${entry.since === 'unreleased'
+      ? 'Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.'
+      : `Since BetterSlack ${escape(entry.since)}`}</p>
   </header>
   <div class="panel__body">
     ${prose}
@@ -527,12 +530,17 @@ function writeDocsIndex(groups) {
     '[CLAUDE.md](../CLAUDE.md#the-api-documentation-format) — one file per entry, a',
     'few keys at the top, prose, and one example.',
     '',
+    'Each entry says which release it arrived in. That is not decoration: a mod is',
+    'refused by an install too old to run it, and the version it needs is worked out',
+    'from exactly these numbers and what the mod calls.',
+    '',
   ];
   for (const group of groups) {
     lines.push(`## ${group.title}`, '');
     for (const entry of group.entries) {
       const first = entry.prose.split(/\n/)[0].replace(/\s+/g, ' ');
-      lines.push(`- [\`${entry.name}\`](api/${entry.slug}.md) — ${first}`);
+      const since = entry.since === 'unreleased' ? ' _(unreleased)_' : ` _(since ${entry.since})_`;
+      lines.push(`- [\`${entry.name}\`](api/${entry.slug}.md) — ${first}${since}`);
     }
     lines.push('');
   }

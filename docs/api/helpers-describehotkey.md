@@ -3,6 +3,7 @@ name: describeHotkey
 group: helpers
 title: api.helpers
 signature: (combo: string): string
+since: 2.0.1
 preview: helpers-describehotkey
 control: combo | text | mod+shift+f
 ---

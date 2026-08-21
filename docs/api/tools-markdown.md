@@ -3,6 +3,7 @@ name: renderMarkdown
 group: tools
 title: Tools
 signature: (source: string, options?: MarkdownOptions): string
+since: 2.0.1
 preview: tools-markdown
 control: source | textarea | # Midnight\n\nA deeper, cooler dark with **design tokens** rather than class names.\n\n- one\n- two\n\n[Not a link](javascript:alert(1))
 ---

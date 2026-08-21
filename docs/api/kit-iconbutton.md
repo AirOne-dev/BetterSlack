@@ -3,6 +3,7 @@ name: iconButton
 group: kit
 title: Component kit
 signature: (glyph: string, options?: IconButtonOptions): HTMLButtonElement
+since: 2.0.1
 preview: kit-iconbutton
 control: glyph | select | ✎ | glyph | ✎, 🗑, ⋯, ⚙, ✓, ✕, ＋, ↻, ★, ⤓, ⇧, ⧉, svg
 control: title | text | Rename

@@ -3,6 +3,7 @@ name: tooltip
 group: helpers
 title: api.helpers
 signature: (element: HTMLElement, title: string, subtitle?: string): Cleanup
+since: 2.0.1
 preview: helpers-tooltip
 control: title | text | Channel notes
 control: subtitle | text | ⌘⇧N

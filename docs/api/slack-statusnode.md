@@ -3,6 +3,7 @@ name: statusNode
 group: slack
 title: api.slack
 signature: (status: SlackStatus, profile?: SlackProfile): HTMLElement
+since: 2.1.0
 preview: slack-statusnode
 control: text | text | On holiday | status text
 control: emoji | select | palm_tree | status emoji | palm_tree, glitch_crab, tada, no_such_emoji

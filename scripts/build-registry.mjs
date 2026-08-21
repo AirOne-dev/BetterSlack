@@ -5,9 +5,24 @@
 import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { floorForMod, loadSinceTable, compareVersions, NO_FLOOR } from './api-floor.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const modsRoot = path.join(root, 'mods');
+
+/*
+ * The registry is where the oldest usable BetterSlack is published, because the
+ * registry is what an older install reads. A mod updates itself out of this
+ * file into whatever version the reader is running, so the answer to "can this
+ * run here" has to travel with the listing rather than being worked out from
+ * source nobody has downloaded yet.
+ *
+ * Computed here rather than copied from the manifest: see api-floor.mjs for why
+ * a hand-written floor is the field everyone forgets. A manifest may still
+ * declare one, and validate-mods refuses a declaration below what the code
+ * actually needs.
+ */
+const sinceTable = loadSinceTable();
 
 const mods = [];
 for (const kind of ['themes', 'plugins']) {
@@ -17,7 +32,17 @@ for (const kind of ['themes', 'plugins']) {
     if (!entry.isDirectory()) continue;
     const manifestPath = path.join(dir, entry.name, 'mod.json');
     const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
-    mods.push({ ...manifest, path: `${kind}/${entry.name}` });
+    const computed = floorForMod(path.join(dir, entry.name), sinceTable).floor;
+    const declared = typeof manifest.needsBetterSlack === 'string' ? manifest.needsBetterSlack : NO_FLOOR;
+    const needs = compareVersions(declared, computed) > 0 ? declared : computed;
+    mods.push({
+      ...manifest,
+      // Omitted rather than written as 0.0.0: a theme needs no version of
+      // anything, and a floor of zero on every theme is noise in a file people
+      // read diffs of.
+      ...(needs === NO_FLOOR ? {} : { needsBetterSlack: needs }),
+      path: `${kind}/${entry.name}`,
+    });
   }
 }
 

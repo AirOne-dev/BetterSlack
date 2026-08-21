@@ -3,6 +3,7 @@ name: toast
 group: ui
 title: api.ui
 signature: (message: string, options?: ToastOptions): ToastHandle
+since: 2.0.1
 preview: ui-toast
 control: message | text | Theme saved
 control: variant | select | success |  | info, success, warning, error

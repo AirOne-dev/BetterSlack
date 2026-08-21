@@ -221,6 +221,7 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     settings,
     betterslackApi: api,
     slackVersion: typeof m.slackVersion === 'string' ? m.slackVersion : undefined,
+    needsBetterSlack: typeof m.needsBetterSlack === 'string' ? m.needsBetterSlack : undefined,
     tags: Array.isArray(m.tags) ? m.tags.filter((t): t is string => typeof t === 'string') : undefined,
   };
 }

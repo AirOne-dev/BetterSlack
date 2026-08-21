@@ -100,6 +100,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/avatar-downloader"
     },
     {
@@ -133,6 +134,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/channel-notes"
     },
     {
@@ -200,6 +202,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/code-highlight"
     },
     {
@@ -258,6 +261,7 @@
           }
         }
       ],
+      "needsBetterSlack": "unreleased",
       "path": "plugins/command-palette"
     },
     {
@@ -316,6 +320,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/composer-char-count"
     },
     {
@@ -348,6 +353,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/copy-message-link"
     },
     {
@@ -405,6 +411,7 @@
           ]
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/demo-mode"
     },
     {
@@ -438,6 +445,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/devtools"
     },
     {
@@ -584,6 +592,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/full-links"
     },
     {
@@ -647,6 +656,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.1.0",
       "path": "plugins/member-sidebar"
     },
     {
@@ -770,6 +780,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/motion"
     },
     {
@@ -803,6 +814,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/quote-reply"
     },
     {
@@ -836,6 +848,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.1.0",
       "path": "plugins/sidebar-account"
     },
     {
@@ -938,6 +951,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/theme-builder"
     },
     {
@@ -971,6 +985,7 @@
           }
         }
       ],
+      "needsBetterSlack": "2.0.1",
       "path": "plugins/user-inspector"
     }
   ]

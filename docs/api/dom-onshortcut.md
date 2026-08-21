@@ -3,6 +3,7 @@ name: onShortcut
 group: dom
 title: api.dom
 signature: : (match: (event: KeyboardEvent) => boolean, handler: (event: KeyboardEvent) => void) => Cleanup
+since: 2.0.1
 preview: dom-onshortcut
 ---
 

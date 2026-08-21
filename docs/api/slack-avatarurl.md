@@ -3,6 +3,7 @@ name: avatarUrl
 group: slack
 title: api.slack
 signature: (url: string | null | undefined, size: number): string | null
+since: 2.0.1
 preview: slack-avatarurl
 control: url | text | https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-06c4356b6ae3-48
 control: size | select | 192 |  | 24, 48, 72, 192, 512

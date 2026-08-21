@@ -1246,3 +1246,11 @@ body.api-page .footer { display: none; }
 .pg__table td:first-child { color: var(--muted); white-space: nowrap; }
 .pg__rows { display: grid; gap: 6px; width: 100%; }
 .pg__rows .row { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+
+/* Which release an entry arrived in, under its signature. Quieter than the
+   signature it follows: it is a fact you check, not one you read every time. */
+.api-since {
+  margin: -6px 0 18px;
+  font-size: 12px;
+  color: var(--api-dim, #8b8b8b);
+}

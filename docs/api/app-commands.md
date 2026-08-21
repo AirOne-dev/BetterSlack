@@ -3,6 +3,7 @@ name: commands
 group: app
 title: api.app
 signature: (): Command[]
+since: 2.0.1
 preview: app-commands
 ---
 

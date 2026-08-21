@@ -3,6 +3,7 @@ name: locale
 group: i18n
 title: api.i18n
 signature: : string
+since: 2.0.1
 preview: i18n-locale
 ---
 

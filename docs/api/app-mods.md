@@ -3,6 +3,7 @@ name: mods
 group: app
 title: api.app
 signature: (): Array<{ id, name, description, type, installed, enabled, settings }>
+since: 2.0.1
 preview: app-mods
 ---
 

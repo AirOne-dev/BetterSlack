@@ -3,6 +3,7 @@ name: startHuddle
 group: slack
 title: api.slack
 signature: (userId: string): Promise<boolean>
+since: 2.0.1
 preview: slack-starthuddle
 ---
 

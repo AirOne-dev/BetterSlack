@@ -3,6 +3,7 @@ name: confirm
 group: kit
 title: Component kit
 signature: (options: ConfirmOptions): Promise<boolean>
+since: 2.0.1
 preview: kit-confirm
 control: title | text | Delete Midnight?
 control: body | text | The stylesheet goes with it. This cannot be undone.

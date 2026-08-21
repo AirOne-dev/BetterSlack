@@ -3,6 +3,7 @@ name: desktop
 group: slack
 title: api.slack
 signature: : { supported, keys(), get(key), launched(key), needsRestart(key), set(key, value), clear(key), managed(), materials, setMaterial(name) }
+since: 2.0.1
 preview: slack-desktop
 control: key | select | windowVibrancy | preference | windowVibrancy, useHwAcceleration, runFromTray, zoomLevel
 control: value | boolean | true | wanted

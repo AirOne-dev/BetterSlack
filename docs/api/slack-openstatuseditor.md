@@ -3,6 +3,7 @@ name: openStatusEditor
 group: slack
 title: api.slack
 signature: (): Promise<boolean>
+since: 2.1.0
 preview: slack-openstatuseditor
 ---
 

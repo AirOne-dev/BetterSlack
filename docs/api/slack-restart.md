@@ -3,6 +3,7 @@ name: restart
 group: slack
 title: api.slack
 signature: (): Promise<void>
+since: 2.0.1
 preview: slack-restart
 ---
 

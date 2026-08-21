@@ -3,6 +3,7 @@ name: openMessage
 group: slack
 title: api.slack
 signature: (channelId: string, ts: string, options?: { team?: string }): void
+since: unreleased
 preview: slack-openmessage
 control: channel | text | C0BFQCYBRAB | channel id
 control: ts | text | 1786386808.130969 | message ts

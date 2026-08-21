@@ -3,6 +3,7 @@ name: vipUsers
 group: slack
 title: api.slack
 signature: (): Promise<string[]>
+since: 2.0.1
 preview: slack-vipusers
 control: pref | text | U0EXAMPLE1,U0EXAMPLE3 | vip_users
 ---

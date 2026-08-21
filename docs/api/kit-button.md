@@ -3,6 +3,7 @@ name: button
 group: kit
 title: Component kit
 signature: (label: string, options?: ButtonOptions): HTMLButtonElement
+since: 2.0.1
 preview: kit-button
 control: label | text | Save
 control: variant | select | primary |  | default, primary, ghost, danger

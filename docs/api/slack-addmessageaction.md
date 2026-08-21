@@ -3,6 +3,7 @@ name: addMessageAction
 group: slack
 title: api.slack
 signature: (action: MessageAction): Cleanup
+since: 2.0.1
 preview: slack-addmessageaction
 control: label | text | Copy link
 ---

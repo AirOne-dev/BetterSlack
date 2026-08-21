@@ -3,6 +3,7 @@ name: menu
 group: ui
 title: api.ui
 signature: (anchor: HTMLElement, items: MenuItem[], options?: MenuOptions): Cleanup
+since: 2.0.1
 preview: ui-menu
 control: items | text | Rename, Duplicate, Remove
 ---

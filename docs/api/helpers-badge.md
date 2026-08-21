@@ -3,6 +3,7 @@ name: badge
 group: helpers
 title: api.helpers
 signature: (selector: string, id: string, value: () => string | number | null): Cleanup
+since: 2.0.1
 preview: helpers-badge
 control: value | number | 3
 ---

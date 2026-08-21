@@ -3,6 +3,7 @@ name: openPanel
 group: app
 title: api.app
 signature: (tab?: 'themes' | 'plugins' | 'css' | 'about'): void
+since: 2.0.1
 preview: app-openpanel
 ---
 

@@ -3,6 +3,7 @@ name: userIdFromMessage
 group: slack
 title: api.slack
 signature: (message: MessageRef): string | null
+since: 2.0.1
 preview: slack-useridfrommessage
 ---
 

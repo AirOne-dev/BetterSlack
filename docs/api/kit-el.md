@@ -3,6 +3,7 @@ name: el
 group: kit
 title: Component kit
 signature: (tag: string, props?: Record<string, unknown>, children?: Child[]): HTMLElement
+since: 2.0.1
 preview: kit-el
 control: tag | select | p |  | div, p, strong, span
 control: text | text | Built with the same maker as everything below.

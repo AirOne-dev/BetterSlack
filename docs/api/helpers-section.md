@@ -3,6 +3,7 @@ name: section
 group: helpers
 title: api.helpers
 signature: (title: string, children: (Node | string)[]): HTMLElement
+since: 2.0.1
 preview: helpers-section
 control: title | text | More details
 control: rows | text | User ID: U04KY0Z61, Time zone: Europe/Paris

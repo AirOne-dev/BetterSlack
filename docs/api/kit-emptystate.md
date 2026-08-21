@@ -3,6 +3,7 @@ name: emptyState
 group: kit
 title: Component kit
 signature: (title: string, body: string, action?: HTMLElement): HTMLElement
+since: 2.0.1
 preview: kit-emptystate
 control: title | text | No themes yet
 control: body | text | Build one and it appears here.

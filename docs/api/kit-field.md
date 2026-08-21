@@ -3,6 +3,7 @@ name: field
 group: kit
 title: Component kit
 signature: (label: string, control: HTMLElement, hint?: string): HTMLElement
+since: 2.0.1
 preview: kit-field
 control: label | text | Theme name
 control: hint | text | Shown in the panel and in the palette.

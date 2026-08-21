@@ -106,9 +106,17 @@ unexplained one is an automatic no.
    `test.mjs` fails the structure check immediately.
 4. `pnpm registry` has been run and `mods/registry.json` is committed.
 5. Tested against the current Slack release. Put the version you tested in
-   `slackVersion`.
-6. The description is one sentence that says what a user gets, not how it works.
-7. **Bump `version` whenever you change a mod that is already in the catalogue.**
+   `slackVersion`. A mod's page says so when it names a Slack newer than the one
+   running, so the number is read rather than filed.
+6. **You do not write down which BetterSlack your mod needs.** It is computed
+   from the API you call -- every entry in `docs/api/` carries the release it
+   arrived in -- and published in `mods/registry.json`, where an older install
+   reads it and refuses an update it could not run. Declare `needsBetterSlack`
+   only to raise that answer, for something reading the source cannot see; a
+   declaration below what your code actually calls fails `pnpm validate-mods`,
+   naming the calls.
+7. The description is one sentence that says what a user gets, not how it works.
+8. **Bump `version` whenever you change a mod that is already in the catalogue.**
    The panel updates mods one at a time by comparing what is installed against
    `mods/registry.json` on the default branch, so a fix shipped without a bump
    reaches nobody.

@@ -11,6 +11,7 @@
  *     group: kit
  *     title: Component kit
  *     signature: (label: string, options?: ButtonOptions): HTMLButtonElement
+ *     since: 2.0.1
  *     preview: kit-button
  *     control: label | text | Save
  *     control: variant | select | primary | | default, primary, ghost, danger
@@ -28,7 +29,11 @@
  * optional; `options` is a comma-separated list and only means anything for a
  * select.
  *
- * Deliberately not YAML: five keys and a repeated line do not need a parser
+ * `since` is the release the entry first appeared in, or `unreleased` for one
+ * that is on the default branch and in no release yet. It is what lets a mod's
+ * minimum BetterSlack version be computed rather than remembered.
+ *
+ * Deliberately not YAML: six keys and a repeated line do not need a parser
  * with a specification, and a dependency that can only be wrong about
  * indentation is a poor trade for a file a person writes by hand.
  */
@@ -70,8 +75,32 @@ export function parseEntry(file, source) {
     controls.push(control);
   }
 
-  for (const required of ['name', 'group', 'title', 'signature']) {
+  for (const required of ['name', 'group', 'title', 'signature', 'since']) {
     if (!meta[required]) throw new Error(`${file}: missing "${required}"`);
+  }
+
+  /*
+   * `since` is what makes a mod's minimum BetterSlack version computable.
+   *
+   * A mod is updated on its own, from the registry on the default branch, into
+   * whatever BetterSlack the reader happens to be running -- so a mod that
+   * started calling something added last month is a mod that breaks on every
+   * older install, at the first click, with an error that reads as "this plugin
+   * is broken". scripts/api-floor.mjs reads these, finds what each mod uses and
+   * takes the highest; the install and update paths refuse the mod rather than
+   * letting it fail later.
+   *
+   * It is required, and checked here, because the cross-check in
+   * build-api-page.mjs already makes a file mandatory for every member of the
+   * API. An optional `since` would be absent from exactly the entries that
+   * matter: the new ones.
+   *
+   * `unreleased` means it is on the default branch and in no release yet, which
+   * is a real answer and not a missing one -- `pnpm release` turns every one of
+   * them into the version it cuts.
+   */
+  if (meta.since !== 'unreleased' && !/^\d+\.\d+\.\d+$/.test(meta.since)) {
+    throw new Error(`${file}: "since" must be a version like 2.1.0, or "unreleased" (got "${meta.since}")`);
   }
   /*
    * A signature is one line, and a multi-line TypeScript one pasted in leaves
@@ -96,6 +125,7 @@ export function parseEntry(file, source) {
     group: meta.group,
     title: meta.title,
     signature: meta.signature,
+    since: meta.since,
     preview: meta.preview || null,
     controls,
     prose,

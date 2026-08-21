@@ -3,6 +3,7 @@ name: onChange
 group: settings
 title: api.settings
 signature: (handler: (values: Record<string, unknown>) => void): Cleanup
+since: 2.0.1
 preview: settings-onchange
 ---
 

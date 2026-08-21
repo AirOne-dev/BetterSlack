@@ -3,6 +3,7 @@ name: addProfileButton
 group: slack
 title: api.slack
 signature: (button: ProfileButton): Cleanup
+since: 2.0.1
 preview: slack-addprofilebutton
 control: label | text | Download picture
 ---

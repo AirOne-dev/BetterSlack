@@ -3,6 +3,7 @@ name: each
 group: helpers
 title: api.helpers
 signature: <T extends Element = Element>(selector: string, handler: (element: T) => void): Cleanup
+since: 2.0.1
 preview: helpers-each
 ---
 

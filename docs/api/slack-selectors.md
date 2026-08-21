@@ -3,6 +3,7 @@ name: selectors
 group: slack
 title: api.slack
 signature: : Readonly<Record<string, string>>
+since: 2.0.1
 preview: slack-selectors
 ---
 

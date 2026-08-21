@@ -14,6 +14,7 @@
 // can make it ugly. Everything under `mods/themes/` is reviewed, so that is a
 // fair deal.
 
+import { slackVersionIsNewer } from '../../shared/protocol.js';
 import type { ModRecord, ModSettingField, RemoteMod } from '../../shared/protocol.js';
 import { h } from '../dom.js';
 import type { ModManager } from '../manager.js';
@@ -471,6 +472,21 @@ export class Panel {
       title.querySelector('.betterslack-row__sub')?.append(h('span', { class: 'betterslack-tag' }, [tag]));
     }
 
+    /*
+     * Shown only when both numbers are known and the mod's is the higher one.
+     *
+     * A mod says which Slack it was written against; the loader reads which
+     * Slack is running, where that can be read at all. Anything else -- an
+     * undeclared mod, a Linux install whose version nothing can name -- says
+     * nothing, because a compatibility warning that appears when nothing is
+     * wrong is one people learn to click past.
+     */
+    if (mod.slackVersion && slackVersionIsNewer(mod.slackVersion, this.manager.info.slackVersion)) {
+      title.append(h('div', { class: 'betterslack-row__requires--missing' }, [
+        t('slackTooOld', { wanted: mod.slackVersion, have: this.manager.info.slackVersion! }),
+      ]));
+    }
+
     const head = h('div', { class: 'betterslack-detail__head' }, [
       this.renderIcon(mod, 'lg'),
       title,
@@ -826,7 +842,10 @@ export class Panel {
   private openSettings = new Set<string>();
 
   /** Answered once per session, when the panel is first opened. */
-  private modUpdates: Array<{ id: string; name: string; from: string; to: string }> = [];
+  private modUpdates: Array<{
+    id: string; name: string; from: string; to: string;
+    blockedBy?: { needs: string; running: string };
+  }> = [];
   private checkedModUpdates = false;
 
   /** Set while the requirements dialog is open, so Escape can cancel it. */
@@ -1320,6 +1339,30 @@ export class Panel {
     if (this.modUpdates.length === 0) return [];
 
     const rows = this.modUpdates.map((update) => {
+      /*
+       * Reported, but with no button. Hiding an update the reader cannot take
+       * would leave them believing they are current; offering one that cannot
+       * work would hand them a mod that throws on its first click. Saying which
+       * version is wanted is the only answer that lets them act.
+       */
+      if (update.blockedBy) {
+        return h('div', { class: 'betterslack-row betterslack-row--notice' }, [
+          h('div', { class: 'betterslack-row__meta' }, [
+            h('div', { class: 'betterslack-row__name' }, [
+              t('modUpdateTitle', { name: update.name, version: update.to }),
+            ]),
+            h('div', { class: 'betterslack-row__desc betterslack-row__requires--missing' }, [
+              t('modUpdateBlocked', {
+                name: update.name,
+                version: update.to,
+                needs: update.blockedBy.needs,
+                running: update.blockedBy.running,
+              }),
+            ]),
+          ]),
+        ]);
+      }
+
       const status = h('span', { class: 'betterslack-status' });
       const button = h('button', {
         class: 'c-button c-button--primary c-button--medium',

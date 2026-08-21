@@ -3,6 +3,7 @@ name: suspend
 group: themes
 title: api.themes
 signature: (on: boolean): void
+since: 2.0.1
 preview: themes-suspend
 ---
 

@@ -3,6 +3,7 @@ name: toggle
 group: helpers
 title: api.helpers
 signature: (options: ToggleOptions): Toggle
+since: 2.0.1
 preview: helpers-toggle
 control: className | text | demo-zen | class on <html>
 control: defaultOn | boolean | false

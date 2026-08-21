@@ -12,11 +12,14 @@ import path from 'node:path';
 import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo } from './cdp.js';
 import { Catalog, parseManifest } from './catalog.js';
 import { downloadFile, saveBytes } from './download.js';
-import { findSlack, launchSlack, SlackNotFoundError, stopSlack } from './slack.js';
+import { findSlack, launchSlack, SlackNotFoundError, stopSlack,
+  slackVersion,
+} from './slack.js';
 import { applyDesktopPrefs, checkPref, prefsSupported, readDesktopPrefs } from './slack-settings.js';
 import { applyUpdate, checkForUpdate } from './update.js';
 import {
   fetchModFiles, findModUpdates, folderFor, inspectRemote, manifestFrom,
+  updateIsReachable,
 } from './mod-updates.js';
 // Shared with the runtime so a theme's @import behaves the same in Slack's
 // other windows as it does in the client.
@@ -163,6 +166,7 @@ class Loader {
       userModsRoot: USER_MODS_ROOT,
       skipped: [...this.catalog.errors],
       slackPath: this.slackPath,
+      slackVersion: await slackVersion(this.slackPath),
       transport: 'CDP pipe (no network port)',
       root: REPO_ROOT,
       safeMode: this.safeRequested,
@@ -1084,7 +1088,7 @@ class Loader {
       case 'mods.checkUpdates': {
         const installed = (await readSettings()).installed;
         const records = this.catalog.list().filter((mod) => installed.includes(mod.id));
-        return findModUpdates(records, { repo: REPO, branch: DEFAULT_BRANCH });
+        return findModUpdates(records, { repo: REPO, branch: DEFAULT_BRANCH }, VERSION);
       }
 
       case 'mods.update': {
@@ -1092,6 +1096,25 @@ class Loader {
         if (!record) return { ok: false, detail: 'no such mod' };
 
         const source = { repo: REPO, branch: DEFAULT_BRANCH };
+
+        /*
+         * Refused before anything is downloaded, not after it has failed.
+         *
+         * A mod updates itself out of the branch into whatever BetterSlack is
+         * running here, so the published version can call something this build
+         * has never had. Writing it anyway buys a plugin that throws on its
+         * first click, which reads as "this plugin is broken" rather than "this
+         * plugin is newer than your app".
+         */
+        const reachable = await updateIsReachable(record.id, source, VERSION);
+        if (!reachable.ok) {
+          return {
+            ok: false,
+            detail: `needs BetterSlack ${reachable.needs}, and this is ${VERSION}`,
+            needsBetterSlack: reachable.needs,
+          };
+        }
+
         const files = await fetchModFiles(source, folderFor(record));
         if (!files) return { ok: false, detail: 'could not read it from GitHub' };
         const manifest = manifestFrom(files);

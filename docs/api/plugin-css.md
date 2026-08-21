@@ -3,6 +3,7 @@ name: css
 group: plugin
 title: On the api object
 signature: (text: string): void
+since: 2.0.1
 preview: plugin-css
 control: css | textarea | .p-channel_sidebar {\n  border-right: 2px solid #6cb6ff;\n} | stylesheet
 ---

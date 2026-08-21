@@ -90,6 +90,16 @@ export interface ModManifest {
   betterslackApi: number;
   /** Optional: minimum tested Slack version, informational only. */
   slackVersion?: string;
+  /**
+   * The oldest BetterSlack this mod can run on.
+   *
+   * Normally absent and computed instead -- scripts/api-floor.mjs reads what the
+   * mod calls and the registry publishes the answer, because a hand-written
+   * floor is the field everyone forgets. Declaring one here may *raise* that
+   * answer, for what reading the source cannot see, and validate-mods refuses a
+   * declaration below it.
+   */
+  needsBetterSlack?: string;
   tags?: string[];
 }
 
@@ -410,6 +420,14 @@ export interface LoaderInfo {
    */
   skipped: string[];
   slackPath: string;
+  /**
+   * The Slack this is, or null where it cannot be read honestly (Linux).
+   *
+   * Null means "say nothing": an unknown version compared against a mod's
+   * declared one invents a mismatch, and a warning that fires where nothing is
+   * wrong teaches people to ignore the one that is real.
+   */
+  slackVersion?: string | null;
   /** How the loader talks to Slack, shown in the About tab. */
   transport: string;
   /**
@@ -435,4 +453,24 @@ export interface LoaderInfo {
    * honest moment to offer one.
    */
   slackPrefsAtLaunch: Record<string, unknown>;
+}
+
+/**
+ * Is `wanted` a later Slack than `have`?
+ *
+ * Compared over the components `wanted` actually states, so a mod that says
+ * 4.51 is satisfied by 4.51.191 -- mods declare two parts and Slack ships
+ * three, and a plain string or full-length compare would call every one of them
+ * a mismatch. `have` being null or unparseable answers false: unknown is not
+ * out of date.
+ */
+export function slackVersionIsNewer(wanted: string, have: string | null | undefined): boolean {
+  if (!have) return false;
+  const a = wanted.split('.').map((part) => Number.parseInt(part, 10));
+  const b = have.split('.').map((part) => Number.parseInt(part, 10));
+  if (a.some(Number.isNaN) || b.some(Number.isNaN)) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if ((b[i] ?? 0) !== a[i]) return (b[i] ?? 0) < a[i]!;
+  }
+  return false;
 }

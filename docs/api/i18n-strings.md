@@ -3,6 +3,7 @@ name: strings
 group: i18n
 title: api.i18n
 signature: <T extends Dictionary>(tables: Tables<T>): Translate<T>
+since: 2.0.1
 preview: i18n-strings
 control: locale | select | en-GB | locale | en-GB, fr-FR, de-DE
 control: key | select | hello | key | hello, bye, missing

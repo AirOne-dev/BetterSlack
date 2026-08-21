@@ -3,6 +3,7 @@ name: copy
 group: helpers
 title: api.helpers
 signature: (text: string, message?: string): Promise<boolean>
+since: 2.0.1
 preview: helpers-copy
 control: text | text | https://example.com/releases/2026-08
 ---

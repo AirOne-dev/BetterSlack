@@ -3,6 +3,7 @@ name: hoverable
 group: kit
 title: Component kit
 signature: <T extends HTMLElement>(node: T, handlers: HoverHandlers): T
+since: 2.0.1
 preview: kit-hoverable
 ---
 

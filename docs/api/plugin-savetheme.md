@@ -3,6 +3,7 @@ name: saveTheme
 group: plugin
 title: On the api object
 signature: (options: { id: string; name: string; description: string; css: string }): Promise<void>
+since: 2.0.1
 preview: plugin-savetheme
 control: id | text | my-theme | theme id
 control: css | textarea | :root { --dt_color-base-pry: #101322; } | stylesheet

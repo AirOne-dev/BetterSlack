@@ -386,6 +386,7 @@ body { background: linear-gradient(160deg, #101418, #161c26); }</code></pre>
     <p class="eyebrow">Tools</p>
     <h1><code>highlight · detect</code></h1>
     <p class="api-sig api-sig--big">highlight(code: string, language: string): string · detect(code: string): string | null</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Code Highlight's two halves. Slack sends a code block as plain grey text with nothing saying what is in it, so the language is worked out from the code itself — and <code>detect</code> answers null when it is not confident, which leaves the block alone rather than colouring it as the wrong language.</p>
@@ -404,6 +405,7 @@ if (language) block.innerHTML = highlight(block.textContent, language);</code></
     <p class="eyebrow">Tools</p>
     <h1><code>renderMarkdown</code></h1>
     <p class="api-sig api-sig--big">(source: string, options?: MarkdownOptions): string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>What the panel runs on a mod's README, and the reason a readme can be rendered at all: it escapes first and drops a <code>javascript:</code> URL, so nothing in a mod's markdown can execute.</p>
@@ -423,6 +425,7 @@ article.innerHTML = renderMarkdown(readme, {
     <p class="eyebrow">Tools</p>
     <h1><code>derivePalette</code></h1>
     <p class="api-sig api-sig--big">(background: Colour, accent: Colour): Palette</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Two colours in, the twelve roles a theme is written from out. This is what the theme builder runs before it writes a stylesheet, so a colour chosen here is a colour Slack would be painted with.</p>
@@ -441,6 +444,7 @@ api.css(buildThemeCss(palette, 'Midnight'));</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>button</code></h1>
     <p class="api-sig api-sig--big">(label: string, options?: ButtonOptions): HTMLButtonElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Slack's button in its four weights: the default, primary for the one action that matters, ghost for the quiet one, and danger for the one that destroys something.</p>
@@ -455,6 +459,7 @@ kit.button('Remove', { variant: 'danger', wide: true });</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>card</code></h1>
     <p class="api-sig api-sig--big">(title: string | null, children: Child[], options?: CardOptions): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A titled box with an optional subtitle and a row of actions, for grouping controls that belong together.</p>
@@ -471,6 +476,7 @@ kit.button('Remove', { variant: 'danger', wide: true });</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>CHECKER</code></h1>
     <p class="api-sig api-sig--big">: string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The checkerboard, as a CSS value. Put it behind a colour and a colour with alpha reads as translucent rather than as a slightly different flat colour.</p>
@@ -485,6 +491,7 @@ swatch.style.background = `${colour}, ${kit.CHECKER}`;</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>code</code></h1>
     <p class="api-sig api-sig--big">(options?: CodeEditorOptions): CodeEditor</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A CSS editor that colours what you type: a highlighted <code>&lt;pre&gt;</code> under a transparent <code>&lt;textarea&gt;</code>. Both have to agree on every metric or the caret drifts from the text, which is why their stylesheet lives beside the tokeniser rather than in each caller.</p>
@@ -504,6 +511,7 @@ editor.set(':root { --dt_color-base-pry: #0b0d12; }');</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>confirm</code></h1>
     <p class="api-sig api-sig--big">(options: ConfirmOptions): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A yes/no dialog that resolves to a boolean, so the caller reads as a question rather than a callback.</p>
@@ -524,6 +532,7 @@ if (sure) await remove(theme.id);</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>copyText</code></h1>
     <p class="api-sig api-sig--big">(text: string): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Put text on the clipboard, and say whether it worked -- the clipboard can refuse.</p>
@@ -538,6 +547,7 @@ status.textContent = ok ? 'Copied' : 'Press ⌘C';</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>el</code></h1>
     <p class="api-sig api-sig--big">(tag: string, props?: Record&lt;string, unknown&gt;, children?: Child[]): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The maker every other primitive is built from: a tag, its attributes, and its children.</p>
@@ -555,6 +565,7 @@ const row = kit.el('div', { class: 'sm-row' }, [
     <p class="eyebrow">Component kit</p>
     <h1><code>emptyState</code></h1>
     <p class="api-sig api-sig--big">(title: string, body: string, action?: HTMLElement): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>What to draw when there is nothing to draw: a title, a sentence, and the one button that fixes it.</p>
@@ -572,6 +583,7 @@ const row = kit.el('div', { class: 'sm-row' }, [
     <p class="eyebrow">Component kit</p>
     <h1><code>field</code></h1>
     <p class="api-sig api-sig--big">(label: string, control: HTMLElement, hint?: string): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A labelled control with an optional hint underneath, which is the shape almost every setting takes.</p>
@@ -586,6 +598,7 @@ const row = kit.el('div', { class: 'sm-row' }, [
     <p class="eyebrow">Component kit</p>
     <h1><code>hoverable</code></h1>
     <p class="api-sig api-sig--big">&lt;T extends HTMLElement&gt;(node: T, handlers: HoverHandlers): T</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Attach enter and leave handlers to an element without writing the pair of listeners each time.</p>
@@ -602,6 +615,7 @@ const row = kit.el('div', { class: 'sm-row' }, [
     <p class="eyebrow">Component kit</p>
     <h1><code>iconButton</code></h1>
     <p class="api-sig api-sig--big">(glyph: string, options?: IconButtonOptions): HTMLButtonElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A square button carrying a glyph rather than a word, for the places a label would not fit.</p>
@@ -621,6 +635,7 @@ kit.iconButton('&lt;svg viewBox=&quot;0 0 20 20&quot;&gt;&lt;path d=&quot;…&qu
     <p class="eyebrow">Component kit</p>
     <h1><code>input</code></h1>
     <p class="api-sig api-sig--big">(props?: Record&lt;string, unknown&gt;): HTMLInputElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A single-line text box wearing the kit's own focus ring. Any attribute you pass goes through to the element, so <code>type</code>, <code>placeholder</code> and <code>maxlength</code> all work.</p>
@@ -635,6 +650,7 @@ name.addEventListener('input', () =&gt; draft.rename(name.value));</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>popover</code></h1>
     <p class="api-sig api-sig--big">(content: HTMLElement, anchor: HTMLElement, options?: { onClose?: () =&gt; void }): Popover</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A floating panel anchored to an element, dismissed by a click outside. It returns a handle so it can be closed or repositioned from code.</p>
@@ -651,6 +667,7 @@ name.addEventListener('input', () =&gt; draft.rename(name.value));</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>segmented</code></h1>
     <p class="api-sig api-sig--big">(options: Option[], config?: SegmentedOptions): Segmented</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A row of mutually exclusive tabs, each able to carry a count. Returns a handle so the selection can be moved from code as well as by a click.</p>
@@ -669,6 +686,7 @@ tabs.set('css');   // move it from code</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>select</code></h1>
     <p class="api-sig api-sig--big">(options: Option[], config?: SelectOptions): HTMLSelectElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A dropdown built from a list of options, with the current value and a change handler.</p>
@@ -685,6 +703,7 @@ tabs.set('css');   // move it from code</code></pre>
     <p class="eyebrow">Component kit</p>
     <h1><code>swatch</code></h1>
     <p class="api-sig api-sig--big">(css: string, options?: { size?: 'sm' | 'md' | 'lg' }): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A colour chip. Translucent colours are drawn over the checkerboard, so a colour with alpha reads as one.</p>
@@ -700,6 +719,7 @@ kit.swatch('rgba(97, 31, 105, 0.35)');</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>badge</code></h1>
     <p class="api-sig api-sig--big">(selector: string, id: string, value: () =&gt; string | number | null): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A small count or dot pinned to any element, kept in sync by a getter rather than by you remembering to redraw it. Return null from the getter and the badge goes away.</p>
@@ -715,6 +735,7 @@ api.helpers.badge('[data-qa=&quot;betterslack_notes_button&quot;]', 'unread', ()
     <p class="eyebrow">api.helpers</p>
     <h1><code>cache</code></h1>
     <p class="api-sig api-sig--big">(name: string, options?: { keys?: number }): Cache</p>
+    <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
     <p>A cache that survives a restart and refreshes itself behind you.</p>
@@ -735,6 +756,7 @@ if (held) paint(held);</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>copy</code></h1>
     <p class="api-sig api-sig--big">(text: string, message?: string): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Put text on the clipboard and confirm it with a toast, which is the pair almost every copy button wants. Resolves false if the clipboard refused.</p>
@@ -748,6 +770,7 @@ if (held) paint(held);</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>debounce</code></h1>
     <p class="api-sig api-sig--big">&lt;T extends (...args: never[]) =&gt; void&gt;(fn: T, ms: number): T</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Debounce. No shipped mod calls this today -- the two that debounce something do it inside code that has no <code>api</code> to reach for: the palette's directory search, and Demo Mode's engine, which the screenshot recipe also runs outside the runtime. Kept because it is three lines and it is the obvious thing to reach for.</p>
@@ -762,6 +785,7 @@ box.addEventListener('input', () =&gt; search(box.value));</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>describeHotkey</code></h1>
     <p class="api-sig api-sig--big">(combo: string): string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A combo as a person would read it: <code>mod</code> becomes ⌘ on a Mac and Ctrl elsewhere, and the modifiers come out in the order that platform writes them. For a tooltip or a menu subtitle.</p>
@@ -776,6 +800,7 @@ box.addEventListener('input', () =&gt; search(box.value));</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>each</code></h1>
     <p class="api-sig api-sig--big">&lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Run a handler for every element matching a selector, now and in future, and undo it for you when the plugin stops.</p>
@@ -791,6 +816,7 @@ box.addEventListener('input', () =&gt; search(box.value));</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>field</code></h1>
     <p class="api-sig api-sig--big">(label: string, value: string | Node): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A labelled row in Slack's own profile style, so a mod's extra details sit in a profile pane looking like the details Slack put there.</p>
@@ -804,6 +830,7 @@ box.addEventListener('input', () =&gt; search(box.value));</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>hotkey</code></h1>
     <p class="api-sig api-sig--big">(combo: string, handler: () =&gt; void, options?: { when?: () =&gt; boolean }): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Bind a keyboard shortcut in the platform's idiom: <code>mod+shift+f</code>.</p>
@@ -823,6 +850,7 @@ api.helpers.hotkey('escape', () =&gt; zen.set(false), {
     <p class="eyebrow">api.helpers</p>
     <h1><code>iconButton</code></h1>
     <p class="api-sig api-sig--big">(options: { icon, label, description?, surface?, onClick }): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>An icon button wearing Slack's classes for the surface you name — the control strip, a header, the composer. Getting the classes right is what keeps it 28px instead of 36px.</p>
@@ -841,6 +869,7 @@ api.helpers.hotkey('escape', () =&gt; zen.set(false), {
     <p class="eyebrow">api.helpers</p>
     <h1><code>mount</code></h1>
     <p class="api-sig api-sig--big">(container: string, id: string, factory: () =&gt; HTMLElement, options?: { before?: string }): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Keep an element in a container across Slack's re-renders, and take it away when the plugin stops. <code>before</code> puts it above an existing button rather than at the end, which is where Slack's own re-renders land.</p>
@@ -856,6 +885,7 @@ api.helpers.hotkey('escape', () =&gt; zen.set(false), {
     <p class="eyebrow">api.helpers</p>
     <h1><code>poll</code></h1>
     <p class="api-sig api-sig--big">(handler: () =&gt; void | Promise&lt;void&gt;, everyMs: number): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Run something every so often, and stop while nobody is looking.</p>
@@ -871,6 +901,7 @@ api.helpers.poll(() =&gt; refreshPresence(), 60_000);</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>section</code></h1>
     <p class="api-sig api-sig--big">(title: string, children: (Node | string)[]): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A titled group of rows in Slack's profile style, for adding a block of detail to a pane Slack drew.</p>
@@ -887,6 +918,7 @@ api.helpers.poll(() =&gt; refreshPresence(), 60_000);</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>toggle</code></h1>
     <p class="api-sig api-sig--big">(options: ToggleOptions): Toggle</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A persisted on/off flag that also drives a class on &lt;html&gt;, so the whole behaviour can be pure CSS. This is the shape most &quot;mode&quot; mods want.</p>
@@ -907,6 +939,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>tooltip</code></h1>
     <p class="api-sig api-sig--big">(element: HTMLElement, title: string, subtitle?: string): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Slack's tooltip on any element. Slack's own are React portals a mod cannot register with, so this rebuilds one from Slack's classes — including the ~150ms delay, measured with a real pointer.</p>
@@ -920,6 +953,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>addMessageAction</code></h1>
     <p class="api-sig api-sig--big">(action: MessageAction): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A button in the toolbar Slack draws while the pointer is over a message. The handler is given the message: its channel, its timestamp, its permalink and its text.</p>
@@ -938,6 +972,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>addProfileButton</code></h1>
     <p class="api-sig api-sig--big">(button: ProfileButton): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A button in a member's profile pane, given the user id when it is pressed. It appears in anything wearing Slack's profile markup, including a pane another mod drew.</p>
@@ -956,6 +991,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>addToolbarButton</code></h1>
     <p class="api-sig api-sig--big">(toolbar: ToolbarName, button: ToolbarButton): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Add a button to one of Slack's toolbars:</p>
@@ -978,6 +1014,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>avatarUrl</code></h1>
     <p class="api-sig api-sig--big">(url: string | null | undefined, size: number): string | null</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The same avatar at another size.</p>
@@ -993,6 +1030,7 @@ api.slack.avatarUrl(user.image_48, 192);</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>composer</code></h1>
     <p class="api-sig api-sig--big">: { element(), focus(), caretToEnd(), insertText(text), insertLink(url, text), isEmpty() }</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The message box. <code>insertText</code> types into it as though you had, <code>insertLink</code> puts a real hyperlink at the caret, and <code>focus</code> puts the caret there in the first place — every insert focuses first, so calling it yourself is only needed when you want the caret and nothing else.</p>
@@ -1010,6 +1048,7 @@ if (api.slack.composer.isEmpty()) api.slack.composer.focus();</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>currentChannelId</code></h1>
     <p class="api-sig api-sig--big">(): string | null</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The channel on screen, read out of the URL. Null when what is on screen is not a conversation. Two workspaces can use the same channel id, so compare the team as well when you keep anything per-channel.</p>
@@ -1023,6 +1062,7 @@ if (api.slack.composer.isEmpty()) api.slack.composer.focus();</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>currentTeamId</code></h1>
     <p class="api-sig api-sig--big">(): string | null</p>
+    <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
     <p>The workspace the client is showing. Not simply the one in the address bar, and that distinction is the whole reason this exists rather than a one-line regex in each mod.</p>
@@ -1043,6 +1083,7 @@ if (team !== lastSeenTeam) {
     <p class="eyebrow">api.slack</p>
     <h1><code>describeMessage</code></h1>
     <p class="api-sig api-sig--big">(element: HTMLElement): MessageRef</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Everything about a message that a mod usually wants, read off the element Slack drew: its channel, its timestamp, its permalink and its text.</p>
@@ -1057,6 +1098,7 @@ if (team !== lastSeenTeam) {
     <p class="eyebrow">api.slack</p>
     <h1><code>describeStatus</code></h1>
     <p class="api-sig api-sig--big">(who: SlackUser | SlackProfile, customEmoji?: Map&lt;string, string&gt;): SlackStatus | null</p>
+    <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
     <p>Somebody's status, ready to draw: the sentence, the emoji name without its colons, an image for that emoji when one could be found, and when it clears. Null when there is no status at all, so a caller can test the result rather than three fields.</p>
@@ -1075,6 +1117,7 @@ if (status) row.append(api.slack.statusNode(status, user.profile));</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>desktop</code></h1>
     <p class="api-sig api-sig--big">: { supported, keys(), get(key), launched(key), needsRestart(key), set(key, value), clear(key), managed(), materials, setMaterial(name) }</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Slack's own translucent window, which it ships switched off.</p>
@@ -1093,6 +1136,7 @@ if (api.slack.desktop.needsRestart('windowVibrancy')) await api.slack.restart();
     <p class="eyebrow">api.slack</p>
     <h1><code>emojiUrl</code></h1>
     <p class="api-sig api-sig--big">(name: string, customEmoji?: Map&lt;string, string&gt;): string | null</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
   </header>
   <div class="panel__body">
     <p>An image for an emoji name, or <code>null</code> when nothing can draw it. The colons are optional — <code>tada</code> and <code>:tada:</code> are the same question.</p>
@@ -1110,6 +1154,7 @@ if (url) row.append(Object.assign(new Image(), { src: url, alt: ':tada:' }));</c
     <p class="eyebrow">api.slack</p>
     <h1><code>filesFrom</code></h1>
     <p class="api-sig api-sig--big">(userId: string, limit?: number): Promise&lt;Array&lt;Record&lt;string, unknown&gt;&gt;&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The files somebody shared, newest first. <code>limit</code> caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw.</p>
@@ -1124,6 +1169,7 @@ for (const file of files) api.log.info(file.name);</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>hideConversation</code></h1>
     <p class="api-sig api-sig--big">(channelId: string): Promise&lt;void&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave.</p>
@@ -1138,6 +1184,7 @@ await api.slack.hideConversation('C0BFQCYBRAB');</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>onProfilePane</code></h1>
     <p class="api-sig api-sig--big">(handler: (pane: ProfilePane) =&gt; void): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Run a handler each time a profile pane appears, with the pane and the user id it is showing. Mount per pane rather than once: a single mount fills whichever profile it reaches first and starves the other.</p>
@@ -1153,6 +1200,7 @@ await api.slack.hideConversation('C0BFQCYBRAB');</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>openConversation</code></h1>
     <p class="api-sig api-sig--big">(channelId: string): void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Move the client to a conversation, without a page load.</p>
@@ -1168,6 +1216,7 @@ api.slack.openConversation('C0BFQCYBRAB');</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>openDirectMessage</code></h1>
     <p class="api-sig api-sig--big">(userId: string): Promise&lt;string | null&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Open the direct message with someone, creating it if there is none.</p>
@@ -1182,6 +1231,7 @@ api.slack.openConversation('C0BFQCYBRAB');</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>openMessage</code></h1>
     <p class="api-sig api-sig--big">(channelId: string, ts: string, options?: { team?: string }): void</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
   </header>
   <div class="panel__body">
     <p>Move the client to one message, and highlight it. The same deep link <code>openConversation</code> uses, with the message's timestamp on it: Slack routes it in place and flashes the message it lands on, the way its own search results do.</p>
@@ -1199,6 +1249,7 @@ api.slack.openMessage(hit.channel.id, hit.messages[0].ts, { team: hit.team });</
     <p class="eyebrow">api.slack</p>
     <h1><code>openStatusEditor</code></h1>
     <p class="api-sig api-sig--big">(): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
     <p>Slack's own &quot;set a status&quot; dialog. There is no deep link for it and no action a mod can dispatch: the entry lives in the account menu, so this opens the menu and then presses it.</p>
@@ -1216,6 +1267,7 @@ if (!opened) api.ui.toast('Slack did not open the status dialog', { variant: 'wa
     <p class="eyebrow">api.slack</p>
     <h1><code>openUserProfile</code></h1>
     <p class="api-sig api-sig--big">(userId: string): void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Open somebody's profile, through Slack's own deep link — same document, no reload. Not every id has one: an app, or a conversation with yourself, gives a pane that never appears.</p>
@@ -1229,6 +1281,7 @@ if (!opened) api.ui.toast('Slack did not open the status dialog', { variant: 'wa
     <p class="eyebrow">api.slack</p>
     <h1><code>restart</code></h1>
     <p class="api-sig api-sig--big">(): Promise&lt;void&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Stop Slack and start it again, with the loader still driving.</p>
@@ -1245,6 +1298,7 @@ await api.slack.restart();</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>selectors</code></h1>
     <p class="api-sig api-sig--big">: Readonly&lt;Record&lt;string, string&gt;&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on <code>data-qa</code> attributes rather than class names, which churn with every Slack release.</p>
@@ -1259,6 +1313,7 @@ await api.slack.restart();</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>setVip</code></h1>
     <p class="api-sig api-sig--big">(userId: string, isVip: boolean): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Add or remove someone from your VIP list, and report the new state.</p>
@@ -1274,6 +1329,7 @@ await api.slack.restart();</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>startHuddle</code></h1>
     <p class="api-sig api-sig--big">(userId: string): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Start a huddle with someone: open the conversation, then press Slack's own start control.</p>
@@ -1290,6 +1346,7 @@ const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
     <p class="eyebrow">api.slack</p>
     <h1><code>statusNode</code></h1>
     <p class="api-sig api-sig--big">(status: SlackStatus, profile?: SlackProfile): HTMLElement</p>
+    <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
     <p>That status as a node, so the two mods that show one draw the same thing. An image when an emoji resolved, the unicode character when Slack sent one, and the sentence beside it.</p>
@@ -1310,6 +1367,7 @@ if (status) {
     <p class="eyebrow">api.slack</p>
     <h1><code>userIdFromMessage</code></h1>
     <p class="api-sig api-sig--big">(message: MessageRef): string | null</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The author's id, read off the avatar's URL — Slack writes them as <code>&lt;team&gt;-&lt;user&gt;-&lt;hash&gt;-&lt;size&gt;</code>. Null when the message has no avatar to read, which is the case for a consecutive message from the same person.</p>
@@ -1324,6 +1382,7 @@ if (status) {
     <p class="eyebrow">api.slack</p>
     <h1><code>vipUsers</code></h1>
     <p class="api-sig api-sig--big">(): Promise&lt;string[]&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The workspace's VIP list. VIP is a preference rather than an endpoint: a comma-separated list under <code>vip_users</code>.</p>
@@ -1337,6 +1396,7 @@ if (status) {
     <p class="eyebrow">api.slack</p>
     <h1><code>web</code></h1>
     <p class="api-sig api-sig--big">: WebApi</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Slack's own web API, as the signed-in user. Reads the session token in one audited place so mods never touch localStorage themselves; requests can only reach Slack's own origin. See src/runtime/web-api.ts.</p>
@@ -1356,6 +1416,7 @@ const state = await api.slack.web.availability('U0EXAMPLE1');</code></pre>
     <p class="eyebrow">api.ui</p>
     <h1><code>confirm</code></h1>
     <p class="api-sig api-sig--big">(options: ConfirmOptions): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A yes/no dialog that resolves to a boolean, so a destructive action reads as a question in the code rather than as a pair of callbacks.</p>
@@ -1373,6 +1434,7 @@ const state = await api.slack.web.availability('U0EXAMPLE1');</code></pre>
     <p class="eyebrow">api.ui</p>
     <h1><code>kit</code></h1>
     <p class="api-sig api-sig--big">(doc?: Document): Kit</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Slack's design system, as components, bound to a document.</p>
@@ -1394,6 +1456,7 @@ kit.card('Palette', [kit.button('Save', { variant: 'primary', onClick: () =&gt; 
     <p class="eyebrow">api.ui</p>
     <h1><code>kitCss</code></h1>
     <p class="api-sig api-sig--big">: string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The kit's stylesheet, as text, for the document a mod opened. A window a mod opens is blank — no Slack stylesheet to borrow — so this is what makes the primitives look like anything.</p>
@@ -1409,6 +1472,7 @@ child.document.head.append(style);</code></pre>
     <p class="eyebrow">api.ui</p>
     <h1><code>menu</code></h1>
     <p class="api-sig api-sig--big">(anchor: HTMLElement, items: MenuItem[], options?: MenuOptions): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Slack's overflow menu, against an anchor you give it.</p>
@@ -1427,6 +1491,7 @@ child.document.head.append(style);</code></pre>
     <p class="eyebrow">api.ui</p>
     <h1><code>modal</code></h1>
     <p class="api-sig api-sig--big">(options: ModalOptions): ModalHandle</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A dialog wearing Slack's own <code>c-dialog</code> classes, so it follows every theme without BetterSlack owning a second design system. Returns a handle, so it can be updated or closed from outside the callback that opened it.</p>
@@ -1450,6 +1515,7 @@ dialog.close();</code></pre>
     <p class="eyebrow">api.ui</p>
     <h1><code>palette</code></h1>
     <p class="api-sig api-sig--big">(source: PaletteSource, labels: PaletteLabels): PaletteHandle</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The command palette, as a component.</p>
@@ -1492,6 +1558,7 @@ directory.onResults(() =&gt; {
     <p class="eyebrow">api.ui</p>
     <h1><code>toast</code></h1>
     <p class="api-sig api-sig--big">(message: string, options?: ToastOptions): ToastHandle</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>A short confirmation in the corner, with an optional action. Toasts live in a shadow root rather than the light DOM: Slack has no toast to borrow from, and an unreadable error message is worse than an off-brand one.</p>
@@ -1508,6 +1575,7 @@ directory.onResults(() =&gt; {
     <p class="eyebrow">api.ui</p>
     <h1><code>tooltip</code></h1>
     <p class="api-sig api-sig--big">(element: HTMLElement, options: TooltipOptions): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The lower-level tooltip, when you need to say where it goes. <code>helpers.tooltip</code> is the two-argument form for the common case.</p>
@@ -1525,6 +1593,7 @@ directory.onResults(() =&gt; {
     <p class="eyebrow">api.dom</p>
     <h1><code>h</code></h1>
     <p class="api-sig api-sig--big">: typeof h</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Build an element: a tag, its attributes, its children. Strings become text nodes.</p>
@@ -1542,6 +1611,7 @@ directory.onResults(() =&gt; {
     <p class="eyebrow">api.dom</p>
     <h1><code>keepMounted</code></h1>
     <p class="api-sig api-sig--big">: (containerSelector: string, nodeId: string, factory: () =&gt; HTMLElement, position?: 'append' | 'prepend') =&gt; Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Keep an element in a container, putting it back whenever Slack re-renders that container away. It gives up after 25 remounts in two seconds rather than looping.</p>
@@ -1556,6 +1626,7 @@ directory.onResults(() =&gt; {
     <p class="eyebrow">api.dom</p>
     <h1><code>onEach</code></h1>
     <p class="api-sig api-sig--big">: &lt;T extends Element = Element&gt;(selector: string, handler: (element: T) =&gt; void) =&gt; Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Run a handler for every element matching a selector, now and as more arrive.</p>
@@ -1570,6 +1641,7 @@ directory.onResults(() =&gt; {
     <p class="eyebrow">api.dom</p>
     <h1><code>onShortcut</code></h1>
     <p class="api-sig api-sig--big">: (match: (event: KeyboardEvent) =&gt; boolean, handler: (event: KeyboardEvent) =&gt; void) =&gt; Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The low-level key listener. Prefer helpers.hotkey, which takes a combo string and handles the platform.</p>
@@ -1586,6 +1658,7 @@ directory.onResults(() =&gt; {
     <p class="eyebrow">api.dom</p>
     <h1><code>waitFor</code></h1>
     <p class="api-sig api-sig--big">: typeof waitFor</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Wait for an element to appear, up to a timeout. It resolves null rather than throwing, so a mod that starts before Slack has drawn can say so.</p>
@@ -1600,6 +1673,7 @@ if (!composer) return;   // it resolves null rather than throwing</code></pre>
     <p class="eyebrow">api.i18n</p>
     <h1><code>language</code></h1>
     <p class="api-sig api-sig--big">: string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The language on its own, without the region: <code>fr</code> for <code>fr-FR</code>. What a translation table is usually keyed by.</p>
@@ -1613,6 +1687,7 @@ if (!composer) return;   // it resolves null rather than throwing</code></pre>
     <p class="eyebrow">api.i18n</p>
     <h1><code>locale</code></h1>
     <p class="api-sig api-sig--big">: string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The app's language tag, e.g. &quot;fr-FR&quot;. Use it for <code>toLocaleString</code> and friends.</p>
@@ -1627,6 +1702,7 @@ if (!composer) return;   // it resolves null rather than throwing</code></pre>
     <p class="eyebrow">api.i18n</p>
     <h1><code>strings</code></h1>
     <p class="api-sig api-sig--big">&lt;T extends Dictionary&gt;(tables: Tables&lt;T&gt;): Translate&lt;T&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Build a translator from a table per language. It returns a <code>t(key, vars)</code> where <code>{count}</code>-style placeholders are filled from the second argument.</p>
@@ -1645,6 +1721,7 @@ t('saved', { count: 3 });</code></pre>
     <p class="eyebrow">api.settings</p>
     <h1><code>all</code></h1>
     <p class="api-sig api-sig--big">(): Record&lt;string, unknown&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Everything this mod has stored, as one object — for a settings screen that draws them all rather than asking for each.</p>
@@ -1658,6 +1735,7 @@ t('saved', { count: 3 });</code></pre>
     <p class="eyebrow">api.settings</p>
     <h1><code>get</code></h1>
     <p class="api-sig api-sig--big">&lt;T = unknown&gt;(key: string, fallback?: T): T | undefined</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Read one of this mod's settings, with a fallback for the first run. Synchronous: the values arrive with the plugin.</p>
@@ -1671,6 +1749,7 @@ t('saved', { count: 3 });</code></pre>
     <p class="eyebrow">api.settings</p>
     <h1><code>onChange</code></h1>
     <p class="api-sig api-sig--big">(handler: (values: Record&lt;string, unknown&gt;) =&gt; void): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Called when the panel changes one of the declared settings.</p>
@@ -1687,6 +1766,7 @@ t('saved', { count: 3 });</code></pre>
     <p class="eyebrow">api.settings</p>
     <h1><code>set</code></h1>
     <p class="api-sig api-sig--big">(key: string, value: unknown): Promise&lt;void&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Write one of this mod's settings. The loader owns the file, so it survives a restart and an update.</p>
@@ -1700,6 +1780,7 @@ t('saved', { count: 3 });</code></pre>
     <p class="eyebrow">api.commands</p>
     <h1><code>add</code></h1>
     <p class="api-sig api-sig--big">(command: { id, title, subtitle?, icon?, run }): Cleanup</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Publish something this mod can do, so it is findable by typing rather than by hunting for a button.</p>
@@ -1719,6 +1800,7 @@ t('saved', { count: 3 });</code></pre>
     <p class="eyebrow">api.files</p>
     <h1><code>save</code></h1>
     <p class="api-sig api-sig--big">(url: string, filename: string): Promise&lt;{ path: string; bytes: number }&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Fetch a URL and save it to the download folder. The renderer cannot do this for Slack's CDN, which serves without CORS headers.</p>
@@ -1733,6 +1815,7 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
     <p class="eyebrow">api.files</p>
     <h1><code>screenshot</code></h1>
     <p class="api-sig api-sig--big">(options?: { size?: string; filename?: string }): Promise&lt;{ path: string; bytes: number }&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Photograph the Slack window and put the picture in the download folder.</p>
@@ -1751,6 +1834,7 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
     <p class="eyebrow">api.assets</p>
     <h1><code>list</code></h1>
     <p class="api-sig api-sig--big">(): string[]</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Every readable file in the mod's own folder, folder-relative and forward-slashed — the same strings you would import.</p>
@@ -1764,6 +1848,7 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
     <p class="eyebrow">api.assets</p>
     <h1><code>text</code></h1>
     <p class="api-sig api-sig--big">(path: string): string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>One of the mod's own files, as text. This is what lets a plugin keep its stylesheet in a real <code>.css</code> file, with an editor that highlights it, instead of a template literal.</p>
@@ -1777,6 +1862,7 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
     <p class="eyebrow">api.themes</p>
     <h1><code>list</code></h1>
     <p class="api-sig api-sig--big">(): Array&lt;{ id: string; name: string; description: string; enabled: boolean }&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The themes the user has, with whether each is on, for a tool that builds on top of them.</p>
@@ -1792,6 +1878,7 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
     <p class="eyebrow">api.themes</p>
     <h1><code>source</code></h1>
     <p class="api-sig api-sig--big">(id: string): Promise&lt;string&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>One theme's stylesheet as text, so a builder can start from it rather than from nothing.</p>
@@ -1805,6 +1892,7 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
     <p class="eyebrow">api.themes</p>
     <h1><code>suspend</code></h1>
     <p class="api-sig api-sig--big">(on: boolean): void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Hold every enabled theme back, or let them through again.</p>
@@ -1821,6 +1909,7 @@ api.onDispose(() =&gt; api.themes.suspend(false));</code></pre>
     <p class="eyebrow">api.app</p>
     <h1><code>commands</code></h1>
     <p class="api-sig api-sig--big">(): Command[]</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>What every other mod has registered, so a palette can offer all of them rather than only its own.</p>
@@ -1834,6 +1923,7 @@ api.onDispose(() =&gt; api.themes.suspend(false));</code></pre>
     <p class="eyebrow">api.app</p>
     <h1><code>mods</code></h1>
     <p class="api-sig api-sig--big">(): Array&lt;{ id, name, description, type, installed, enabled, settings }&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The catalogue as the panel sees it: what is installed, what is enabled, and how many settings each one declares.</p>
@@ -1848,6 +1938,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
     <p class="eyebrow">api.app</p>
     <h1><code>openMod</code></h1>
     <p class="api-sig api-sig--big">(id: string): void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Open the panel on one mod, with its settings unfolded.</p>
@@ -1862,6 +1953,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
     <p class="eyebrow">api.app</p>
     <h1><code>openPanel</code></h1>
     <p class="api-sig api-sig--big">(tab?: 'themes' | 'plugins' | 'css' | 'about'): void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Open the Mods panel, optionally on a particular tab. With no argument it opens wherever it was left.</p>
@@ -1875,6 +1967,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
     <p class="eyebrow">api.app</p>
     <h1><code>setEnabled</code></h1>
     <p class="api-sig api-sig--big">(id: string, enabled: boolean): Promise&lt;void&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Switch a mod on or off, exactly as the panel's own toggle does — including writing it to the settings file.</p>
@@ -1888,6 +1981,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
     <p class="eyebrow">api.app</p>
     <h1><code>setInstalled</code></h1>
     <p class="api-sig api-sig--big">(id: string, installed: boolean): Promise&lt;void&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Install a mod into the user's own folder, or remove it. Installing is what the Browse shelf does.</p>
@@ -1901,6 +1995,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
     <p class="eyebrow">api.log</p>
     <h1><code>error</code></h1>
     <p class="api-sig api-sig--big">: (...args: unknown[]) =&gt; void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The same, at error level. The loader forwards these to its terminal whatever the verbosity, because an error at boot is the one line you need.</p>
@@ -1914,6 +2009,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
     <p class="eyebrow">api.log</p>
     <h1><code>info</code></h1>
     <p class="api-sig api-sig--big">: (...args: unknown[]) =&gt; void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Write a line to the console, prefixed with this mod's id. The loader forwards it to the terminal, which is where a mod that failed at boot says so.</p>
@@ -1928,6 +2024,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
     <p class="eyebrow">api.log</p>
     <h1><code>warn</code></h1>
     <p class="api-sig api-sig--big">: (...args: unknown[]) =&gt; void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>The same, at warning level. The loader forwards these even without BETTERSLACK_VERBOSE.</p>
@@ -1941,6 +2038,7 @@ const off = mods.filter((mod) =&gt; mod.installed &amp;&amp; !mod.enabled);</cod
     <p class="eyebrow">On the api object</p>
     <h1><code>css</code></h1>
     <p class="api-sig api-sig--big">(text: string): void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>This plugin's stylesheet, replaced wholesale on each call. That is the contract: a mod that recomputed its CSS on every settings change would otherwise stack copies of it for ever. The helpers write through a node of their own, so using both is safe.</p>
@@ -1957,6 +2055,7 @@ api.css(`
     <p class="eyebrow">On the api object</p>
     <h1><code>id</code></h1>
     <p class="api-sig api-sig--big">: string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>This mod's id: its folder name, the key its settings are stored under, and the prefix on everything it puts in the DOM.</p>
@@ -1970,6 +2069,7 @@ api.css(`
     <p class="eyebrow">On the api object</p>
     <h1><code>manifest</code></h1>
     <p class="api-sig api-sig--big">: ModRecord</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>This mod's own <code>mod.json</code>, as the loader parsed it — its version, its author, the settings it declares.</p>
@@ -1984,6 +2084,7 @@ api.manifest.settings;     // what the panel draws for you</code></pre>
     <p class="eyebrow">On the api object</p>
     <h1><code>onDispose</code></h1>
     <p class="api-sig api-sig--big">(fn: Cleanup): void</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Register a teardown callback. It runs when the plugin is switched off, which is the moment everything a mod started has to stop: intervals, listeners, anything it put on the page.</p>
@@ -1998,6 +2099,7 @@ api.onDispose(() =&gt; clearInterval(timer));</code></pre>
     <p class="eyebrow">On the api object</p>
     <h1><code>saveTheme</code></h1>
     <p class="api-sig api-sig--big">(options: { id: string; name: string; description: string; css: string }): Promise&lt;void&gt;</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>Write a theme into the user's own mods folder, where it appears in the panel like any other and survives a restart.</p>
@@ -2017,6 +2119,7 @@ api.onDispose(() =&gt; clearInterval(timer));</code></pre>
     <p class="eyebrow">On the api object</p>
     <h1><code>version</code></h1>
     <p class="api-sig api-sig--big">: string</p>
+    <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
     <p>BetterSlack's version, not the mod's — the mod's is <code>api.manifest.version</code>.</p>

@@ -3,6 +3,7 @@ name: copyText
 group: kit
 title: Component kit
 signature: (text: string): Promise<boolean>
+since: 2.0.1
 preview: kit-copytext
 control: text | text | #611f69
 ---

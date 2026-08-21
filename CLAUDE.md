@@ -458,10 +458,15 @@ kit.button('Save', { variant: 'primary', onClick: () => save() });
   the one that is not on `PluginApi` -- the pieces a mod *imports* rather than
   receives, like the readme renderer and the tokeniser -- and is skipped by the
   cross-check rather than called an orphan.
-- `name`, `group`, `title` and `signature` are required. So are one paragraph of
-  prose and one fenced example -- the parser refuses a file without either,
-  because a reference that shows an example for two thirds of what it lists
-  teaches the reader to distrust the third.
+- `name`, `group`, `title`, `signature` and `since` are required. So are one
+  paragraph of prose and one fenced example -- the parser refuses a file without
+  either, because a reference that shows an example for two thirds of what it
+  lists teaches the reader to distrust the third.
+- **`since` is the release the entry arrived in**, or `unreleased` for one that
+  is on the default branch and in no release yet. It is not decoration: it is
+  what makes a mod's minimum BetterSlack computable, and the section below
+  depends on every entry having one. `pnpm release` turns every `unreleased`
+  into the version it cuts, so nobody has to remember to.
 - `preview` names a renderer in `scripts/api-previews.js`. A preview is code and
   cannot be anything else; everything a writer writes about it is not. **Every
   entry has one.** The ones that reach something a web page has not got --
@@ -1314,6 +1319,70 @@ Browse shelf uses, which re-validates the manifest loader-side -- files off the
 network are untrusted whichever button asked for them. That separation is the
 whole point: without it, a one-line fix to a theme means pulling the loader and
 the runtime along with it.
+
+## A mod may not be installed into a BetterSlack that cannot run it
+
+A mod updates on its own, out of `mods/registry.json` on the default branch,
+into whatever version the reader happens to be running. So a plugin that starts
+calling something added last month breaks on every older install -- at the first
+click, with a `TypeError`, which reads to the person holding it as "this plugin
+is broken" rather than "this plugin is newer than my app".
+
+**The floor is computed, not remembered.** Every entry in `docs/api/` carries
+the release it arrived in; `scripts/api-floor.mjs` reads which of them a mod's
+source touches and takes the highest. That is the only version of this that
+works: a hand-written compatibility field is the field nobody bumps, and the
+release where they forget is the release that needed it. It is possible at all
+because `build-api-page.mjs` already cross-checks that folder against the
+TypeScript interfaces -- a new API member cannot exist without a file, so it
+cannot exist without a version.
+
+- **`build-registry.mjs` publishes it** as `needsBetterSlack`, because the
+  registry is what an older install reads. A floor of nothing is omitted rather
+  than written as `0.0.0`: every theme would carry it and say nothing.
+- **`mod-updates.ts` refuses**, twice. The listing marks the update
+  `blockedBy` so the panel can say which version is wanted, and `mods.update`
+  asks again immediately before writing files, because the panel's list can be
+  minutes old.
+- **The panel reports it and offers no button.** Hiding the update would leave
+  the reader believing they are current; offering one that cannot work hands
+  them a mod that throws.
+- **`unreleased` is a real answer**, not a missing one. A mod calling something
+  that is on the branch and in no release genuinely cannot run on any published
+  build, so it is refused everywhere until a release is cut -- `pnpm release`
+  stamps every `unreleased` with the version it cuts and rebuilds the registry
+  in the same commit. Miss that step and every mod using a new call stays
+  uninstallable after the release that fixed it.
+- **A manifest may raise the floor and may never lower it.** The scan reads
+  source text, not a program: it finds `api.slack.openMessage`, the aliases mods
+  really write (`const ui = api.ui.kit(document)`, `const { slack } = api`) and
+  the imported `tools` group, and it does not find a member reached through a
+  computed name or one whose behaviour changed without its name changing.
+  Declaring `needsBetterSlack` covers that gap; `validate-mods` fails a
+  declaration below the computed floor, naming the calls responsible.
+
+**The catalogue itself is never at risk**, and that is worth knowing before
+looking for bugs here: `mods/` ships inside the install, so a catalogue mod
+always matches the app it came with. The mismatch exists only along the
+mod-update path, which is the one thing that carries a newer mod into an older
+app.
+
+**`betterslackApi` is a different thing and stays.** It is one integer, checked
+against `MOD_API_VERSION`, and it answers "is this manifest shaped like one this
+build understands" -- not "does this build have the calls this mod makes".
+
+**`slackVersion` is compared now too.** `slackVersion(slackPath)` in `slack.ts`
+reads the number where it can be read honestly: macOS keeps it in the bundle's
+`Info.plist`, which is XML text and needs no `PlistBuddy`; Windows installs each
+version into its own `app-4.51.191` directory, so the executable's path carries
+it; Linux packages it a dozen ways and none of them are on that path, so it
+answers **null**. Null must stay null -- an unknown version compared against
+anything invents a mismatch, and a warning that fires where nothing is wrong
+teaches people to ignore the one that is real. Mods declare two parts (`4.51`)
+and Slack ships three (`4.51.191`), so `slackVersionIsNewer` compares only the
+parts the mod states; a full-length compare called every mod in the catalogue a
+mismatch. It warns on the mod's page rather than blocking: BetterSlack cannot
+update Slack, so refusing would leave nothing to do about it.
 
 ## The panel speaks both languages
 

@@ -3,6 +3,7 @@ name: keepMounted
 group: dom
 title: api.dom
 signature: : (containerSelector: string, nodeId: string, factory: () => HTMLElement, position?: 'append' | 'prepend') => Cleanup
+since: 2.0.1
 preview: dom-keepmounted
 ---
 

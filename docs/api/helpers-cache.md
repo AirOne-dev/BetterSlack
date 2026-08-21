@@ -3,6 +3,7 @@ name: cache
 group: helpers
 title: api.helpers
 signature: (name: string, options?: { keys?: number }): Cache
+since: 2.1.0
 preview: helpers-cache
 control: stored | text | the list you saw last time | what is stored
 control: fresh | text | the list Slack just answered | what Slack answers

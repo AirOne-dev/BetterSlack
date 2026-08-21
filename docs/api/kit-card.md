@@ -3,6 +3,7 @@ name: card
 group: kit
 title: Component kit
 signature: (title: string | null, children: Child[], options?: CardOptions): HTMLElement
+since: 2.0.1
 preview: kit-card
 control: title | text | Palette
 control: subtitle | text | Two colours, ten derived

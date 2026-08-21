@@ -3,6 +3,7 @@ name: warn
 group: log
 title: api.log
 signature: : (...args: unknown[]) => void
+since: 2.0.1
 preview: log-warn
 ---
 

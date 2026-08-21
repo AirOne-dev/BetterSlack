@@ -3,6 +3,7 @@ name: waitFor
 group: dom
 title: api.dom
 signature: : typeof waitFor
+since: 2.0.1
 preview: dom-waitfor
 ---
 

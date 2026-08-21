@@ -126,10 +126,31 @@ const loaderLib = {
   logLevel: 'warning',
 };
 
+/**
+ * The wire format, emitted so tests can exercise the real thing rather than a
+ * copy of it -- the version comparisons that decide whether a mod may be
+ * installed live there.
+ *
+ * Its own config with an explicit outfile, not another entry in the list above:
+ * esbuild puts an outdir build under the common base of its entry points, so
+ * adding a file from src/shared/ to a list of src/loader/ ones moves *every*
+ * output down a directory, and dist/download.mjs -- which the tests and the
+ * loader both name -- becomes dist/loader/download.mjs.
+ */
+const sharedProtocol = {
+  entryPoints: [`${root}/src/shared/protocol.ts`],
+  outfile: `${root}/dist/protocol.mjs`,
+  bundle: true,
+  platform: 'neutral',
+  format: 'esm',
+  target: 'es2022',
+  logLevel: 'warning',
+};
+
 if (watch) {
-  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers), esbuild.context(runtimeI18n), esbuild.context(runtimeModules)]);
+  const contexts = await Promise.all([esbuild.context(loader), esbuild.context(runtime), esbuild.context(loaderLib), esbuild.context(runtimeHelpers), esbuild.context(runtimeI18n), esbuild.context(runtimeModules), esbuild.context(sharedProtocol)]);
   await Promise.all(contexts.map((c) => c.watch()));
   console.log('[betterslack] watching for changes...');
 } else {
-  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers), esbuild.build(runtimeI18n), esbuild.build(runtimeModules)]);
+  await Promise.all([esbuild.build(loader), esbuild.build(runtime), esbuild.build(loaderLib), esbuild.build(runtimeHelpers), esbuild.build(runtimeI18n), esbuild.build(runtimeModules), esbuild.build(sharedProtocol)]);
 }

@@ -3,6 +3,7 @@ name: segmented
 group: kit
 title: Component kit
 signature: (options: Option[], config?: SegmentedOptions): Segmented
+since: 2.0.1
 preview: kit-segmented
 control: labels | text | Colours, CSS, Inspect
 control: count | number | 12 | badge on the first

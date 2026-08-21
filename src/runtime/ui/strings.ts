@@ -75,6 +75,11 @@ export const PANEL_STRINGS = {
     modUpdateBody: 'You have {current}. Updating replaces this mod alone, and reapplies it if it is on.',
     modUpdateGo: 'Update',
     modUpdateWorking: 'Downloading…',
+    modUpdateBlocked:
+      '{name} {version} needs BetterSlack {needs}, and this is {running}. '
+      + 'Update BetterSlack first — taking it now would leave a mod calling things this version does not have.',
+    slackTooOld:
+      'Written against Slack {wanted}, and this is {have}. It may not find what it expects.',
 
     cssHint:
       'Applied after every theme, so it always wins. Slack exposes its palette as CSS custom properties (--dt_color-*), which is a steadier target than its class names.',
@@ -193,6 +198,11 @@ export const PANEL_STRINGS = {
       'Vous êtes en {current}. Mettre à jour ne remplace que ce mod, et le réapplique s’il est activé.',
     modUpdateGo: 'Mettre à jour',
     modUpdateWorking: 'Téléchargement…',
+    modUpdateBlocked:
+      '{name} {version} nécessite BetterSlack {needs}, et vous avez {running}. '
+      + 'Mettez d\'abord BetterSlack à jour — sinon ce mod appellerait des choses que cette version n\'a pas.',
+    slackTooOld:
+      'Écrit pour Slack {wanted}, et vous avez {have}. Il peut ne pas trouver ce qu\'il attend.',
 
     cssHint:
       'Appliqué après tous les thèmes, il l’emporte donc toujours. Slack expose sa palette en propriétés CSS personnalisées (--dt_color-*), une cible plus stable que ses noms de classe.',

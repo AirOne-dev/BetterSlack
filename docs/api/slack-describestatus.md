@@ -3,6 +3,7 @@ name: describeStatus
 group: slack
 title: api.slack
 signature: (who: SlackUser | SlackProfile, customEmoji?: Map<string, string>): SlackStatus | null
+since: 2.1.0
 preview: slack-describestatus
 control: text | text | On holiday | status text
 control: emoji | select | palm_tree | status emoji | palm_tree, glitch_crab, tada, no_such_emoji

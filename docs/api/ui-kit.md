@@ -3,6 +3,7 @@ name: kit
 group: ui
 title: api.ui
 signature: (doc?: Document): Kit
+since: 2.0.1
 preview: ui-kit
 ---
 

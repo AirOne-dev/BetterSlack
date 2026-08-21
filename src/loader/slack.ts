@@ -1,7 +1,7 @@
 // Locating, stopping and starting the Slack desktop app.
 
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, promises as fsp } from 'node:fs';
 import { homedir } from 'node:os';
 import { promisify } from 'node:util';
 import path from 'node:path';
@@ -58,6 +58,41 @@ export function findSlack(): string {
         .join('\n') +
       `\n\nSet BETTERSLACK_SLACK_PATH to the executable if Slack lives elsewhere.`,
   );
+}
+
+/**
+ * Which Slack this is, where that can be read honestly.
+ *
+ * Mods declare the Slack they were written against, and until now nothing
+ * compared it -- the field was carried all the way into the registry and read
+ * by no one. Comparing needs a number, and there is one on macOS and Windows:
+ *
+ * - macOS keeps it in the bundle's Info.plist, which is XML text, so it is
+ *   read here rather than shelled out to PlistBuddy or `defaults`.
+ * - Windows installs each version into its own `app-4.51.191` directory, and
+ *   the executable's path therefore carries it.
+ * - Linux packages it a dozen ways and none of them are on the executable's
+ *   path, so this answers null.
+ *
+ * **Null must stay null.** An unknown version compared against anything invents
+ * a mismatch, and a warning that fires on a machine where nothing is wrong is
+ * worse than no warning at all: it teaches people to ignore the one that is
+ * real. Every caller treats null as "say nothing".
+ */
+export async function slackVersion(slackPath: string): Promise<string | null> {
+  if (process.platform === 'darwin') {
+    // .../Slack.app/Contents/MacOS/Slack -> .../Slack.app/Contents/Info.plist
+    const plist = path.resolve(path.dirname(slackPath), '..', 'Info.plist');
+    const text = await fsp.readFile(plist, 'utf8').catch(() => null);
+    const found = text?.match(
+      /<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/,
+    );
+    return found?.[1]?.trim() || null;
+  }
+  if (process.platform === 'win32') {
+    return slackPath.match(/[\\/]app-(\d+(?:\.\d+)*)[\\/]/)?.[1] ?? null;
+  }
+  return null;
 }
 
 const PROCESS_NAME = process.platform === 'win32' ? 'slack.exe' : 'Slack';

@@ -3,6 +3,7 @@ name: palette
 group: ui
 title: api.ui
 signature: (source: PaletteSource, labels: PaletteLabels): PaletteHandle
+since: 2.0.1
 preview: ui-palette
 ---
 

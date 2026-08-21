@@ -3,6 +3,7 @@ name: kitCss
 group: ui
 title: api.ui
 signature: : string
+since: 2.0.1
 preview: ui-kitcss
 ---
 

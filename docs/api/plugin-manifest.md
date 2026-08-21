@@ -3,6 +3,7 @@ name: manifest
 group: plugin
 title: On the api object
 signature: : ModRecord
+since: 2.0.1
 preview: plugin-manifest
 ---
 

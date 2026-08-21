@@ -3,6 +3,7 @@ name: debounce
 group: helpers
 title: api.helpers
 signature: <T extends (...args: never[]) => void>(fn: T, ms: number): T
+since: 2.0.1
 preview: helpers-debounce
 control: ms | number | 400 | milliseconds
 ---
