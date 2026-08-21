@@ -74,10 +74,23 @@ install what you want from **Browse**.
 
 ## Update, and uninstall
 
-Run the installer again. It rebuilds from the clone you have, so `git pull`
-first if you want the newest version. BetterSlack can also update itself from
-the panel, which fetches the current source, builds it and re-stages the
-install without touching anything else.
+**A dot on the BetterSlack button in Slack's rail means something is out of
+date**, and the number on it is how many things: BetterSlack itself, plus every
+installed mod that has a newer version published. Open the panel and the tab it
+belongs to carries a dot too -- **Themes**, **Plugins** or **About** -- with the
+notice and its button above whatever tab you are on. It is looked for at start
+and once an hour after that, so a client left running for days still tells you.
+
+Run the installer again to update. It rebuilds from the clone you have, so
+`git pull` first if you want the newest version. BetterSlack can also update
+itself from the panel, which fetches the current source, builds it and re-stages
+the install without touching anything else.
+
+A mod updates on its own, from its own button, without pulling the app along
+with it -- which is the point: a one-line fix to a theme should not wait for a
+release of the whole project. Where a newer mod needs a newer BetterSlack, the
+panel says which version it wants and offers no button, because installing it
+would hand you a mod that throws on its first click.
 
 To uninstall, delete `~/.betterslack` and the launcher: the app in
 `/Applications`, or `~/.local/bin/betterslack` and

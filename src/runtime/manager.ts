@@ -8,6 +8,7 @@ import {
   type ModRecord,
   type RemoteMod,
   type Settings,
+  type ModUpdate,
   type UpdateStatus,
 } from '../shared/protocol.js';
 import { createPluginApi } from './api.js';
@@ -62,6 +63,8 @@ export interface BootPayload {
   info: LoaderInfo;
   /** Absent when the loader's version check has not answered yet. */
   update?: UpdateStatus;
+  /** What the loader's first mod sweep found, if it had finished by then. */
+  modUpdates?: ModUpdate[];
 }
 
 export class ModManager {
@@ -73,6 +76,15 @@ export class ModManager {
   private listeners = new Set<() => void>();
   /** What the loader last said about this copy being current. */
   update: UpdateStatus | undefined;
+  /**
+   * Installed mods with a newer version published.
+   *
+   * Held here rather than in the panel, which is where it used to live: the
+   * launcher's badge counts these and the panel is usually shut, so state that
+   * only exists once somebody has opened the panel is state the badge can never
+   * read. The loader sweeps hourly and pushes the answer.
+   */
+  modUpdates: ModUpdate[] = [];
   /** Why a mod is not running, keyed by id. Cleared when it applies cleanly. */
   readonly errors = new Map<string, string>();
 
@@ -109,6 +121,7 @@ export class ModManager {
     this.mods = boot.mods;
     this.sources = { ...boot.sources };
     this.update = boot.update;
+    this.modUpdates = boot.modUpdates ?? [];
     bridge.onEvent((event) => void this.onLoaderEvent(event));
   }
 
@@ -217,12 +230,16 @@ export class ModManager {
   }
 
   /** Installed mods with a newer version published, or an empty list. */
-  checkModUpdates(): Promise<Array<{ id: string; name: string; from: string; to: string }>> {
-    return this.bridge
-      .request<Array<{ id: string; name: string; from: string; to: string }>>({
-        type: 'mods.checkUpdates',
-      })
-      .catch(() => []);
+  async refreshModUpdates(): Promise<ModUpdate[]> {
+    const updates = await this.bridge
+      .request<ModUpdate[]>({ type: 'mods.checkUpdates' })
+      .catch(() => null);
+    // Null is "the loader could not say", which is not the same as "there are
+    // none": keeping what is known beats clearing a badge on a failed request.
+    if (updates === null) return this.modUpdates;
+    this.modUpdates = updates;
+    this.notify();
+    return updates;
   }
 
   /**
@@ -238,6 +255,9 @@ export class ModManager {
     });
     if (!result.ok) return result;
 
+    // Its own badge, cleared by the thing that cleared its cause. Waiting for
+    // the next hourly sweep would leave a dot on a mod that is already current.
+    this.modUpdates = this.modUpdates.filter((update) => update.id !== id);
     delete this.sources[id];
     const record = this.mods.find((mod) => mod.id === id);
     if (record && this.isEnabled(id)) {
@@ -690,6 +710,11 @@ export class ModManager {
       // It arrives after boot, because it went out on the network. Notifying
       // is what puts the badge on the button without anything polling for it.
       this.update = event.status;
+      this.notify();
+      return;
+    }
+    if (event.type === 'mods.updates') {
+      this.modUpdates = event.updates;
       this.notify();
       return;
     }

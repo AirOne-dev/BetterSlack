@@ -1369,6 +1369,30 @@ network are untrusted whichever button asked for them. That separation is the
 whole point: without it, a one-line fix to a theme means pulling the loader and
 the runtime along with it.
 
+**Both kinds of update are one number on one button.** The loader sweeps for
+both -- its own version and the registry -- at start and every hour after
+(`UPDATE_SWEEP_MS`), and pushes each answer: `update.status` and `mods.updates`.
+`ModManager` holds them, `notify()` repaints the launcher's badge, and the panel
+puts a dot on the tab that owns it: Themes, Plugins or About. Three things that
+are load-bearing rather than tidy:
+
+- **The count is the manager's, not the panel's.** The mod list used to live in
+  the panel and be fetched once, the first time it was opened -- so the badge
+  could never count a mod, and somebody who never opened the panel never learnt
+  one had moved on. State a badge reads cannot live in a window that is shut.
+- **Hourly, not at boot only.** This is somebody's messaging app, left running
+  for days; a check that answers once is a badge that is right for a minute.
+  An hour is two requests -- `git fetch` and one registry read -- for a dot.
+- **`findModUpdates` answers `null` when it could not ask**, and an empty list
+  only when it did. They were the same value, which was harmless while the
+  answer was only ever drawn as rows in an open panel: now one hourly sweep
+  taken offline would clear the dot off a mod that is still out of date. Same
+  rule the app's own check follows -- say nothing rather than say "current" on
+  no evidence.
+
+`tests/updates.test.mjs` covers the badge against a real `installLauncher`,
+which is why `ui/launcher.ts` is one of the modules the build emits separately.
+
 ## A mod may not be installed into a BetterSlack that cannot run it
 
 A mod updates on its own, out of `mods/registry.json` on the default branch,

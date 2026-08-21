@@ -71,6 +71,9 @@ export const PANEL_STRINGS = {
     updateDone: 'Updated. Slack is restarting…',
     updateFailed: 'Could not update: {reason}',
 
+    /** The dot on a tab and on the launcher. Read out; never drawn as words. */
+    updateAvailable: 'Update available',
+
     modUpdateTitle: '{name} {version} is out',
     modUpdateBody: 'You have {current}. Updating replaces this mod alone, and reapplies it if it is on.',
     modUpdateGo: 'Update',
@@ -192,6 +195,8 @@ export const PANEL_STRINGS = {
     updateDownloading: 'Téléchargement et reconstruction…',
     updateDone: 'Mis à jour. Slack redémarre…',
     updateFailed: 'Mise à jour impossible : {reason}',
+
+    updateAvailable: 'Mise à jour disponible',
 
     modUpdateTitle: '{name} {version} est sorti',
     modUpdateBody:

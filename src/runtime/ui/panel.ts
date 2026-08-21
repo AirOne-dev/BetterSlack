@@ -111,15 +111,17 @@ export class Panel {
     this.render();
     queueMicrotask(() => this.host?.querySelector<HTMLElement>('.betterslack-nav__item')?.focus());
 
-    // Once a session, and never during a render: it is a network round trip,
-    // and the panel re-renders several times per click.
+    /*
+     * A fresh answer on opening, once a session and never during a render.
+     *
+     * The list itself comes from the manager, which the loader keeps up to date
+     * hourly -- this is only so that somebody who opens the panel *because* of
+     * the badge is not reading something up to an hour old. The manager
+     * notifies, so nothing here has to re-render by hand.
+     */
     if (!this.checkedModUpdates) {
       this.checkedModUpdates = true;
-      void this.manager.checkModUpdates().then((updates) => {
-        if (updates.length === 0) return;
-        this.modUpdates = updates;
-        this.renderIfOpen();
-      });
+      void this.manager.refreshModUpdates();
     }
   }
 
@@ -265,11 +267,23 @@ export class Panel {
     const count = (type: 'theme' | 'plugin') =>
       mods.filter((m) => m.type === type && this.manager.isInstalled(m.id)).length;
 
-    const items: { id: TabId; label: string; count?: number }[] = [
-      { id: 'themes', label: t('themes'), count: count('theme') },
-      { id: 'plugins', label: t('plugins'), count: count('plugin') },
+    /*
+     * A dot on the tab the update belongs to.
+     *
+     * The notices themselves render above whatever tab is open, so this is not
+     * how somebody finds them -- it is how they know, before reading anything,
+     * whether the thing that is out of date is a theme, a plugin or BetterSlack
+     * itself. That is the same question the dot on the launcher raises and does
+     * not answer.
+     */
+    const updated = (type: 'theme' | 'plugin') =>
+      this.manager.modUpdates.some((update) => update.type === type);
+
+    const items: { id: TabId; label: string; count?: number; dot?: boolean }[] = [
+      { id: 'themes', label: t('themes'), count: count('theme'), dot: updated('theme') },
+      { id: 'plugins', label: t('plugins'), count: count('plugin'), dot: updated('plugin') },
       { id: 'css', label: t('css') },
-      { id: 'about', label: t('about') },
+      { id: 'about', label: t('about'), dot: this.manager.update?.behind === true },
     ];
 
     const nav = h('nav', { class: 'betterslack-nav', role: 'tablist' });
@@ -280,6 +294,15 @@ export class Panel {
         'aria-selected': String(this.tab === item.id),
         type: 'button',
       }, [item.label]);
+      if (item.dot) {
+        // Before the count, which is pushed to the right edge, so a tab with a
+        // number and a tab without wear the dot in the same place.
+        button.append(h('span', {
+          class: 'betterslack-nav__dot',
+          role: 'img',
+          'aria-label': t('updateAvailable'),
+        }));
+      }
       if (item.count !== undefined) {
         button.append(h('span', { class: 'betterslack-count' }, [String(item.count)]));
       }
@@ -841,11 +864,7 @@ export class Panel {
   /** Mods whose settings are unfolded, so a render does not close them. */
   private openSettings = new Set<string>();
 
-  /** Answered once per session, when the panel is first opened. */
-  private modUpdates: Array<{
-    id: string; name: string; from: string; to: string;
-    blockedBy?: { needs: string; running: string };
-  }> = [];
+  /** Refreshed once per session, when the panel is first opened. */
   private checkedModUpdates = false;
 
   /** Set while the requirements dialog is open, so Escape can cancel it. */
@@ -1336,9 +1355,10 @@ export class Panel {
    * because it is a network round trip and nobody wants one per render.
    */
   private renderModUpdates(): Node[] {
-    if (this.modUpdates.length === 0) return [];
+    const updates = this.manager.modUpdates;
+    if (updates.length === 0) return [];
 
-    const rows = this.modUpdates.map((update) => {
+    const rows = updates.map((update) => {
       /*
        * Reported, but with no button. Hiding an update the reader cannot take
        * would leave them believing they are current; offering one that cannot
@@ -1377,7 +1397,7 @@ export class Panel {
             button.removeAttribute('disabled');
             return;
           }
-          this.modUpdates = this.modUpdates.filter((other) => other.id !== update.id);
+          // `updateMod` drops it from the manager's list, which notifies.
           this.render();
         });
       });

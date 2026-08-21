@@ -128,10 +128,21 @@ async function boot(): Promise<void> {
     unmountUi = installLauncher({
       onActivate: () => panel.toggle(),
       styles: manager.styles,
-      // One thing to be told about: a version behind the one on GitHub. The
-      // answer arrives after boot, so the button is repainted rather than
-      // rebuilt when it does.
-      badge: () => (manager.update?.behind ? 1 : 0),
+      /*
+       * Everything there is to be told about, as one number: a BetterSlack
+       * behind the one on GitHub, plus every installed mod that has moved on.
+       *
+       * Both arrive after boot and are refreshed hourly by the loader, so the
+       * button is repainted rather than rebuilt when they do. Counting the mods
+       * is the point of the count: with only the app in it this was a badge
+       * that read 1 or nothing, which a dot would have said just as well.
+       *
+       * A blocked mod update -- one needing a newer BetterSlack -- is counted
+       * like any other. It is still something that changed under the reader,
+       * the panel says which version it wants, and the app update that unblocks
+       * it is in the same number.
+       */
+      badge: () => (manager.update?.behind ? 1 : 0) + manager.modUpdates.length,
       onBadgeChange: (repaint) => manager.onChange(repaint),
     });
   };

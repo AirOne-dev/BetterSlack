@@ -19,6 +19,7 @@ import { applyDesktopPrefs, checkPref, prefsSupported, readDesktopPrefs } from '
 import { applyUpdate, checkForUpdate } from './update.js';
 import {
   fetchModFiles, findModUpdates, folderFor, inspectRemote, manifestFrom,
+  type ModUpdate,
   updateIsReachable,
 } from './mod-updates.js';
 // Shared with the runtime so a theme's @import behaves the same in Slack's
@@ -80,6 +81,14 @@ const REPO = 'AirOne-dev/BetterSlack';
 
 /** How often the watchdog asks the renderer whether it is still there. */
 const WATCHDOG_INTERVAL_MS = 30_000;
+/**
+ * How often to look for a newer BetterSlack and newer mods.
+ *
+ * An hour, and deliberately not less: what it feeds is a dot on a button, and
+ * nobody acts on an update in the minute it is published. Slack is left running
+ * for days, though, so it cannot be a one-shot at boot either.
+ */
+const UPDATE_SWEEP_MS = 60 * 60 * 1000;
 const DEFAULT_BRANCH = 'master';
 
 interface Args {
@@ -133,6 +142,8 @@ class Loader {
   private info!: LoaderInfo;
   /** Filled in once the version check answers; undefined until then. */
   private update: UpdateStatus | undefined;
+  /** What the last mod-update sweep found, for a renderer that attaches later. */
+  private modUpdates: ModUpdate[] = [];
 
   constructor(
     /*
@@ -202,22 +213,22 @@ class Loader {
     );
 
     /*
-     * The version check goes out on the network, so nothing waits for it: it
-     * runs beside the attach loop and pushes its answer when it has one. A
-     * renderer that attaches later gets it in the boot payload instead.
+     * Both checks go out on the network, so nothing waits for them: they run
+     * beside the attach loop and push their answers when they have them. A
+     * renderer that attaches later gets both from the boot payload instead.
      */
-    void checkForUpdate({ root: REPO_ROOT, version: VERSION, repo: REPO, branch: DEFAULT_BRANCH })
-      .then((status) => {
-        this.update = status;
-        if (status.behind) {
-          console.log(
-            `[betterslack] an update is available${status.commits ? ` (${status.commits} commit(s))` : ''}` +
-              `${status.headline ? `: ${status.headline}` : ''}`,
-          );
-        }
-        this.broadcast({ type: 'update.status', status });
-      })
-      .catch(() => undefined);
+    void this.sweepForUpdates();
+    /*
+     * And again every hour, because a badge that is only ever right at the
+     * moment Slack started is a badge that is usually wrong: this is somebody's
+     * messaging app, left running for days. Hourly is two requests an hour --
+     * `git fetch` (or one raw package.json) and one registry -- against a check
+     * whose whole output is a dot.
+     *
+     * Unref'd so it is never what keeps the process alive: the loader exits
+     * when Slack does, not when a timer says it may.
+     */
+    setInterval(() => void this.sweepForUpdates(), UPDATE_SWEEP_MS).unref?.();
 
     this.catalog.watch(async (changedIds) => {
       const settings = await readSettings();
@@ -620,6 +631,59 @@ class Loader {
    * had was invisible to the unit tests and obvious here, and it was being
    * checked by hand.
    */
+  /** Installed mods with a newer version published; null if it could not ask. */
+  private async findModUpdates(): Promise<ModUpdate[] | null> {
+    const installed = (await readSettings()).installed;
+    const records = this.catalog.list().filter((mod) => installed.includes(mod.id));
+    return findModUpdates(records, { repo: REPO, branch: DEFAULT_BRANCH }, VERSION);
+  }
+
+  /**
+   * Look for a newer BetterSlack and newer mods, and tell the renderer.
+   *
+   * The two are checked together and kept apart: they update by different
+   * routes and one being blocked does not stop the other. Both are pushed even
+   * when nothing was found, since "there is no longer an update" is exactly as
+   * much of a change to a badge as "there is one" -- a mod updated from the
+   * panel has to clear its own dot.
+   *
+   * Everything fails soft. Offline, on a fork, behind a proxy: the check says
+   * it does not know and the badge stays as it was.
+   */
+  private async sweepForUpdates(): Promise<void> {
+    await Promise.all([
+      checkForUpdate({ root: REPO_ROOT, version: VERSION, repo: REPO, branch: DEFAULT_BRANCH })
+        .then((status) => {
+          const wasBehind = this.update?.behind === true;
+          this.update = status;
+          // Once per arrival, not once an hour for ever: this line is the only
+          // notice somebody running from a terminal gets.
+          if (status.behind && !wasBehind) {
+            console.log(
+              `[betterslack] an update is available${status.commits ? ` (${status.commits} commit(s))` : ''}` +
+                `${status.headline ? `: ${status.headline}` : ''}`,
+            );
+          }
+          this.broadcast({ type: 'update.status', status });
+        })
+        .catch(() => undefined),
+      this.findModUpdates()
+        .then((updates) => {
+          // Nothing said, nothing changed: the registry was unreachable, and
+          // the badge keeps whatever the last sweep that did reach it found.
+          if (updates === null) return;
+          const key = (list: ModUpdate[]) => list.map((u) => `${u.id}@${u.to}`).join(',');
+          const changed = key(this.modUpdates) !== key(updates);
+          this.modUpdates = updates;
+          if (updates.length && changed) {
+            console.log(`[betterslack] mod update(s): ${updates.map((u) => `${u.name} ${u.to}`).join(', ')}`);
+          }
+          this.broadcast({ type: 'mods.updates', updates });
+        })
+        .catch(() => undefined),
+    ]);
+  }
+
   private async reportHealth(session: CdpSession): Promise<void> {
     // Long enough for Slack to build its client and the mods to mount, since
     // the interesting failures happen in that window.
@@ -924,7 +988,13 @@ class Loader {
       });
       if (files !== null) sources[id] = files;
     }
-    const boot = { version: VERSION, settings, mods, sources, info: this.info, update: this.update };
+    const boot = {
+      version: VERSION, settings, mods, sources, info: this.info,
+      update: this.update,
+      // A renderer that attaches after the first sweep would otherwise wait an
+      // hour for the push, and show no badge in the meantime.
+      modUpdates: this.modUpdates,
+    };
     return `window.__BETTERSLACK_BOOT__ = ${JSON.stringify(boot)};\n${this.runtimeSource}`;
   }
 
@@ -1086,9 +1156,11 @@ class Loader {
         return inspectRemote(request.url);
 
       case 'mods.checkUpdates': {
-        const installed = (await readSettings()).installed;
-        const records = this.catalog.list().filter((mod) => installed.includes(mod.id));
-        return findModUpdates(records, { repo: REPO, branch: DEFAULT_BRANCH }, VERSION);
+        // The panel asking is not a different question from the badge asking,
+        // so the answer is kept: an unreachable registry leaves both alone.
+        const updates = await this.findModUpdates();
+        if (updates !== null) this.modUpdates = updates;
+        return updates;
       }
 
       case 'mods.update': {

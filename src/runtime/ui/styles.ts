@@ -84,6 +84,26 @@ export const PANEL_CSS = CODE_CSS + `
   color: inherit;
 }
 
+/*
+ * The update dot on a tab. Slack's own unread colour, at the size Slack draws
+ * an unread dot in the sidebar, so it reads as one thing the app is telling you
+ * rather than as a mark BetterSlack invented.
+ */
+.betterslack-nav__dot {
+  /* No margin: the nav item is a flex row with a gap, and adding one on top of
+     it spaced the dot further from its label than the pill on the right. */
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(var(--sk_highlight_accent, 224, 30, 90), 1);
+}
+/* The selected tab is painted in the highlight blue, where the accent red is
+   the one colour that disappears into it. */
+.betterslack-nav__item[aria-selected="true"] .betterslack-nav__dot {
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+}
+
 .betterslack-count {
   margin-left: auto;
   min-width: 20px;

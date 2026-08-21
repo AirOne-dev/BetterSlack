@@ -375,7 +375,17 @@ export type Event =
   | { type: 'settings.changed'; settings: Settings }
   /** Sent once the version check finishes, which is after boot: it goes out on
    *  the network and nothing should wait for it. */
-  | { type: 'update.status'; status: UpdateStatus };
+  | { type: 'update.status'; status: UpdateStatus }
+  /**
+   * Which installed mods have a newer version published.
+   *
+   * Pushed rather than only answered, because the thing it feeds is a badge:
+   * something you are meant to notice without having gone looking. The panel
+   * used to ask this once, the first time it was opened, which meant the only
+   * way to find out a mod had moved on was to open the panel and read -- and
+   * the badge on the launcher, which existed already, could never count them.
+   */
+  | { type: 'mods.updates'; updates: ModUpdate[] };
 
 export interface Envelope {
   /** Correlation id; absent on pushed events. */
@@ -398,6 +408,31 @@ export interface UpdateStatus {
   headline?: string;
   note?: string;
   updatable: boolean;
+}
+
+/**
+ * One installed mod with a newer version on the default branch.
+ *
+ * Declared here rather than beside the check, since both sides read it: the
+ * loader fills it in and the panel draws it.
+ */
+export interface ModUpdate {
+  id: string;
+  /** What is installed now. */
+  from: string;
+  /** What the branch has. */
+  to: string;
+  name: string;
+  /** Which shelf it belongs to, so the panel can badge the right tab. */
+  type: 'theme' | 'plugin';
+  /**
+   * Set when the new version needs a BetterSlack newer than this one.
+   *
+   * The update is still reported rather than hidden. A mod that quietly stops
+   * updating is a mod the reader thinks is up to date; one that says "needs
+   * 2.2.0, you have 2.1.0" tells them what to do about it.
+   */
+  blockedBy?: { needs: string; running: string };
 }
 
 export interface LoaderInfo {

@@ -11,7 +11,9 @@
 // manifest loader-side -- what arrives from the network is untrusted whichever
 // button asked for it.
 
-import type { ModFiles, ModManifest, ModRecord, RemoteMod } from '../shared/protocol.js';
+import type { ModFiles, ModManifest, ModRecord, ModUpdate, RemoteMod } from '../shared/protocol.js';
+
+export type { ModUpdate } from '../shared/protocol.js';
 
 const HTTP_TIMEOUT_MS = 15_000;
 
@@ -27,23 +29,6 @@ interface RegistryEntry {
    * because the registry is what an older install reads.
    */
   needsBetterSlack?: string;
-}
-
-export interface ModUpdate {
-  id: string;
-  name: string;
-  /** What is installed now. */
-  from: string;
-  /** What the branch has. */
-  to: string;
-  /**
-   * Set when the new version needs a BetterSlack newer than this one.
-   *
-   * The update is still reported rather than hidden. A mod that quietly stops
-   * updating is a mod the reader thinks is up to date; one that says "needs
-   * 2.2.0, you have 2.1.0" tells them what to do about it.
-   */
-  blockedBy?: { needs: string; running: string };
 }
 
 /**
@@ -105,16 +90,33 @@ export async function findModUpdates(
   installed: ModRecord[],
   source: RemoteSource,
   runningVersion: string,
-): Promise<ModUpdate[]> {
+): Promise<ModUpdate[] | null> {
   const registry = await getJson<{ mods?: RegistryEntry[] }>(raw(source, 'mods/registry.json'));
-  if (!registry?.mods) return [];
+  /*
+   * Null is "could not ask", which is not the same answer as an empty list.
+   *
+   * They used to be the same value, and once this fed a badge that mattered:
+   * being offline for one hourly sweep would have taken the dot off a mod that
+   * is still out of date, and put it back an hour later. The caller keeps what
+   * it knows instead. Same rule the app's own check follows -- say nothing
+   * rather than say "current" on no evidence.
+   */
+  if (!registry?.mods) return null;
 
   const published = new Map(registry.mods.map((entry) => [entry.id, entry]));
   const updates: ModUpdate[] = [];
   for (const mod of installed) {
     const entry = published.get(mod.id);
     if (!entry || !isNewerVersion(entry.version, mod.version)) continue;
-    const update: ModUpdate = { id: mod.id, name: mod.name, from: mod.version, to: entry.version };
+    const update: ModUpdate = {
+      id: mod.id,
+      name: mod.name,
+      // The shelf it lives on, so the panel can badge the tab that owns it
+      // rather than only saying "something changed".
+      type: mod.type,
+      from: mod.version,
+      to: entry.version,
+    };
     if (outOfReach(entry.needsBetterSlack, runningVersion)) {
       update.blockedBy = { needs: entry.needsBetterSlack!, running: runningVersion };
     }
