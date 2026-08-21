@@ -97,6 +97,15 @@ Slack does. Nothing is enabled on a fresh install — the repository is a
 catalogue, not a set of pre-installed mods. Open the panel with **⌘⇧M** and
 install what you want from **Browse**.
 
+## Starting it
+
+Launching BetterSlack starts Slack with your mods attached. The BetterSlack mark
+covers the window while that happens, with the name of whatever is starting
+underneath it, and lifts once every theme and plugin is in — so you see the app
+you configured rather than the several seconds of it assembling itself. If a mod
+ever hangs, the name on screen is the one to switch off, and the screen lifts by
+itself after twenty seconds either way.
+
 ## Update, and uninstall
 
 **A dot on the BetterSlack button in Slack's rail means something is out of

@@ -323,7 +323,13 @@ export class ModManager {
   }
 
   /** Apply everything that was already on when Slack started. */
-  async applyInitial(): Promise<void> {
+  /**
+   * @param onProgress Told what is being applied, for the start screen. Called
+   * with the mod's name before it is started, so a mod that never returns is
+   * the one still on screen -- which is the difference between "it is slow" and
+   * "it is stuck, and it is that one".
+   */
+  async applyInitial(onProgress?: (name: string, done: number, total: number) => void): Promise<void> {
     if (this.safeMode) {
       // Nothing is applied, and nothing is written: safe mode is a way to get
       // to the panel, not a decision about what should be on.
@@ -333,6 +339,11 @@ export class ModManager {
 
     const enabled = this.settings.enabled
       .map((id) => ({ record: this.mods.find((m) => m.id === id), files: this.sources[id], id }));
+    const total = enabled.length;
+    let done = 0;
+    const announce = (record: ModRecord | undefined, id: string) => {
+      onProgress?.(record?.name ?? id, done, total);
+    };
 
     // Themes first, and without waiting for anything: they are CSS, and the
     // whole point of injecting at document-start is that Slack never flashes
@@ -343,7 +354,9 @@ export class ModManager {
         continue;
       }
       if (record.type !== 'theme') continue;
+      announce(record, id);
       await this.applyWatched(record, files);
+      done += 1;
     }
 
     /*
@@ -363,6 +376,9 @@ export class ModManager {
      * plugins still start, since refusing to load them would be a worse failure
      * than the one being avoided.
      */
+    // The client can take seconds to build, and the start screen should not sit
+    // on the name of the last theme while it does.
+    onProgress?.('', done, total);
     await waitForClient();
 
     /*
@@ -378,10 +394,12 @@ export class ModManager {
 
     for (const { record, files, id } of enabled) {
       if (!record || files === undefined || record.type === 'theme') continue;
-      void id;
+      announce(record, id);
       await this.applyWatched(record, files);
+      done += 1;
     }
     this.applyCustomCss();
+    onProgress?.('', total, total);
   }
 
   /** Tear everything down, so a newer loader can inject a fresh runtime. */

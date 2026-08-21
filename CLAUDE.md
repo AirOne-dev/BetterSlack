@@ -1379,6 +1379,44 @@ Getting it the wrong way round runs the test against the real home, and the
 backup test then wrote its empty fixture over a real settings file. It cost
 someone their installed list once; it should not cost it twice.
 
+## The start screen
+
+`ui/splash.ts` covers the whole client from `boot()` until the last plugin has
+had its turn. Between those two moments Slack draws itself, a theme repaints it,
+and buttons appear one at a time as their mods start; each of those is correct
+and the sequence looks like something going wrong.
+
+`manager.applyInitial(onProgress)` reports the mod it is **about** to start, so
+the name on screen when nothing moves again is the one that is stuck -- which is
+the difference between "it is slow" and "it is that mod".
+
+Four rules, and every one of them is about it being a decoration over somebody's
+messaging app rather than about how it looks:
+
+- **It may never be what traps anybody.** There is a 20s ceiling, it comes down
+  in the failure path as well as the success one, and it stops taking pointer
+  events the moment it starts fading. This project has had two ways to be locked
+  out of Slack; a splash that never lifts would be a third.
+- **`boot()` never awaits it**, and everything inside it is wrapped: a
+  decoration with the power to hold up the runtime, or to throw inside it, is
+  worse than no decoration.
+- **There is no body to mount into at document-start**, so it builds nothing
+  until one arrives -- observing `document.documentElement ?? document`, the
+  same fallback `waitForClient` and `dom.waitFor` take -- and `done()` before
+  that cancels it rather than leaving it to appear afterwards. Its translator is
+  built on first use for the same reason: `createI18n` reads the language off a
+  `documentElement` that is null there.
+- **A floor of 500ms.** Safe mode applies nothing at all, and the loader often
+  attaches to a client that is already built, so without one the screen appears
+  and vanishes inside a frame -- which reads as a flash of something broken.
+
+It is in a shadow root with its own colours, because at document-start Slack's
+stylesheet has not loaded and its tokens do not exist yet: every colour carries
+a literal fallback and picks the token up by itself when a theme lands a moment
+later. And it honours `prefers-reduced-motion`, unlike the Motion mod --
+installing a mod called Motion is a statement of intent about animation, and
+starting Slack is not.
+
 ## Safe mode, and mods that will not start
 
 `pnpm start --safe` applies nothing. So does the next start after a run that

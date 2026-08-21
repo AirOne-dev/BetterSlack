@@ -84,6 +84,10 @@ export const PANEL_STRINGS = {
     /** The dot on a tab and on the launcher. Read out; never drawn as words. */
     updateAvailable: 'Update available',
 
+    /** The start screen, under the mark. */
+    splashLoading: 'Starting up…',
+    splashStarting: 'Starting {name} — {done} of {total}',
+
     modUpdateTitle: '{name} {current} → {version}',
     modUpdateBody: 'Updating replaces this mod alone, and reapplies it if it is on.',
     modUpdateGo: 'Update',
@@ -213,6 +217,9 @@ export const PANEL_STRINGS = {
     updateFailed: 'Mise à jour impossible : {reason}',
 
     updateAvailable: 'Mise à jour disponible',
+
+    splashLoading: 'Démarrage…',
+    splashStarting: 'Démarrage de {name} — {done} sur {total}',
 
     modUpdateTitle: '{name} {current} → {version}',
     modUpdateBody: 'Mettre à jour ne remplace que ce mod, et le réapplique s’il est activé.',

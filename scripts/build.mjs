@@ -97,6 +97,7 @@ const runtimeModules = {
     `${root}/src/runtime/ui/launcher.ts`,
     `${root}/src/runtime/ui/sort.ts`,
     `${root}/src/runtime/ui/mark.ts`,
+    `${root}/src/runtime/ui/splash.ts`,
   ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },

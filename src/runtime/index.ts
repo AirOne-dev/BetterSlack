@@ -6,6 +6,7 @@
 import { ModManager, type BootPayload } from './manager.js';
 import { Bridge } from './rpc.js';
 import { installLauncher } from './ui/launcher.js';
+import { showSplash } from './ui/splash.js';
 import { LAUNCHER_CSS, PANEL_CSS } from './ui/styles.js';
 import { Panel } from './ui/panel.js';
 
@@ -96,6 +97,19 @@ async function boot(): Promise<void> {
   const manager = new ModManager(bridge, payload);
 
   /*
+   * Cover the start.
+   *
+   * Between here and the last plugin mounting, Slack draws itself, a theme
+   * repaints it, and buttons appear one at a time as their mods start. Each of
+   * those is correct and the sequence looks like something going wrong.
+   *
+   * Never awaited, and it puts nothing on screen until there is a body to put
+   * it in: this is a decoration, and a decoration may not be able to hold up
+   * the runtime or throw inside it.
+   */
+  const splash = showSplash();
+
+  /*
    * Every stylesheet BetterSlack owns, before a single plugin runs.
    *
    * `applyInitial` waits for Slack's client and then starts the plugins, so
@@ -114,7 +128,14 @@ async function boot(): Promise<void> {
 
   // Themes are pure CSS and can go in before the DOM exists, which is what
   // keeps Slack from flashing its default palette on the way up.
-  await manager.applyInitial();
+  try {
+    await manager.applyInitial((name, done, total) => splash.progress(name, done, total));
+  } catch (err) {
+    // The screen comes down on the way out of any failure, or a boot that threw
+    // would leave the whole app behind a logo.
+    splash.done();
+    throw err;
+  }
   const panel = new Panel(manager);
   // So a mod can open it without reaching into the page for it.
   manager.openPanel = (tab) => (tab ? panel.openAt(tab) : panel.open());
@@ -157,6 +178,10 @@ async function boot(): Promise<void> {
   } else {
     mountUi();
   }
+
+  // Everything the user was waiting for is now on screen: the themes are in,
+  // every plugin has had its turn, and the launcher is in Slack's rail.
+  splash.done();
 
   window.__betterslack = {
     version: payload.version,

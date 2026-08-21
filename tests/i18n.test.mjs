@@ -123,8 +123,16 @@ test('the panel speaks both languages, and asks for nothing it does not have', a
   const fr = Object.keys(PANEL_STRINGS.fr).sort();
   assert.deepEqual(fr, en, 'en and fr must cover the same keys');
 
-  // Everything the panel asks for must exist, or it renders as its own key.
-  const source = readFileSync(path.join(root, 'src/runtime/ui/panel.ts'), 'utf8');
+  /*
+   * Everything the panel asks for must exist, or it renders as its own key.
+   *
+   * Every file that draws with this dictionary, not only panel.ts: the start
+   * screen has its own translator over the same table, and a key it asked for
+   * and nobody had defined would be a screen-wide logo with a raw key under it.
+   */
+  const source = ['src/runtime/ui/panel.ts', 'src/runtime/ui/splash.ts']
+    .map((rel) => readFileSync(path.join(root, rel), 'utf8'))
+    .join('\n');
   const asked = new Set([...source.matchAll(/\bt\('([a-zA-Z0-9_]+)'/g)].map((m) => m[1]));
   const missing = [...asked].filter((key) => !(key in PANEL_STRINGS.en));
   assert.deepEqual(missing, [], 'these are asked for and never defined');
