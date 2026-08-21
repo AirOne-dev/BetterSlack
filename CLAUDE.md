@@ -640,8 +640,12 @@ below is silent for exactly the change it exists to catch.
 
 **The mark is `assets/mark.svg`, and everything else is made from it.**
 `site/mark.svg` is a copy (the site is published on its own and cannot reach
-`assets/`), `assets/icon.icns` is built by `pnpm icon`, and the launcher in
-Slack's rail carries the same shapes inline. `scripts/build-icon.mjs` rasterises
+`assets/`), `assets/icon.icns` is built by `pnpm icon`, and the client carries
+the same shapes inline in `src/runtime/ui/mark.ts` -- **one** copy, read by both
+the launcher in Slack's rail and the panel's own header, because a mark pasted
+into whichever file needed it next is how a redraw ships in one place and not
+the other. `tests/mark.test.mjs` compares the shapes across all three files and
+fails if a fourth copy appears in the runtime. `scripts/build-icon.mjs` rasterises
 the ten sizes `iconutil` wants, through `rsvg-convert`, ImageMagick or headless
 Chrome, whichever is on the machine -- a committed `.icns` with no recipe means
 redrawing the mark leaves the app wearing the old one with nothing to say so. It

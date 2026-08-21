@@ -23,6 +23,7 @@ import { createCodeEditor } from './code.js';
 import { closeMenu, openMenu } from './menu.js';
 import { mountCounts } from '../dom.js';
 import { createI18n } from '../i18n.js';
+import { MARK_SVG } from './mark.js';
 import { renderMarkdown } from './markdown.js';
 import { sortMods, type SortId } from './sort.js';
 import { PANEL_STRINGS } from './strings.js';
@@ -264,11 +265,22 @@ export class Panel {
       'aria-label': 'BetterSlack',
     }, [
       h('div', { class: 'c-dialog__header betterslack-header' }, [
-        h('h1', { class: 'c-dialog__title' }, [t('title')]),
+        // The mark and the word as one lockup, so the gap between them is a
+        // lockup's gap rather than the header's -- which is the distance the
+        // close button is kept at, and far too wide next to a title.
+        h('div', { class: 'betterslack-brand' }, [
+          h('span', { class: 'betterslack-brand__mark', 'aria-hidden': 'true' }),
+          h('h1', { class: 'c-dialog__title' }, [t('title')]),
+        ]),
         close,
       ]),
       h('div', { class: 'betterslack-layout' }, [this.renderNav(), body]),
     ]);
+
+    // innerHTML rather than a node built by hand: the mark is markup, and `h`
+    // has no business parsing it.
+    const mark = content.querySelector('.betterslack-brand__mark');
+    if (mark) mark.innerHTML = MARK_SVG;
 
     host.append(content);
     host.addEventListener('mousedown', (event) => {

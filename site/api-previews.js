@@ -1109,6 +1109,18 @@
 }
 .betterslack-close { margin-left: auto; flex: 0 0 auto; }
 
+/*
+ * The mark beside the title. 10px apart rather than the header's 12, because
+ * this is a lockup and the header's gap is the distance to the close button.
+ *
+ * The SVG carries no width or height of its own -- it is one drawing used at
+ * four sizes -- so an intrinsic-size fallback of 300x150 is what an unsized one
+ * lays out at, in this dialog exactly as in the rail.
+ */
+.betterslack-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.betterslack-brand__mark { display: flex; flex: 0 0 auto; }
+.betterslack-brand__mark svg { width: 24px; height: 24px; display: block; }
+
 .betterslack-layout { display: flex; flex: 1; min-height: 0; }
 
 /* Left rail, in the shape Slack's Preferences dialog uses. */

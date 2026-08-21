@@ -3,6 +3,7 @@
 
 import { h, keepMounted, onShortcut, type Cleanup } from '../dom.js';
 import { LAUNCHER_CSS } from './styles.js';
+import { MARK_SVG } from './mark.js';
 import { attachTooltip } from './tooltip.js';
 import type { StyleManager } from '../themes.js';
 
@@ -30,30 +31,6 @@ const RAIL_FALLBACK = '[data-qa="tabs_full_width_class"]';
 const BUTTON_CLASS = 'c-button-unstyled p-control_strip__circle_button';
 const RAIL_BUTTON_CLASS =
   'c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default';
-
-/*
- * The mark.
- *
- * The mark, in its own colours. It sits among Slack's own outline icons and the
- * one button that is not Slack's should not pretend to be -- and the four
- * colours are saturated enough to read on a light theme and a dark one, which a
- * single tint would not be.
- *
- * The trade-off is deliberate: with no single colour it cannot take
- * `currentColor` from the strip, so it cannot dim and brighten with the icons
- * beside it on hover. The opacity in LAUNCHER_CSS does that instead.
- */
-const ICON = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 848 848" aria-hidden="true" data-qa="betterslack-mark">
-  <rect x="139" y="289" width="121" height="421" rx="60.5" fill="#E01858"/>
-  <path d="M288 499C288 465.587 315.087 438 348.5 438H410V499.5C410 532.913 382.413 560 349 560V560C315.587 560 288 532.413 288 499V499Z" fill="#E01858"/>
-  <rect x="560" y="139" width="121" height="421" rx="60.5" transform="rotate(90 560 139)" fill="#30C0F0"/>
-  <path d="M349 288C382.413 288 410 315.087 410 348.5L410 410L348.5 410C315.087 410 288 382.413 288 349V349C288 315.587 315.587 288 349 288V288Z" fill="#30C0F0"/>
-  <rect x="709" y="560" width="121" height="421" rx="60.5" transform="rotate(-180 709 560)" fill="#28B078"/>
-  <path d="M560 349C560 382.413 532.913 410 499.5 410L438 410L438 348.5C438 315.087 465.587 288 499 288V288C532.413 288 560 315.587 560 349V349Z" fill="#28B078"/>
-  <rect x="288" y="710" width="121" height="421" rx="60.5" transform="rotate(-90 288 710)" fill="#E8B028"/>
-  <path d="M499 560C465.587 560 438 532.913 438 499.5L438 438L499.5 438C532.913 438 560 465.587 560 499V499C560 532.413 532.413 560 499 560V560Z" fill="#E8B028"/>
-</svg>`;
 
 export interface LauncherOptions {
   onActivate: () => void;
@@ -103,7 +80,7 @@ export function installLauncher(
       'aria-label': 'BetterSlack',
       'data-qa': 'betterslack_button',
     });
-    button.innerHTML = ICON;
+    button.innerHTML = MARK_SVG;
     buttons.add(button);
     paintBadge(button);
     button.addEventListener('click', (event) => {
