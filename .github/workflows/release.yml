@@ -1,0 +1,76 @@
+name: Release
+
+# A pushed tag becomes a GitHub release.
+#
+# It does not on its own: a tag is a git object and a release is a GitHub one,
+# created through their API. `pnpm release` writes the changelog, bumps the
+# version and tags — everything git can do — and the tag then sat on the
+# releases page as a bare tag with no notes, to be turned into a release by
+# hand, by copying the section out of CHANGELOG.md. This does that copy.
+#
+# Which means the changelog is the source: whatever `pnpm release` wrote, and
+# whatever it was rewritten into afterwards, is what the release says. There is
+# no second set of notes to keep in step.
+
+on:
+  push:
+    tags: ['v*']
+  # So a tag pushed before this existed can still be given its release.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release, e.g. v3.0.1'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Read the version out of the tag
+        id: version
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "number=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Take this version's section out of the changelog
+        id: notes
+        run: |
+          number='${{ steps.version.outputs.number }}'
+          # From this version's heading to the next one, exclusive. The heading
+          # itself is dropped: the release already carries the version and the
+          # date, and repeating them is a title above a title.
+          awk -v v="$number" '
+            $0 ~ "^## " v " " { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          # A release whose notes are empty is worse than the bare tag it
+          # replaces: it looks like a release that shipped nothing.
+          if [ ! -s notes.md ]; then
+            echo "No section for $number in CHANGELOG.md" >&2
+            exit 1
+          fi
+          echo '--- notes ---'
+          cat notes.md
+
+      - name: Create it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag='${{ steps.version.outputs.tag }}'
+          # Idempotent on purpose: re-running this for a tag that already has a
+          # release should correct the notes rather than fail, since the reason
+          # to re-run is that the changelog was rewritten after the fact.
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "$tag" --notes-file notes.md
+          else
+            gh release create "$tag" --title "$tag" --notes-file notes.md
+          fi

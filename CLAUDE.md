@@ -69,6 +69,17 @@ which is why it is not part of `pnpm test`.
 The loader also watches while it runs: if the renderer stops answering, it says
 so, names the mods that were on, and re-arms the safe-start marker.
 
+**A tag is not a release, and only GitHub can make one.** `pnpm release` does
+everything git can -- bumps `package.json`, writes the changelog, commits, tags
+-- and a pushed tag then sits on the releases page as a bare tag with no notes.
+`.github/workflows/release.yml` closes that: a pushed `v*` tag has its own
+section lifted out of `CHANGELOG.md` and posted as the release notes, so the
+changelog is the only place those words are written. It is idempotent, because
+the reason to re-run it is that the changelog was rewritten afterwards, and it
+takes a tag by hand (`workflow_dispatch`) so a tag pushed before it existed can
+still be given its release. The version heading is dropped from the notes: the
+release already carries the version and the date.
+
 ## Installing is one script, and the checkout is not part of it
 
 `install.sh` (macOS and Linux) and `install.ps1` (Windows) are what a user runs.

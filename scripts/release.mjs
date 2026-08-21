@@ -175,4 +175,10 @@ Released ${version}.
 
 The update check compares this number for anyone who installed from a zip, so
 it only reaches them once the tag and package.json are on the default branch.
+
+Pushing the tag is also what creates the release on GitHub: a tag is a git
+object and a release is one of theirs, so nothing here can make one. The
+Release workflow reads this version's section out of CHANGELOG.md and posts it
+as the notes -- which is why the changelog is worth rewriting before pushing,
+and why there is no second copy of the notes to keep in step.
 `);
