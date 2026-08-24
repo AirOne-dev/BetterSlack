@@ -21,7 +21,7 @@ const dialog = api.ui.modal({
   width: 560,
   actions: [
     { label: 'Clear', onClick: () => clear() },
-    { label: 'Save', primary: true, onClick: () => save() },
+    { label: 'Save', variant: 'primary', onClick: () => save() },
   ],
 });
 dialog.close();

@@ -1482,7 +1482,8 @@ const state = await api.slack.web.availability('U0EXAMPLE1');</code></pre>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const sure = await api.ui.confirm({
   title: 'Clear these notes?',
-  body: 'They are not kept anywhere else.',
+  message: 'They are not kept anywhere else.',
+  confirmLabel: 'Clear',
   danger: true,
 });</code></pre>
   </div>
@@ -1562,7 +1563,7 @@ child.document.head.append(style);</code></pre>
   width: 560,
   actions: [
     { label: 'Clear', onClick: () =&gt; clear() },
-    { label: 'Save', primary: true, onClick: () =&gt; save() },
+    { label: 'Save', variant: 'primary', onClick: () =&gt; save() },
   ],
 });
 dialog.close();</code></pre>

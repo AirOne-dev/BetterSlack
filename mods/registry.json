@@ -523,6 +523,57 @@
       "path": "themes/discord-light"
     },
     {
+      "id": "edit-log",
+      "name": "Edit Log",
+      "type": "plugin",
+      "version": "1.0.0",
+      "author": "AirOne-dev",
+      "description": "Keeps what a message said before it was edited or deleted, and leaves a deleted one in place instead of letting it vanish",
+      "descriptions": {
+        "fr": "Garde ce qu’un message disait avant d’être modifié ou supprimé, et laisse un message supprimé à sa place au lieu de le voir disparaître"
+      },
+      "entry": "index.js",
+      "betterslackApi": 1,
+      "slackVersion": "4.51",
+      "icon": "icon.svg",
+      "readme": "README.md",
+      "readmes": {
+        "fr": "README.fr.md"
+      },
+      "tags": [
+        "messages",
+        "tools",
+        "privacy"
+      ],
+      "settings": [
+        {
+          "key": "showDeleted",
+          "type": "boolean",
+          "label": "Leave deleted messages on screen",
+          "hint": "Struck through, where the message was, with a cross to dismiss it.",
+          "default": true
+        },
+        {
+          "key": "deletions",
+          "type": "boolean",
+          "label": "Record deletions as well as edits",
+          "hint": "Off means only edits are kept, and nothing is left on screen.",
+          "default": true
+        },
+        {
+          "key": "keep",
+          "type": "number",
+          "label": "Entries to keep",
+          "hint": "The log lives in BetterSlack's settings file, which is read at every launch, so it is capped.",
+          "default": 200,
+          "min": 20,
+          "max": 2000
+        }
+      ],
+      "needsBetterSlack": "3.0.0",
+      "path": "plugins/edit-log"
+    },
+    {
       "id": "focus-rings",
       "name": "Focus Rings",
       "type": "theme",

@@ -131,6 +131,11 @@ const TEXT_AREAS = [
    */
   '.betterslack-members__name', '.betterslack-members__note',
   '.betterslack-me__name', '.betterslack-me__status',
+  // Edit Log keeps what a message said, and draws it in nodes of its own: the
+  // headstone left where a deleted message was, and the wordings in its
+  // dialog. Slack's own selectors above never reach them, so a real sentence
+  // would sail past every one of them and be caught only by the audit.
+  '.betterslack-editlog-stone__text', '.betterslack-editlog-text',
   // The top bar's search, which remembers what was typed into it.
   '[data-qa="top_nav_search"]', '.p-top_nav__search__container',
 ];

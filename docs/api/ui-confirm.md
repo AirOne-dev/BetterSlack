@@ -15,7 +15,8 @@ A yes/no dialog that resolves to a boolean, so a destructive action reads as a q
 ```js
 const sure = await api.ui.confirm({
   title: 'Clear these notes?',
-  body: 'They are not kept anywhere else.',
+  message: 'They are not kept anywhere else.',
+  confirmLabel: 'Clear',
   danger: true,
 });
 ```
