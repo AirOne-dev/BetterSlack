@@ -962,7 +962,18 @@ tests fail below it.
   `.p-client_workspace__tabpanel` -- the whole panel, channel sidebar included,
   because Activité and Fichiers replace that too and a view that leaves it
   there is a page with somebody else's furniture down its side -- one tab lit
-  at a time, and clicking another of Slack's tabs to leave. Three things it knows that a mod should not have to. A rail entry
+  at a time, and clicking another of Slack's tabs to leave.
+
+  **What is under a view is hidden, never merely covered**, and this is the
+  part that costs somebody something if it is got wrong. Covered, Slack's
+  conversation stays mounted, sized, and as far as Slack is concerned on
+  screen, so a message arriving in the channel behind the view is marked read
+  and the unread is gone. `display: none` on the panel's other children instead
+  -- and Slack's virtual list then renders nothing at all, measured: thirteen
+  messages in the document before, zero while the view is open, thirteen again
+  on the way out, with a half-written message still in the composer. Written as
+  `:has(> .betterslack-view)` on the panel so it stops applying when the view
+  unmounts, with no restore step to get wrong. Three things it knows that a mod should not have to. A rail entry
   is a `button.p-tab_rail__button.c-tabs__tab` inside a `p-autoclog__hook`
   wrapper, with `--active` on both classes and `aria-selected` marking the one
   you are on -- borrowing those classes is what makes the entry follow every

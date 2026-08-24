@@ -1707,6 +1707,23 @@
 }
 `;
   var VIEW_CSS = `
+/*
+ * What is under a view is not merely covered: it is taken off the screen.
+ *
+ * Covering it leaves Slack's conversation mounted, sized and, as far as Slack
+ * is concerned, being looked at -- so a message arriving in the channel you
+ * left behind is marked read, and the unread you were relying on is gone. A
+ * mod may not cost somebody a message.
+ *
+ * Written as :has() on the panel rather than as a class somebody has to
+ * remember to take off: the rule stops matching the moment the view unmounts,
+ * so there is no restore step to get wrong. :has() is supported in Slack 4.51,
+ * measured.
+ */
+.p-client_workspace__tabpanel:has(> .betterslack-view) > *:not(.betterslack-view) {
+  display: none !important;
+}
+
 .betterslack-view {
   position: absolute;
   inset: 0;

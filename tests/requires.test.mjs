@@ -123,6 +123,30 @@ test('the panel animates a tab change, and only a tab change', () => {
 });
 
 /**
+ * What is under a view is off the screen, not merely covered.
+ *
+ * A view is `position: absolute` over `.p-client_workspace__tabpanel`, and
+ * covering Slack's conversation leaves it mounted, sized and -- as far as Slack
+ * is concerned -- being looked at, so a message arriving in the channel behind
+ * it is marked read and the unread somebody was relying on is gone. Measured
+ * with the rule in place: the message list drops to zero items while the view
+ * is open and comes back with all of them on the way out, and a half-written
+ * message in the composer survives the round trip.
+ *
+ * It is written as `:has()` on the panel rather than a class somebody has to
+ * remember to remove, so it stops applying the moment the view unmounts.
+ */
+test('a view takes what is under it off the screen, rather than covering it', () => {
+  // The source, the way every other check here reads it: `styles.ts` is bundled
+  // into the runtime rather than emitted as a module of its own.
+  const styles = read('src/runtime/ui/styles.ts');
+  const rule = styles.match(/\.p-client_workspace__tabpanel:has\(> \.betterslack-view\)[^{]*\{[^}]*\}/);
+  assert.ok(rule, 'the panel must hide its other children while a view is mounted in it');
+  assert.match(rule[0], /:not\(\.betterslack-view\)/, 'and not hide the view itself');
+  assert.match(rule[0], /display:\s*none/, 'display: none, so Slack renders nothing behind it');
+});
+
+/**
  * PANEL_CSS is a template literal. A backticked `.c-dialog` inside one of its
  * comments closes the string, and the rest parses as JavaScript that builds
  * cleanly and throws `ReferenceError: dialog is not defined` at boot — no
