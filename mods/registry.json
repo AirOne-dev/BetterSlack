@@ -659,7 +659,7 @@
           "default": "mod+shift+h"
         }
       ],
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.1.0",
       "path": "plugins/history"
     },
     {

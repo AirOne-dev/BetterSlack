@@ -3,7 +3,7 @@ name: addView
 group: slack
 title: api.slack
 signature: (options: ViewOptions): ViewHandle
-since: unreleased
+since: 3.1.0
 preview: slack-addview
 control: label | text | History
 control: body | textarea | Everything Slack changed and did not tell you about.\nOne page, in the place Slack keeps its own.

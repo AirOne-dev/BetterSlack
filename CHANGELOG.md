@@ -4,6 +4,89 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.1.0 — 2026-08-24
+
+### Added
+
+- **History, a new plugin: everything Slack changes and never tells you about.**
+  A message rewritten, a message deleted, a reaction taken back, a channel or a
+  sidebar section renamed, somebody changing their display name or their
+  status, somebody joining or leaving. Slack does all of it silently, and the
+  only person who notices is the one looking for something that is not where it
+  was.
+
+  It is a view of its own, with its tab in Slack's rail under Home and Activity:
+  one page you can search across everything a row shows, filter by family and
+  sort five ways, and a badge on the tab counting what has arrived since you
+  last looked. A deleted message also stays where it was, struck through,
+  instead of the gap closing over it.
+
+  Everything is kept on your machine, in BetterSlack's own settings file,
+  capped, and the page empties it. It makes no request except the ones it
+  cannot avoid — the member list of the channel you are in and the statuses of
+  people you have seen, both every five minutes and both switchable off.
+
+  Two things it deliberately does not claim to know. Who took a reaction back:
+  Slack says that only in a tooltip built on hover, in the reader's language and
+  with names rather than ids, so the emoji and the count are what is recorded.
+  And what somebody is called: the name drawn beside a message is doubled on
+  some messages and not on others, so display names come from `users.info`
+  rather than from the screen.
+
+  It also knows what it cannot see, and says so rather than pretending to be a
+  record: it reads the screen every second and a half, so anything that changed
+  while you were in another channel was never on your screen and is not there.
+
+- **`api.slack.addView`, for a mod that wants a whole view rather than a
+  button.** The tab in Slack's rail beside its own, a page over the whole tab
+  panel with only the workspace rail left beside it, one tab lit at a time, and
+  clicking another of Slack's tabs to leave. It carries four pieces of Slack a
+  mod should not have to: where the rail is and what an entry in it looks like,
+  that the rail sits under the element this project has frozen the renderer
+  next to twice, that the conversation stacks at `z-index: 201`, and that
+  Slack's own tab has to be put out by hand because the route has not changed.
+
+  What is under a view is hidden rather than covered, and that one is not a
+  detail: covered, Slack keeps the conversation on screen and marks a message
+  arriving in it as read while you are reading something else.
+
+### Changed
+
+- **Documentation is written once.** `docs/guide/` is the source — it is what
+  the site publishes — and `docs/getting-started.md` is now the signpost to it
+  rather than a second telling of the same three walkthroughs. The copies had
+  already come apart: the guide's test example imported two functions the test
+  harness does not export, so anyone following it got an import error.
+
+- **A mod is held to the rule the panel has always been held to**: it may not
+  ask for a translation key it does not have. Adding that check found that the
+  key extraction had never looked at DevTools at all — that mod writes its
+  table on one line, and an empty set compared equal to an empty set.
+
+- **`api.slack.selectors` is what mods anchor on.** It was published and called
+  by nothing while three mods wrote the same strings out by hand, which is the
+  copy nobody updates when Slack renames something. The test harness handed
+  mods an empty table, so a mod that did the right thing would have queried
+  `undefined` and passed.
+
+- **`api.slack.onProfilePane` is gone.** No mod called it, and an entry in the
+  reference that nothing in the catalogue exercises is an entry nothing checks.
+
+- **Dead code, dead CSS and dead files removed throughout**, and every "it used
+  to be" in a comment turned back into the constraint it was evidence for. Two
+  documentation examples were broken by copy and paste: `api.ui.confirm` reads
+  `message`, not `body`, and a modal action takes `variant: 'primary'`.
+
+### Fixed
+
+- **The Pages workflow did not rebuild the site for a guide change.** Its
+  `paths:` filter named `docs/api/` and not `docs/guide/`, so the one check
+  that catches a stale page did not run for the change it exists to catch.
+
+- **`pnpm-workspace.yaml` carried an `allowBuilds` key pnpm does not read**, and
+  seven screenshots in `site/shots/mods` were byte-identical copies of frames
+  the site build already writes, named by nothing and published to Pages.
+
 ## 3.0.5 — 2026-08-24
 
 ### Fixed
