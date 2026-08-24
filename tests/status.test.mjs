@@ -194,8 +194,8 @@ test('a tooltip that is not showing holds no listeners on window or document', a
    * registered for the life of the trigger, every redraw left twenty more
    * capture-phase `scroll` handlers on `window` that nothing removed. Measured
    * on a live client: four channel changes put 38 of them there, on a page that
-   * scrolls constantly -- every one of them running on every scroll, for the
-   * life of a row that had long since been replaced.
+   * scrolls constantly -- every one of them still running for the life of a row
+   * that had long since been replaced.
    *
    * One tooltip is visible at a time, so there is at most one set of these, and
    * none at all while nothing is hovered.
@@ -230,5 +230,26 @@ test('a tooltip that is not showing holds no listeners on window or document', a
 
     nodes[0].dispatchEvent(new window.MouseEvent('mouseleave'));
     assert.deepEqual(counts, { scroll: 0, resize: 0, keydown: 0 }, 'and none once it is gone');
+  });
+});
+
+test('describing the same element twice replaces its tooltip, it does not stack', async () => {
+  /*
+   * The strip in Slack's rail keeps one button and re-describes it whenever the
+   * status changes, so without this, hovering after five changes opened five
+   * layers -- each with its own set of global listeners on top.
+   */
+  await withDom(async () => {
+    const button = document.createElement('button');
+    document.body.append(button);
+    for (const text of ['On holiday', 'In a meeting', 'Back at four']) {
+      const profile = profileWith({ status_text: text });
+      statusNode(describeStatus(profile), profile, { showText: false, tooltipOn: button });
+    }
+
+    const tip = await hover(button);
+    assert.ok(tip);
+    assert.equal(document.querySelectorAll('.betterslack-tooltip').length, 1, 'one layer, not three');
+    assert.match(tip.textContent, /Back at four/, 'and it is the newest description');
   });
 });
