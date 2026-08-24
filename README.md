@@ -262,9 +262,14 @@ in this project that asks anything of your machine. Using BetterSlack needs
 
 ```bash
 git clone https://github.com/AirOne-dev/BetterSlack.git && cd BetterSlack
-corepack enable && pnpm install && pnpm build
+pnpm install && pnpm build
 pnpm start                        # launch Slack with mods, from this checkout
 ```
+
+pnpm, not npm: esbuild fetches its platform binary in an install script, and
+`pnpm-workspace.yaml` is what allows that script to run. If you have no pnpm,
+`corepack enable` gets you one on a Node older than 25, and
+`npm i -g pnpm` on any of them -- Corepack was removed from Node in 25.
 
 `pnpm build` is not optional: the loader and the runtime are TypeScript and
 `dist/` is not committed. Run it after cloning and after any change under

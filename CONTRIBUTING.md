@@ -214,8 +214,9 @@ pnpm start
 ```
 
 pnpm, not npm: esbuild fetches its platform binary in an install script, and
-`pnpm-workspace.yaml` is what allows that script to run. `corepack enable` gets
-you pnpm if you do not have it.
+`pnpm-workspace.yaml` is what allows that script to run. If you have no pnpm,
+`corepack enable` gets you one on a Node older than 25, and `npm i -g pnpm` on
+any of them -- Corepack was removed from Node in 25.
 
 Edit files in `mods/` and they reload in Slack immediately. Mods in
 `~/.betterslack/mods/` shadow the repo copies, which is convenient for iterating on
