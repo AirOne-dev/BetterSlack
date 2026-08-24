@@ -15,8 +15,6 @@
 // Slack silently splits anything past this into a second message.
 const SLACK_LIMIT = 4000;
 
-const COMPOSER = '[data-qa="message_input"]';
-const EDITOR = '.ql-editor';
 const NODE_ID = 'betterslack-char-count';
 
 export default {
@@ -24,6 +22,11 @@ export default {
    * @param {import('../../../src/runtime/api.js').PluginApi} api
    */
   start(api) {
+    // The composer and its editor, from the API rather than written out here:
+    // Slack's own names churn, and a copy in a mod is a copy nobody updates
+    // when they do.
+    const COMPOSER = api.slack.selectors.composer;
+    const EDITOR = api.slack.selectors.composerEditor;
     const warnAt = api.settings.get('warnAt', Math.floor(SLACK_LIMIT * 0.9));
     const alwaysShow = api.settings.get('alwaysShow', true) !== false;
 

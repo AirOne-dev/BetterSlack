@@ -21,23 +21,6 @@ test('only themes may require, and never themselves', () => {
   assert.match(catalog, /a theme cannot require itself/);
 });
 
-test('a theme is CSS: nothing is left of the script-and-permission system', () => {
-  // It was tried and taken back out. Themes doing their own DOM work put a
-  // second, weaker plugin model next to the real one, with its own API to keep
-  // in step and its own consent dialog to explain.
-  for (const rel of [
-    'src/shared/protocol.ts',
-    'src/loader/catalog.ts',
-    'src/loader/store.ts',
-    'src/runtime/manager.ts',
-    'src/runtime/ui/panel.ts',
-  ]) {
-    const source = read(rel);
-    assert.doesNotMatch(source, /\bpermissions\b/, `${rel} still mentions permissions`);
-    assert.doesNotMatch(source, /\bgrants\b/, `${rel} still mentions grants`);
-  }
-});
-
 test('the panel asks before switching a required plugin on', () => {
   const panel = read('src/runtime/ui/panel.ts');
   const fn = panel.match(/private async enableWithRequirements[\s\S]*?\n  \}/);

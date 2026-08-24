@@ -502,7 +502,7 @@ function slackChrome({ pane = false } = {}) {
     /*
      * Transparent, and still the URL it was.
      *
-     * `onProfilePane` and `userIdFromMessage` read the user id out of the
+     * `userIdFromMessage` and Member Sidebar read the user id out of the
      * avatar's `src` -- that is the behaviour being demonstrated, so it has to
      * be the real `src` that is read. Drawing over the `<img>` with a `<span>`
      * broke it (userId came back null); leaving the URL alone would have this
@@ -1445,21 +1445,6 @@ const IMITATED = {
         'Not everyone has one: an app, or a conversation with yourself, gives a',
         'pane that never appears. Try ids in turn rather than trusting the first.',
       ]));
-      focusChrome(frame, '[data-qa="member_profile_pane"]');
-      return undefined;
-    },
-  },
-
-  'slack-onprofilepane': {
-    render: (v, { stage, keep }) => {
-      const frame = slackChrome({ pane: true });
-      stage.replaceChildren(frame);
-      const slack = createSlackApi('demo');
-      keep(slack.onProfilePane(({ element, userId }) => {
-        element.querySelector('.p-r_member_profile__container')?.append(
-          helpers.section(v.title, [helpers.field('User id', userId ?? 'unknown')]),
-        );
-      }));
       focusChrome(frame, '[data-qa="member_profile_pane"]');
       return undefined;
     },

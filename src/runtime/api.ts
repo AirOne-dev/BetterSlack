@@ -411,7 +411,6 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
         addMessageAction: track(slack.addMessageAction.bind(slack)),
         addToolbarButton: track(slack.addToolbarButton.bind(slack)) as SlackApi['addToolbarButton'],
         addProfileButton: track(slack.addProfileButton.bind(slack)),
-        onProfilePane: track(slack.onProfilePane.bind(slack)),
       };
     })(),
 

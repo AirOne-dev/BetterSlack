@@ -137,7 +137,25 @@ declines: a plugin keeps running after the theme is off, so it is never turned
 on silently. The plugin has to stand alone — it reads Slack's tokens and follows
 any theme — and the theme must not style its markup.
 
-## 9. Ship it
+## 9. Split it, and give it a page
+
+A big theme reads better in pieces. `@import` a relative path inside your own
+folder and BetterSlack inlines it, in order, before anything reaches the page:
+
+```css
+@import './tokens.css';
+@import './sidebar.css';
+```
+
+The stylesheet is injected as one `<style>` element with no URL to resolve
+against, so a browser `@import` of a file on a server would be a request Slack's
+CSP refuses anyway. Import each file once; a cycle is an error, not a hang.
+
+The manifest keys that turn a row into a page somebody reads -- the icon, the
+translated descriptions, the screenshots and the READMEs -- are the same for a
+theme as for a plugin, and are step 8 of **Your first plugin**.
+
+## 10. Ship it
 
 ```bash
 pnpm check

@@ -43,7 +43,6 @@
 import { STRINGS } from './strings.js';
 
 const TRUNCATED = 'a[data-truncated-link="true"]';
-const COMPOSER = '[data-qa="message_input"]';
 
 /** The address Slack kept, preferring the one it copies to the clipboard. */
 export function fullUrl(anchor) {
@@ -69,6 +68,9 @@ export default {
    */
   start(api) {
     const t = api.i18n.strings(STRINGS);
+    // The composer, from the API rather than written out here: Slack's own
+    // names churn, and a copy in a mod is a copy nobody updates when they do.
+    const COMPOSER = api.slack.selectors.composer;
     api.css(api.assets.text('full-links.css'));
 
     const restore = (anchor) => {

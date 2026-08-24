@@ -14,6 +14,7 @@ import { createI18n } from '../dist/i18n.mjs';
 import { createKit } from '../dist/ui/kit.mjs';
 import { openMenu } from '../dist/ui/menu.mjs';
 import { KIT_CSS } from '../dist/ui/kit-css.mjs';
+import { SELECTORS } from '../dist/slack-api.mjs';
 
 export { SLACK_FIXTURE } from './slack-fixture.mjs';
 import { SLACK_FIXTURE } from './slack-fixture.mjs';
@@ -303,7 +304,6 @@ export function createTestApi({
         recorded.profileButtons.push(button);
         return () => {};
       },
-      onProfilePane: () => () => {},
 
       /*
        * The real status logic, not a stub.
@@ -454,7 +454,9 @@ export function createTestApi({
         for (const [team, count] of seen) if (count > bestCount) { best = team; bestCount = count; }
         return best ?? fromUrl;
       },
-      selectors: {},
+      // The real table, not a stand-in: a mod that anchors on
+      // `api.slack.selectors` would otherwise query `undefined` here and pass.
+      selectors: SELECTORS,
     },
 
     ui: {

@@ -135,7 +135,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">api.helpers</p>
       <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-cache">cache</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.slack</p>
-      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-emojiurl">emojiUrl</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onprofilepane">onProfilePane</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openmessage">openMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
+      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-emojiurl">emojiUrl</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openmessage">openMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.ui</p>
       <ul><li><a href="#ui-confirm">confirm</a></li><li><a href="#ui-kit">kit</a></li><li><a href="#ui-kitcss">kitCss</a></li><li><a href="#ui-menu">menu</a></li><li><a href="#ui-modal">modal</a></li><li><a href="#ui-palette">palette</a></li><li><a href="#ui-toast">toast</a></li><li><a href="#ui-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.dom</p>
@@ -188,7 +188,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1</code></pre>
 <h2>What it actually does</h2>
 <p>Worth knowing, because an installer that will not say is an installer you have to take on trust.</p>
 <p>It finds a Node that satisfies this project's <code>engines</code> — and finds it by version, not by taking the first <code>node</code> on your <code>PATH</code>, which on a machine with nvm is whatever its <code>default</code> alias points at and is frequently too old. If there is no usable one it downloads the current LTS from nodejs.org into <code>~/.betterslack/runtime</code>, checks it against the digest published beside it, and keeps it to itself: nothing is added to your <code>PATH</code> and no other project sees it.</p>
-<p>Then it gets pnpm from Corepack, which ships inside Node, at the exact version <code>package.json</code> pins. It has to be pnpm — esbuild fetches its platform binary in an install script, and <code>pnpm-workspace.yaml</code> is what allows that script to run.</p>
+<p>Then it gets pnpm at the exact version <code>package.json</code> pins — through Corepack where the chosen Node still ships one, and otherwise a pnpm already on the machine. Corepack was removed from Node in version 25, so a Node that has neither is not used, and the installer downloads one that does. It has to be pnpm: esbuild fetches its platform binary in an install script, and <code>pnpm-workspace.yaml</code> is what allows that script to run.</p>
 <p>Then it builds, and copies the result into <code>~/.betterslack/app</code>: the two bundles, the entry point and the mod catalogue, about 6 MB. A Node it had to download sits beside it in <code>~/.betterslack/runtime</code> and is a further ~190 MB.</p>
 <p>Finally it makes something you can double-click — <code>BetterSlack.app</code> in <code>/Applications</code> on macOS, a <code>.desktop</code> entry and a <code>betterslack</code> command on Linux, a Start menu shortcut on Windows.</p>
 <p>Everything is written under your home directory, with one exception the installer announces before it happens: copying the app into <code>/Applications</code> on macOS. That folder is owned by root and writable by the <code>admin</code> group, so on a Mac whose owner is an administrator — most of them — it needs no password at all. Where it does, macOS asks, and the terminal has already said what for.</p>
@@ -213,7 +213,12 @@ betterslack --safe
 # macOS: the app takes no flags, so run the loader with the Node the installer
 # recorded when it staged the install
 &quot;$(cat ~/.betterslack/app/node-path)&quot; ~/.betterslack/app/bin/betterslack.mjs --safe</code></pre>
+<p><strong>If Slack is not where BetterSlack expects it</strong>, <code>BETTERSLACK_SLACK_PATH</code> names the executable, and the loader reads it at every launch:</p>
+<pre class="api-code" data-lang="bash" data-label="bash"><code>launchctl setenv BETTERSLACK_SLACK_PATH /path/to/Slack   # macOS, for the app
+BETTERSLACK_SLACK_PATH=/path/to/Slack betterslack        # Linux, one run</code></pre>
 <p>On macOS, two things are worth knowing. The first launch needs right-click → <strong>Open</strong>, because the app is unsigned. And if you had no C compiler when you ran the installer, the app is a shell script rather than a real binary: it launches, but macOS refuses it access to <code>~/Downloads</code>, which is where a mod saves a file. <code>xcode-select --install</code>, then run the installer again.</p>
+<h2>What each symptom means</h2>
+<ul><li><strong>Mods stop working.</strong> BetterSlack stopped. Mods live exactly as long as the loader does, so quitting it takes them with it.</li><li><strong>Your mod is not in the panel.</strong> <code>id</code> must equal the folder name. Run <code>pnpm check-structure -- &lt;id&gt;</code>.</li><li><strong>Edits do not show up.</strong> Hot reload is off, or the mod is not enabled. Check the About tab.</li><li><strong>A theme changes messages but not the sidebar.</strong> You only overrode the first token family; there are four.</li><li><strong><code>eval is not allowed</code>.</strong> Slack's Content Security Policy. There is no way around it; restructure.</li><li><strong><code>Failed to fetch</code> on a Slack CDN URL.</strong> No CORS headers. Use <code>api.files.save</code>.</li><li><strong>Nothing in the console.</strong> Install the <strong>DevTools</strong> plugin, or press ⌘⌥I.</li><li><strong>Slack comes up grey, or the panel never appears.</strong> A mod wedged the renderer. The next start applies nothing on its own, and <code>--safe</code> forces it: switch the suspect off, then start again.</li><li><strong>A mod's row says it is not running.</strong> It threw during <code>start()</code>. Two failures and it is skipped at boot -- switching it off and on again clears the count.</li><li><strong>⌘K opens Slack's switcher, not BetterSlack's.</strong> The <strong>Command Palette</strong> plugin is not installed or not enabled. Its own settings can move it to ⌘⇧K.</li></ul>
   </div>
 </section>
 <section class="panel panel--guide" id="p-guide-plugin" hidden>
@@ -295,20 +300,64 @@ api.helpers.hotkey('mod+shift+h', () =&gt; api.ui.toast('Hello'), { when: () =&g
 // Run for every match now and for every one that arrives later.
 api.helpers.each('[data-qa=&quot;message_container&quot;]', (message) =&gt; { /* … */ });</code></pre>
 <p>Never write a raw <code>MutationObserver</code> to insert something. Slack re-renders constantly and you will get duplicates; <code>mount</code> and <code>each</code> handle it, and give up loudly rather than looping if a container fights back.</p>
-<h2>7. Test it</h2>
+<h2>7. More than one file</h2>
+<p>Once a plugin is more than a screenful, split it. Import relative paths and BetterSlack resolves them:</p>
+<pre class="api-code" data-lang="javascript" data-label="js"><code>mods/plugins/my-plugin/
+  mod.json        &quot;entry&quot;: &quot;index.js&quot;
+  index.js        import { render } from './ui/panel.js';
+  ui/panel.js     import { format } from '../lib/format.js';
+  lib/format.js
+  test.mjs</code></pre>
+<p>Three rules, all enforced by <code>pnpm validate-mods</code>:</p>
+<ul><li><strong>Relative specifiers only</strong> -- <code>./x.js</code>, <code>../lib/x.js</code>. There is no npm and no CDN in the page; a bare <code>import 'lodash'</code> has nothing to resolve to.</li><li><strong>Stay inside your folder.</strong> <code>../../other-plugin/index.js</code> is rejected: mods are installed one at a time, and yours may be the only one there.</li><li><strong>No cycles.</strong> A file may not import, directly or transitively, something that imports it back.</li></ul>
+<p>Why the rules: the page has no <code>'unsafe-eval'</code>, so a plugin is loaded as a real ES module through a <code>blob:</code> URL -- and a blob URL has no directory for a relative path to resolve against. BetterSlack reads your whole folder, builds a blob per file leaves-first, and rewrites each relative specifier to the blob URL of the file it names. The module you wrote is the module that runs; only the specifiers change. <code>.css</code> files in the folder ship too, so a stylesheet can live in a real <code>.css</code> file: <code>api.css(api.assets.text('ui/panel.css'))</code>.</p>
+<p>A theme splits the same way, with <code>@import './tokens.css'</code> instead of an <code>import</code>, and is stitched into one stylesheet in the order it was imported.</p>
+<h2>8. The page a reader sees</h2>
+<p>Everything above is the minimum. What turns a row in a list into a page somebody reads is optional, and every mod in this repository has all of it -- a theme as much as a plugin:</p>
+<pre class="api-code" data-lang="json" data-label="json"><code>{
+  &quot;icon&quot;: &quot;icon.svg&quot;,
+  &quot;descriptions&quot;: { &quot;fr&quot;: &quot;Une phrase, dans la langue du lecteur.&quot; },
+  &quot;screenshots&quot;: [{
+    &quot;file&quot;: &quot;screenshot.webp&quot;,
+    &quot;captions&quot;: { &quot;en&quot;: &quot;What the picture shows.&quot;, &quot;fr&quot;: &quot;Ce que montre l'image.&quot; }
+  }],
+  &quot;readme&quot;: &quot;README.md&quot;,
+  &quot;readmes&quot;: { &quot;fr&quot;: &quot;README.fr.md&quot; }
+}</code></pre>
+<ul><li><code>icon</code> is an SVG in the mod's folder, inlined into the catalogue: it costs no request and cannot be missing when the panel draws.</li><li><code>descriptions</code> and <code>readmes</code> are keyed by language. English is what a reader falls back to, so <code>description</code> and <code>readme</code> stay required.</li><li><code>screenshots</code> are read one at a time, only when the page is opened, and the manifest's order is the order they are drawn in.</li><li>The README is also a file people read in the repository, so it opens with the mod's name and its description; the panel drops both, since they are already the heading and the paragraph above it.</li><li><code>pnpm shoot --mods -- --only=my-plugin</code> takes the picture, against a real workspace with every name, face and message on screen replaced first.</li></ul>
+<p>Every path must stay inside the mod's folder -- the loader refuses anything that climbs out -- and <code>pnpm validate-mods</code> checks that each file exists.</p>
+<h2>9. Read a real one</h2>
+<p><a href="https://github.com/AirOne-dev/BetterSlack/blob/master/mods/plugins/channel-notes/index.js"><code>channel-notes</code></a> is the worked example: a button, a modal, settings, a confirm, a toast, and no CSS at all. <a href="https://github.com/AirOne-dev/BetterSlack/blob/master/mods/plugins/motion/index.js"><code>motion</code></a> is the one to read for <code>helpers.toggle</code> and a stylesheet built in one <code>api.css</code> call. <a href="https://github.com/AirOne-dev/BetterSlack/blob/master/mods/plugins/quote-reply/index.js"><code>quote-reply</code></a> is the shortest useful one.</p>
+<h2>10. Test it</h2>
 <p>A mod's test runs against a recording fake API — no Slack, no browser:</p>
 <pre class="api-code" data-lang="bash" data-label="bash"><code>pnpm test -- hello</code></pre>
 <pre class="api-code" data-lang="javascript" data-label="js"><code>import test from 'node:test';
 import assert from 'node:assert/strict';
-import { load, fakeApi } from '../../../tests/harness.mjs';
+import { createTestApi, installDom } from '../../../tests/harness.mjs';
+import plugin from './index.js';
 
 test('adds a button to the channel header', async () =&gt; {
-  const api = fakeApi();
-  await (await load(import.meta.url)).start(api);
-  assert.equal(api.slack.toolbarButtons[0].toolbar, 'channelHeader');
+  const dom = installDom();
+  try {
+    const { api, recorded } = createTestApi();
+    await plugin.start(api);
+    assert.equal(recorded.toolbarButtons[0].toolbar, 'channelHeader');
+
+    recorded.toolbarButtons[0].button.onClick();
+    assert.ok(recorded.toasts.some((toast) =&gt; toast.variant === 'success'));
+  } finally {
+    dom.cleanup();
+  }
 });</code></pre>
-<p>Assert on what a user would notice, not on how you got there.</p>
-<h2>8. Ship it</h2>
+<p><code>installDom</code> gives you a Slack-shaped document and <code>createTestApi</code> a recording stand-in for the api, so a test needs no Slack, no Electron and no network. Assert on what a user would notice, not on how you got there.</p>
+<p>A theme's test is three lines, because the shared checks come for free:</p>
+<pre class="api-code" data-lang="javascript" data-label="js"><code>import test from 'node:test';
+import assert from 'node:assert/strict';
+import { themeChecks } from '../../../tests/theme.mjs';
+
+themeChecks(test, assert, import.meta.url);</code></pre>
+<p>jsdom cannot see the failures that matter most -- a mod that wedges the renderer, a mod that throws on start. <code>pnpm test:live</code> boots the real Slack, asks the runtime what actually loaded and turns the answer into an exit code. It closes Slack afterwards, which is why it is not part of <code>pnpm test</code>.</p>
+<h2>11. Ship it</h2>
 <pre class="api-code" data-lang="bash" data-label="bash"><code>pnpm check</code></pre>
 <p>One command: types, build, manifests, the registry, the site, and every test. It regenerates <code>mods/registry.json</code>, which is committed — a dirty tree after it means the catalogue had drifted, and the fix is to commit it.</p>
 <p>Then open a pull request. A human reads it, and that review is the security model: a plugin runs unsandboxed in an authenticated Slack tab. <code>CONTRIBUTING.md</code> lists what gets rejected.</p>
@@ -388,7 +437,13 @@ body { background: linear-gradient(160deg, #101418, #161c26); }</code></pre>
 <p>A theme cannot run code, and that is deliberate. When a look needs something CSS cannot do — a member column, an account strip — the theme names a plugin:</p>
 <pre class="api-code" data-lang="json" data-label="json"><code>{ &quot;requires&quot;: [&quot;member-sidebar&quot;] }</code></pre>
 <p>The panel offers to switch it on, and enables the theme either way if the user declines: a plugin keeps running after the theme is off, so it is never turned on silently. The plugin has to stand alone — it reads Slack's tokens and follows any theme — and the theme must not style its markup.</p>
-<h2>9. Ship it</h2>
+<h2>9. Split it, and give it a page</h2>
+<p>A big theme reads better in pieces. <code>@import</code> a relative path inside your own folder and BetterSlack inlines it, in order, before anything reaches the page:</p>
+<pre class="api-code" data-lang="css" data-label="css"><code>@import './tokens.css';
+@import './sidebar.css';</code></pre>
+<p>The stylesheet is injected as one <code>&lt;style&gt;</code> element with no URL to resolve against, so a browser <code>@import</code> of a file on a server would be a request Slack's CSP refuses anyway. Import each file once; a cycle is an error, not a hang.</p>
+<p>The manifest keys that turn a row into a page somebody reads -- the icon, the translated descriptions, the screenshots and the READMEs -- are the same for a theme as for a plugin, and are step 8 of <strong>Your first plugin</strong>.</p>
+<h2>10. Ship it</h2>
 <pre class="api-code" data-lang="bash" data-label="bash"><code>pnpm check</code></pre>
 <p>The same one command as a plugin. <code>pnpm shoot --mods -- --only=my-theme</code> takes the screenshot the catalogue and the panel show, in a real Slack with every name, face and message on screen replaced first.</p>
 <h2>Two more traps, both measured</h2>
@@ -1193,22 +1248,6 @@ for (const file of files) api.log.info(file.name);</code></pre>
 await api.slack.hideConversation('C0BFQCYBRAB');</code></pre>
   </div>
 </section>
-<section class="panel" id="p-slack-onprofilepane" hidden>
-  <header class="panel__head">
-    <p class="eyebrow">api.slack</p>
-    <h1><code>onProfilePane</code></h1>
-    <p class="api-sig api-sig--big">(handler: (pane: ProfilePane) =&gt; void): Cleanup</p>
-    <p class="api-since">Since BetterSlack 2.0.1</p>
-  </header>
-  <div class="panel__body">
-    <p>Run a handler each time a profile pane appears, with the pane and the user id it is showing. Mount per pane rather than once: a single mount fills whichever profile it reaches first and starves the other.</p>
-    <div class="api-demo" data-demo="slack-onprofilepane" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Local notes&quot;,&quot;label&quot;:&quot;section title&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
-    <h2 data-en="Example" data-fr="Exemple">Example</h2>
-    <pre class="api-code"><code>api.slack.onProfilePane(({ element, userId }) =&gt; {
-  element.append(api.helpers.section('More details', rowsFor(userId)));
-});</code></pre>
-  </div>
-</section>
 <section class="panel" id="p-slack-openconversation" hidden>
   <header class="panel__head">
     <p class="eyebrow">api.slack</p>
@@ -1315,11 +1354,12 @@ await api.slack.restart();</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on <code>data-qa</code> attributes rather than class names, which churn with every Slack release.</p>
+    <p>The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on <code>data-qa</code> attributes rather than class names, which churn with every Slack release — so read one from here rather than writing it out, or your copy is the one nobody updates when Slack moves.</p>
     <div class="api-demo" data-demo="slack-selectors" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
-    <pre class="api-code"><code>api.slack.selectors.messageText;    // '[data-qa=&quot;message-text&quot;]'
-// The handful of Slack selectors this project has measured and kept working.</code></pre>
+    <pre class="api-code"><code>const { composer, composerEditor } = api.slack.selectors;
+api.dom.keepMounted(composer, 'my-counter', () =&gt; counter);
+document.querySelector(composerEditor);   // '.ql-editor'</code></pre>
   </div>
 </section>
 <section class="panel" id="p-slack-setvip" hidden>

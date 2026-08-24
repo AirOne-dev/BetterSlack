@@ -1,7 +1,7 @@
 # Theming Slack
 
 Everything below was measured against a live Slack, not assumed. New here?
-Start with **[getting-started.md](getting-started.md#write-a-theme)**.
+New here? Start with **[Your first theme](guide/theme.md)**.
 
 **There is a tool for this.** The **Theme Builder** plugin opens a window of its
 own and paints the client live, so the preview is Slack itself: two colours

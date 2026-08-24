@@ -897,12 +897,18 @@
   }
   var PROFILE_PANE = '[data-qa="member_profile_pane"]';
   var PROFILE_AVATAR = ".p-r_member_profile__avatar__img";
-  function onProfilePane(handler) {
-    return onEach(PROFILE_PANE, (element) => {
-      const avatar = element.querySelector(PROFILE_AVATAR);
-      handler({ element, userId: userIdFromAvatarUrl(avatar?.src) });
-    });
-  }
+  var SELECTORS = Object.freeze({
+    message: MESSAGE,
+    messageActions: ACTIONS_GROUP,
+    composer: COMPOSER,
+    composerEditor: COMPOSER_EDITOR,
+    channelSidebar: '[data-qa="channel-sidebar"]',
+    tabRail: '[data-qa="tab_rail_desktop"]',
+    topNav: '[data-qa="top-nav"]',
+    messageText: '[data-qa="message-text"]',
+    profilePane: PROFILE_PANE,
+    profileAvatar: PROFILE_AVATAR
+  });
   function addProfileButton(pluginId, button) {
     const nodeId = `betterslack-profile-${pluginId}-${button.id}`;
     const cleanup = onEach(PROFILE_PANE, (pane) => {
@@ -1045,7 +1051,6 @@
       addMessageAction: (action) => addMessageAction(pluginId, action),
       addToolbarButton: (toolbar, button) => addToolbarButton(pluginId, toolbar, button),
       addProfileButton: (button) => addProfileButton(pluginId, button),
-      onProfilePane,
       web,
       openConversation(channelId) {
         const team = currentTeamId();
@@ -1147,18 +1152,7 @@
         setMaterial
       },
       restart: async () => void 0,
-      selectors: Object.freeze({
-        message: MESSAGE,
-        messageActions: ACTIONS_GROUP,
-        composer: COMPOSER,
-        composerEditor: COMPOSER_EDITOR,
-        channelSidebar: '[data-qa="channel-sidebar"]',
-        tabRail: '[data-qa="tab_rail_desktop"]',
-        topNav: '[data-qa="top-nav"]',
-        messageText: '[data-qa="message-text"]',
-        profilePane: PROFILE_PANE,
-        profileAvatar: PROFILE_AVATAR
-      })
+      selectors: SELECTORS
     };
   }
 
@@ -6256,20 +6250,6 @@ api.slack.vipUsers()
           "Not everyone has one: an app, or a conversation with yourself, gives a",
           "pane that never appears. Try ids in turn rather than trusting the first."
         ]));
-        focusChrome(frame, '[data-qa="member_profile_pane"]');
-        return void 0;
-      }
-    },
-    "slack-onprofilepane": {
-      render: (v, { stage, keep }) => {
-        const frame = slackChrome({ pane: true });
-        stage.replaceChildren(frame);
-        const slack = createSlackApi("demo");
-        keep(slack.onProfilePane(({ element, userId }) => {
-          element.querySelector(".p-r_member_profile__container")?.append(
-            helpers.section(v.title, [helpers.field("User id", userId ?? "unknown")])
-          );
-        }));
         focusChrome(frame, '[data-qa="member_profile_pane"]');
         return void 0;
       }

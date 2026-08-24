@@ -65,9 +65,12 @@ there is no usable one it downloads the current LTS from nodejs.org into
 keeps it to itself: nothing is added to your `PATH` and no other project sees
 it.
 
-Then it gets pnpm from Corepack, which ships inside Node, at the exact version
-`package.json` pins. It has to be pnpm — esbuild fetches its platform binary in
-an install script, and `pnpm-workspace.yaml` is what allows that script to run.
+Then it gets pnpm at the exact version `package.json` pins — through Corepack
+where the chosen Node still ships one, and otherwise a pnpm already on the
+machine. Corepack was removed from Node in version 25, so a Node that has
+neither is not used, and the installer downloads one that does. It has to be
+pnpm: esbuild fetches its platform binary in an install script, and
+`pnpm-workspace.yaml` is what allows that script to run.
 
 Then it builds, and copies the result into `~/.betterslack/app`: the two
 bundles, the entry point and the mod catalogue, about 6 MB. A Node it had to
@@ -153,8 +156,40 @@ betterslack --safe
 "$(cat ~/.betterslack/app/node-path)" ~/.betterslack/app/bin/betterslack.mjs --safe
 ```
 
+**If Slack is not where BetterSlack expects it**, `BETTERSLACK_SLACK_PATH` names
+the executable, and the loader reads it at every launch:
+
+```bash
+launchctl setenv BETTERSLACK_SLACK_PATH /path/to/Slack   # macOS, for the app
+BETTERSLACK_SLACK_PATH=/path/to/Slack betterslack        # Linux, one run
+```
+
 On macOS, two things are worth knowing. The first launch needs right-click →
 **Open**, because the app is unsigned. And if you had no C compiler when you
 ran the installer, the app is a shell script rather than a real binary: it
 launches, but macOS refuses it access to `~/Downloads`, which is where a mod
 saves a file. `xcode-select --install`, then run the installer again.
+
+## What each symptom means
+
+- **Mods stop working.** BetterSlack stopped. Mods live exactly as long as the
+  loader does, so quitting it takes them with it.
+- **Your mod is not in the panel.** `id` must equal the folder name. Run
+  `pnpm check-structure -- <id>`.
+- **Edits do not show up.** Hot reload is off, or the mod is not enabled. Check
+  the About tab.
+- **A theme changes messages but not the sidebar.** You only overrode the first
+  token family; there are four.
+- **`eval is not allowed`.** Slack's Content Security Policy. There is no way
+  around it; restructure.
+- **`Failed to fetch` on a Slack CDN URL.** No CORS headers. Use
+  `api.files.save`.
+- **Nothing in the console.** Install the **DevTools** plugin, or press ⌘⌥I.
+- **Slack comes up grey, or the panel never appears.** A mod wedged the
+  renderer. The next start applies nothing on its own, and `--safe` forces it:
+  switch the suspect off, then start again.
+- **A mod's row says it is not running.** It threw during `start()`. Two
+  failures and it is skipped at boot -- switching it off and on again clears the
+  count.
+- **⌘K opens Slack's switcher, not BetterSlack's.** The **Command Palette**
+  plugin is not installed or not enabled. Its own settings can move it to ⌘⇧K.

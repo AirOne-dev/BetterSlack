@@ -276,6 +276,18 @@ function renderMarkdown(md) {
 
     if (line.trim() === '') { i += 1; continue; }
 
+    /*
+     * A table is not one of the shapes here, and it must not be one silently.
+     *
+     * Collected as a paragraph it comes out as a run of pipes on one line,
+     * which reads as a page that rendered badly rather than as markdown nobody
+     * supports -- the same failure the fence-language check above refuses. A
+     * guide page wants a list instead.
+     */
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      throw new Error(`docs/guide: "${line.trim()}" is a table, and the guide renderer draws lists, not tables.`);
+    }
+
     const para = [];
     while (i < lines.length && lines[i].trim() !== ''
       && !/^```/.test(lines[i]) && !/^#{2,4}\s/.test(lines[i]) && !/^\s*[-*]\s+/.test(lines[i])) {

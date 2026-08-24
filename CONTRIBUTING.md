@@ -91,7 +91,7 @@ unexplained one is an automatic no.
 
    Plus, for the panel's page: `icon.svg`, `screenshot.webp`, `README.md` and
    `README.fr.md`, each named in the manifest --
-   [docs/getting-started.md](docs/getting-started.md) has the shape.
+   [docs/guide/plugin.md](docs/guide/plugin.md) has the shape.
 
    A mod is a folder, not a file: `entry` is only where the app starts
    reading. Split the rest however you like -- `import './lib/x.js'` in a
@@ -189,7 +189,7 @@ resources, and no hashed Slack class names.
 
 The two documents worth reading before you write anything:
 
-- **[docs/getting-started.md](docs/getting-started.md)** — the walkthrough.
+- **[docs/guide/](docs/guide/)** — the walkthrough: install, a plugin, a theme.
 - **[docs/api.md](docs/api.md)** — the API, with an example per entry.
 - **[docs/themes.md](docs/themes.md)** — Slack's four colour token families and
   the CSS traps. A theme that skips this comes out half-styled.

@@ -73,14 +73,13 @@ from exactly these numbers and what the mod calls.
 - [`emojiUrl`](api/slack-emojiurl.md) — An image for an emoji name, or `null` when nothing can draw it. The colons are _(since 3.0.0)_
 - [`filesFrom`](api/slack-filesfrom.md) — The files somebody shared, newest first. `limit` caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw. _(since 2.0.1)_
 - [`hideConversation`](api/slack-hideconversation.md) — Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave. _(since 2.0.1)_
-- [`onProfilePane`](api/slack-onprofilepane.md) — Run a handler each time a profile pane appears, with the pane and the user id it is showing. Mount per pane rather than once: a single mount fills whichever profile it reaches first and starves the other. _(since 2.0.1)_
 - [`openConversation`](api/slack-openconversation.md) — Move the client to a conversation, without a page load. _(since 2.0.1)_
 - [`openDirectMessage`](api/slack-opendirectmessage.md) — Open the direct message with someone, creating it if there is none. _(since 2.0.1)_
 - [`openMessage`](api/slack-openmessage.md) — Move the client to one message, and highlight it. The same deep link _(since 3.0.0)_
 - [`openStatusEditor`](api/slack-openstatuseditor.md) — Slack's own "set a status" dialog. There is no deep link for it and no action a mod can dispatch: the entry lives in the account menu, so this opens the menu and then presses it. _(since 2.1.0)_
 - [`openUserProfile`](api/slack-openuserprofile.md) — Open somebody's profile, through Slack's own deep link — same document, no reload. Not every id has one: an app, or a conversation with yourself, gives a pane that never appears. _(since 2.0.1)_
 - [`restart`](api/slack-restart.md) — Stop Slack and start it again, with the loader still driving. _(since 2.0.1)_
-- [`selectors`](api/slack-selectors.md) — The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on `data-qa` attributes rather than class names, which churn with every Slack release. _(since 2.0.1)_
+- [`selectors`](api/slack-selectors.md) — The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on `data-qa` attributes rather than class names, which churn with every Slack release — so read one from here rather than writing it out, or your copy is the one nobody updates when Slack moves. _(since 2.0.1)_
 - [`setVip`](api/slack-setvip.md) — Add or remove someone from your VIP list, and report the new state. _(since 2.0.1)_
 - [`startHuddle`](api/slack-starthuddle.md) — Start a huddle with someone: open the conversation, then press Slack's own _(since 2.0.1)_
 - [`statusNode`](api/slack-statusnode.md) — That status as a node, so the two mods that show one draw the same thing. An image when an emoji resolved, the unicode character when Slack sent one, and the sentence beside it. _(since 2.1.0)_

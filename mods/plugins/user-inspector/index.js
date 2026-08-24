@@ -23,7 +23,6 @@
  * attribute and the avatar class -- and gets these sections for free; the
  * member column's profile dialog is the first thing other than Slack to do it.
  */
-const PANE = '[data-qa="member_profile_pane"]';
 // keepMounted owns the element's id (it uses it to find its own node), so the
 // styling hook is a class. One pane, one id; the class is what CSS and tests
 // look for.
@@ -219,6 +218,10 @@ export default {
    */
   start(api) {
     const t = api.i18n.strings(STRINGS);
+    // The two halves of the contract, from the API rather than written out
+    // here: Slack's own names churn, and a copy in a mod is a copy nobody
+    // updates when they do.
+    const { profilePane: PANE, profileAvatar: AVATAR } = api.slack.selectors;
     // Slack's own classes do the heavy lifting; this only covers the few things
     // it has no class for.
     api.css(`
@@ -346,7 +349,7 @@ export default {
      * how this ended up reporting that it could not tell.
      */
     const fill = (host, pane) => {
-      const avatar = pane.querySelector('.p-r_member_profile__avatar__img');
+      const avatar = pane.querySelector(AVATAR);
       const userId = pane.getAttribute('data-user-id')?.toUpperCase()
         || (avatar?.getAttribute('src')?.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i) ?? [])[1]?.toUpperCase();
 

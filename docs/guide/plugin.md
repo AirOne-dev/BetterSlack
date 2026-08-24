@@ -130,7 +130,86 @@ Never write a raw `MutationObserver` to insert something. Slack re-renders
 constantly and you will get duplicates; `mount` and `each` handle it, and give
 up loudly rather than looping if a container fights back.
 
-## 7. Test it
+## 7. More than one file
+
+Once a plugin is more than a screenful, split it. Import relative paths and
+BetterSlack resolves them:
+
+```
+mods/plugins/my-plugin/
+  mod.json        "entry": "index.js"
+  index.js        import { render } from './ui/panel.js';
+  ui/panel.js     import { format } from '../lib/format.js';
+  lib/format.js
+  test.mjs
+```
+
+Three rules, all enforced by `pnpm validate-mods`:
+
+- **Relative specifiers only** -- `./x.js`, `../lib/x.js`. There is no npm and
+  no CDN in the page; a bare `import 'lodash'` has nothing to resolve to.
+- **Stay inside your folder.** `../../other-plugin/index.js` is rejected: mods
+  are installed one at a time, and yours may be the only one there.
+- **No cycles.** A file may not import, directly or transitively, something that
+  imports it back.
+
+Why the rules: the page has no `'unsafe-eval'`, so a plugin is loaded as a real
+ES module through a `blob:` URL -- and a blob URL has no directory for a
+relative path to resolve against. BetterSlack reads your whole folder, builds a
+blob per file leaves-first, and rewrites each relative specifier to the blob URL
+of the file it names. The module you wrote is the module that runs; only the
+specifiers change. `.css` files in the folder ship too, so a stylesheet can live
+in a real `.css` file: `api.css(api.assets.text('ui/panel.css'))`.
+
+A theme splits the same way, with `@import './tokens.css'` instead of an
+`import`, and is stitched into one stylesheet in the order it was imported.
+
+## 8. The page a reader sees
+
+Everything above is the minimum. What turns a row in a list into a page somebody
+reads is optional, and every mod in this repository has all of it -- a theme as
+much as a plugin:
+
+```json
+{
+  "icon": "icon.svg",
+  "descriptions": { "fr": "Une phrase, dans la langue du lecteur." },
+  "screenshots": [{
+    "file": "screenshot.webp",
+    "captions": { "en": "What the picture shows.", "fr": "Ce que montre l'image." }
+  }],
+  "readme": "README.md",
+  "readmes": { "fr": "README.fr.md" }
+}
+```
+
+- `icon` is an SVG in the mod's folder, inlined into the catalogue: it costs no
+  request and cannot be missing when the panel draws.
+- `descriptions` and `readmes` are keyed by language. English is what a reader
+  falls back to, so `description` and `readme` stay required.
+- `screenshots` are read one at a time, only when the page is opened, and the
+  manifest's order is the order they are drawn in.
+- The README is also a file people read in the repository, so it opens with the
+  mod's name and its description; the panel drops both, since they are already
+  the heading and the paragraph above it.
+- `pnpm shoot --mods -- --only=my-plugin` takes the picture, against a real
+  workspace with every name, face and message on screen replaced first.
+
+Every path must stay inside the mod's folder -- the loader refuses anything that
+climbs out -- and `pnpm validate-mods` checks that each file exists.
+
+## 9. Read a real one
+
+[`channel-notes`](https://github.com/AirOne-dev/BetterSlack/blob/master/mods/plugins/channel-notes/index.js)
+is the worked example: a button, a modal, settings, a confirm, a toast, and no
+CSS at all.
+[`motion`](https://github.com/AirOne-dev/BetterSlack/blob/master/mods/plugins/motion/index.js)
+is the one to read for `helpers.toggle` and a stylesheet built in one `api.css`
+call.
+[`quote-reply`](https://github.com/AirOne-dev/BetterSlack/blob/master/mods/plugins/quote-reply/index.js)
+is the shortest useful one.
+
+## 10. Test it
 
 A mod's test runs against a recording fake API — no Slack, no browser:
 
@@ -141,18 +220,44 @@ pnpm test -- hello
 ```js
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { load, fakeApi } from '../../../tests/harness.mjs';
+import { createTestApi, installDom } from '../../../tests/harness.mjs';
+import plugin from './index.js';
 
 test('adds a button to the channel header', async () => {
-  const api = fakeApi();
-  await (await load(import.meta.url)).start(api);
-  assert.equal(api.slack.toolbarButtons[0].toolbar, 'channelHeader');
+  const dom = installDom();
+  try {
+    const { api, recorded } = createTestApi();
+    await plugin.start(api);
+    assert.equal(recorded.toolbarButtons[0].toolbar, 'channelHeader');
+
+    recorded.toolbarButtons[0].button.onClick();
+    assert.ok(recorded.toasts.some((toast) => toast.variant === 'success'));
+  } finally {
+    dom.cleanup();
+  }
 });
 ```
 
+`installDom` gives you a Slack-shaped document and `createTestApi` a recording
+stand-in for the api, so a test needs no Slack, no Electron and no network.
 Assert on what a user would notice, not on how you got there.
 
-## 8. Ship it
+A theme's test is three lines, because the shared checks come for free:
+
+```js
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { themeChecks } from '../../../tests/theme.mjs';
+
+themeChecks(test, assert, import.meta.url);
+```
+
+jsdom cannot see the failures that matter most -- a mod that wedges the
+renderer, a mod that throws on start. `pnpm test:live` boots the real Slack,
+asks the runtime what actually loaded and turns the answer into an exit code. It
+closes Slack afterwards, which is why it is not part of `pnpm test`.
+
+## 11. Ship it
 
 ```bash
 pnpm check

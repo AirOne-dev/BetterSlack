@@ -622,7 +622,7 @@ Three things make that possible:
   moves those same nodes into Slack's layout and fills them (`dressChrome`), so
   the answer to "where did my button go" is a client with a ring on it rather
   than five dashed rectangles. Avatars keep their real `src` in the **fragment
-  of a 1x1 transparent SVG**: `onProfilePane` and `userIdFromMessage` read the
+  of a 1x1 transparent SVG**: `userIdFromMessage` and Member Sidebar read the
   user id out of that URL, so it has to be the real one, and a docs page has no
   business fetching faces from Slack's CDN.
 - **Only the open panel's demo is mounted.** `addToolbarButton` and
@@ -1168,9 +1168,12 @@ tests fail below it.
 
 **[docs/api.md](docs/api.md) is the reference — keep it in step with the code.**
 Adding a helper or changing a signature without updating it, with an example, is
-an incomplete change. [docs/getting-started.md](docs/getting-started.md) is the
-human entry point and [docs/themes.md](docs/themes.md) holds the CSS knowledge;
-both are part of the same contract.
+an incomplete change. [docs/guide/](docs/guide/) is the human entry point --
+three pages, install / a plugin / a theme, and the site's Doc tab is built from
+that folder -- and [docs/themes.md](docs/themes.md) holds the CSS knowledge.
+[docs/getting-started.md](docs/getting-started.md) points at the three and holds
+nothing of its own: one walkthrough written twice is one that goes wrong twice.
+All of it is part of the same contract.
 
 Shape of it:
 
@@ -1193,7 +1196,7 @@ Shape of it:
   `field`, `section`, `debounce`.
 - `api.slack` — Slack's chrome: `addToolbarButton` (controlStrip / composer /
   channelHeader, with `before` to sit above another button), `addMessageAction`,
-  `addProfileButton`, `onProfilePane`, `describeMessage`, `userIdFromMessage`,
+  `addProfileButton`, `describeMessage`, `userIdFromMessage`,
   `currentChannelId`, `composer`, `web`, `selectors`.
 - `api.ui` — `toast`, `modal`, `confirm`, `tooltip`, in shadow roots.
 - `api.i18n` — `strings({ en, fr, ... })` returns `t(key, vars)`; `locale` and

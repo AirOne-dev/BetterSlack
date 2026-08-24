@@ -446,18 +446,32 @@ function statusStrings(): ReturnType<ReturnType<typeof createI18n>['strings']> {
 const PROFILE_PANE = '[data-qa="member_profile_pane"]';
 const PROFILE_AVATAR = '.p-r_member_profile__avatar__img';
 
+/**
+ * The selectors a mod may anchor on, in one place.
+ *
+ * Slack's class names are compiler output and churn between builds, so a mod
+ * that writes one out is a mod that stops working silently. These are the
+ * `data-qa` attributes and the two stable class names this project has
+ * measured, and they are the same strings the helpers above use -- a copy in a
+ * mod is a copy that nobody updates when Slack moves.
+ */
+export const SELECTORS = Object.freeze({
+  message: MESSAGE,
+  messageActions: ACTIONS_GROUP,
+  composer: COMPOSER,
+  composerEditor: COMPOSER_EDITOR,
+  channelSidebar: '[data-qa="channel-sidebar"]',
+  tabRail: '[data-qa="tab_rail_desktop"]',
+  topNav: '[data-qa="top-nav"]',
+  messageText: '[data-qa="message-text"]',
+  profilePane: PROFILE_PANE,
+  profileAvatar: PROFILE_AVATAR,
+});
+
 export interface ProfilePane {
   element: HTMLElement;
   /** The user whose profile is open, read from the avatar URL. */
   userId: string | null;
-}
-
-/** Run a handler each time a member profile pane opens. */
-export function onProfilePane(handler: (pane: ProfilePane) => void): Cleanup {
-  return onEach<HTMLElement>(PROFILE_PANE, (element) => {
-    const avatar = element.querySelector<HTMLImageElement>(PROFILE_AVATAR);
-    handler({ element, userId: userIdFromAvatarUrl(avatar?.src) });
-  });
 }
 
 export interface ProfileButton {
@@ -665,8 +679,6 @@ export interface SlackApi {
   addToolbarButton(toolbar: ToolbarName, button: ToolbarButton): Cleanup;
   /** Add a button to the member profile pane. */
   addProfileButton(button: ProfileButton): Cleanup;
-  /** Run a handler each time a member profile pane opens. */
-  onProfilePane(handler: (pane: ProfilePane) => void): Cleanup;
   /**
    * Move the client to a conversation, without a page load.
    *
@@ -917,7 +929,6 @@ export function createSlackApi(pluginId: string): SlackApi {
     addMessageAction: (action) => addMessageAction(pluginId, action),
     addToolbarButton: (toolbar, button) => addToolbarButton(pluginId, toolbar, button),
     addProfileButton: (button) => addProfileButton(pluginId, button),
-    onProfilePane,
     web,
 
     openConversation(channelId: string): void {
@@ -1058,17 +1069,6 @@ export function createSlackApi(pluginId: string): SlackApi {
     },
     restart: async () => undefined,
 
-    selectors: Object.freeze({
-      message: MESSAGE,
-      messageActions: ACTIONS_GROUP,
-      composer: COMPOSER,
-      composerEditor: COMPOSER_EDITOR,
-      channelSidebar: '[data-qa="channel-sidebar"]',
-      tabRail: '[data-qa="tab_rail_desktop"]',
-      topNav: '[data-qa="top-nav"]',
-      messageText: '[data-qa="message-text"]',
-      profilePane: PROFILE_PANE,
-      profileAvatar: PROFILE_AVATAR,
-    }),
+    selectors: SELECTORS,
   };
 }

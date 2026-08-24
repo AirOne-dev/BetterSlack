@@ -142,8 +142,9 @@ app is unsigned. And a C compiler (`xcode-select --install`) is worth having
 before you run the installer: without one the app still launches, but macOS
 refuses it access to `~/Downloads`, which is where a mod saves a file.
 
-**→ [docs/getting-started.md](docs/getting-started.md)** covers running it,
-writing a theme, writing a plugin, testing and shipping.
+**→ [docs/getting-started.md](docs/getting-started.md)** points at the three:
+running it, writing a plugin, writing a theme -- each with testing and shipping
+at the end.
 
 ## What is in the catalogue
 
@@ -248,7 +249,7 @@ in a theme) from inside its own folder.
 
 | | |
 | --- | --- |
-| **[Getting started](docs/getting-started.md)** | Run it · write a theme · write a plugin · test · ship |
+| **[Getting started](docs/getting-started.md)** | The three tracks: run it · write a plugin · write a theme |
 | [API reference](docs/api.md) | Every entry, with an example |
 | [Theming Slack](docs/themes.md) | The four colour token families, traps, recipes |
 | [Contributing](CONTRIBUTING.md) | Review rules and the PR checklist |
