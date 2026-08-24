@@ -1144,6 +1144,16 @@ tests fail below it.
   Read out of the live stylesheet -- `site/slack-context.css` had invented a
   `--small` with a smaller font, so the docs page was not showing what the
   client shows.
+- **A tooltip's global listeners live only while it is showing.** `keydown`,
+  `scroll` (capture) and `resize` are registered in `show()` and removed in
+  `hide()`, because `attachTooltip` is called *per element* and some callers
+  build a great many: `statusNode` attaches one per row and a member column
+  redraws on every channel change. Registered for the life of the trigger
+  instead, four channel changes left **38 capture-phase scroll handlers on
+  `window`** with nothing to remove them, on a page that scrolls constantly.
+  Found by patching `addEventListener` in a live client and counting -- a
+  MutationObserver sees nothing here, because nothing is mutating. One tooltip
+  is visible at a time, so there is at most one set of these and usually none.
 - **A real pointer cannot photograph a tooltip.** `shoot`'s `hover` moves the
   pointer and captures in the same breath, and the tooltip is 150ms behind it,
   so the frame always comes back empty. Clicking is worse: `mousedown` is one of
