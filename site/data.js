@@ -305,23 +305,6 @@ window.CATALOGUE = {
       "settings": 0
     },
     {
-      "id": "edit-log",
-      "name": "Edit Log",
-      "description": "Keeps what a message said before it was edited or deleted, and leaves a deleted one in place instead of letting it vanish",
-      "descriptions": {
-        "fr": "Garde ce qu’un message disait avant d’être modifié ou supprimé, et laisse un message supprimé à sa place au lieu de le voir disparaître"
-      },
-      "version": "1.0.0",
-      "tags": [
-        "messages",
-        "tools",
-        "privacy"
-      ],
-      "requires": [],
-      "icon": "<svg viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\">\n  <path d=\"M10 3a7 7 0 1 1-6.8 8.6\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/>\n  <path d=\"M3.2 7.4 3 4.2M3.2 7.4l3.2-.4\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  <path d=\"M10 6.6V10l2.3 2.3\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n</svg>",
-      "settings": 3
-    },
-    {
       "id": "full-links",
       "name": "Full Links",
       "description": "Keeps long links whole. Slack shortens a long URL to its host and an ellipsis -- in the messages you read, and in the ones you send, since the short label is stored in the message itself. This puts both back: it restores what is on screen, and stops the label being made when you paste.",
@@ -337,6 +320,23 @@ window.CATALOGUE = {
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><path d=\"M7 12h10\" stroke=\"#38bdf8\" stroke-width=\"2.4\" stroke-linecap=\"round\"/><path d=\"M9 8H5.5a4 4 0 0 0 0 8H9M15 8h3.5a4 4 0 0 1 0 8H15\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" fill=\"none\" opacity=\".65\"/></svg>",
       "shot": "shots/mods/full-links.webp",
       "settings": 0
+    },
+    {
+      "id": "history",
+      "name": "History",
+      "description": "Everything Slack changes and never tells you about — edits, deletions, reactions taken back, renames, statuses, arrivals and departures — on one page you can search and sort",
+      "descriptions": {
+        "fr": "Tout ce que Slack change sans jamais le dire — modifications, suppressions, réactions retirées, renommages, statuts, arrivées et départs — sur une page que l'on peut chercher et trier"
+      },
+      "version": "1.0.0",
+      "tags": [
+        "messages",
+        "tools",
+        "privacy"
+      ],
+      "requires": [],
+      "icon": "<svg viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\">\n  <path d=\"M10 3.2a6.8 6.8 0 1 1-6.6 8.4\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/>\n  <path d=\"M3.4 7.6 3.2 4.4M3.4 7.6l3.2-.4\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  <path d=\"M10 6.8V10l2.3 2.3\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n</svg>",
+      "settings": 4
     },
     {
       "id": "member-sidebar",

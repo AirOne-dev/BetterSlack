@@ -957,6 +957,21 @@ tests fail below it.
   with the column rather than with the mod being switched on.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
+- **A reaction is `[data-qa="reactji"]`**, one button per emoji, carrying
+  `data-stringify-emoji` (the shortcode, which is the same name in every
+  language) and `.c-reaction__count`. The bar around them is
+  `[data-qa="reaction_bar"]`. **Who reacted is not in the DOM**: Slack builds
+  that as a tooltip when you hover, in the reader's language and with names
+  rather than ids, so a mod can know the emoji and the count honestly and
+  nothing else.
+- **`[data-qa="message_sender"]` holds the name twice on some messages** --
+  measured as `Ada LovelaceAda Lovelace :`, and once on others -- because Slack
+  draws a second copy for screen readers. Anything comparing it across renders
+  sees a rename every few seconds from somebody who changed nothing. Read
+  `.c-message__sender_button` and treat the result as a label; a display name
+  that is *compared* has to come from `users.info`.
+- **The sidebar's section headings are `.p-channel_sidebar__section_heading`**,
+  and they hold whatever the person who made the section typed.
 - **`.p-resizer` is Slack's drag handle, and it can be borrowed.** Measured on
   the channel sidebar's: 8px wide, `position: absolute`, `cursor: col-resize`,
   `z-index: 1000`, transparent, `role="none"` and no tab stop, positioned by

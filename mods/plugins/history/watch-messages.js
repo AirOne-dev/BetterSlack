@@ -1,7 +1,7 @@
 /**
  * Telling a change apart from a re-render.
  *
- * This is the whole of the mod's judgement, kept away from the DOM so it can be
+ * This is the sharpest part of the mod, kept away from the DOM so it can be
  * driven by a test rather than by a live Slack. It is handed what is on screen
  * now -- one reading per message, in the order Slack drew them -- and answers
  * what changed since the last time it was asked.
@@ -36,21 +36,11 @@ const MISSING_BEFORE_GONE = 2;
  * @property {string} ts
  * @property {string} text
  * @property {string|null} [userId]
+ * @property {string|null} [who]                 the sender's name as drawn
+ * @property {Record<string, number>} [reactions] emoji shortcode to count
  */
 
-/**
- * @typedef {object} Change
- * @property {'edited'|'deleted'} kind
- * @property {string} channelId
- * @property {string} ts
- * @property {string} before
- * @property {string} [after]
- * @property {string|null} userId
- * @property {string|null} [previousTs] the message above it, for a deletion
- * @property {string|null} [nextTs]     the message below it, for a deletion
- */
-
-export function createWatcher() {
+export function createMessageWatcher() {
   /** What each message said last time it was read, keyed by `<channel>:<ts>`. */
   const seen = new Map();
   /** The order Slack drew them in, per channel, so a gap has neighbours. */
@@ -58,7 +48,7 @@ export function createWatcher() {
 
   /**
    * @param {Reading[]} readings everything on screen, in the order it is drawn
-   * @returns {Change[]} what changed, oldest first
+   * @returns {object[]} what changed, oldest first
    */
   const sweep = (readings) => {
     const changes = [];
@@ -66,12 +56,15 @@ export function createWatcher() {
 
     for (const reading of readings) {
       const known = seen.get(reading.key);
+      const reactions = reading.reactions ?? {};
 
       // First sighting: remembered, never reported. See `armed` above.
       if (!known) {
         seen.set(reading.key, {
           text: reading.text,
+          reactions,
           userId: reading.userId ?? null,
+          who: reading.who ?? null,
           channelId: reading.channelId,
           ts: reading.ts,
           armed: false,
@@ -84,6 +77,21 @@ export function createWatcher() {
       // A userId read off an avatar that had not loaded yet is null; take it
       // whenever it turns up rather than only on the first sighting.
       if (!known.userId && reading.userId) known.userId = reading.userId;
+      if (!known.who && reading.who) known.who = reading.who;
+
+      const where = {
+        channelId: known.channelId,
+        ts: known.ts,
+        userId: known.userId,
+        who: known.who,
+      };
+
+      if (known.armed) {
+        for (const change of reactionChanges(known.reactions, reactions)) {
+          changes.push({ ...where, ...change });
+        }
+      }
+      known.reactions = reactions;
 
       if (known.text === reading.text) {
         known.armed = true;
@@ -96,14 +104,7 @@ export function createWatcher() {
         continue;
       }
 
-      changes.push({
-        kind: 'edited',
-        channelId: known.channelId,
-        ts: known.ts,
-        before: known.text,
-        after: reading.text,
-        userId: known.userId,
-      });
+      changes.push({ ...where, kind: 'edited', before: known.text, after: reading.text });
       known.text = reading.text;
     }
 
@@ -149,6 +150,7 @@ export function createWatcher() {
           ts: known.ts,
           before: known.text,
           userId: known.userId,
+          who: known.who,
           // The two it sat between, so a headstone can be put back exactly
           // where the message was rather than at the end of the list.
           previousTs: seen.get(previous)?.ts ?? null,
@@ -161,10 +163,10 @@ export function createWatcher() {
        * A gap that is still being judged keeps its place in the order.
        *
        * Written back as simply "what is on screen now", a message that vanished
-       * on this sweep is no longer between two neighbours on the next one --
-       * so it is never looked at again and no deletion is ever confirmed. It
-       * goes back in front of the message that followed it, which is the only
-       * thing that still says where it was.
+       * on this sweep is no longer between two neighbours on the next one -- so
+       * it is never looked at again and no deletion is ever confirmed. It goes
+       * back in front of the message that followed it, which is the only thing
+       * that still says where it was.
        */
       const nextOrder = [...keys];
       for (const { key, next } of waiting) {
@@ -179,21 +181,30 @@ export function createWatcher() {
 
   return {
     sweep,
-    /** How many messages are being watched. The panel shows it; tests read it. */
+    /** How many messages are being watched. The page shows it; tests read it. */
     watching: () => seen.size,
     forget: () => { seen.clear(); order.clear(); },
   };
 }
 
 /**
- * Add changes to the log, newest first, and never past the cap.
+ * Reactions, as the difference between two tallies.
  *
- * The log is written through `api.settings`, which is the loader's own file and
- * is read at every launch, so a log that grows without limit is a slower start
- * for everybody. Kept here rather than in `index.js` because the cap is the
- * part worth a test.
+ * Slack draws one button per emoji with a count on it, and says who reacted
+ * only in a tooltip built when you hover -- in the reader's language, with
+ * names rather than ids. So this reports the emoji and the count, and never
+ * claims to know who: a name parsed out of a localised sentence is a name this
+ * mod would be inventing.
  */
-export function addToLog(log, changes, keep, now) {
-  const next = [...changes].reverse().map((change) => ({ ...change, at: now })).concat(log);
-  return next.slice(0, Math.max(1, keep));
+export function reactionChanges(before, after) {
+  const changes = [];
+  for (const [emoji, count] of Object.entries(after)) {
+    const was = before[emoji] ?? 0;
+    if (count > was) changes.push({ kind: 'reaction-added', emoji, count, before: String(was), after: String(count) });
+  }
+  for (const [emoji, was] of Object.entries(before)) {
+    const count = after[emoji] ?? 0;
+    if (count < was) changes.push({ kind: 'reaction-removed', emoji, count, before: String(was), after: String(count) });
+  }
+  return changes;
 }

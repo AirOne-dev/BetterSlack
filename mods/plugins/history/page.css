@@ -1,0 +1,209 @@
+/*
+ * The page, painted from Slack's own tokens so it follows every theme.
+ *
+ * Every colour here is a `--dt_color-*` with a literal fallback, and the
+ * fallbacks are Slack's dark defaults rather than invented ones: a token that
+ * is missing should look like Slack, not like a different application.
+ */
+
+.bsh-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, .55);
+  /*
+   * Stated, never inherited. Slack ships `.c-dialog` at opacity 0 and fades it
+   * in itself; this is not that class, but anything full-screen in this client
+   * has to say what its opacity is or it inherits an animation meant for
+   * something else.
+   */
+  opacity: 1;
+}
+
+.bsh-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, 94vw);
+  height: min(860px, 88vh);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--dt_color-base-pry, #1a1d21);
+  color: var(--dt_color-content-pry, #d1d2d3);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .5);
+  border: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+}
+
+.bsh-muted { color: var(--dt_color-content-sec, #ababad); font-size: 13px; margin: 0; }
+
+.bsh-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+}
+.bsh-title { margin: 0 0 2px; font-size: 20px; font-weight: 900; color: var(--dt_color-content-pry, #d1d2d3); }
+.bsh-close {
+  font-size: 16px;
+  line-height: 1;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--dt_color-content-sec, #ababad);
+  cursor: pointer;
+}
+.bsh-close:hover { background: var(--dt_color-base-sec, rgba(255, 255, 255, .08)); color: var(--dt_color-content-pry, #d1d2d3); }
+
+.bsh-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+}
+/*
+ * Slack's own input carries `margin: 0 0 20px`, because in Slack it is a form
+ * field stacked in a column. Undoing it needs the class written twice: Slack's
+ * stylesheet loads after this one, so a single class ties on specificity and
+ * loses on source order.
+ */
+.bsh-search.bsh-search { flex: 1 1 240px; min-width: 180px; margin: 0; }
+.bsh-sort { flex: 0 0 auto; }
+
+.bsh-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.bsh-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--dt_color-content-sec, #ababad);
+  border: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+}
+.bsh-chip:hover { background: var(--dt_color-base-sec, rgba(255, 255, 255, .06)); }
+.bsh-chip[aria-pressed="true"] {
+  color: var(--dt_color-content-pry, #d1d2d3);
+  border-color: var(--dt_color-content-hgl-1, #1d9bd1);
+  background: var(--dt_color-base-sec, rgba(29, 155, 209, .12));
+}
+.bsh-chip__count { font-size: 11px; font-weight: 700; opacity: .75; }
+
+.bsh-columns,
+.bsh-row {
+  display: grid;
+  grid-template-columns: 116px 116px minmax(90px, 1fr) minmax(90px, 1fr) minmax(240px, 3fr) 108px;
+  gap: 12px;
+  align-items: start;
+  padding: 8px 20px;
+}
+.bsh-columns {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--dt_color-content-sec, #ababad);
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+}
+.bsh-body { flex: 1 1 auto; overflow-y: auto; }
+.bsh-row { border-bottom: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .18)); font-size: 13px; }
+.bsh-row:hover { background: var(--dt_color-base-sec, rgba(255, 255, 255, .04)); }
+
+.bsh-cell { min-width: 0; }
+.bsh-cell--when { color: var(--dt_color-content-sec, #ababad); white-space: nowrap; }
+.bsh-cell--who,
+.bsh-cell--where { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bsh-cell--who { font-weight: 700; }
+.bsh-cell--do { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+
+.bsh-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--dt_color-base-pry, #1a1d21);
+  background: var(--dt_color-content-sec, #ababad);
+}
+.bsh-badge--messages { background: var(--dt_color-content-hgl-1, #1d9bd1); color: #fff; }
+.bsh-badge--reactions { background: var(--dt_color-content-wrn, #d5a020); }
+.bsh-badge--names { background: var(--dt_color-content-suc, #2bac76); }
+.bsh-badge--people { background: var(--dt_color-content-imp, #c01343); color: #fff; }
+
+.bsh-change { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bsh-before,
+.bsh-after {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+.bsh-before { text-decoration: line-through; color: var(--dt_color-content-sec, #ababad); }
+.bsh-emoji { font-family: inherit; font-size: 13px; }
+
+.bsh-link {
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--dt_color-content-hgl-1, #1d9bd1);
+}
+.bsh-link:hover { text-decoration: underline; }
+
+.bsh-empty { padding: 48px 20px; text-align: center; }
+.bsh-empty__title { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+
+.bsh-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+}
+
+/*
+ * The message left where it was, struck through.
+ *
+ * Put back by the sweep rather than by a mount observer: this sits inside the
+ * list Slack re-renders most, and an observer that reacts to Slack's own
+ * re-render by touching that list is the shape that has frozen this renderer
+ * before. A timer cannot loop.
+ */
+.bsh-stone {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0;
+  padding: 4px 20px 4px 56px;
+  font-size: 15px;
+  line-height: 1.46668;
+  color: var(--dt_color-content-sec, #ababad);
+  border-left: 3px solid var(--dt_color-content-imp, #c01343);
+}
+.bsh-stone__tag {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--dt_color-content-imp, #c01343);
+  padding-top: 3px;
+}
+.bsh-stone__text { flex: 1 1 auto; min-width: 0; text-decoration: line-through; word-break: break-word; }
+.bsh-stone__close {
+  flex: 0 0 auto;
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--dt_color-content-sec, #ababad);
+}
+.bsh-stone__close:hover { color: var(--dt_color-content-pry, #d1d2d3); }

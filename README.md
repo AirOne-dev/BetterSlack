@@ -24,7 +24,7 @@
 
 <p align="center"><em>⌘⇧M, or the sliders button above your avatar.</em></p>
 
-## Seven themes, fifteen plugins, one keystroke
+## Seven themes, sixteen plugins, one keystroke
 
 <table>
   <tr>
@@ -158,8 +158,10 @@ Motion (Slack with the frames in between), Code Highlight (twenty-one
 languages, detected), Full Links (Slack stops shortening your URLs), Member
 Sidebar, Sidebar Account Strip, Quote Reply, Copy Message Link,
 Composer Character Count, Channel Notes, User Inspector, Avatar
-Downloader, DevTools, Demo Mode (a Slack full of people who do not exist, for
-when you are screenshotting or sharing your screen).
+Downloader, DevTools, History (everything Slack changes and never tells you
+about -- edits, deletions, reactions taken back, renames -- on one page you can
+search and sort), Demo Mode (a Slack full of people who do not exist, for when
+you are screenshotting or sharing your screen).
 
 Each has a page in the panel — what it is for, in your language, with a picture
 and its settings:
