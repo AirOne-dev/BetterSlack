@@ -196,10 +196,9 @@ test('a class passed to a kit component adds to it rather than replacing it', ()
 });
 
 test('the window borrows the API’s components instead of rebuilding them', () => {
-  // Every button, input, card, popover and dialog in here used to be a second
-  // copy of Slack's design system, drifting on its own. They come from
-  // api.ui.kit now; what is left in this file is the layout and the things only
-  // a theme builder has.
+  // Every button, input, card, popover and dialog comes from api.ui.kit: a
+  // second copy of Slack's design system in here would drift on its own. What
+  // is left in this file is the layout and the things only a theme builder has.
   const css = FILES['window.css'];
   assert.doesNotMatch(css, /^\.btn\s*\{/m, 'no button of its own');
   assert.doesNotMatch(css, /^\.input\s*\{/m, 'no input of its own');

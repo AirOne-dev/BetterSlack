@@ -103,7 +103,7 @@ const TEXT_AREAS = [
   '[data-qa="message_sender"]', '.c-message__sender', '.c-message__sender_button',
   '[data-qa="message-text"]', '.p-rich_text_block', '.c-message_kit__blocks',
   // A link Slack unfurled is a card with somebody's title, text and author in
-  // it -- the whole card goes, not the two fields it used to be.
+  // it -- the whole card goes, never a field or two inside it.
   '.c-message_attachment',
   /*
    * The rest of an unfurl. Slack draws a link preview's title, its breadcrumb

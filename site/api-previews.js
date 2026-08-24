@@ -1591,7 +1591,7 @@
 .betterslack-filterbar .betterslack-select { flex: 0 0 auto; }
 
 /*
- * What is left of a style that used to draw the whole field.
+ * What is left to write once Slack's own field is borrowed.
  *
  * Slack's own text input is .c-input_text and its own select is .c-input_select
  * -- a bordered button that opens a menu, never a native dropdown -- so both
@@ -1723,14 +1723,13 @@
 }
 
 /*
- * The state while it is working, which used to be a disabled button with a line
- * of grey text beside it.
+ * The state while it is working, under the buttons rather than beside them.
  *
- * That reads as broken rather than as busy: the row it sat in does not grow,
- * so "Downloading and rebuilding..." either squeezed the
- * button or wrapped under it, and nothing on screen moved for however long the
- * pull took. The line moved under the buttons, where it has the width, and it
- * spins while there is something to wait for.
+ * A disabled button with a line of grey text next to it reads as broken rather
+ * than as busy: the row does not grow, so "Downloading and rebuilding..."
+ * either squeezes the button or wraps under it, and nothing on screen moves for
+ * however long the pull takes. Under the buttons it has the width, and it spins
+ * while there is something to wait for.
  */
 .betterslack-progress {
   display: flex;
@@ -3250,10 +3249,10 @@
       node.addEventListener("blur", leave);
       return node;
     };
-    const field = (label, control2, hint) => el2("div", { class: "field" }, [
-      el2("label", { class: "field__label", textContent: label }),
+    const field = (label, control2, hint) => el2("div", { class: "sm-field" }, [
+      el2("label", { class: "sm-field__label", textContent: label }),
       control2,
-      hint ? el2("p", { class: "field__hint", textContent: hint }) : null
+      hint ? el2("p", { class: "sm-field__hint", textContent: hint }) : null
     ]);
     const input = (props = {}) => {
       const { class: extra, ...rest } = props;
@@ -3485,8 +3484,7 @@
 .sm-input,
 .sm-select,
 .sm-swatch,
-.sm-segmented__item,
-.sm-rail__item {
+.sm-segmented__item {
   transition:
     background-color var(--sm-motion-quick) var(--sm-motion-ease),
     border-color var(--sm-motion-quick) var(--sm-motion-ease),
@@ -3557,7 +3555,7 @@
 .sm-btn[data-on="true"] { background: var(--sm-danger); color: #fff; box-shadow: none; }
 .sm-btn--wide { width: 100%; justify-content: center; }
 .sm-btn:disabled { opacity: .55; cursor: default; }
-.sm-btn:focus-visible, .sm-rail__item:focus-visible, .sm-segmented__item:focus-visible {
+.sm-btn:focus-visible, .sm-segmented__item:focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px rgba(29, 155, 209, .5);
 }
@@ -3638,8 +3636,6 @@
   padding: 1px 6px;
 }
 
-.sm-toolbar { display: flex; gap: 8px; align-items: center; }
-.sm-toolbar .search { flex: 1 1 auto; }
 
 /* ================================================================= swatches */
 
@@ -6502,7 +6498,7 @@ ${editor.value.length} bytes \u2014 it shows up in the panel as an installed the
         const button = kit.button(`Open ${v.id}`, { variant: "primary" });
         button.addEventListener("click", () => modal({
           title: v.id,
-          body: "A mod\u2019s page: its icon, version and author, its description in your language, a screenshot, its README and its settings. Not the row\u2019s settings drawer, which is what this used to open when settings were all there was.",
+          body: "A mod\u2019s page: its icon, version and author, its description in your language, a screenshot, its README and its settings. Not the row\u2019s settings drawer.",
           actions: [{ label: "Close", primary: true }]
         }));
         return button;
@@ -6614,10 +6610,9 @@ const kit = api.ui.kit(win.document);`)
     },
     "tools-markdown": {
       /*
-       * The rendered README and nothing else. It used to carry its own textarea
-       * beside the output, which was a second place to type after the controls
-       * below already were one -- and the two never agreed about which held the
-       * source.
+       * The rendered README and nothing else. A textarea of its own beside the
+       * output would be a second place to type after the controls below already
+       * are one, and the two would never agree about which held the source.
        */
       render: (v) => {
         const out = kit.el("div", { class: "api-output sm-md" });

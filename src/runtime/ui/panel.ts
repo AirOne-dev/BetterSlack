@@ -425,10 +425,10 @@ export class Panel {
 
     switch (this.tab) {
       case 'themes':
-        body.append(...this.renderShelves(mods.filter((m) => m.type === 'theme'), 'theme'));
+        body.append(...this.renderShelves(mods.filter((m) => m.type === 'theme')));
         break;
       case 'plugins':
-        body.append(...this.renderShelves(mods.filter((m) => m.type === 'plugin'), 'plugin'));
+        body.append(...this.renderShelves(mods.filter((m) => m.type === 'plugin')));
         break;
       case 'css':
         body.append(...this.renderCustomCss());
@@ -440,11 +440,11 @@ export class Panel {
   }
 
   /**
-   * Installed / Enabled / Browse. The repository is a catalogue: nothing is
-   * installed until you say so, so a fresh setup opens on an empty Installed
-   * shelf and a full Browse shelf.
+   * Installed and Browse. The repository is a catalogue: nothing is installed
+   * until you say so, so a fresh setup opens on an empty Installed shelf and a
+   * full Browse shelf.
    */
-  private renderShelves(mods: ModRecord[], kind: 'theme' | 'plugin'): Node[] {
+  private renderShelves(mods: ModRecord[]): Node[] {
     const installed = mods.filter((m) => this.manager.isInstalled(m.id));
     const shelves: { id: ShelfId; label: string; list: ModRecord[] }[] = [
       { id: 'installed', label: t('installed'), list: installed },
@@ -481,7 +481,7 @@ export class Panel {
     // back off the input.
     search.addEventListener('input', () => {
       this.search = search.value;
-      this.renderList(current.list, kind);
+      this.renderList(current.list);
     });
 
     /*
@@ -503,7 +503,7 @@ export class Panel {
         }, [tag ?? t('filterAll')]);
         chip.addEventListener('click', () => {
           this.tag = active ? null : tag;
-          this.renderList(current.list, kind);
+          this.renderList(current.list);
           for (const other of filters.querySelectorAll('.betterslack-filter')) {
             other.setAttribute('aria-pressed', String(other === chip && !active));
           }
@@ -512,7 +512,7 @@ export class Panel {
       }
     }
 
-    queueMicrotask(() => this.renderList(current.list, kind));
+    queueMicrotask(() => this.renderList(current.list));
 
     const SORT_LABELS: Record<SortId, string> = {
       recent: t('sortRecent'),
@@ -552,7 +552,7 @@ export class Panel {
     return wanted && allowed.includes(wanted) ? wanted : allowed[0]!;
   }
 
-  private renderList(mods: ModRecord[], kind: 'theme' | 'plugin'): void {
+  private renderList(mods: ModRecord[]): void {
     const host = this.host?.querySelector('.betterslack-list');
     if (!host) return;
 
@@ -1227,8 +1227,8 @@ export class Panel {
    * Mod folders the loader found and refused.
    *
    * On the Browse shelf, because that is where somebody looks for a mod that is
-   * not there. The reason used to exist only in the loader's terminal, which
-   * answers the question for whoever started it and nobody else -- and a mod
+   * not there, and on screen rather than only in the loader's terminal, which
+   * answers the question for whoever started it and nobody else -- a mod
    * missing after a pull is exactly the moment you are not reading a terminal.
    */
   private renderSkipped(): Node[] {
@@ -1609,11 +1609,10 @@ export class Panel {
     /*
      * The progress line, under the buttons rather than beside them.
      *
-     * It used to be a `betterslack-status` span inside `row__actions`, which is
-     * `flex: 0 0 auto`: "Downloading and rebuilding..." either squeezed the
-     * button next to it or wrapped underneath it, and while the pull ran the
-     * only thing that had changed on screen was that the button had gone grey.
-     * That reads as broken, not as busy.
+     * Never inside `row__actions`, which is `flex: 0 0 auto`: "Downloading and
+     * rebuilding..." there either squeezes the button next to it or wraps
+     * underneath it, and while the pull runs the only thing that has changed on
+     * screen is that the button has gone grey. That reads as broken, not busy.
      */
     const progress = h('div', { class: 'betterslack-progress' });
     const say = (text: string, state?: 'done' | 'failed') => {

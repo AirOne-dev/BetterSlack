@@ -315,7 +315,7 @@ html, body { background-color: var(--dc-chat); }
 .p-tab_rail__button--active::before { height: 32px; margin-top: -16px; }
 
 /*
- * The separator under the workspace icon, and the mistake it used to be.
+ * The separator under the workspace icon, and the trap it sits in.
  *
  * This container is laid out `flex-direction: row`, so a ::before with a width
  * is not a line above the icons -- it is a *sibling of them*, 32px wide, taking

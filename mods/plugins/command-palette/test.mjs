@@ -293,8 +293,7 @@ test('a person carries their status, emoji and all', async () => {
     assert.equal(person.status?.imageUrl, 'https://emoji.example/palm.png',
       'the emoji is resolved from the workspace map');
     assert.equal(person.status?.text, 'On holiday');
-    // It used to be the only place the status appeared; showing it twice now
-    // would read as a mistake.
+    // The row draws the status itself, and twice would read as a mistake.
     assert.doesNotMatch(person.subtitle ?? '', /On holiday/, 'and not repeated in the subtitle');
   } finally {
     for (const dispose of recorded.disposers) dispose();

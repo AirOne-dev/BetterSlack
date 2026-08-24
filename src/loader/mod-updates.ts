@@ -95,11 +95,11 @@ export async function findModUpdates(
   /*
    * Null is "could not ask", which is not the same answer as an empty list.
    *
-   * They used to be the same value, and once this fed a badge that mattered:
-   * being offline for one hourly sweep would have taken the dot off a mod that
-   * is still out of date, and put it back an hour later. The caller keeps what
-   * it knows instead. Same rule the app's own check follows -- say nothing
-   * rather than say "current" on no evidence.
+   * As one value they feed a badge wrongly: being offline for a single hourly
+   * sweep would take the dot off a mod that is still out of date, and put it
+   * back an hour later. The caller keeps what it knows instead. Same rule the
+   * app's own check follows -- say nothing rather than say "current" on no
+   * evidence.
    */
   if (!registry?.mods) return null;
 

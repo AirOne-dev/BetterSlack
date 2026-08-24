@@ -18,6 +18,7 @@ on:
       - 'site/**'
       - 'mods/**'
       - 'docs/api/**'
+      - 'docs/guide/**'
       - 'src/**'
       - 'tests/slack-fixture.mjs'
       - 'scripts/build-site.mjs'
@@ -45,10 +46,8 @@ jobs:
           # The whole history: each doc page shows when it last changed, and
           # `git log` per file on a one-commit checkout comes back empty.
           fetch-depth: 0
-      # This job used to install nothing, because build-site.mjs only read the
-      # repository and wrote one file. It stopped being true when the API page
-      # arrived: bundling site/api-previews.js is esbuild, so the job needs the
-      # dependencies like every other one. pnpm before setup-node, so the cache
+      # The dependencies are needed here like in every other job: bundling
+      # site/api-previews.js is esbuild. pnpm before setup-node, so the cache
       # key can be the lockfile.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -61,9 +60,9 @@ jobs:
       - name: the generated site files are up to date
         run: |
           node scripts/build-site.mjs
-          # api.html and api-demos.js are generated from the TypeScript and from
-          # the mods, so they go stale the moment the API changes -- which is
-          # the whole reason the page is generated rather than written.
+          # api.html and api-previews.js are generated from the TypeScript and
+          # from the mods, so they go stale the moment the API changes -- which
+          # is the whole reason the page is generated rather than written.
           if ! git diff --quiet -- site/data.js site/api.html site/api-previews.js site/api-themes.css site/api-fixtures.js docs/api.md; then
             echo "::error::a generated site file is stale. Run 'pnpm site' and commit the result."
             git --no-pager diff --stat -- site/data.js site/api.html site/api-previews.js site/api-themes.css site/api-fixtures.js docs/api.md

@@ -7,16 +7,10 @@
 //
 // It is a plain node with no chrome of its own: ui.popover puts it next to
 // whatever was clicked, so the colour being edited stays in view while it
-// changes. Built against a document rather than the global one, since this runs
-// in the builder's window.
+// changes. Built against a document and a kit rather than the global ones,
+// since this runs in the builder's window.
 
 import { formatCss, fromHsv, parseColour, toHsv } from './colour.js';
-
-const CHECKER =
-  'linear-gradient(45deg,rgba(0,0,0,.28) 25%,transparent 25%),' +
-  'linear-gradient(-45deg,rgba(0,0,0,.28) 25%,transparent 25%),' +
-  'linear-gradient(45deg,transparent 75%,rgba(0,0,0,.28) 75%),' +
-  'linear-gradient(-45deg,transparent 75%,rgba(0,0,0,.28) 75%)';
 
 /** Pointer dragging over a strip or a square, clamped to it, in 0..1. */
 function drag(surface, onMove) {
@@ -48,7 +42,7 @@ function drag(surface, onMove) {
  * is that Slack repaints while the colour is moving, so the value has to be
  * live.
  */
-export function createPicker(doc, { value, title, onChange, onReset }) {
+export function createPicker(doc, ui, { value, title, onChange, onReset }) {
   const el = (tag, props = {}) => Object.assign(doc.createElement(tag), props);
 
   const node = el('div', { className: 'picker' });
@@ -90,7 +84,7 @@ export function createPicker(doc, { value, title, onChange, onReset }) {
     hueKnob.style.background = `hsl(${hsv.h}, 100%, 50%)`;
     alpha.style.backgroundImage =
       `linear-gradient(to right, rgba(${colour.r},${colour.g},${colour.b},0), ` +
-      `rgb(${colour.r},${colour.g},${colour.b})), ${CHECKER}`;
+      `rgb(${colour.r},${colour.g},${colour.b})), ${ui.CHECKER}`;
     alphaKnob.style.left = `${colour.a * 100}%`;
     alphaKnob.style.background = formatCss(colour);
     if (doc.activeElement !== field) field.value = formatCss(colour);

@@ -168,11 +168,11 @@ Node is a 25 answered `command not found` and the panel said the update could
 not be built here, on a machine that was working perfectly. Reported from a real
 one, against a published release.
 
-`packageManagerCommand` now tries `pnpm`, then `corepack`, then
+`packageManagerCommand` tries `pnpm`, then `corepack`, then
 `npx --yes <the pinned pnpm>`, and asks **in the environment the install will
-actually run in** -- it used to probe `pnpm --version` through a bare `exec`,
-which for an app launched from the Dock carries none of the user's shell PATH,
-and then run the answer with a different PATH entirely. `npx` is beside every
+actually run in**. A bare `exec` probing `pnpm --version` gets the ambient
+environment, which for an app launched from the Dock carries none of the user's
+shell PATH, and the answer would then be run with a different PATH entirely. `npx` is beside every
 Node there has ever been and fetches the pinned pnpm on demand, which is exactly
 what corepack was doing; it is the last rung rather than a probed one, since
 probing it means downloading pnpm to ask whether pnpm can be downloaded.
@@ -282,8 +282,8 @@ fresh checkout fails on every command that touches the bundler without it. The
 file also needs a `packages` field (`- .`, this one repo): pnpm 11 treats the
 mere presence of a `pnpm-workspace.yaml` as a workspace and aborts with
 `packages field missing or empty` if it is absent -- so both keys are load-
-bearing, and the earlier `allowBuilds: esbuild: true` was neither a real pnpm
-key nor enough on its own.
+bearing, and there are only two: an `allowBuilds` key is not something pnpm
+reads.
 
 ```bash
 pnpm check             # the whole gate, in one command -- run this before pushing
@@ -341,9 +341,9 @@ Rules baked into both, each of which cost a set of pictures:
   and the run fails if it is not. Without it a message action, which only
   exists while the pointer is over a message, photographs as an ordinary
   channel, and fifteen identical pictures go into the catalogue unnoticed.
-- **A mod can want more than one frame**, and seven do: the member column and
-  the dialog it opens, the palette empty and filtered by `/` and `@`, focus
-  mode on and off. An entry carries `frames: [...]`, each inheriting the
+- **A mod can want more than one frame**, and six do: the member column and
+  the dialog it opens, the palette empty and filtered by `/` and `@`, the
+  composer under and over its limit. An entry carries `frames: [...]`, each inheriting the
   entry's staging unless it overrides it, and each filed as
   `screenshot-<name>.webp` beside the first. The manifest's order is what the
   panel and the site draw, so the frame that shows the mod best goes first.
@@ -460,15 +460,19 @@ a command. Everything below was found by it rather than by looking:
   results only if the words are in *this* workspace, and there is no word that
   always is: `>ok` came back empty and failed the run, so there is deliberately
   no frame for it.
-- **`shoot.mjs` files only what the run took.** `site/shots/mods` is also where
-  `pnpm site` puts a copy of every committed screenshot, so the folder is full
-  before a run starts: filing whatever was in it meant `--only=one-mod`
-  announced twenty-three files, and a run that failed its audit before taking a
-  single picture announced them too. It also skips `<name>-2`, `<name>-3` --
-  those are the one-picture-per-attached-window frames the loader writes
-  whenever `BETTERSLACK_SHOT` is set, and they were being filed as
-  `screenshot-2.webp` beside the real ones, where no manifest names them,
-  nothing draws them and nobody deletes them.
+- **`shoot.mjs` files only what the run took, and clears up after itself.**
+  `site/shots/mods` is also where `pnpm site` puts a copy of every committed
+  screenshot, so the folder is full before a run starts: filing whatever is in
+  it would have `--only=one-mod` announce the whole catalogue, and a run that
+  failed its audit before taking a single picture announce it too. It skips
+  `<name>-2`, `<name>-3` -- those are the one-picture-per-attached-window frames
+  the loader writes whenever `BETTERSLACK_SHOT` is set, and read back as frames
+  they land as `screenshot-2.webp` beside the real ones, where no manifest names
+  them, nothing draws them and nobody deletes them. And once a named frame is
+  filed into the mod's folder the working copy here is deleted: `pnpm site`
+  brings it back as `<id>-2`, which is the only name the page asks for, so a
+  `<id>-<name>.webp` left behind is a byte-identical second copy that no
+  manifest names and that the published folder pays for.
 
 It also carries the camera. `api.files.screenshot({ size })` is the loader
 photographing the renderer that asked -- a page cannot photograph itself -- and
@@ -1227,7 +1231,7 @@ be deleted along with its subject is not covering the runtime.
 
 When two mods want the same block, it belongs in the API, and the mods get
 refactored onto it in the same change. Five things were lifted that way after an
-audit of all eleven plugins, and each one had been written two or three times:
+audit of every plugin, and each one had been written two or three times:
 
 - `api.slack.web.users(ids)` — the batched `users.info`, cached per workspace.
   Three plugins kept their own cache and their own drop-on-switch rule.
@@ -1347,11 +1351,11 @@ covers some of the client:
   want `r, g, b`, and a `var()` holding a hex parses there, paints nothing and
   reports nothing. So a colour setting also writes `<cssVar>-rgb` as a triplet,
   and a theme points its legacy tokens at that. Terminal does.
-- **A theme must not write a colour out by hand.** Twenty-five rules in Terminal
-  held a tint of the phosphor as literal `rgba(53, 224, 127, …)`; a colour
-  chosen in the panel reached the tokens and none of those. They are
-  `color-mix(in srgb, var(--term-green) N%, transparent)` now, and a test fails
-  the theme if a literal comes back.
+- **A theme must not write a colour out by hand.** A tint written as a literal
+  `rgba(53, 224, 127, …)` is a tint a colour chosen in the panel never reaches:
+  the setting arrives at the tokens and at nothing else. Terminal derives all of
+  its from `color-mix(in srgb, var(--term-green) N%, transparent)`, and a test
+  fails the theme if a literal comes back.
 
 Removing the theme removes its variables with it -- left behind they would paint
 a theme that is off, and beat the next one, since they are written after every
@@ -1562,17 +1566,18 @@ both -- its own version and the registry -- at start and every hour after
 (`UPDATE_SWEEP_MS`), and pushes each answer: `update.status` and `mods.updates`.
 `ModManager` holds them, `notify()` repaints the launcher's badge, and the panel
 puts a dot on the tab that owns it: Themes, Plugins or About -- **which is also
-where the notice itself is drawn.** It used to be on every tab, and that was
-right while there was no badge: a notice you have to go looking for is a notice
-nobody finds. With a count on the launcher and a dot on the tab, a plugin's
-update sitting on the Themes tab is the thing that reads as a mistake. Safe mode
+where the notice itself is drawn**, rather than on every tab. Without a badge,
+repeating it everywhere would be the right answer -- a notice you have to go
+looking for is a notice nobody finds -- but with a count on the launcher and a
+dot on the tab, a plugin's update sitting on the Themes tab is the thing that
+reads as a mistake. Safe mode
 stays on every tab; it is not an offer, it is the reason nothing is running. Three things that
 are load-bearing rather than tidy:
 
-- **The count is the manager's, not the panel's.** The mod list used to live in
-  the panel and be fetched once, the first time it was opened -- so the badge
-  could never count a mod, and somebody who never opened the panel never learnt
-  one had moved on. State a badge reads cannot live in a window that is shut.
+- **The count is the manager's, not the panel's.** With the mod list owned by
+  the panel and fetched once, the first time it is opened, the badge can never
+  count a mod, and somebody who never opens the panel never learns one has moved
+  on. State a badge reads cannot live in a window that is shut.
 - **Hourly, not at boot only.** This is somebody's messaging app, left running
   for days; a check that answers once is a badge that is right for a minute.
   An hour is two requests -- `git fetch` and one registry read -- for a dot.
@@ -1742,8 +1747,8 @@ the two that mean anything for a mod nobody has yet.
   its object key by key rather than spreading what it parsed, so a new key has
   to be named there or it is written and gone by the next read.
 - **Sorting lives in `ui/sort.ts`**, not in the panel, so it can be tested
-  against the real function rather than through assertions on the source of a
-  1500-line file. `localeCompare`, never `<`: a code-point compare files every
+  against the real function rather than through assertions on the source of the
+  panel, which is well past a thousand lines. `localeCompare`, never `<`: a code-point compare files every
   accented name after Z, which reads as a list that is nearly sorted and
   therefore as one that is broken.
 

@@ -235,7 +235,7 @@ export default {
         /** Open the colour editor next to whatever was clicked. */
         openPicker(anchor, { value, title, onChange, reset, onClose }) {
           let handle;
-          const picker = createPicker(doc, {
+          const picker = createPicker(doc, ui, {
             value,
             title,
             onChange,

@@ -166,10 +166,10 @@ export function createKit(doc: Document = document): Kit {
 
   /** Label, control, and the sentence under it that explains the control. */
   const field = (label: string, control: HTMLElement, hint?: string): HTMLElement =>
-    el('div', { class: 'field' }, [
-      el('label', { class: 'field__label', textContent: label }),
+    el('div', { class: 'sm-field' }, [
+      el('label', { class: 'sm-field__label', textContent: label }),
       control,
-      hint ? el('p', { class: 'field__hint', textContent: hint }) : null,
+      hint ? el('p', { class: 'sm-field__hint', textContent: hint }) : null,
     ]);
 
   /**

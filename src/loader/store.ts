@@ -13,7 +13,7 @@ export const USER_ROOT = process.env.BETTERSLACK_HOME ?? path.join(homedir(), '.
 export const USER_MODS_ROOT = path.join(USER_ROOT, 'mods');
 const SETTINGS_FILE = path.join(USER_ROOT, 'settings.json');
 
-/** Where this lived when the project was called SlackMod. */
+/** The home a SlackMod-era install wrote to, carried over on first run. */
 const LEGACY_ROOT = path.join(homedir(), '.slackmod');
 
 export async function ensureUserRoot(): Promise<void> {

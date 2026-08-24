@@ -145,8 +145,7 @@ test('cleanup takes the node with it and stops observing', async () => {
 
 // The shared menu and the polling helper, both lifted out of mods that had a
 // copy each. Neither is interesting on its own; both are worth a test because
-// the mods that used to own them are the ones that would notice a regression,
-// and they would notice it in Slack rather than here.
+// the mods that call them would notice a regression in Slack rather than here.
 
 test('one menu at a time, closed by Escape or a click outside', async () => {
   const dom = installDom('<button id="anchor">…</button>');

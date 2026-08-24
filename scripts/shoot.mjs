@@ -23,8 +23,8 @@ const forMods = process.argv.includes('--mods');
 /*
  * `--only=<id>,<id>` retakes some of the set rather than all of it.
  *
- * A mod changes and its picture goes stale; without this the choice was
- * twenty-three frames or none, which in practice meant none.
+ * A mod changes and its picture goes stale; without this the choice is the
+ * whole set or none, which in practice means none.
  */
 const only = process.argv.find((arg) => arg.startsWith('--only='))?.slice('--only='.length) ?? '';
 const positional = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
@@ -56,9 +56,9 @@ await fs.mkdir(out, { recursive: true });
  *
  * `site/shots/mods` is also where `pnpm site` puts a copy of every mod's
  * committed screenshot, so the folder is full before the run begins. Filing
- * whatever is in it meant a `--only=one-mod` run announced that it had filed
- * twenty-three, and a run that failed its redaction audit before taking a
- * single picture still announced that it had filed them.
+ * whatever is in it would have a `--only=one-mod` run announce the whole
+ * catalogue, and a run that failed its redaction audit before taking a single
+ * picture announce it too.
  */
 const startedAt = Date.now();
 console.log(`[shots] into ${out}`);
@@ -86,13 +86,13 @@ await fs.rm(home, { recursive: true, force: true });
  * keeps showing the previous set and nobody can tell.
  */
 /*
- * Filed whatever was taken, even if a later frame failed.
+ * Files whatever was taken, even if a later frame failed.
  *
- * The rule used to be all-or-nothing, which sounds careful and is not: a run
- * that took twenty-one good pictures and then timed out on the twenty-second
- * threw all twenty-one away. Every picture has already passed the redaction
- * audit by the time it is written, and `--only` means a partial set is an
- * ordinary thing to have. The exit code still says the run failed.
+ * All-or-nothing sounds careful and is not: a run that takes twenty-one good
+ * pictures and then times out on the twenty-second would throw all twenty-one
+ * away. Every picture has already passed the redaction audit by the time it is
+ * written, and `--only` means a partial set is an ordinary thing to have. The
+ * exit code still says the run failed.
  */
 if (forMods) {
   const kinds = ['themes', 'plugins'];
@@ -112,9 +112,9 @@ if (forMods) {
      * A frame is filed here as `<id>-<name>`, but `build-site.mjs` copies a
      * mod's *second* and *third* declared screenshots into the same folder as
      * `<id>-2` and `<id>-3`, and the loader writes one picture per attached
-     * window under the same shape. Read back as frames they were filed into the
-     * mod folder as `screenshot-2.webp` -- a file no manifest names, which
-     * nothing draws and nobody deletes. A frame is never called a number.
+     * window under the same shape. Read back as frames, those land in the mod
+     * folder as `screenshot-2.webp` -- a file no manifest names, which nothing
+     * draws and nobody deletes. A frame is never called a number.
      */
     if (/-\d+$/.test(stem)) continue;
     const id = ids.find((candidate) => stem === candidate || stem.startsWith(`${candidate}-`));
@@ -128,6 +128,17 @@ if (forMods) {
       await fs.copyFile(path.join(out, file), path.join(folder, `screenshot${suffix}.webp`));
       console.log(`[shots] mods/${kind}/${id}/screenshot${suffix}.webp`);
     }
+    /*
+     * A named frame is a working file, and it is deleted once it is filed.
+     *
+     * The mod's folder is where the picture belongs; `build-site.mjs` copies it
+     * back here under the name the page asks for, which is `<id>-2`, never
+     * `<id>-actions`. Left behind, `<id>-<name>.webp` is a byte-identical
+     * second copy that no manifest names, nothing draws, and every later run
+     * writes again -- and the folder is published, so it costs a download too.
+     * The first frame is exempt: `<id>.webp` is the name the page uses.
+     */
+    if (suffix) await fs.rm(path.join(out, file), { force: true });
   }
 }
 process.exit(code ?? 0);

@@ -188,10 +188,9 @@ const asAppleScript = (text) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\
  */
 async function install() {
   /*
-   * The old home, if there is one. This used to install into ~/Applications;
-   * leaving that copy behind means two launchers with the same name, and
-   * Spotlight offering whichever it indexed first -- one of which runs an
-   * older build.
+   * A bundle in ~/Applications, where an older BetterSlack installed itself.
+   * Left behind it is a second launcher with the same name, and Spotlight
+   * offers whichever it indexed first -- one of which runs an older build.
    */
   const previous = path.join(homedir(), 'Applications', 'BetterSlack.app');
   await fs.rm(previous, { recursive: true, force: true }).catch(() => undefined);

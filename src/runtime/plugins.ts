@@ -79,10 +79,6 @@ export function buildModuleGraph(files: ModFiles, entry: string): { url: string;
 export class PluginHost {
   private loaded = new Map<string, LoadedPlugin>();
 
-  isLoaded(id: string): boolean {
-    return this.loaded.has(id);
-  }
-
   loadedIds(): string[] {
     return [...this.loaded.keys()];
   }

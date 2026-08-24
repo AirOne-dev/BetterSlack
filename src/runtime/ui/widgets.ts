@@ -7,7 +7,7 @@
 // Their colours still come from Slack's --dt_color-* tokens, which cross the
 // shadow boundary, so they follow the active theme.
 
-import { h, type Cleanup } from '../dom.js';
+import { h } from '../dom.js';
 import { WIDGET_CSS } from './styles.js';
 
 const TOAST_HOST_ID = 'betterslack-toast-host';

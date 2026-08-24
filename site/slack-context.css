@@ -95,8 +95,6 @@ body.api-page .c-button {
   color: var(--dt_color-content-pry, #e7e9ee);
   transition: background 80ms ease, border-color 80ms ease, box-shadow 80ms ease;
 }
-body.api-page .c-button--small { min-height: 28px; font-size: 13px; padding: 0 10px; }
-body.api-page .c-button--large { min-height: 44px; font-size: 18px; padding: 0 16px; }
 body.api-page .c-button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 1px var(--dt_color-base-pry, #0f1219), 0 0 0 5px rgba(29, 155, 209, 0.5);

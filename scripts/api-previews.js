@@ -13,7 +13,7 @@
  * a lookalike for a web page would be the second version of something this
  * project deliberately keeps single.
  *
- * Bundled into site/api-demos.js by scripts/build-api-page.mjs.
+ * Bundled into site/api-previews.js by scripts/build-api-page.mjs.
  */
 
 import {
@@ -162,12 +162,12 @@ function control(spec, state, draw) {
 /*
  * The demo of whichever entry is on screen, and only that one.
  *
- * Every preview used to be built at load. That is wrong here in a way it would
- * not be for drawings: `addToolbarButton` and `addMessageAction` are the
- * shipped functions, and the shipped functions mount by observing the whole
- * document -- so with four fake clients in the page at once, each one collected
- * every other entry's button. The `addProfileButton` preview showed a message
- * action it had never asked for.
+ * Building every preview at load is wrong here in a way it would not be for
+ * drawings: `addToolbarButton` and `addMessageAction` are the shipped
+ * functions, and the shipped functions mount by observing the whole document --
+ * so with four fake clients in the page at once, each one collects every other
+ * entry's button. The `addProfileButton` preview showed a message action it had
+ * never asked for.
  *
  * So a panel's demo is drawn when it is opened and torn down when it is left,
  * through the cleanup those same functions return. Control values live in the
@@ -597,11 +597,11 @@ function dressChrome(frame, pane_ = false) {
  * Mount all of it, point at one part of it.
  *
  * The functions being demonstrated go looking for their own container, so the
- * whole client has to be in the document. It used to be hidden down to the one
- * container that mattered, which answered "where did my button go" with a
- * dashed rectangle and no client around it. Dimmed instead, with a ring on the
- * part in question: the answer to that question is *where*, and where needs the
- * rest of the window to be visible.
+ * whole client has to be in the document. Hiding it down to the one container
+ * that matters answers "where did my button go" with a dashed rectangle and no
+ * client around it. It is dimmed instead, with a ring on the part in question:
+ * the answer to that question is *where*, and where needs the rest of the
+ * window to be visible.
  *
  * The dimming is applied here rather than by a `:has()` selector for two
  * reasons. Opacity compounds -- a child of a 0.42 parent cannot be put back to
@@ -1700,7 +1700,7 @@ const IMITATED = {
       const button = kit.button(`Open ${v.id}`, { variant: 'primary' });
       button.addEventListener('click', () => modal({
         title: v.id,
-        body: 'A mod’s page: its icon, version and author, its description in your language, a screenshot, its README and its settings. Not the row’s settings drawer, which is what this used to open when settings were all there was.',
+        body: 'A mod’s page: its icon, version and author, its description in your language, a screenshot, its README and its settings. Not the row’s settings drawer.',
         actions: [{ label: 'Close', primary: true }],
       }));
       return button;
@@ -1817,10 +1817,9 @@ const TOOLS = {
   },
   'tools-markdown': {
     /*
-     * The rendered README and nothing else. It used to carry its own textarea
-     * beside the output, which was a second place to type after the controls
-     * below already were one -- and the two never agreed about which held the
-     * source.
+     * The rendered README and nothing else. A textarea of its own beside the
+     * output would be a second place to type after the controls below already
+     * are one, and the two would never agree about which held the source.
      */
     render: (v) => {
       const out = kit.el('div', { class: 'api-output sm-md' });
@@ -1884,8 +1883,8 @@ installStyles();
 /*
  * One picker, in the bar, for the whole page.
  *
- * It used to sit above each preview, which meant choosing a theme and then
- * losing it at the next entry. Remembered too, so it survives a reload.
+ * Per preview it would mean choosing a theme and then losing it at the next
+ * entry. Remembered too, so it survives a reload.
  */
 function wireThemePicker() {
   const picker = document.getElementById('stage-theme');

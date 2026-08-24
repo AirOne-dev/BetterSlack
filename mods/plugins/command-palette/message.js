@@ -41,16 +41,41 @@ export function messageText(message, ctx) {
   return flatten(message?.text ?? '');
 }
 
-/** Slack's markup, as the one line a person reads. */
-function flatten(value) {
+/**
+ * Slack's markup, as the one line a person reads.
+ *
+ * Everything a channel or a message carries is Slack's own mrkdwn, and a list
+ * is the one place it is never rendered: a channel purpose came out as
+ * `Point du vendredi : <https://us02web.zoom.us/j/889…>` across three lines,
+ * ampersands and all. So links become their label, entities are decoded, and
+ * the whole thing is one line -- a row is a glance, not a document.
+ *
+ * A shortcode is left in. What this feeds is a row's `title` and the ranking
+ * behind it, where `plainOf` deliberately writes an emoji out as `:name:` so
+ * the two readings of one message agree; the directory strips them on top of
+ * this, because there the line is what is actually drawn.
+ */
+export function flatten(value) {
   return String(value ?? '')
+    // <url|label> is the label; <url> and <#C…|name> are what is left of them.
     .replace(/<([^>|]+)\|([^>]+)>/g, '$2')
     .replace(/<([^>]+)>/g, '$1')
+    // Slack sends these escaped, and only these three.
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    /*
+     * Emphasis, as emphasis rather than as punctuation. A row is plain text and
+     * cannot show bold, so the markers are noise -- `queue is *backing up*`.
+     *
+     * Only `*` and a backtick. Slack's italic marker is `_`, and half the
+     * handles in a workspace are snake_case: stripping it turns
+     * `deploy_from_main` into `deploy from main`, which is worse than leaving
+     * one asterisk in.
+     */
     .replace(/\*(\S(?:[^*]*\S)?)\*/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
+    // Blockquote markers, which mean nothing on one line and come in runs.
     .replace(/(^|\s)>+(\s|$)/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

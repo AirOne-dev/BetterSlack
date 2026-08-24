@@ -20,7 +20,7 @@
 // built for one workspace is wrong for the next, and the team id is checked on
 // every read rather than trusted from boot.
 
-import { messageText } from './message.js';
+import { flatten, messageText } from './message.js';
 
 /** What Slack's search answers with; more than this is never asked for. */
 const REMOTE_COUNT = 8;
@@ -30,57 +30,19 @@ const SEARCH_DEBOUNCE_MS = 180;
 const CONVERSATION_LIMIT = 200;
 /** Below this, a search matches half the workspace and is not worth the round trip. */
 const MIN_QUERY = 2;
-/**
- * How much of a message goes on its row.
- *
- * A deploy notification is a screenful, and a row is a glance: measured on a
- * live workspace, the first result for "deploy" was 340 characters of commit
- * log. The row clamps it visually either way; this keeps it out of the ranking
- * and out of what a screen reader has to get through.
- */
-const MESSAGE_CHARS = 140;
 /** How many conversations are remembered as recent, per workspace. */
 const RECENT_LIMIT = 24;
 
 /**
- * Slack's markup, as the line a person reads.
+ * Slack's markup, as the line a row draws.
  *
- * Everything a channel or a message carries is Slack's own mrkdwn, and a list
- * is the one place it is never rendered: a channel purpose came out as
- * `Point du vendredi : <https://us02web.zoom.us/j/889…>` across three lines,
- * ampersands and all. So links become their label, entities are decoded, and
- * the whole thing is one line -- a row is a glance, not a document.
+ * `flatten` does the mrkdwn; the one thing a drawn row wants on top of it is
+ * that a shortcode nothing can render is never printed -- the same rule
+ * `api.slack.statusNode` follows. A row is plain text, so `:satellite:` is a
+ * word the reader has to skip, and a deploy notification carries two.
  */
 function plainText(value) {
-  return String(value ?? '')
-    // <url|label> is the label; <url> and <#C…|name> are what is left of them.
-    .replace(/<([^>|]+)\|([^>]+)>/g, '$2')
-    .replace(/<([^>]+)>/g, '$1')
-    // Slack sends these escaped, and only these three.
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    /*
-     * Emphasis, as emphasis rather than as punctuation. A row is plain text and
-     * cannot show bold, so the markers are noise -- `queue is *backing up*`.
-     *
-     * Only `*` and a backtick. Slack's italic marker is `_`, and half the
-     * handles in a workspace are snake_case: stripping it turns
-     * `deploy_from_main` into `deploy from main`, which is worse than leaving
-     * one asterisk in.
-     */
-    .replace(/\*(\S(?:[^*]*\S)?)\*/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    /*
-     * A shortcode nothing can draw is never printed -- the same rule
-     * `api.slack.statusNode` follows. A row is plain text, so `:satellite:` is
-     * a word the reader has to skip, and a deploy notification carries two.
-     */
-    .replace(/:[a-z0-9_+-]+:/gi, ' ')
-    // Blockquote markers, which mean nothing on one line and come in runs.
-    .replace(/(^|\s)>+(\s|$)/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return flatten(value).replace(/:[a-z0-9_+-]+:/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -245,10 +207,10 @@ export function createDirectory(api, { onResults }) {
   /*
    * The list you saw last time, before the network is asked.
    *
-   * Opening the palette used to mean waiting on `users.conversations` and then
-   * on a batch of `users.info`, every time -- and after a restart there was
-   * nothing at all until both landed. The answer is nearly always the one from
-   * last time, so it is drawn first and confirmed behind you. Four workspaces'
+   * Waiting on `users.conversations` and then on a batch of `users.info` every
+   * time means an empty palette after a restart until both land. The answer is
+   * nearly always the one from last time, so it is drawn first and confirmed
+   * behind you. Four workspaces'
    * worth: the value is a list of small records, and settings are a file the
    * loader reads at every launch.
    */

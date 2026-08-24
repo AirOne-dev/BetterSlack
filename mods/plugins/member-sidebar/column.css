@@ -176,8 +176,6 @@
   gap: 8px;
   margin-top: 18px;
 }
-.betterslack-profile__menu { position: fixed; top: 0; left: 0; z-index: 1100; }
-.betterslack-profile__danger { color: var(--dt_color-content-imp, #c01343); }
 .betterslack-profile__files { display: flex; flex-direction: column; gap: 8px; }
 .betterslack-profile__file { font-size: 14px; }
 

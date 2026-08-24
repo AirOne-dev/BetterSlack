@@ -105,9 +105,9 @@ test('a status with no end has no second line', async () => {
 
 test('no native title is left behind to show as well', async () => {
   /*
-   * This used to be the whole thing: `node.title = ...`. The browser's own
-   * tooltip is a second late, one line, unstyled and does not follow the theme
-   * -- and shown *alongside* ours it would be two tooltips for one emoji.
+   * Never `node.title = ...`: the browser's own tooltip is a second late, one
+   * line, unstyled and does not follow the theme -- and shown *alongside* ours
+   * it would be two tooltips for one emoji.
    */
   await withDom(async () => {
     const node = statusNode(describeStatus(profileWith()), profileWith());
@@ -145,7 +145,7 @@ test('one tooltip over one emoji, not two', async () => {
     });
     button.append(node);
 
-    assert.equal(await hover(node), null, 'the picture itself no longer opens one');
+    assert.equal(await hover(node), null, 'the picture itself does not open one');
 
     const tip = await hover(button);
     assert.ok(tip, 'the button does');
@@ -178,9 +178,9 @@ test('an emoji with no sentence leads with the action, not with its own name', a
 test('it wraps where Slack wraps', () => {
   /*
    * Read out of the live stylesheet: `--large { max-width: 400px }` is the only
-   * rule either modifier has, and `--small` -- which this used to ask for -- is
-   * a class Slack does not style at all. A long status ran off the edge of the
-   * window in one line where Slack's own tooltip wrapped.
+   * rule either modifier has, and `--small` is a class Slack does not style at
+   * all -- asking for it leaves a long status running off the edge of the
+   * window in one line where Slack's own tooltip wraps.
    */
   const source = readFileSync(new URL('../src/runtime/ui/tooltip.ts', import.meta.url), 'utf8');
   assert.match(source, /c-tooltip__tip--large/);

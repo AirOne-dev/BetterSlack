@@ -387,10 +387,10 @@ async function stageFrom(
  * rung rather than a probe: probing it means downloading pnpm to ask whether
  * pnpm can be downloaded.
  *
- * The environment matters as much as the order. This used to ask a bare `exec`
- * whether `pnpm --version` worked -- the ambient one, which for an app launched
- * from the Dock carries none of the user's shell PATH -- and then run the answer
- * with a different PATH entirely.
+ * The environment matters as much as the order, so the question is asked in
+ * the one the answer will run in. A bare `exec` gets the ambient environment,
+ * which for an app launched from the Dock carries none of the user's shell
+ * PATH -- and the answer would then be run with a different PATH entirely.
  */
 export async function packageManagerCommand(root: string, env: NodeJS.ProcessEnv): Promise<string> {
   const hasPnpmLock = await fs

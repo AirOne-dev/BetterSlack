@@ -189,11 +189,11 @@ const HIGHLIGHT_CSS = read('mods/plugins/code-highlight/highlight.css');
  * What a fence says, and what the tokeniser calls it.
  *
  * Writers type ```js and ```yml; Code Highlight's grammars are named
- * `javascript` and `yaml`. There is no fallback on purpose -- an unknown
- * language used to mean the block was skipped and rendered as flat grey text,
- * which looks like a block that has no highlighting rather than like a mistake,
- * so five JavaScript examples in the guide went out uncoloured and nothing
- * said so. The build fails now, naming the fence.
+ * `javascript` and `yaml`. There is no fallback on purpose: a skipped block
+ * renders as flat grey text, which looks like a block that has no highlighting
+ * rather than like a mistake -- five JavaScript examples in the guide once went
+ * out uncoloured and nothing said so. The build fails instead, naming the
+ * fence.
  *
  * The label above the block keeps what was written -- JS reads better than
  * JAVASCRIPT -- so the two are separate attributes.
@@ -461,10 +461,11 @@ export function buildApiPage() {
   /*
    * The list is a column on a desktop and a drawer on a phone.
    *
-   * Below 900px it used to stay open above the content, in a 220px window: four
-   * of ninety-nine entries visible, on every page, taking a third of the screen
-   * before anything you came for. The button below is what opens it there, and
-   * says where you are while it is shut; on a desktop it is not drawn at all.
+   * Below 900px it cannot stay open above the content: in a 220px window that
+   * is four entries of a hundred visible, on every page, taking a third of the
+   * screen before anything you came for. The button below is what opens it
+   * there, and says where you are while it is shut; on a desktop it is not
+   * drawn at all.
    */
   const body = `<main id="main" class="api">
   <button class="side__open" type="button" id="side-open" aria-expanded="false" aria-controls="side-nav">
@@ -508,11 +509,11 @@ export function buildApiPage() {
 }
 
 /**
- * docs/api.md, which is now a way in rather than the reference itself.
+ * docs/api.md, which is a way in rather than the reference itself.
  *
- * It used to be a thousand lines that had to be kept in step with the types by
- * hand. The entries live one per file beside it; this is the list, generated
- * from the same folder the site is, so it cannot fall behind either.
+ * The entries live one per file beside it; this is the list, generated from the
+ * same folder the site is, so neither can fall behind the code. Written out by
+ * hand it would be a thousand lines to keep in step with the types.
  */
 function writeDocsIndex(groups) {
   const lines = [

@@ -152,12 +152,12 @@ export function attachTooltip(trigger: HTMLElement, options: TooltipOptions): Cl
      * The listeners that are not on the trigger go on here, and come off in
      * `hide()`.
      *
-     * They used to be registered once per tooltip, for the life of the trigger,
-     * and `statusNode` attaches one per row -- so every redraw of a member
-     * column left twenty more capture-phase `scroll` handlers on `window` that
-     * nothing ever removed. Measured on a live client: four channel changes put
-     * 38 of them there, on a page that scrolls constantly -- every one of them
-     * running for the life of a row that had long since been replaced.
+     * Never once per tooltip for the life of the trigger: `attachTooltip` is
+     * called per element and `statusNode` attaches one per row, so every redraw
+     * of a member column would leave twenty more capture-phase `scroll`
+     * handlers on `window` that nothing ever removes. Measured on a live
+     * client: four channel changes put 38 of them there, on a page that scrolls
+     * constantly.
      *
      * One tooltip is visible at a time, so this way there is at most one set,
      * and none at all while nothing is hovered.

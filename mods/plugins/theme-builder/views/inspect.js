@@ -19,6 +19,7 @@
 import { formatCss, parseColour } from '../colour.js';
 import { ancestry, describe, matchedRules, pickElement, variablesIn } from '../inspect.js';
 import { familyOf } from '../tokens.js';
+import { createTokenRow } from './token-row.js';
 
 const COPY_ICON =
   '<svg viewBox="0 0 20 20" width="14" height="14"><path fill="currentColor" d="M7 2.75A1.75 1.75 0 0 1 8.75 1h6.5C16.216 1 17 1.784 17 2.75v6.5A1.75 1.75 0 0 1 15.25 11h-1.5v1.25A1.75 1.75 0 0 1 12 14H5.5a1.75 1.75 0 0 1-1.75-1.75v-6.5C3.75 4.784 4.534 4 5.5 4H7zM8.5 4h3.5c.966 0 1.75.784 1.75 1.75V9.5h1.25a.25.25 0 0 0 .25-.25v-6.5a.25.25 0 0 0-.25-.25h-6.5a.25.25 0 0 0-.25.25zm-3 1.5a.25.25 0 0 0-.25.25v6.5c0 .138.112.25.25.25H12a.25.25 0 0 0 .25-.25v-6.5a.25.25 0 0 0-.25-.25z"/></svg>';
@@ -62,33 +63,7 @@ export function createInspectView(ctx) {
     return node;
   };
 
-  /** One token, as a row you can open, with its swatch and current value. */
-  const tokenRow = (token) => {
-    const own = token.name in ctx.state.tokenOverrides;
-    const value = ctx.state.tokenOverrides[token.name] ?? token.value;
-    const row = el('div', { class: 'token' });
-    row.setAttribute('data-own', String(own));
-
-    const open = el('button', { class: 'token__open', type: 'button', title: t('editToken') }, [
-      ui.swatch(ctx.swatchOf(value), { size: 'sm' }),
-      el('code', { textContent: token.name }),
-      el('span', { class: 'token__value', textContent: value }),
-    ]);
-    open.addEventListener('click', () => ctx.editToken(token, open, refresh));
-    ui.hoverable(open, {
-      enter: () => ctx.highlightToken(token.name),
-      leave: () => ctx.unhighlight(),
-    });
-    row.append(open);
-    row.append(own
-      ? ui.iconButton('&times;', {
-        title: t('drop'),
-        danger: true,
-        onClick: () => { delete ctx.state.tokenOverrides[token.name]; ctx.apply(); refresh(); },
-      })
-      : el('span', { class: 'token__family', textContent: ctx.familyLabel(token.family) }));
-    return row;
-  };
+  const tokenRow = createTokenRow(ctx, { title: t('editToken') });
 
   const refresh = () => {
     body.replaceChildren();
@@ -164,7 +139,7 @@ export function createInspectView(ctx) {
         value: entry.value,
         family: familyOf(entry.name).key,
         kind: ctx.kindOfToken(entry.name, entry.value),
-      }));
+      }, refresh));
     }
     body.append(list);
 

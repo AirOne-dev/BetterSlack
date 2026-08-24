@@ -403,10 +403,10 @@ export type Event =
    * Which installed mods have a newer version published.
    *
    * Pushed rather than only answered, because the thing it feeds is a badge:
-   * something you are meant to notice without having gone looking. The panel
-   * used to ask this once, the first time it was opened, which meant the only
-   * way to find out a mod had moved on was to open the panel and read -- and
-   * the badge on the launcher, which existed already, could never count them.
+   * something you are meant to notice without having gone looking. Asked for by
+   * the panel instead, the only way to find out a mod had moved on would be to
+   * open the panel and read, and the badge on the launcher could never count
+   * them at all.
    */
   | { type: 'mods.updates'; updates: ModUpdate[] };
 

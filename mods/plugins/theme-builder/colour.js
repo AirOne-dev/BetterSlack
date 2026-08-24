@@ -40,10 +40,6 @@ export function formatCss({ r, g, b, a }) {
   return `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(3))})`;
 }
 
-export function formatHex({ r, g, b }) {
-  return `#${[r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('')}`;
-}
-
 /** Alpha is dropped here, deliberately: the legacy family has nowhere for it. */
 export function formatTriplet({ r, g, b }) {
   return `${r}, ${g}, ${b}`;

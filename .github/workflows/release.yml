@@ -2,11 +2,11 @@ name: Release
 
 # A pushed tag becomes a GitHub release.
 #
-# It does not on its own: a tag is a git object and a release is a GitHub one,
-# created through their API. `pnpm release` writes the changelog, bumps the
-# version and tags — everything git can do — and the tag then sat on the
-# releases page as a bare tag with no notes, to be turned into a release by
-# hand, by copying the section out of CHANGELOG.md. This does that copy.
+# A tag is a git object and a release is a GitHub one, created through their
+# API: `pnpm release` does everything git can -- bump the version, write the
+# changelog, commit, tag -- and a pushed tag on its own sits on the releases
+# page as a bare tag with no notes. This lifts that version's section out of
+# CHANGELOG.md and posts it as the notes.
 #
 # Which means the changelog is the source: whatever `pnpm release` wrote, and
 # whatever it was rewritten into afterwards, is what the release says. There is

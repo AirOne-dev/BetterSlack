@@ -328,10 +328,10 @@ export interface StatusNodeOptions {
    * Draw the sentence beside the emoji. False leaves the picture alone -- and
    * the sentence still reaches the reader, through the tooltip.
    *
-   * Both mods that show a status in a narrow row used to blank the text by
-   * handing this an edited copy of the status, which also took it away from the
-   * tooltip: the row then had a little picture on it and no way at all to find
-   * out what it meant.
+   * This is the way to hide the sentence, never an edited copy of the status:
+   * blanking the text there takes it away from the tooltip too, which leaves
+   * the row with a little picture on it and no way at all to find out what it
+   * meant.
    */
   showText?: boolean;
   /** Which side the tooltip opens on. Rows in a right-hand column want left. */

@@ -162,7 +162,6 @@ const CSS = `
 
 const STRINGS = {
   en: {
-    account: 'Your account',
     settings: 'Account settings',
     available: 'Active',
     away: 'Away',
@@ -170,7 +169,6 @@ const STRINGS = {
     editStatus: 'Set a status',
   },
   fr: {
-    account: 'Votre compte',
     settings: 'Réglages du compte',
     available: 'Disponible',
     away: 'Absent',
@@ -323,9 +321,10 @@ export default {
       let clearEditTip = api.helpers.tooltip(nameEmoji, t('editStatus'));
       const nameLine = api.dom.h('div', { class: 'betterslack-me__nameline' }, [name, nameEmoji]);
       // Filled in by paintDot, which is the only thing that writes this line.
-      // It used to be read once here, from Slack's screen-reader label, and
-      // then never again -- so it kept saying whatever was true at the moment
-      // the strip happened to be built, which is the whole bug.
+      // Read once here from Slack's screen-reader label, it would say whatever
+      // was true at the moment the strip happened to be built and never move
+      // again -- and a green dot beside "Absent(e)" is worse than either being
+      // wrong on its own.
       const status = api.dom.h('div', { class: 'betterslack-me__status' }, ['']);
 
       const dot = api.dom.h('span', { class: 'betterslack-me__dot' });
@@ -334,8 +333,7 @@ export default {
         api.dom.h('div', { class: 'betterslack-me__text' }, [nameLine, status]),
       ]);
 
-      // The gear is the control. Pressing it opens Slack's own account menu,
-      // which is what clicking the whole strip used to do.
+      // The gear is the control. Pressing it opens Slack's own account menu.
       const settings = api.dom.h('button', {
         class: 'betterslack-me__settings',
         type: 'button',
@@ -353,12 +351,11 @@ export default {
        * avatar in the rail -- `.c-presence--active` on
        * `[data-qa="user-button"] .c-presence`.
        *
-       * It used to ask users.getPresence once a minute, and that is why the dot
-       * so often said away while the app plainly said available: the API answer
-       * lags the client, most of all just after the window comes back to the
-       * front, and until the next tick a whole minute later the strip kept
-       * showing the stale one. Slack's own node is instant, always agrees with
-       * the app it sits in, and costs no request at all.
+       * Never users.getPresence on a timer: the API answer lags the client,
+       * worst just after the window comes back to the front -- measured saying
+       * away for up to a minute while the app plainly said available. Slack's
+       * own node is instant, always agrees with the app it sits in, and costs
+       * no request at all.
        *
        * Do-not-disturb is not in that class, so it still comes from the API --
        * but a DND window changes rarely, so it is asked for slowly.

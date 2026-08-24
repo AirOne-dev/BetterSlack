@@ -832,11 +832,11 @@ test('stays out of the views that are not conversations', async () => {
   /*
    * Repertoires, Fils de discussion, Brouillons et envoyes and Appels d'equipe
    * all render into `.p-view_contents--primary`, and unlike a channel they
-   * stack a header above their content in it. The column used to mount there
-   * anyway -- `currentChannelId()` answers with any message Slack has drawn,
-   * and those views draw plenty -- and the stylesheet then laid the header and
-   * the content side by side. Measured on Repertoires: a 52px header became a
-   * 1631px column down the left, with 243px of content beside it.
+   * stack a header above their content in it. Nothing stops the column
+   * mounting there -- `currentChannelId()` answers with any message Slack has
+   * drawn, and those views draw plenty -- and the stylesheet would then lay the
+   * header and the content side by side. Measured on Repertoires: a 52px header
+   * became a 1631px column down the left, with 243px of content beside it.
    */
   const dom = installDom();
   const stub = web();

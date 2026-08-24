@@ -51,9 +51,6 @@ export const STRINGS = {
     copiedLink: 'Copied the profile link',
     statusUntil: 'until {time}',
     unresolved: '{count} member(s) could not be read',
-    noMemberList: 'Slack is not showing a member list for this conversation.',
-    profileRefused: 'Slack did not open that profile. Its window may be in the background.',
-    notOffered: 'Slack does not offer that for this person.',
     refused: 'Slack refused the request: {reason}',
   },
   fr: {
@@ -102,9 +99,6 @@ export const STRINGS = {
     copiedLink: 'Lien du profil copié',
     statusUntil: 'jusqu’à {time}',
     unresolved: '{count} membre(s) illisible(s)',
-    noMemberList: 'Slack n’affiche pas de liste de membres pour cette conversation.',
-    profileRefused: 'Slack n’a pas ouvert ce profil. Sa fenêtre est peut-être en arrière-plan.',
-    notOffered: 'Slack ne propose pas cette action pour cette personne.',
     refused: 'Slack a refusé la requête : {reason}',
   },
 };

@@ -391,12 +391,12 @@ export default async function shootMods({ evaluate, shoot, shootWindow, evaluate
   /*
    * The redaction is Demo Mode's, bundled into the page.
    *
-   * It used to be a copy living in `scripts/`, which is exactly the shape this
-   * repository refuses elsewhere: two implementations of one idea, and the one
-   * users run would have been the one nothing checks. This way the pictures in
-   * the repository and the ones anybody takes with the mod hide the same
-   * things, and this recipe -- which reads the screen afterwards and refuses
-   * to shoot if anything survived -- is the mod's test against a real Slack.
+   * Never a copy living in `scripts/`, which is the shape this repository
+   * refuses elsewhere: two implementations of one idea, and the one users run
+   * is the one nothing checks. This way the pictures in the repository and the
+   * ones anybody takes with the mod hide the same things, and this recipe --
+   * which reads the screen afterwards and refuses to shoot if anything survived
+   * -- is the mod's test against a real Slack.
    */
   const bundle = await esbuild.build({
     entryPoints: [path.join(root, 'mods/plugins/demo-mode/redaction.js')],

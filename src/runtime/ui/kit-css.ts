@@ -71,8 +71,7 @@ export const KIT_CSS = `/* The design system, as a stylesheet.
 .sm-input,
 .sm-select,
 .sm-swatch,
-.sm-segmented__item,
-.sm-rail__item {
+.sm-segmented__item {
   transition:
     background-color var(--sm-motion-quick) var(--sm-motion-ease),
     border-color var(--sm-motion-quick) var(--sm-motion-ease),
@@ -143,7 +142,7 @@ export const KIT_CSS = `/* The design system, as a stylesheet.
 .sm-btn[data-on="true"] { background: var(--sm-danger); color: #fff; box-shadow: none; }
 .sm-btn--wide { width: 100%; justify-content: center; }
 .sm-btn:disabled { opacity: .55; cursor: default; }
-.sm-btn:focus-visible, .sm-rail__item:focus-visible, .sm-segmented__item:focus-visible {
+.sm-btn:focus-visible, .sm-segmented__item:focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px rgba(29, 155, 209, .5);
 }
@@ -224,8 +223,6 @@ export const KIT_CSS = `/* The design system, as a stylesheet.
   padding: 1px 6px;
 }
 
-.sm-toolbar { display: flex; gap: 8px; align-items: center; }
-.sm-toolbar .search { flex: 1 1 auto; }
 
 /* ================================================================= swatches */
 

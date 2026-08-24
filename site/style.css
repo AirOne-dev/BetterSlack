@@ -856,10 +856,6 @@ kbd {
   --api-backdrop-image: none; }
 
 
-@media (max-width: 900px) {
-  .api--entry { grid-template-columns: minmax(0, 1fr); }
-}
-
 /* The API page, as one document ----------------------------------------- *
  *
  * Every entry is a section in this file and exactly one is shown. The list on
@@ -1158,23 +1154,6 @@ body.api-page .footer { display: none; }
   padding: 7px 10px;
   font: 500 13px/1 var(--sans);
 }
-.api-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 14px;
-  font-size: 14px;
-  color: var(--muted);
-}
-.api-toolbar input[type="color"] {
-  width: 46px; height: 32px; padding: 0;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-}
-
 .api-input,
 .api-output {
   min-height: 260px;
@@ -1215,10 +1194,6 @@ body.api-page .footer { display: none; }
 .role__text { display: grid; min-width: 0; }
 .role__text strong { font: 600 13px/1.4 var(--mono); }
 .role__text .sm-hint { font: 400 12px/1.4 var(--mono); }
-
-@media (max-width: 900px) {
-  .api-split { grid-template-columns: minmax(0, 1fr); }
-}
 
 /* Panes a few demos print into. */
 /*

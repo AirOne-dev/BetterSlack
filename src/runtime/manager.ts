@@ -79,10 +79,9 @@ export class ModManager {
   /**
    * Installed mods with a newer version published.
    *
-   * Held here rather than in the panel, which is where it used to live: the
-   * launcher's badge counts these and the panel is usually shut, so state that
-   * only exists once somebody has opened the panel is state the badge can never
-   * read. The loader sweeps hourly and pushes the answer.
+   * Held here rather than in the panel: the launcher's badge counts these and
+   * the panel is usually shut, so state a closed window owns is state the badge
+   * can never read. The loader sweeps hourly and pushes the answer.
    */
   modUpdates: ModUpdate[] = [];
   /** Why a mod is not running, keyed by id. Cleared when it applies cleanly. */
@@ -274,12 +273,7 @@ export class ModManager {
     return this.bridge.request<{ ok: boolean; detail: string }>({ type: 'app.update' });
   }
 
-  /** Plugin ids a theme needs to look right; empty for almost every mod. */
-  requirementsFor(id: string): string[] {
-    return this.mods.find((m) => m.id === id)?.requires ?? [];
-  }
-
-  /** Of those, the ones that are not switched on right now. */
+  /** Plugin ids a theme needs that are not switched on right now. */
   missingRequirements(id: string): string[] {
     const record = this.mods.find((m) => m.id === id);
     return record ? missingRequirements(record, this.settings) : [];
@@ -364,12 +358,11 @@ export class ModManager {
      *
      * The runtime can be injected at any moment -- at document-start on a fresh
      * navigation, or straight into a page the loader found mid-boot. In that
-     * second case the mods used to start against a half-built DOM: their mount
+     * second case mods must not start against a half-built DOM: their mount
      * observers fire on every node Slack adds while it renders the client, and
      * a mount that reacts to Slack's own re-render can keep the microtask queue
      * from ever draining. The renderer then blocks outright -- a grey window,
-     * no error, and Runtime.evaluate never returning, which is how this was
-     * finally caught.
+     * no error, and Runtime.evaluate never returning.
      *
      * Themes do not wait, because CSS cannot loop. If the container never
      * appears -- Slack renamed it, or this is not the client at all -- the
@@ -414,10 +407,10 @@ export class ModManager {
   /**
    * Apply a mod, and remember it if it will not.
    *
-   * A mod that throws used to leave a line in the console and a row in the
-   * panel that still said it was on. Now the row says what happened, and the
-   * second consecutive failure at startup takes it out of the running: a broken
-   * mod should cost one bad start, not every start.
+   * A mod that throws gets its reason on its own row, rather than a line in
+   * the console under a row that still says it is on, and the second
+   * consecutive failure at startup takes it out of the running: a broken mod
+   * should cost one bad start, not every start.
    */
   private async applyWatched(record: ModRecord, files: ModFiles): Promise<void> {
     const failures = this.settings.modFailures ?? {};

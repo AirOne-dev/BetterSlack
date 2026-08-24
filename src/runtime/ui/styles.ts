@@ -226,7 +226,7 @@ export const PANEL_CSS = CODE_CSS + `
 .betterslack-filterbar .betterslack-select { flex: 0 0 auto; }
 
 /*
- * What is left of a style that used to draw the whole field.
+ * What is left to write once Slack's own field is borrowed.
  *
  * Slack's own text input is .c-input_text and its own select is .c-input_select
  * -- a bordered button that opens a menu, never a native dropdown -- so both
@@ -358,14 +358,13 @@ export const PANEL_CSS = CODE_CSS + `
 }
 
 /*
- * The state while it is working, which used to be a disabled button with a line
- * of grey text beside it.
+ * The state while it is working, under the buttons rather than beside them.
  *
- * That reads as broken rather than as busy: the row it sat in does not grow,
- * so "Downloading and rebuilding..." either squeezed the
- * button or wrapped under it, and nothing on screen moved for however long the
- * pull took. The line moved under the buttons, where it has the width, and it
- * spins while there is something to wait for.
+ * A disabled button with a line of grey text next to it reads as broken rather
+ * than as busy: the row does not grow, so "Downloading and rebuilding..."
+ * either squeezes the button or wraps under it, and nothing on screen moves for
+ * however long the pull takes. Under the buttons it has the width, and it spins
+ * while there is something to wait for.
  */
 .betterslack-progress {
   display: flex;

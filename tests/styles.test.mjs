@@ -2,17 +2,16 @@
 //
 // A plugin writes CSS two ways: `api.css`, which replaces its stylesheet
 // whole, and helpers -- `toggle({ whenOn })`, `badge`, `tooltip` -- which write
-// CSS of their own. Those two used to share one <style> node, so a mod that
-// used both kept only whichever wrote last.
+// CSS of their own. Sharing one <style> node, a mod that uses both keeps only
+// whichever wrote last, so the helpers own a node of their own.
 //
-// It was not theoretical. A shipped mod called `toggle({ whenOn })` to hide the
-// sidebar and then `api.css` to style its indicator, and shipped folding
-// nothing away at all. Its own tests passed: they asserted on every call the
-// mod made, and the bug is that only one of those calls survives. That mod has
-// since been removed from the catalogue, which is why the third test below
-// carries its shape as a fixture rather than importing it -- the regression
-// outlives any one mod, and a test that can be deleted along with its subject
-// is not covering the runtime.
+// It is not theoretical. A mod that calls `toggle({ whenOn })` to hide the
+// sidebar and then `api.css` to style its indicator ships folding nothing away
+// at all, and its own tests pass: they assert on every call the mod makes, and
+// the bug is that only one of those calls survives. The third test below
+// carries that shape as a fixture rather than importing a mod -- the regression
+// outlives any one of them, and a test that can be deleted along with its
+// subject is not covering the runtime.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

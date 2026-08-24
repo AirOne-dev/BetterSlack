@@ -15,7 +15,7 @@ import { downloadFile, saveBytes } from './download.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack,
   slackVersion,
 } from './slack.js';
-import { applyDesktopPrefs, checkPref, prefsSupported, readDesktopPrefs } from './slack-settings.js';
+import { applyDesktopPrefs, prefsSupported, readDesktopPrefs } from './slack-settings.js';
 import { applyUpdate, checkForUpdate } from './update.js';
 import {
   fetchModFiles, findModUpdates, folderFor, inspectRemote, manifestFrom,
@@ -49,7 +49,6 @@ import {
   type ModRecord,
   type ModFiles,
   type Request,
-  type Settings,
   type UpdateStatus,
 } from '../shared/protocol.js';
 
@@ -73,11 +72,11 @@ const VERSION = __BETTERSLACK_VERSION__;
 /*
  * The repository, which every update check and every mod install goes through.
  *
- * It was `AirOne-dev/SlackMod` until the repository itself was renamed. Worth
- * one line of care: a blanket search-and-replace once pointed this at a
- * repository that did not exist yet, and the failure mode is an update button
- * that quietly stops working rather than anything that looks broken. GitHub
- * redirects a renamed repository, so an older copy still resolves.
+ * Worth one line of care when it changes: a blanket search-and-replace once
+ * pointed this at a repository that did not exist yet, and the failure mode is
+ * an update button that quietly stops working rather than anything that looks
+ * broken. GitHub redirects a renamed repository, so an older copy still
+ * resolves.
  */
 const REPO = 'AirOne-dev/BetterSlack';
 
@@ -527,12 +526,11 @@ class Loader {
    * WebP, and Chromium is the encoder.
    *
    * Measured on one of these frames: the same picture is 472 kB as a PNG,
-   * 132 kB as the 1400-wide JPEG this project used to publish, and 160 kB as a
-   * WebP at the full 3200x2000 -- so the retina resolution costs almost
-   * nothing and the downscale can go. That matters twice over, because the
-   * downscale was `sips`, which is macOS-only and cannot write WebP at all:
-   * asking Chromium for the format it already supports leaves the screenshot
-   * pipeline with no external tool in it.
+   * 132 kB as a 1400-wide JPEG, and 160 kB as a WebP at the full 3200x2000 --
+   * so the retina resolution costs almost nothing and there is no downscale.
+   * That matters twice over: a downscale here means `sips`, which is macOS-only
+   * and cannot write WebP at all, and asking Chromium for the format it already
+   * supports leaves the screenshot pipeline with no external tool in it.
    *
    * 78 is measured too: 70 saves 12 kB and starts showing on Slack's text,
    * 85 costs 28 kB for nothing anybody can see.

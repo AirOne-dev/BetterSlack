@@ -8,6 +8,7 @@
 // pulled to the top, because they are what you came back for.
 
 import { FAMILIES, search } from '../tokens.js';
+import { createTokenRow } from './token-row.js';
 
 /** Rendered at once. Enough to scroll through, few enough to stay instant. */
 const PAGE = 80;
@@ -65,32 +66,7 @@ export function createTokensView(ctx) {
     ], { subtitle: t('tokensHint') }),
   ]);
 
-  const row = (token) => {
-    const own = token.name in ctx.state.tokenOverrides;
-    const value = ctx.state.tokenOverrides[token.name] ?? token.value;
-    const item = el('div', { class: 'token' });
-    item.setAttribute('data-own', String(own));
-
-    const open = el('button', { class: 'token__open', type: 'button' }, [
-      ui.swatch(ctx.swatchOf(value), { size: 'sm' }),
-      el('code', { textContent: token.name }),
-      el('span', { class: 'token__value', textContent: value }),
-    ]);
-    open.addEventListener('click', () => ctx.editToken(token, open, refresh));
-    ui.hoverable(open, {
-      enter: () => ctx.highlightToken(token.name),
-      leave: () => ctx.unhighlight(),
-    });
-    item.append(open);
-    item.append(own
-      ? ui.iconButton('&times;', {
-        title: t('drop'),
-        danger: true,
-        onClick: () => { delete ctx.state.tokenOverrides[token.name]; ctx.apply(); refresh(); },
-      })
-      : el('span', { class: 'token__family', textContent: ctx.familyLabel(token.family) }));
-    return item;
-  };
+  const row = createTokenRow(ctx);
 
   const refresh = () => {
     let shown = search(ctx.tokens, query.value.trim());
@@ -101,7 +77,7 @@ export function createTokensView(ctx) {
       Number(b.name in ctx.state.tokenOverrides) - Number(a.name in ctx.state.tokenOverrides));
 
     list.replaceChildren();
-    for (const token of shown.slice(0, limit)) list.append(row(token));
+    for (const token of shown.slice(0, limit)) list.append(row(token, refresh));
     if (!shown.length) list.append(ui.emptyState(t('noMatchTitle'), t('noMatch')));
 
     count.textContent = t('tokenCount', {

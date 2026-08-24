@@ -207,10 +207,6 @@ export class StyleManager {
     }
   }
 
-  isSuppressed(layer: Layer): boolean {
-    return this.suppressed.has(layer);
-  }
-
   remove(layer: Layer, id: string): void {
     const key = this.key(layer, id);
     this.nodes.get(key)?.remove();
