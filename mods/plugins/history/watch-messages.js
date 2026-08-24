@@ -15,6 +15,15 @@
  * deletion is only believed when the messages *either side of it* are both
  * still there -- the shape a real deletion has and a scroll cannot.
  *
+ * With one exception, and it is the common case: the message you delete is
+ * usually the one you just wrote, at the bottom, which has nothing after it.
+ * Asking for a neighbour on both sides means never seeing that at all. A
+ * message vanishing from the *end* of the window counts too, but only when
+ * nothing new arrived in the same sweep -- scrolling up drops from the bottom
+ * and always brings older messages in at the top, so "nothing came in" is what
+ * tells the two apart. The top of the window keeps the strict rule, because
+ * scrolling down drops from there constantly.
+ *
  * **Other mods rewrite the text.** Full Links replaces a truncated link's label
  * with the whole URL moments after the message is drawn, which changes the text
  * without anybody editing anything. So a message is not comparable the first
@@ -122,16 +131,28 @@ export function createMessageWatcher() {
       /** Gone, surrounded, but not yet gone often enough to be believed. */
       const waiting = [];
 
+      /*
+       * Did anything come into the window this sweep?
+       *
+       * Scrolling always does: it is the same gesture that takes messages out
+       * at the other end. A window that lost a message and gained nothing was
+       * not scrolled.
+       */
+      const knew = new Set(before);
+      const arrived = keys.some((key) => !knew.has(key));
+
       for (let i = 0; i < before.length; i += 1) {
         const key = before[i];
         if (present.has(key)) continue;
 
-        // An end of the loaded window has no neighbour on one side, which is
-        // exactly what scrolling looks like.
         const previous = before[i - 1];
         const next = before[i + 1];
-        if (!previous || !next) continue;
-        if (!present.has(previous) || !present.has(next)) continue;
+        const surrounded = Boolean(previous) && Boolean(next)
+          && present.has(previous) && present.has(next);
+        // The live end of the list: the last message, deleted, with the one
+        // before it still there and nothing having scrolled in behind it.
+        const wasLast = !next && Boolean(previous) && present.has(previous) && !arrived;
+        if (!surrounded && !wasLast) continue;
 
         const known = seen.get(key);
         if (!known) continue;
@@ -140,7 +161,7 @@ export function createMessageWatcher() {
 
         known.missing += 1;
         if (known.missing < MISSING_BEFORE_GONE) {
-          waiting.push({ key, next });
+          waiting.push({ key, previous, next });
           continue;
         }
 
@@ -152,9 +173,11 @@ export function createMessageWatcher() {
           userId: known.userId,
           who: known.who,
           // The two it sat between, so a headstone can be put back exactly
-          // where the message was rather than at the end of the list.
-          previousTs: seen.get(previous)?.ts ?? null,
-          nextTs: seen.get(next)?.ts ?? null,
+          // where the message was rather than at the end of the list. The last
+          // message in a conversation has nothing after it, and there is
+          // nothing to anchor a headstone to -- it is recorded all the same.
+          previousTs: previous ? (seen.get(previous)?.ts ?? null) : null,
+          nextTs: next ? (seen.get(next)?.ts ?? null) : null,
         });
         seen.delete(key);
       }
@@ -169,9 +192,15 @@ export function createMessageWatcher() {
        * that still says where it was.
        */
       const nextOrder = [...keys];
-      for (const { key, next } of waiting) {
-        const at = nextOrder.indexOf(next);
-        if (at !== -1) nextOrder.splice(at, 0, key);
+      for (const { key, previous, next } of waiting) {
+        // In front of the one that followed it, or behind the one that came
+        // before where there was nothing after -- the last message in a
+        // conversation is judged over two sweeps like any other, and putting it
+        // back only in front of a `next` it never had dropped it on the first.
+        const after = next ? nextOrder.indexOf(next) : -1;
+        if (after !== -1) { nextOrder.splice(after, 0, key); continue; }
+        const behind = previous ? nextOrder.indexOf(previous) : -1;
+        if (behind !== -1) nextOrder.splice(behind + 1, 0, key);
       }
       order.set(channelId, nextOrder);
     }

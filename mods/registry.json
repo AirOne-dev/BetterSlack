@@ -613,6 +613,15 @@
       "readmes": {
         "fr": "README.fr.md"
       },
+      "screenshots": [
+        {
+          "file": "screenshot.webp",
+          "captions": {
+            "en": "The History view, in Slack’s rail: what was edited, deleted, reacted to and renamed, searchable and sortable.",
+            "fr": "La vue Historique, dans le rail de Slack : ce qui a été modifié, supprimé, réagi et renommé, cherchable et triable."
+          }
+        }
+      ],
       "tags": [
         "messages",
         "tools",

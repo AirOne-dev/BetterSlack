@@ -258,7 +258,8 @@ export function createView(api, t, deps) {
     label: t('title'),
     icon: deps.icon,
     render: build,
-    onClose: () => { panel = null; },
+    onOpen: () => deps.onOpen?.(),
+    onClose: () => { panel = null; deps.onClose?.(); },
   });
 
   return {

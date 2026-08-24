@@ -108,6 +108,8 @@ export default {
 
     const page = createView(api, t, {
       icon: ICON,
+      onOpen: () => markSeen(),
+      onClose: () => markSeen(),
       getLog: () => log,
       view,
       tally,
@@ -120,11 +122,21 @@ export default {
       },
     });
 
-    const open = () => {
+    /*
+     * Seen is seen, however you got here.
+     *
+     * Stamped from the view's own `onOpen` rather than from a function the
+     * shortcut and the command happen to share: clicking the tab in Slack's
+     * rail goes straight through `addView` and never touched this, so the
+     * count sat on the tab after you had read every line of it. Stamped on the
+     * way out as well, so anything that arrives while you are looking at it is
+     * not waiting for you when you close it.
+     */
+    const markSeen = () => {
       openedAt = Date.now();
       void api.settings.set('openedAt', openedAt);
-      page.open();
     };
+    const open = () => page.open();
 
     // --------------------------------------------------------------- reading
 

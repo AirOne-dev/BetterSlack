@@ -87,6 +87,52 @@ test('a gap with both neighbours still there is a deletion', () => {
   assert.equal(change.nextTs, '3');
 });
 
+test('the message you just wrote, deleted, is the common case and is caught', () => {
+  /*
+   * It is the last one in the conversation, so it has nothing after it. Asking
+   * for a neighbour on both sides means never seeing the thing people actually
+   * do, which is exactly what happened.
+   */
+  const watcher = createMessageWatcher();
+  const before = screen(['1', 'a'], ['2', 'b'], ['3', 'oops']);
+  watcher.sweep(before);
+  watcher.sweep(before);
+
+  const after = screen(['1', 'a'], ['2', 'b']);
+  assert.deepEqual(watcher.sweep(after), [], 'not on the first sweep: Slack re-renders');
+
+  const [change, ...rest] = watcher.sweep(after);
+  assert.equal(rest.length, 0);
+  assert.equal(change.kind, 'deleted');
+  assert.equal(change.before, 'oops');
+  assert.equal(change.previousTs, '2');
+  assert.equal(change.nextTs, null, 'nothing followed it, so there is nowhere to put a headstone');
+});
+
+test('scrolling up drops from the bottom too, and is not a deletion', () => {
+  // The one case that looks identical until you notice what came *in*: scrolling
+  // up takes messages off the end and brings older ones in at the top.
+  const watcher = createMessageWatcher();
+  const first = screen(['3', 'c'], ['4', 'd'], ['5', 'e']);
+  watcher.sweep(first);
+  watcher.sweep(first);
+  const scrolledUp = screen(['1', 'a'], ['2', 'b'], ['3', 'c']);
+  assert.deepEqual(watcher.sweep(scrolledUp), []);
+  assert.deepEqual(watcher.sweep(scrolledUp), []);
+});
+
+test('the oldest message leaving the top is never a deletion on its own', () => {
+  // Scrolling down does this constantly, so the top of the window keeps the
+  // strict rule: both neighbours, or nothing.
+  const watcher = createMessageWatcher();
+  const first = screen(['1', 'a'], ['2', 'b'], ['3', 'c']);
+  watcher.sweep(first);
+  watcher.sweep(first);
+  const trimmed = screen(['2', 'b'], ['3', 'c']);
+  assert.deepEqual(watcher.sweep(trimmed), []);
+  assert.deepEqual(watcher.sweep(trimmed), []);
+});
+
 test('a message that comes straight back was a re-render, not a deletion', () => {
   const watcher = createMessageWatcher();
   const full = screen(['1', 'a'], ['2', 'b'], ['3', 'c']);

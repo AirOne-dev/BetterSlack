@@ -132,6 +132,9 @@ const SHOTS = [
   },
   { id: 'sidebar-account', expect: '.betterslack-me' },
   { id: 'channel-notes', open: 'button:channel-notes-notes', expect: '.betterslack-widget_dialog' },
+  // The log is seeded first: a page of its own with nothing on it is a picture
+  // of an empty state, which is not what the catalogue is for.
+  { id: 'history', stage: 'history', open: 'view:history-log', expect: '.bsh-row' },
   // No text is typed into the composer: it is the user's real draft, in a real
   // workspace, and a screenshot run has no business writing to it. Whatever is
   // in there is what the counter counts.
@@ -221,6 +224,67 @@ const openFor = (what) => {
       const button = document.querySelector(${JSON.stringify(selector)});
       button?.click();
       return Boolean(button);
+    })()`;
+  }
+  if (what.startsWith('view:')) {
+    // A view's tab is in Slack's rail rather than in a toolbar, and `addView`
+    // gives it a predictable id the same way `addToolbarButton` does.
+    const selector = `#betterslack-tab-${what.slice('view:'.length)}`;
+    return `(() => {
+      const tab = document.querySelector(${JSON.stringify(selector)});
+      tab?.click();
+      return Boolean(tab);
+    })()`;
+  }
+  if (what === 'history') {
+    /*
+     * A log of things that never happened, so the page has something to show.
+     *
+     * Every word comes out of Demo Mode's own vocabulary, which is the list the
+     * redaction audit is allowed to see survive -- seeded with anything else,
+     * the run would fail on its own picture. And it is written before the mod
+     * is switched on, because the log is read once at start.
+     */
+    return `(() => {
+      const words = window.__betterslackRedactionModule.VOCABULARY;
+      const pick = (n) => words[n % words.length];
+      const entries = [];
+      for (let i = 0; i < 7; i += 1) {
+        const kind = ['edited', 'deleted', 'reaction-removed', 'channel-renamed', 'joined'][i % 5];
+        entries.push({
+          id: 'seed-' + i,
+          kind,
+          at: Date.now() - i * 11 * 60 * 1000,
+          who: pick(i * 3) + ' ' + pick(i * 5 + 1),
+          channelName: pick(i * 7 + 2),
+          channelId: 'C0SEED' + i,
+          ts: '1780000000.00000' + i,
+          before: pick(i * 11 + 3) + ' ' + pick(i * 13 + 4) + ' ' + pick(i * 17 + 5),
+          after: kind === 'edited' ? pick(i * 19 + 6) + ' ' + pick(i * 23 + 7) : undefined,
+          emoji: kind === 'reaction-removed' ? ':eyes:' : undefined,
+          count: kind === 'reaction-removed' ? 1 : undefined,
+        });
+      }
+      const m = window.__betterslack.manager;
+      /*
+       * And waited for, because switching a mod back on is not instant and the
+       * step after this one clicks the tab it puts in the rail. Without the
+       * wait the click found nothing and the run failed on a page it had
+       * correctly staged.
+       */
+      const tab = () => new Promise((done, fail) => {
+        const started = Date.now();
+        const look = () => {
+          if (document.querySelector('#betterslack-tab-history-log')) return done('seeded ' + entries.length);
+          if (Date.now() - started > 6000) return fail(new Error('the history tab never appeared'));
+          setTimeout(look, 150);
+        };
+        look();
+      });
+      return m.setModSetting('history', 'entries', entries)
+        .then(() => m.setEnabled('history', false))
+        .then(() => m.setEnabled('history', true))
+        .then(tab);
     })()`;
   }
   if (what.startsWith('command:')) {
