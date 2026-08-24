@@ -215,7 +215,8 @@
 }
 .bsh-row__actions:focus-within { opacity: 1; }
 
-.bsh-empty { padding: 64px 24px; text-align: center; }
+/* A sentence across 1600px is a sentence nobody finishes. */
+.bsh-empty { max-width: 56ch; margin: 0 auto; padding: 96px 24px; text-align: center; }
 .bsh-empty__title { margin: 0 0 6px; font-size: 15px; font-weight: 900; color: var(--dt_color-content-pry, #d1d2d3); }
 
 .bsh-footer {

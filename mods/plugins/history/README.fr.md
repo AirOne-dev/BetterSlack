@@ -2,7 +2,7 @@
 
 Tout ce que Slack change sans jamais le dire — modifications, suppressions, réactions retirées, renommages, statuts, arrivées et départs — sur une page que l'on peut chercher et trier.
 
-Un onglet dans le rail de Slack, sous Accueil et Activité, ou `⌘⇧H`, ou `⌘K` → **Historique**. Une pastille dessus compte ce qui est arrivé depuis votre dernier passage. C'est une vue comme celles de Slack : le rail et la sidebar restent vivants à côté, et on la quitte en allant ailleurs.
+Un onglet dans le rail de Slack, sous Accueil et Activité, ou `⌘⇧H`, ou `⌘K` → **Historique**. Une pastille dessus compte ce qui est arrivé depuis votre dernier passage. C'est une vue comme celles de Slack : elle prend tout le panneau, liste des canaux comprise, et on la quitte en allant ailleurs.
 
 ## Ce qu'il garde
 

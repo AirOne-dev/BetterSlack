@@ -39,6 +39,7 @@ export const SLACK_FIXTURE = `
     </div>
   </div>
 
+  <div class="p-client_workspace__tabpanel">
   <div class="p-channel_sidebar" data-qa="channel-sidebar">
     <div class="p-ia4_sidebar_header p-ia4_home_header">
       <div class="p-ia4_sidebar_header__title">Acme</div>
@@ -65,6 +66,7 @@ export const SLACK_FIXTURE = `
         <div><button data-qa="bold-composer-button"></button></div>
       </div>
     </div>
+  </div>
   </div>
 
   <div data-qa="member_profile_pane">

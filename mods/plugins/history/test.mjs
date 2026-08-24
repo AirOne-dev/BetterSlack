@@ -301,9 +301,14 @@ test('the view opens where Slack renders its own views, not over the middle', as
 
     const view = document.querySelector('.betterslack-view');
     assert.ok(view, 'the view is on screen');
-    // Inside the conversation pane, so the rail and the sidebar stay live
-    // beside it. A dialog in the middle of the client is the thing this is not.
-    assert.ok(view.closest('.p-view_contents--primary'), 'inside Slack’s own view pane');
+    /*
+     * The whole tab panel, channel sidebar included, which is what Activité and
+     * Fichiers take. Over the conversation alone it is a page with Slack's
+     * channel list still down its left-hand side.
+     */
+    const panel = view.closest('.p-client_workspace__tabpanel');
+    assert.ok(panel, 'inside Slack’s own tab panel');
+    assert.ok(panel.querySelector('[data-qa="channel-sidebar"]'), 'which is what holds the channel list');
     assert.ok(view.querySelector('input.c-input_text'), 'it wears Slack’s own field');
     assert.equal(view.querySelectorAll('.bsh-tab').length, 5, 'everything, and one tab per family');
     assert.match(view.textContent, /machine/i, 'and it says where the log lives');

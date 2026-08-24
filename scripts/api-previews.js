@@ -587,7 +587,14 @@ function dressChrome(frame, pane_ = false) {
    * either way: `addProfileButton` mounts by finding it.
    */
   if (!pane_) pane.classList.add('chrome__offstage');
-  client.replaceChildren(railColumn, sidebar, el('div', 'chrome__main'), pane);
+  /*
+   * The sidebar and the conversation live inside the tab panel, because that is
+   * what a tab shows and what `addView` covers -- the rail is the only thing
+   * left beside a view.
+   */
+  const panel = el('div', 'p-client_workspace__tabpanel chrome__panel');
+  panel.append(sidebar, el('div', 'chrome__main'), pane);
+  client.replaceChildren(railColumn, panel);
   frame.querySelector('.chrome__main').append(bar, primary);
   primary.querySelector('.p-message_pane').append(composer);
   return frame;
@@ -662,7 +669,7 @@ const CHROME = {
       });
       keep(view.dispose);
       view.open();
-      focusChrome(frame, '.p-tab_rail__tab_menu');
+      focusChrome(frame, '.p-client_workspace__tabpanel');
       return undefined;
     },
   },

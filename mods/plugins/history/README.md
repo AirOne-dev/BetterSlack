@@ -2,7 +2,7 @@
 
 Everything Slack changes and never tells you about — edits, deletions, reactions taken back, renames, statuses, arrivals and departures — on one page you can search and sort.
 
-A tab in Slack's rail, under Home and Activity, or `⌘⇧H`, or `⌘K` → **History**. A badge on it counts what has arrived since you last looked. It is a view like Slack's own: the rail and the sidebar stay live beside it, and you leave it by going somewhere else.
+A tab in Slack's rail, under Home and Activity, or `⌘⇧H`, or `⌘K` → **History**. A badge on it counts what has arrived since you last looked. It is a view like Slack's own: it takes the whole panel, channel list included, and you leave it by going somewhere else.
 
 ## What it keeps
 

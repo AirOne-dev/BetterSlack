@@ -2390,7 +2390,7 @@
     (document.head ?? document.documentElement)?.append(node);
   }
   var TAB_MENU = ".p-tab_rail__tab_menu";
-  var VIEW_PANE = ".p-view_contents--primary";
+  var VIEW_PANE = ".p-client_workspace__tabpanel";
   var VIEW_OPEN_CLASS = "betterslack-view-open";
   function addView(pluginId, options) {
     installViewCss();
@@ -3292,6 +3292,7 @@
     </div>
   </div>
 
+  <div class="p-client_workspace__tabpanel">
   <div class="p-channel_sidebar" data-qa="channel-sidebar">
     <div class="p-ia4_sidebar_header p-ia4_home_header">
       <div class="p-ia4_sidebar_header__title">Acme</div>
@@ -3318,6 +3319,7 @@
         <div><button data-qa="bold-composer-button"></button></div>
       </div>
     </div>
+  </div>
   </div>
 
   <div data-qa="member_profile_pane">
@@ -5613,7 +5615,9 @@
       innerHTML: '<div class="chrome__who">Robin Vasquez</div><div class="chrome__role">Release engineering</div>'
     }));
     if (!pane_) pane.classList.add("chrome__offstage");
-    client.replaceChildren(railColumn, sidebar, el("div", "chrome__main"), pane);
+    const panel = el("div", "p-client_workspace__tabpanel chrome__panel");
+    panel.append(sidebar, el("div", "chrome__main"), pane);
+    client.replaceChildren(railColumn, panel);
     frame.querySelector(".chrome__main").append(bar, primary);
     primary.querySelector(".p-message_pane").append(composer2);
     return frame;
@@ -5671,7 +5675,7 @@
         });
         keep(view.dispose);
         view.open();
-        focusChrome(frame, ".p-tab_rail__tab_menu");
+        focusChrome(frame, ".p-client_workspace__tabpanel");
         return void 0;
       }
     },

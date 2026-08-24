@@ -493,8 +493,20 @@ function installViewCss(): void {
 
 /** Where Slack keeps its own tabs, and where a mod's goes beside them. */
 const TAB_MENU = '.p-tab_rail__tab_menu';
-/** The pane Slack renders a view into. It is `position: relative`. */
-const VIEW_PANE = '.p-view_contents--primary';
+/**
+ * What a tab in Slack's rail actually shows.
+ *
+ * The whole panel, not the conversation pane inside it: Activité and Fichiers
+ * replace the channel sidebar as well, and a view that leaves it there is a
+ * page with somebody else's furniture down its left-hand side. Measured, the
+ * panel starts where the workspace rail ends, so the rail is all that is left
+ * beside it -- which is the point.
+ *
+ * It is `position: static` itself and its parent `.p-client_workspace__layout`
+ * is relative, with the identical box, so an inset of zero lands on the panel
+ * either way.
+ */
+const VIEW_PANE = '.p-client_workspace__tabpanel';
 /** On `<html>` while a mod's view is the one on screen. */
 const VIEW_OPEN_CLASS = 'betterslack-view-open';
 
@@ -533,9 +545,9 @@ export interface ViewHandle {
  * A whole view of a mod's own, with its tab in Slack's rail.
  *
  * Everything Accueil, Messages directs and Activité do: an entry in the rail
- * wearing Slack's own classes, a page that covers the conversation while the
- * workspace rail and the channel sidebar stay live beside it, one tab lit at a
- * time, and clicking another of Slack's tabs to leave.
+ * wearing Slack's own classes, a page that takes the whole tab panel -- the
+ * channel sidebar included, because those views replace it too -- one tab lit
+ * at a time, and clicking another of Slack's tabs to leave.
  *
  * Four things it knows that a mod should not have to:
  *
@@ -913,8 +925,9 @@ export interface SlackApi {
    * A whole view of your own, with its tab in Slack's rail.
    *
    * Everything Accueil, Messages directs and Activité do: the entry beside
-   * theirs, a page covering the conversation with the rail and the sidebar
-   * still live, one tab lit at a time, and clicking another tab to leave.
+   * theirs, a page taking the whole tab panel -- the channel sidebar included,
+   * because those views replace it too -- one tab lit at a time, and clicking
+   * another tab to leave.
    */
   addView(options: ViewOptions): ViewHandle;
   /**

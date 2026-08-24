@@ -34,12 +34,28 @@ prints the page's own errors to that terminal, so a mod that threw at boot says
 so there instead of hiding in a DevTools window you have to go and open.
 
 **And leave it running.** Somebody is using Slack while you work -- it is their
-messaging app before it is your test fixture. Stopping it is a last resort, not
-a step in a loop, and the mistake that makes it a loop is easy to fall into:
-Slack is launched with `--remote-debugging-pipe` and the loader holds the
-descriptors, so a CDP probe of your own cannot attach while it runs. One
-question, one stop, one restart -- do that per question and the app is down
-more than it is up, which is what happened over one long session here.
+messaging app before it is your test fixture, and they are being paid to answer
+the messages in it. Stopping it is a last resort, not a step in a loop, and the
+mistake that makes it a loop is easy to fall into: Slack is launched with
+`--remote-debugging-pipe` and the loader holds the descriptors, so a CDP probe
+of your own cannot attach while it runs. One question, one stop, one restart --
+do that per question and the app is down more than it is up, which is what
+happened over one long session here, and the person whose Slack it was said so.
+
+Three rules follow, and none of them is a preference:
+
+- **Never end a step with Slack down.** If you stopped it, the same command
+  that stopped it brings it back. Not the next message, not after the report --
+  before you do anything else. A client left stopped while you write a summary
+  is somebody unreachable at work for as long as the summary takes.
+- **`pnpm check`, `pnpm test`, `pnpm build`, `pnpm typecheck` and the whole gate
+  need no client at all.** Run them against the running one, as often as you
+  like. Only `pnpm test:live`, `pnpm shoot` and a probe of your own take the
+  client, and each of those is a decision rather than a step.
+- **One probe answers every open question.** Not one probe per question. Write
+  the code, let the questions pile up, then ask them all in a single launch --
+  and if the answer raises a new question, write down what you would have
+  asked and batch it with the next one rather than relaunching.
 
 So: write the code first, and let the questions pile up. Answer the ones that
 need no client at all -- unit tests, jsdom, reading Slack's own bundle, reading
@@ -943,8 +959,10 @@ tests fail below it.
   next to it holds sections (Home, DMs, Activity).
 - **A mod can have a whole view of its own, and `api.slack.addView` is it** --
   the tab in `.p-tab_rail__tab_menu` beside Accueil and Activité, the page over
-  the conversation, one tab lit at a time, and clicking another of Slack's tabs
-  to leave. Three things it knows that a mod should not have to. A rail entry
+  `.p-client_workspace__tabpanel` -- the whole panel, channel sidebar included,
+  because Activité and Fichiers replace that too and a view that leaves it
+  there is a page with somebody else's furniture down its side -- one tab lit
+  at a time, and clicking another of Slack's tabs to leave. Three things it knows that a mod should not have to. A rail entry
   is a `button.p-tab_rail__button.c-tabs__tab` inside a `p-autoclog__hook`
   wrapper, with `--active` on both classes and `aria-selected` marking the one
   you are on -- borrowing those classes is what makes the entry follow every
