@@ -245,16 +245,15 @@ test('puts its button in the left rail, with a shortcut and a command', async ()
       key: 'h', code: 'KeyH', metaKey: true, shiftKey: true, bubbles: true,
     }));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.ok(document.querySelector('.bsh-panel'), 'and the shortcut opens the page');
+    assert.ok(document.querySelector('#betterslack-history-view'), 'and the shortcut opens the view');
   } finally {
-    document.querySelector('.bsh-scrim')?.remove();
     // The sweeps are intervals; left running they hold the test process open.
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
   }
 });
 
-test('the page opens with its search, its filters and a way to empty it', async () => {
+test('the view opens where Slack renders its own views, not over the middle', async () => {
   const dom = installDom();
   const { api, recorded } = createTestApi({ files: FILES });
   try {
@@ -262,20 +261,44 @@ test('the page opens with its search, its filters and a way to empty it', async 
     recorded.commands.find((command) => command.id === 'open').run();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const page = document.querySelector('.bsh-panel');
-    assert.ok(page, 'the page is on screen');
-    assert.ok(page.querySelector('input.c-input_text'), 'it wears Slack’s own field');
-    assert.equal(page.querySelectorAll('.bsh-chip').length, 5, 'everything, and one chip per family');
-    assert.match(page.textContent, /machine/i, 'and it says where the log lives');
-
-    const scrim = document.querySelector('.bsh-scrim');
-    assert.ok(scrim, 'behind a scrim of its own');
-    // Slack ships .c-dialog at opacity 0 and fades it in itself. This is not
-    // that class precisely so it cannot inherit that animation.
-    assert.equal(scrim.classList.contains('c-dialog'), false);
+    const view = document.querySelector('#betterslack-history-view');
+    assert.ok(view, 'the view is on screen');
+    // Inside the conversation pane, so the rail and the sidebar stay live
+    // beside it. A dialog in the middle of the client is the thing this is not.
+    assert.ok(view.closest('.p-view_contents--primary'), 'inside Slack’s own view pane');
+    assert.ok(view.querySelector('input.c-input_text'), 'it wears Slack’s own field');
+    assert.equal(view.querySelectorAll('.bsh-tab').length, 5, 'everything, and one tab per family');
+    assert.match(view.textContent, /machine/i, 'and it says where the log lives');
   } finally {
     for (const dispose of recorded.disposers) dispose();
-    document.querySelector('.bsh-scrim')?.remove();
+    dom.cleanup();
+  }
+});
+
+test('the sort menu hands api.ui.menu an onSelect, which is what it reads', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi({ files: FILES });
+  try {
+    await plugin.start(api);
+    recorded.commands.find((command) => command.id === 'open').run();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    document.querySelector('.bsh-sort').click();
+    const menu = recorded.menus.at(-1);
+    assert.ok(menu, 'a menu opened');
+    assert.equal(menu.items.length, 5, 'one entry per sort');
+    // `onClick` here parses, renders, and silently does nothing: the runtime's
+    // menu calls `onSelect`. That was a real bug, and this is why it stays.
+    for (const item of menu.items) {
+      assert.equal(typeof item.onSelect, 'function', `"${item.label}" must be selectable`);
+    }
+
+    menu.items.find((item) => item.label.match(/ancien|oldest/i)).onSelect();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.match(document.querySelector('.bsh-sort').textContent, /ancien|oldest/i,
+      'and the button says what it is sorted by');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
   }
 });

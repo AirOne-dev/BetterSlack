@@ -20,11 +20,8 @@ export const STRINGS = {
     sort_who: 'By who',
     sort_where: 'By where',
 
-    colWhen: 'When',
-    colWhat: 'What',
-    colWho: 'Who',
-    colWhere: 'Where',
-    colChange: 'Change',
+    today: 'Today',
+    yesterday: 'Yesterday',
 
     edited: 'edited',
     deleted: 'deleted',
@@ -79,11 +76,8 @@ export const STRINGS = {
     sort_who: 'Par personne',
     sort_where: 'Par endroit',
 
-    colWhen: 'Quand',
-    colWhat: 'Quoi',
-    colWho: 'Qui',
-    colWhere: 'Où',
-    colChange: 'Changement',
+    today: 'Aujourd’hui',
+    yesterday: 'Hier',
 
     edited: 'modifié',
     deleted: 'supprimé',

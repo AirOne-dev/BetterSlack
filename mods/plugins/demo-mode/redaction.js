@@ -135,7 +135,7 @@ const TEXT_AREAS = [
   // headstone left where a deleted message was, and the wordings on its page.
   // Slack's own selectors above never reach them, so a real sentence would sail
   // past every one of them and be caught only by the audit.
-  '.bsh-stone__text', '.bsh-before', '.bsh-after', '.bsh-cell--who', '.bsh-cell--where',
+  '.bsh-stone__text', '.bsh-line', '.bsh-who', '.bsh-where',
   // The top bar's search, which remembers what was typed into it.
   '[data-qa="top_nav_search"]', '.p-top_nav__search__container',
 ];

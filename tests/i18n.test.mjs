@@ -97,14 +97,58 @@ test('every plugin that speaks to the user speaks both languages', async () => {
 
     // The two tables must cover the same keys, or French users get English
     // holes that nobody notices until someone screenshots them.
+    /*
+     * The keys in one language's table, however the table is laid out.
+     *
+     * Two shapes have to work and a third must not be mistaken for either. A
+     * key on its own line is the usual one; `en: { label: 'x', hint: 'y' }` on
+     * a single line is what the smallest mods write, and matching only the
+     * first meant those mods were compared with an empty set against an empty
+     * set -- passing while nothing at all was checked. And a key may be quoted,
+     * because a key with a dash in it has to be.
+     */
     const keys = (lang) => {
-      const start = source.indexOf(`\n  ${lang}: {`);
+      const start = source.indexOf(`${lang}: {`);
       assert.ok(start !== -1, `${mod.id}: no ${lang} table`);
-      const end = source.indexOf('\n  },', start);
-      return new Set([...source.slice(start, end).matchAll(/^\s{4}(\w+):/gm)].map((m) => m[1]));
+      let depth = 0;
+      let end = start;
+      for (let i = source.indexOf('{', start); i < source.length; i += 1) {
+        if (source[i] === '{') depth += 1;
+        else if (source[i] === '}') { depth -= 1; if (depth === 0) { end = i; break; } }
+      }
+      /*
+       * Comments come out first, or a key that follows one is invisible.
+       *
+       * A key is recognised by the `{` or `,` in front of it, and a comment
+       * between two entries puts its own last character there instead --
+       * `command-palette` explains one of its keys and that key then looked
+       * missing from English and present in French, which is the shape of a
+       * real bug and was not one. `://` is left alone so a URL in a string is
+       * not read as the start of a comment.
+       */
+      const block = source.slice(start, end)
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+      return new Set([...block.matchAll(/[{,]\s*'?([\w-]+)'?\s*:/g)].map((m) => m[1]));
     };
-    assert.deepEqual([...keys('fr')].sort(), [...keys('en')].sort(),
+    const english = keys('en');
+    assert.deepEqual([...keys('fr')].sort(), [...english].sort(),
       `${mod.id}: en and fr must cover the same keys`);
+
+    /*
+     * And it must ask for nothing it does not have.
+     *
+     * The same rule the panel is held to below, for the same reason: a key
+     * nobody defined renders as the key itself, in the middle of the interface,
+     * in every language at once. Only literal keys are checked -- a mod that
+     * builds one out of a template literal is asking for a family this cannot
+     * enumerate, which is the allowance the panel gets too.
+     */
+    const asked = new Set(files
+      .flatMap(([, text]) => [...text.matchAll(/\bt\(\s*'([\w-]+)'/g)])
+      .map((m) => m[1]));
+    const missing = [...asked].filter((key) => !english.has(key));
+    assert.deepEqual(missing, [], `${mod.id}: asked for and never defined`);
   }
 });
 

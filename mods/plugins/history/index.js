@@ -24,7 +24,7 @@
  * the part that has to be right and the part worth a test.
  */
 
-import { createPage } from './page.js';
+import { createView } from './view.js';
 import { STRINGS } from './strings.js';
 import { add, tally, view } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
@@ -68,7 +68,7 @@ export default {
     const showDeleted = api.settings.get('showDeleted', true) !== false;
     const watchPeople = api.settings.get('people', true) !== false;
 
-    api.css(api.assets.text('page.css'));
+    api.css(api.assets.text('view.css'));
 
     const messages = createMessageWatcher();
     const names = createNameWatcher();
@@ -106,7 +106,11 @@ export default {
       }
     };
 
-    const page = createPage(api, t, {
+    const page = createView(api, t, {
+      // Where Slack renders its own views. The mod covers that pane rather than
+      // floating over the middle of the client: the rail and the sidebar stay
+      // live beside it, which is what switching tab feels like.
+      pane: '.p-view_contents--primary',
       getLog: () => log,
       view,
       tally,
@@ -275,7 +279,21 @@ export default {
       page.refresh();
     };
 
+    /** Where the client was last time, so navigating away closes the view. */
+    let wasAt = location.pathname;
+
     api.helpers.poll(() => {
+      /*
+       * Clicking a channel is leaving this view, the same way it is leaving
+       * Activité. Slack rebuilds the pane underneath and `helpers.mount` would
+       * dutifully put the view back on top of the conversation you just asked
+       * for, which is the one thing a view must never do.
+       */
+      if (location.pathname !== wasAt) {
+        wasAt = location.pathname;
+        if (page.isOpen()) page.close();
+      }
+
       if (document.documentElement.classList.contains(DEMO_ON)) return;
       record([...messages.sweep(readMessages()), ...names.sweep(readNames())]);
       placeStones();

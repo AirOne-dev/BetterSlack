@@ -941,6 +941,14 @@ tests fail below it.
   one per signed-in workspace) and it only exists with more than one. That, not
   `.p-tab_rail`, is Slack's counterpart to Discord's server list; the tab rail
   next to it holds sections (Home, DMs, Activity).
+- **`.p-view_contents--primary` is `position: relative`, and the conversation
+  inside it sits at `z-index: 201`.** So a mod drawing a whole view -- one that
+  covers the conversation the way Activité does, with the rail and the sidebar
+  still live beside it -- pins itself to that pane's inset and has to stack
+  *above* 201. Below it the view is there, correctly sized, and completely see
+  through, which reads as a stylesheet that did not load. Stay well under
+  Slack's own modal overlay at 1053, or `api.ui.confirm` opens behind the view
+  that asked for it.
 - **`.p-client_workspace__tabpanel` is a named-area grid** (`"…--sidebar
   …--primary"`) whose column widths carry the resizable sidebar. Do not override
   its template. To add a column, flip `.p-view_contents--primary` to
