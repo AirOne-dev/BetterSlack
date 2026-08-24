@@ -10,6 +10,7 @@ import type { Cleanup } from './dom.js';
 import { h, keepMounted, onEach, waitFor } from './dom.js';
 import { createI18n } from './i18n.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
+import { VIEW_CSS } from './ui/styles.js';
 import { PANEL_STRINGS } from './ui/strings.js';
 import { createWebApi, currentTeamId, drawnChannelId, userIdFromAvatarUrl, type SlackProfile, type WebApi } from './web-api.js';
 
@@ -474,6 +475,235 @@ export interface ProfilePane {
   userId: string | null;
 }
 
+/* -- a view of a mod's own -------------------------------------------------- */
+
+/**
+ * The views' stylesheet, once, however many views there are.
+ *
+ * Its own node rather than a layer through the style manager: this is the
+ * runtime drawing, not a plugin, and it has to survive one mod being switched
+ * off while another's view is open.
+ */
+function installViewCss(): void {
+  if (document.getElementById('betterslack-view-css')) return;
+  const node = h('style', { id: 'betterslack-view-css' });
+  node.textContent = VIEW_CSS;
+  (document.head ?? document.documentElement)?.append(node);
+}
+
+/** Where Slack keeps its own tabs, and where a mod's goes beside them. */
+const TAB_MENU = '.p-tab_rail__tab_menu';
+/** The pane Slack renders a view into. It is `position: relative`. */
+const VIEW_PANE = '.p-view_contents--primary';
+/** On `<html>` while a mod's view is the one on screen. */
+const VIEW_OPEN_CLASS = 'betterslack-view-open';
+
+export interface ViewOptions {
+  /** Unique within your plugin; becomes part of the DOM id. */
+  id: string;
+  /** The label under the icon in the rail, and the accessible name. */
+  label: string;
+  /** Inline SVG for a 20x20 viewBox icon, using `currentColor`. */
+  icon: string;
+  /** Builds the view's content. Called each time it is opened. */
+  render: () => HTMLElement;
+  onOpen?: () => void;
+  onClose?: () => void;
+}
+
+export interface ViewHandle {
+  open(): void;
+  close(): void;
+  isOpen(): boolean;
+  /** The mounted element, while there is one. */
+  element(): HTMLElement | null;
+  /** Build the content again, in place. */
+  refresh(): void;
+  /**
+   * Where the tab is, for `helpers.badge` and anything else that wants it.
+   *
+   * Handed over rather than left to be rebuilt: a mod writing the selector out
+   * is a mod that has to know how the runtime names things, and it will be
+   * wrong the day that changes.
+   */
+  readonly tabSelector: string;
+}
+
+/**
+ * A whole view of a mod's own, with its tab in Slack's rail.
+ *
+ * Everything Accueil, Messages directs and Activité do: an entry in the rail
+ * wearing Slack's own classes, a page that covers the conversation while the
+ * workspace rail and the channel sidebar stay live beside it, one tab lit at a
+ * time, and clicking another of Slack's tabs to leave.
+ *
+ * Four things it knows that a mod should not have to:
+ *
+ * **Where the rail is.** `.p-tab_rail__tab_menu`, whose entries are a button
+ * wearing `p-tab_rail__button c-tabs__tab` inside a `p-autoclog__hook` wrapper,
+ * with the active one carrying `--active` on both and `aria-selected="true"`.
+ * Copying Slack's classes rather than its look is what makes the entry follow
+ * every theme and every Slack release that keeps them.
+ *
+ * **That the rail lives under a `.c-coachmark-anchor`.** Changing the DOM
+ * around that element has frozen this renderer solid, twice. This appends
+ * inside the tab menu, two levels below it, through `keepMounted` -- which
+ * gives up loudly after 25 remounts in two seconds rather than looping.
+ *
+ * **That the pane is at z-index 201.** See `VIEW_CSS`.
+ *
+ * **That Slack's own tab has to go out.** Slack lights whichever tab matches
+ * the route, and the route has not changed. Its classes are taken off once, on
+ * open, and put back on close -- which holds because Slack re-renders the rail
+ * on navigation and navigation is what closes the view. Put back only where
+ * what is on screen is still what we changed.
+ */
+export function addView(pluginId: string, options: ViewOptions): ViewHandle & { dispose: Cleanup } {
+  installViewCss();
+  const nodeId = `betterslack-view-${pluginId}-${options.id}`;
+  const tabId = `betterslack-tab-${pluginId}-${options.id}`;
+
+  let open = false;
+  let mounted: HTMLElement | null = null;
+  let unmountView: Cleanup | null = null;
+  /** Slack's tabs we dimmed, so they can be lit again exactly as they were. */
+  let dimmed: HTMLElement[] = [];
+
+  const tab = h('button', {
+    class: 'c-button-unstyled p-tab_rail__button c-tabs__tab js-tab c-tabs__tab--full_width betterslack-view-tab',
+    id: tabId,
+    type: 'button',
+    role: 'tab',
+    tabindex: '0',
+    'aria-selected': 'false',
+    'aria-label': options.label,
+    'data-qa': `betterslack_view_${pluginId}_${options.id}`,
+  });
+  const iconInner = h('div', { class: 'p-tab_rail__button__icon_inner' });
+  iconInner.innerHTML = options.icon;
+  tab.append(h('span', { class: 'c-tabs__tab_content' }, [
+    h('div', { class: 'p-tab_rail__button__icon' }, [iconInner]),
+    h('div', { class: 'p-tab_rail__button__label' }, [options.label]),
+  ]));
+  /*
+   * Clicking the tab you are already on does nothing, which is what Slack's own
+   * tabs do. Leaving is choosing somewhere else, and the mod keeps whatever
+   * other way in it wants -- a shortcut, a command -- as the way back out.
+   */
+  tab.addEventListener('click', () => show());
+
+  const unmountTab = keepMounted(TAB_MENU, `${tabId}-hook`, () => {
+    // Slack wraps every tab in this, and its own stylesheet reaches through it.
+    const hook = h('div', { class: 'p-autoclog__hook' });
+    hook.append(tab);
+    return hook;
+  });
+
+  const lightTab = (on: boolean) => {
+    tab.classList.toggle('p-tab_rail__button--active', on);
+    tab.classList.toggle('c-tabs__tab--active', on);
+    tab.setAttribute('aria-selected', String(on));
+  };
+
+  const dimSlacksTabs = () => {
+    dimmed = [...document.querySelectorAll<HTMLElement>('.p-tab_rail__button--active')]
+      .filter((button) => button !== tab);
+    for (const button of dimmed) {
+      button.classList.remove('p-tab_rail__button--active', 'c-tabs__tab--active');
+      button.setAttribute('aria-selected', 'false');
+    }
+  };
+  const lightSlacksTabs = () => {
+    for (const button of dimmed) {
+      // Only what is still the element we changed: Slack re-renders, and
+      // putting a class back on a node it has replaced lights nothing.
+      if (!button.isConnected) continue;
+      button.classList.add('p-tab_rail__button--active', 'c-tabs__tab--active');
+      button.setAttribute('aria-selected', 'true');
+    }
+    dimmed = [];
+  };
+
+  const show = () => {
+    if (open) { refresh(); return; }
+    open = true;
+    document.documentElement.classList.add(VIEW_OPEN_CLASS);
+    lightTab(true);
+    dimSlacksTabs();
+    unmountView = keepMounted(VIEW_PANE, nodeId, () => {
+      mounted = h('section', {
+        class: 'betterslack-view',
+        role: 'region',
+        'aria-label': options.label,
+      }, [options.render()]);
+      return mounted;
+    });
+    options.onOpen?.();
+  };
+
+  const close = () => {
+    if (!open) return;
+    open = false;
+    unmountView?.();
+    unmountView = null;
+    mounted = null;
+    document.documentElement.classList.remove(VIEW_OPEN_CLASS);
+    lightTab(false);
+    lightSlacksTabs();
+    options.onClose?.();
+  };
+
+  const refresh = () => {
+    if (!open || !mounted) return;
+    mounted.replaceChildren(options.render());
+  };
+
+  /*
+   * Leaving is choosing somewhere else, and there are two ways to do that.
+   *
+   * Navigating is the obvious one: `navigation.currententrychange` fires in the
+   * same tick as the pushState -- measured at 9ms against a poll that only
+   * noticed at 286ms -- so the view is gone before what is behind it has drawn
+   * a frame. `popstate` is the fallback for a Chromium without the Navigation
+   * API.
+   *
+   * And that is not enough on its own, which is only obvious once you try it:
+   * clicking Accueil while you are already on a channel changes no route at
+   * all, so nothing fires and the view stays over the thing you just asked to
+   * see. Any of Slack's own tabs being clicked is therefore leaving, route or
+   * no route -- in the capture phase, so it happens whether or not Slack's own
+   * handler decides to do anything.
+   */
+  const onNavigate = () => close();
+  const nav = (window as unknown as { navigation?: EventTarget }).navigation;
+  nav?.addEventListener('currententrychange', onNavigate);
+  window.addEventListener('popstate', onNavigate);
+
+  const onRailClick = (event: MouseEvent) => {
+    if (!open) return;
+    const button = (event.target as Element | null)?.closest?.('.p-tab_rail__button');
+    if (button && button !== tab) close();
+  };
+  document.addEventListener('click', onRailClick as EventListener, true);
+
+  return {
+    open: show,
+    close,
+    isOpen: () => open,
+    element: () => mounted,
+    refresh,
+    tabSelector: `#${tabId}`,
+    dispose: () => {
+      close();
+      unmountTab();
+      tab.remove();
+      nav?.removeEventListener('currententrychange', onNavigate);
+      window.removeEventListener('popstate', onNavigate);
+      document.removeEventListener('click', onRailClick as EventListener, true);
+    },
+  };
+}
+
 export interface ProfileButton {
   id: string;
   label: string;
@@ -679,6 +909,14 @@ export interface SlackApi {
   addToolbarButton(toolbar: ToolbarName, button: ToolbarButton): Cleanup;
   /** Add a button to the member profile pane. */
   addProfileButton(button: ProfileButton): Cleanup;
+  /**
+   * A whole view of your own, with its tab in Slack's rail.
+   *
+   * Everything Accueil, Messages directs and Activité do: the entry beside
+   * theirs, a page covering the conversation with the rail and the sidebar
+   * still live, one tab lit at a time, and clicking another tab to leave.
+   */
+  addView(options: ViewOptions): ViewHandle;
   /**
    * Move the client to a conversation, without a page load.
    *
@@ -929,6 +1167,7 @@ export function createSlackApi(pluginId: string): SlackApi {
     addMessageAction: (action) => addMessageAction(pluginId, action),
     addToolbarButton: (toolbar, button) => addToolbarButton(pluginId, toolbar, button),
     addProfileButton: (button) => addProfileButton(pluginId, button),
+    addView: (options) => addView(pluginId, options),
     web,
 
     openConversation(channelId: string): void {

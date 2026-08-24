@@ -1,22 +1,16 @@
 /**
- * The view: everything that has happened, where Slack puts its own views.
+ * The view: everything that has happened, laid out.
  *
- * Not a dialog. `.p-view_contents--primary` is the pane Slack renders a
- * conversation into -- and Activité, Fils de discussion and Répertoires as well
- * -- and it is `position: relative`, so a panel pinned to its inset covers
- * exactly the conversation area and nothing else. The workspace rail and the
- * channel sidebar stay live beside it, which is what switching tab feels like
- * and what a dialog in the middle of the screen never does.
+ * Where it goes, how it gets a tab in Slack's rail, which tab is lit and what
+ * closes it are all `api.slack.addView`, because none of that is about
+ * history: it is Slack's chrome, and the runtime is where Slack's chrome is
+ * known. This file builds the contents and nothing else.
  *
  * Everything it draws is painted from Slack's own tokens rather than borrowed
  * from Slack's own class names: `--dt_color-*` follows every theme, while a
  * class like `p-view_header__text` is compiler output that churns between
  * builds. The one exception is the field and the buttons, where Slack's classes
  * are stable BEM and worth borrowing outright.
- *
- * The entrance uses the design system's motion tokens, so it slides when the
- * Motion mod is on, appears instantly when it is not, and honours
- * `prefers-reduced-motion` without asking -- the tokens already do.
  */
 
 const SORTS = ['newest', 'oldest', 'kind', 'who', 'where'];
@@ -30,11 +24,9 @@ const FAMILY = {
   joined: 'people', left: 'people', 'status-changed': 'people',
 };
 
-const HOST_ID = 'betterslack-history-view';
-
 export function createView(api, t, deps) {
   const { h } = api.dom;
-  let unmount = null;
+  let view = null;
   let panel = null;
   let query = '';
   let groups = [];
@@ -169,16 +161,7 @@ export function createView(api, t, deps) {
     list.replaceChildren(...nodes);
   };
 
-  const onKey = (event) => {
-    if (event.key === 'Escape' && panel) { event.stopPropagation(); close(); }
-  };
-
-  const close = () => {
-    unmount?.();
-    unmount = null;
-    panel = null;
-    document.removeEventListener('keydown', onKey, true);
-  };
+  const close = () => view?.close();
 
   const build = () => {
     const search = h('input', {
@@ -247,18 +230,7 @@ export function createView(api, t, deps) {
       void draw();
     });
 
-    const closeButton = api.helpers.iconButton({
-      label: t('close'),
-      icon: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M5.3 5.3a1 1 0 0 1 1.4 0l3.3 3.3 3.3-3.3a1 1 0 1 1 1.4 1.4L11.4 10l3.3 3.3a1 1 0 0 1-1.4 1.4L10 11.4l-3.3 3.3a1 1 0 0 1-1.4-1.4L8.6 10 5.3 6.7a1 1 0 0 1 0-1.4Z"/></svg>',
-      onClick: () => close(),
-    });
-
-    const node = h('section', {
-      id: HOST_ID,
-      class: 'bsh-view',
-      role: 'region',
-      'aria-label': t('title'),
-    }, [
+    const node = h('div', { class: 'bsh-view' }, [
       // The header Slack puts on every view: a title on the left, what acts on
       // the whole view on the right, and a hairline under it.
       h('header', { class: 'bsh-header' }, [
@@ -266,7 +238,9 @@ export function createView(api, t, deps) {
           h('h1', { class: 'bsh-header__title' }, [t('title')]),
           h('p', { class: 'bsh-header__hint bsh-dim' }, [t('subtitle')]),
         ]),
-        h('div', { class: 'bsh-header__actions' }, [clear, closeButton]),
+        // No close button: this is a view, and you leave a view by going
+        // somewhere else, exactly as you leave Activité.
+        h('div', { class: 'bsh-header__actions' }, [clear]),
       ]),
       h('div', { class: 'bsh-bar' }, [tabs, h('div', { class: 'bsh-bar__right' }, [search, sortButton])]),
       h('div', { class: 'bsh-list', role: 'list' }),
@@ -279,20 +253,20 @@ export function createView(api, t, deps) {
     return node;
   };
 
-  const open = () => {
-    if (unmount) { void draw(); return; }
-    // `helpers.mount` rather than a bare append: Slack rebuilds this pane on
-    // every navigation, and the mount puts the view back rather than letting it
-    // disappear mid-read. It gives up loudly instead of looping if the pane
-    // ever fights back.
-    unmount = api.helpers.mount(deps.pane, HOST_ID, build);
-    document.addEventListener('keydown', onKey, true);
-  };
+  view = api.slack.addView({
+    id: 'log',
+    label: t('title'),
+    icon: deps.icon,
+    render: build,
+    onClose: () => { panel = null; },
+  });
 
   return {
-    open,
+    open: () => view.open(),
     close,
-    isOpen: () => Boolean(unmount),
+    isOpen: () => view.isOpen(),
     refresh: () => { if (panel) void draw(); },
+    /** Where the runtime put the tab, so the badge does not guess at it. */
+    tabSelector: view.tabSelector,
   };
 }

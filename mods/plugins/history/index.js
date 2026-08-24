@@ -107,10 +107,7 @@ export default {
     };
 
     const page = createView(api, t, {
-      // Where Slack renders its own views. The mod covers that pane rather than
-      // floating over the middle of the client: the rail and the sidebar stay
-      // live beside it, which is what switching tab feels like.
-      pane: '.p-view_contents--primary',
+      icon: ICON,
       getLog: () => log,
       view,
       tally,
@@ -279,21 +276,7 @@ export default {
       page.refresh();
     };
 
-    /** Where the client was last time, so navigating away closes the view. */
-    let wasAt = location.pathname;
-
     api.helpers.poll(() => {
-      /*
-       * Clicking a channel is leaving this view, the same way it is leaving
-       * Activité. Slack rebuilds the pane underneath and `helpers.mount` would
-       * dutifully put the view back on top of the conversation you just asked
-       * for, which is the one thing a view must never do.
-       */
-      if (location.pathname !== wasAt) {
-        wasAt = location.pathname;
-        if (page.isOpen()) page.close();
-      }
-
       if (document.documentElement.classList.contains(DEMO_ON)) return;
       record([...messages.sweep(readMessages()), ...names.sweep(readNames())]);
       placeStones();
@@ -357,20 +340,10 @@ export default {
 
     // ------------------------------------------------------------- the chrome
 
-    // The left rail, under everything else, next to your avatar: this is a
-    // place you go rather than something you do to the conversation in front
-    // of you.
-    api.slack.addToolbarButton('controlStrip', {
-      id: 'open',
-      label: t('title'),
-      description: t('buttonHint'),
-      icon: ICON,
-      onClick: () => open(),
-    });
-
-    // What arrived since you last looked. Nothing new means no badge at all,
-    // rather than a zero sitting on the button for ever.
-    api.helpers.badge('[data-qa="betterslack_history_open"]', 'new',
+    // What arrived since you last looked, on the tab in Slack's rail that
+    // `addView` put there. Nothing new means no badge at all, rather than a
+    // zero sitting on the tab for ever.
+    api.helpers.badge(page.tabSelector, 'new',
       () => log.filter((entry) => entry.at > openedAt).length || null);
 
     api.helpers.hotkey(api.settings.get('shortcut', 'mod+shift+h'), () => {

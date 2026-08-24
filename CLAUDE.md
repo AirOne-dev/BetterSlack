@@ -941,6 +941,18 @@ tests fail below it.
   one per signed-in workspace) and it only exists with more than one. That, not
   `.p-tab_rail`, is Slack's counterpart to Discord's server list; the tab rail
   next to it holds sections (Home, DMs, Activity).
+- **A mod can have a whole view of its own, and `api.slack.addView` is it** --
+  the tab in `.p-tab_rail__tab_menu` beside Accueil and Activité, the page over
+  the conversation, one tab lit at a time, and clicking another of Slack's tabs
+  to leave. Three things it knows that a mod should not have to. A rail entry
+  is a `button.p-tab_rail__button.c-tabs__tab` inside a `p-autoclog__hook`
+  wrapper, with `--active` on both classes and `aria-selected` marking the one
+  you are on -- borrowing those classes is what makes the entry follow every
+  theme. That menu is a descendant of a `.c-coachmark-anchor`, so the entry
+  goes in through `keepMounted`, which gives up rather than looping. And
+  Slack's own tab has to be put out by hand, because the route has not changed:
+  its classes come off on open and go back on close, which holds because Slack
+  re-renders the rail on navigation and navigation is what closes the view.
 - **`.p-view_contents--primary` is `position: relative`, and the conversation
   inside it sits at `z-index: 201`.** So a mod drawing a whole view -- one that
   covers the conversation the way Activité does, with the rail and the sidebar
@@ -1217,7 +1229,8 @@ Shape of it:
   `when` guard that gates the *match* so an inapplicable shortcut does not
   swallow the key), `mount`, `each`, `badge`, `tooltip`, `copy`, `iconButton`,
   `field`, `section`, `debounce`.
-- `api.slack` — Slack's chrome: `addToolbarButton` (controlStrip / composer /
+- `api.slack` — Slack's chrome: `addView` (a whole view, with its tab in the
+  rail), `addToolbarButton` (controlStrip / composer /
   channelHeader, with `before` to sit above another button), `addMessageAction`,
   `addProfileButton`, `describeMessage`, `userIdFromMessage`,
   `currentChannelId`, `composer`, `web`, `selectors`.

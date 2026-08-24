@@ -9,7 +9,7 @@ import { h, keepMounted, onEach, onShortcut, waitFor, type Cleanup } from './dom
 import { collectCleanups } from './plugins.js';
 import { createHelpers, type Helpers } from './helpers.js';
 import { createI18n, type I18n } from './i18n.js';
-import { createSlackApi, type SlackApi } from './slack-api.js';
+import { addView, createSlackApi, type SlackApi } from './slack-api.js';
 import type { StyleManager } from './themes.js';
 import { attachTooltip, type TooltipOptions } from './ui/tooltip.js';
 import { createKit, type Kit } from './ui/kit.js';
@@ -411,6 +411,18 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
         addMessageAction: track(slack.addMessageAction.bind(slack)),
         addToolbarButton: track(slack.addToolbarButton.bind(slack)) as SlackApi['addToolbarButton'],
         addProfileButton: track(slack.addProfileButton.bind(slack)),
+        /*
+         * A view holds two things -- a tab in Slack's rail and a page over the
+         * conversation -- so it hands back a handle rather than a cleanup, and
+         * the cleanup on it is what the plugin's lifecycle collects. Switching
+         * the mod off has to take the tab out of Slack's chrome; a rail with an
+         * entry for a mod that is no longer running is worse than no entry.
+         */
+        addView: (options) => {
+          const handle = addView(record.id, options);
+          cleanups.add(handle.dispose);
+          return handle;
+        },
       };
     })(),
 

@@ -14,7 +14,7 @@ import { createI18n } from '../dist/i18n.mjs';
 import { createKit } from '../dist/ui/kit.mjs';
 import { openMenu } from '../dist/ui/menu.mjs';
 import { KIT_CSS } from '../dist/ui/kit-css.mjs';
-import { SELECTORS } from '../dist/slack-api.mjs';
+import { addView, SELECTORS } from '../dist/slack-api.mjs';
 
 export { SLACK_FIXTURE } from './slack-fixture.mjs';
 import { SLACK_FIXTURE } from './slack-fixture.mjs';
@@ -162,6 +162,7 @@ export function createTestApi({
     menus: [],
     settingsListeners: [],
     commands: [],
+    views: [],
     logs: [],
     navigations: [],
     savedThemes: [],
@@ -454,6 +455,22 @@ export function createTestApi({
         for (const [team, count] of seen) if (count > bestCount) { best = team; bestCount = count; }
         return best ?? fromUrl;
       },
+      /*
+       * The real one, not a recorder.
+       *
+       * A view is Slack's chrome -- a tab in the rail, a page over the
+       * conversation, one tab lit at a time -- and the fixture has the rail and
+       * the pane it needs. A stand-in would let a mod's test pass while the
+       * thing that puts it on screen was broken, which is the whole reason this
+       * lives in the runtime rather than in the mod.
+       */
+      addView: (options) => {
+        const handle = addView('test', options);
+        recorded.views.push({ options, handle });
+        recorded.disposers.push(handle.dispose);
+        return handle;
+      },
+
       // The real table, not a stand-in: a mod that anchors on
       // `api.slack.selectors` would otherwise query `undefined` here and pass.
       selectors: SELECTORS,

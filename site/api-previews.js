@@ -259,903 +259,6 @@
     return cleanup;
   }
 
-  // src/runtime/ui/strings.ts
-  var PANEL_STRINGS = {
-    en: {
-      title: "BetterSlack",
-      close: "Close",
-      themes: "Themes",
-      plugins: "Plugins",
-      css: "Custom CSS",
-      about: "About",
-      installed: "Installed",
-      browse: "Browse",
-      search: "Search mods\u2026",
-      noMatch: "Nothing matches that search.",
-      allInstalled: "Everything in the catalogue is already installed.",
-      nothingInstalled: "Nothing installed yet \u2014 the Browse shelf is where you start.",
-      sortLabel: "Sort",
-      sortRecent: "Recently installed",
-      sortAz: "Name A\u2013Z",
-      sortZa: "Name Z\u2013A",
-      sortEnabled: "Switched on first",
-      byLine: "v{version} \xB7 by {author}",
-      filterAll: "All",
-      backToList: "\u2039 All mods",
-      settingsTitle: "Settings",
-      install: "Install",
-      enable: "Enable",
-      disable: "Disable",
-      remove: "Remove",
-      notRunning: "not running",
-      settingsCount: "Settings ({count})",
-      settingsHide: "Hide settings",
-      uses: "Uses {names}",
-      needs: "Needs {names}",
-      enableIt: "Enable it",
-      enableThem: "Enable them",
-      enableAll: "Enable all {count}",
-      notInCatalogue: "Not in the catalogue: {names}",
-      cancel: "Cancel",
-      requiresTitle: "{name} needs {count} plugin(s)",
-      requiresBody: "A theme is CSS. This one needs behaviour CSS cannot do, which lives in plugins \u2014 code that keeps running after the theme is switched off. Enabling them is your call.",
-      safeTitle: "Safe mode \u2014 nothing is loaded",
-      safeAsked: "Started with --safe. Your mods are untouched; start again without it to load them.",
-      safeCrashed: "{reason}. Switch off whatever you suspect, then start BetterSlack again.",
-      skippedTitle: "{count} mod folder(s) were skipped",
-      skippedBody: "These are in the mods folder but could not be read, so they are not listed above. The message says which file and why.",
-      updateTitle: "An update is available",
-      /**
-       * Both numbers, where the eye lands. Used whenever the published version is
-       * known, which is nearly always; the body then says only what will happen.
-       */
-      updateTitleVersion: "BetterSlack {current} \u2192 {latest}",
-      updateGit: "Updating fetches that version and rebuilds.",
-      /** No version to name: a branch that moved without a release on it. */
-      updateGitCount: "{count} change(s) since this copy{headline}. Updating fetches them and rebuilds.",
-      updateHeadline: " \u2014 latest: {subject}",
-      updatePackage: "Updating downloads that version from GitHub and replaces this copy \u2014 your mods and settings are kept, they live outside it.",
-      updateGo: "Update and restart",
-      updateWorking: "Updating\u2026",
-      updateGitHub: "Open GitHub",
-      updatePulling: "Pulling and rebuilding\u2026",
-      updateDownloading: "Downloading and rebuilding\u2026",
-      updateDone: "Updated. Slack is restarting\u2026",
-      updateFailed: "Could not update: {reason}",
-      /** The dot on a tab and on the launcher. Read out; never drawn as words. */
-      updateAvailable: "Update available",
-      /**
-       * The second line of a status tooltip. Slack words its own the same way,
-       * and this is the app's dictionary rather than a mod's because the node it
-       * goes on comes from api.slack.statusNode -- shared, so it cannot reach any
-       * one mod's strings.
-       */
-      statusUntil: "Until {when}",
-      /** The start screen, under the mark. */
-      splashLoading: "Starting up\u2026",
-      splashStarting: "Starting {name} \u2014 {done} of {total}",
-      modUpdateTitle: "{name} {current} \u2192 {version}",
-      modUpdateBody: "Updating replaces this mod alone, and reapplies it if it is on.",
-      modUpdateGo: "Update",
-      modUpdateWorking: "Downloading\u2026",
-      modUpdateBlocked: "{name} {version} needs BetterSlack {needs}, and this is {running}. Update BetterSlack first \u2014 taking it now would leave a mod calling things this version does not have.",
-      slackTooOld: "Written against Slack {wanted}, and this is {have}. It may not find what it expects.",
-      cssHint: "Applied after every theme, so it always wins. Slack exposes its palette as CSS custom properties (--dt_color-*), which is a steadier target than its class names.",
-      cssSave: "Save and apply",
-      cssApplied: "Applied.",
-      aboutBody: "BetterSlack injects into the Slack renderer over the Chrome DevTools Protocol, carried on a private pipe rather than a debugging port \u2014 nothing listens on the network. It does not modify Slack.app, so Slack updates cannot break your install, but mods stay loaded only while the loader runs.",
-      hotReload: "Hot reload",
-      hotReloadHint: "Reapply a mod as soon as its file changes on disk.",
-      version: "Version",
-      catalogue: "Catalogue",
-      yourMods: "Your mods",
-      transport: "Transport",
-      repository: "Repository",
-      contribute: "Submit a mod",
-      remoteHint: "Install from a GitHub URL \u2014 a repository, or a folder inside one.",
-      remotePlaceholder: "github.com/someone/their-mods/tree/main/my-plugin",
-      remoteFetch: "Read it",
-      remoteReading: "Reading\u2026",
-      remoteInstalling: "Installing\u2026",
-      remoteInstalled: "{name} installed. It is off until you switch it on.",
-      remoteAccept: "Install anyway",
-      remoteFrom: "From",
-      remoteKind: "Kind",
-      remoteScripts: "Code that will run",
-      remoteNoScripts: "none \u2014 this one is stylesheets only",
-      remoteSize: "Size",
-      remoteBadge: "unreviewed",
-      remoteBadgeHint: "From {source}. Nobody in this project has read it.",
-      remoteWarningPlugin: "This is somebody else\u2019s code, and nobody here has read it. A plugin runs unsandboxed in your signed-in Slack: it can read every message you can, and the session token. Install it only if you trust whoever wrote it.",
-      remoteWarningTheme: "This is somebody else\u2019s theme, and nobody here has read it. A theme is CSS, so it cannot read your messages \u2014 but it can hide or fake parts of the interface. Install it only if you trust whoever wrote it.",
-      backupTitle: "Backup",
-      backupHint: "Your settings and the mods you wrote or installed yourself. Catalogue mods come back with the project, so they are not in it.",
-      backupExport: "Save a backup",
-      backupImport: "Restore one",
-      backupSaved: "Saved to your downloads.",
-      backupWorking: "Restoring\u2026",
-      backupRestored: "Restored {detail}.",
-      diagTitle: "What the mods cost",
-      diagHint: "Time spent starting, and how often Slack has undone each mod\u2019s work.",
-      diagTiming: "{ms} ms \xB7 {mounts} mounts",
-      diagCopy: "Copy a report",
-      diagCopied: "Copied",
-      diagCopyFailed: "Could not copy"
-    },
-    fr: {
-      title: "BetterSlack",
-      close: "Fermer",
-      themes: "Th\xE8mes",
-      plugins: "Plugins",
-      css: "CSS personnalis\xE9",
-      about: "\xC0 propos",
-      installed: "Install\xE9s",
-      browse: "Parcourir",
-      search: "Rechercher un mod\u2026",
-      noMatch: "Aucun r\xE9sultat pour cette recherche.",
-      allInstalled: "Tout le catalogue est d\xE9j\xE0 install\xE9.",
-      nothingInstalled: "Rien d\u2019install\xE9 pour l\u2019instant \u2014 tout commence dans l\u2019onglet Parcourir.",
-      sortLabel: "Trier",
-      sortRecent: "Install\xE9s r\xE9cemment",
-      sortAz: "Nom A\u2013Z",
-      sortZa: "Nom Z\u2013A",
-      sortEnabled: "Activ\xE9s d\u2019abord",
-      byLine: "v{version} \xB7 par {author}",
-      filterAll: "Tous",
-      backToList: "\u2039 Tous les mods",
-      settingsTitle: "R\xE9glages",
-      install: "Installer",
-      enable: "Activer",
-      disable: "D\xE9sactiver",
-      remove: "Retirer",
-      notRunning: "n\u2019a pas d\xE9marr\xE9",
-      settingsCount: "R\xE9glages ({count})",
-      settingsHide: "Masquer les r\xE9glages",
-      uses: "Utilise {names}",
-      needs: "N\xE9cessite {names}",
-      enableIt: "Activer le plugin",
-      enableThem: "Activer les plugins",
-      enableAll: "Activer les {count} plugins",
-      notInCatalogue: "Absent du catalogue : {names}",
-      cancel: "Annuler",
-      requiresTitle: "{name} n\xE9cessite {count} plugin(s)",
-      requiresBody: "Un th\xE8me, c\u2019est du CSS. Celui-ci a besoin d\u2019un comportement que le CSS ne permet pas, et ce comportement rel\xE8ve des plugins \u2014 du code qui continue de s\u2019ex\xE9cuter une fois le th\xE8me d\xE9sactiv\xE9. \xC0 vous de d\xE9cider de les activer.",
-      safeTitle: "Mode sans \xE9chec \u2014 rien n\u2019est charg\xE9",
-      safeAsked: "D\xE9marr\xE9 avec --safe. Vos mods sont intacts ; relancez sans l\u2019option pour les charger.",
-      safeCrashed: "{reason}. D\xE9sactivez ce que vous suspectez, puis relancez BetterSlack.",
-      skippedTitle: "{count} dossier(s) de mod ignor\xE9(s)",
-      skippedBody: "Ils sont dans le dossier mods mais n\u2019ont pas pu \xEAtre lus, donc ils ne sont pas list\xE9s ci-dessus. Le message indique quel fichier et pourquoi.",
-      updateTitle: "Une mise \xE0 jour est disponible",
-      updateTitleVersion: "BetterSlack {current} \u2192 {latest}",
-      updateGit: "Mettre \xE0 jour r\xE9cup\xE8re cette version et reconstruit.",
-      updateGitCount: "{count} changement(s) depuis votre copie{headline}. Mettre \xE0 jour les r\xE9cup\xE8re et reconstruit.",
-      updateHeadline: " \u2014 dernier : {subject}",
-      updatePackage: "Mettre \xE0 jour t\xE9l\xE9charge cette version depuis GitHub et remplace cette copie \u2014 vos mods et vos r\xE9glages sont conserv\xE9s, ils sont stock\xE9s ailleurs.",
-      updateGo: "Mettre \xE0 jour et relancer",
-      updateWorking: "Mise \xE0 jour\u2026",
-      updateGitHub: "Ouvrir GitHub",
-      updatePulling: "R\xE9cup\xE9ration et reconstruction\u2026",
-      updateDownloading: "T\xE9l\xE9chargement et reconstruction\u2026",
-      updateDone: "Mis \xE0 jour. Slack red\xE9marre\u2026",
-      updateFailed: "Mise \xE0 jour impossible : {reason}",
-      updateAvailable: "Mise \xE0 jour disponible",
-      statusUntil: "Jusqu\u2019\xE0 {when}",
-      splashLoading: "D\xE9marrage\u2026",
-      splashStarting: "D\xE9marrage de {name} \u2014 {done} sur {total}",
-      modUpdateTitle: "{name} {current} \u2192 {version}",
-      modUpdateBody: "Mettre \xE0 jour ne remplace que ce mod, et le r\xE9applique s\u2019il est activ\xE9.",
-      modUpdateGo: "Mettre \xE0 jour",
-      modUpdateWorking: "T\xE9l\xE9chargement\u2026",
-      modUpdateBlocked: "{name} {version} n\xE9cessite BetterSlack {needs}, et vous avez {running}. Mettez d'abord BetterSlack \xE0 jour \u2014 sinon ce mod appellerait des choses que cette version n'a pas.",
-      slackTooOld: "\xC9crit pour Slack {wanted}, et vous avez {have}. Il peut ne pas trouver ce qu'il attend.",
-      cssHint: "Appliqu\xE9 apr\xE8s tous les th\xE8mes, il l\u2019emporte donc toujours. Slack expose sa palette en propri\xE9t\xE9s CSS personnalis\xE9es (--dt_color-*), une cible plus stable que ses noms de classe.",
-      cssSave: "Enregistrer et appliquer",
-      cssApplied: "Appliqu\xE9.",
-      aboutBody: "BetterSlack s\u2019injecte dans le processus de rendu de Slack via le Chrome DevTools Protocol, achemin\xE9 par un pipe priv\xE9 plut\xF4t que par un port de d\xE9bogage \u2014 rien n\u2019\xE9coute sur le r\xE9seau. Slack.app n\u2019est jamais modifi\xE9 : une mise \xE0 jour de Slack ne peut donc pas casser votre installation, mais les mods ne restent charg\xE9s que tant que le loader s\u2019ex\xE9cute.",
-      hotReload: "Rechargement \xE0 chaud",
-      hotReloadHint: "R\xE9appliquer un mod d\xE8s que son fichier change sur le disque.",
-      version: "Version",
-      catalogue: "Catalogue",
-      yourMods: "Vos mods",
-      transport: "Transport",
-      repository: "D\xE9p\xF4t",
-      contribute: "Proposer un mod",
-      remoteHint: "Installer depuis une URL GitHub \u2014 un d\xE9p\xF4t, ou un dossier dedans.",
-      remotePlaceholder: "github.com/quelquun/ses-mods/tree/main/mon-plugin",
-      remoteFetch: "Examiner",
-      remoteReading: "Analyse\u2026",
-      remoteInstalling: "Installation\u2026",
-      remoteInstalled: "{name} est install\xE9, et restera d\xE9sactiv\xE9 tant que vous ne l\u2019activerez pas.",
-      remoteAccept: "Installer quand m\xEAme",
-      remoteFrom: "Provenance",
-      remoteKind: "Type",
-      remoteScripts: "Code qui s\u2019ex\xE9cutera",
-      remoteNoScripts: "aucun \u2014 uniquement des feuilles de style",
-      remoteSize: "Taille",
-      remoteBadge: "non relu",
-      remoteBadgeHint: "Depuis {source}. Personne dans ce projet ne l\u2019a lu.",
-      remoteWarningPlugin: "C\u2019est le code de quelqu\u2019un d\u2019autre, que personne ici n\u2019a relu. Un plugin s\u2019ex\xE9cute sans isolation dans votre session Slack : il peut lire tous les messages auxquels vous avez acc\xE8s, ainsi que votre jeton de session. Ne l\u2019installez que si vous faites confiance \xE0 son auteur.",
-      remoteWarningTheme: "C\u2019est le th\xE8me de quelqu\u2019un d\u2019autre, que personne ici n\u2019a lu. Un th\xE8me est du CSS, il ne peut donc pas lire vos messages \u2014 mais il peut masquer ou falsifier des parties de l\u2019interface. Ne l\u2019installez que si vous faites confiance \xE0 son auteur.",
-      backupTitle: "Sauvegarde",
-      backupHint: "Vos r\xE9glages, et les mods que vous avez \xE9crits ou install\xE9s vous-m\xEAme. Ceux du catalogue reviennent avec le projet : ils ne figurent pas dans la sauvegarde.",
-      backupExport: "Enregistrer une sauvegarde",
-      backupImport: "Restaurer une sauvegarde",
-      backupSaved: "Enregistr\xE9 dans vos t\xE9l\xE9chargements.",
-      backupWorking: "Restauration\u2026",
-      backupRestored: "{detail} \u2014 restaur\xE9.",
-      diagTitle: "Ce que co\xFBtent les mods",
-      diagHint: "Temps pass\xE9 au d\xE9marrage, et nombre de fois o\xF9 Slack a d\xE9fait le travail de chaque mod.",
-      diagTiming: "{ms} ms \xB7 {mounts} remontages",
-      diagCopy: "Copier un rapport",
-      diagCopied: "Copi\xE9",
-      diagCopyFailed: "Copie impossible"
-    }
-  };
-
-  // src/runtime/web-api.ts
-  var CONFIG_KEY = "localConfig_v2";
-  var METHOD_PATTERN = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)*$/;
-  var WebApiError = class extends Error {
-    constructor(method, slackError) {
-      super(`${method} failed: ${slackError}`);
-      this.method = method;
-      this.slackError = slackError;
-    }
-  };
-  function currentTeamId() {
-    const fromUrl = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i)?.[1] ?? null;
-    const drawn = drawnTeams();
-    if (drawn.size === 0) return fromUrl;
-    if (fromUrl && drawn.has(fromUrl)) return fromUrl;
-    let best = null;
-    let bestCount = 0;
-    for (const [team, count] of drawn) {
-      if (count > bestCount) {
-        best = team;
-        bestCount = count;
-      }
-    }
-    return best ?? fromUrl;
-  }
-  function drawnTeams() {
-    const seen = /* @__PURE__ */ new Map();
-    const client = document.querySelector(".p-client_container");
-    if (!client) return seen;
-    for (const image of client.querySelectorAll("img")) {
-      const team = /\/(T[A-Z0-9]+)-U[A-Z0-9]+-/i.exec(image.src)?.[1];
-      if (team) seen.set(team, (seen.get(team) ?? 0) + 1);
-    }
-    return seen;
-  }
-  function drawnChannelId() {
-    const message = document.querySelector('[data-qa="message_container"][data-msg-channel-id]');
-    return message?.getAttribute("data-msg-channel-id") ?? null;
-  }
-  function readTeamConfig() {
-    const teamId = currentTeamId();
-    if (!teamId) return null;
-    try {
-      const raw = localStorage.getItem(CONFIG_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed.teams?.[teamId] ?? null;
-    } catch {
-      return null;
-    }
-  }
-  var DIRECTORY_TTL = 60 * 1e3;
-  function createWebApi() {
-    let cachedTeam;
-    const directory = /* @__PURE__ */ new Map();
-    let directoryTeam;
-    let emojiTeam;
-    let emojiMap = null;
-    let cached = null;
-    const config = () => {
-      const team = currentTeamId();
-      if (team !== cachedTeam) {
-        cachedTeam = team;
-        cached = readTeamConfig();
-      }
-      return cached;
-    };
-    const call = async (method, params = {}) => {
-      if (!METHOD_PATTERN.test(method)) {
-        throw new WebApiError(method, "invalid method name");
-      }
-      const token = config()?.token;
-      if (!token) throw new WebApiError(method, "no session token for this workspace");
-      const body = new FormData();
-      body.append("token", token);
-      for (const [key, value] of Object.entries(params)) body.append(key, String(value));
-      const response = await fetch(`/api/${method}`, {
-        method: "POST",
-        body,
-        credentials: "include"
-      });
-      if (!response.ok) throw new WebApiError(method, `HTTP ${response.status}`);
-      const payload = await response.json();
-      if (!payload.ok) throw new WebApiError(method, payload.error ?? "unknown error");
-      return payload;
-    };
-    return {
-      get available() {
-        return typeof config()?.token === "string";
-      },
-      get teamDomain() {
-        return config()?.domain ?? null;
-      },
-      get selfId() {
-        return config()?.user_id ?? null;
-      },
-      call,
-      async userInfo(userId) {
-        const res = await call("users.info", {
-          user: userId,
-          include_locale: true
-        });
-        return res.user;
-      },
-      async users(userIds) {
-        const team = currentTeamId();
-        if (team !== directoryTeam) {
-          directoryTeam = team;
-          directory.clear();
-        }
-        const wanted = [...new Set(userIds)].filter((id) => id);
-        const now = Date.now();
-        const missing = wanted.filter((id) => {
-          const held = directory.get(id);
-          return !held || now - held.at > DIRECTORY_TTL;
-        });
-        if (missing.length) {
-          try {
-            const res = await call("users.info", {
-              users: missing.join(","),
-              include_locale: true
-            });
-            for (const user of res.users ?? []) directory.set(user.id, { user, at: now });
-          } catch {
-            const each = await Promise.all(
-              missing.map(
-                (id) => call("users.info", { user: id, include_locale: true }).then((res) => res.user).catch(() => null)
-              )
-            );
-            for (const user of each) if (user) directory.set(user.id, { user, at: now });
-          }
-        }
-        const out = /* @__PURE__ */ new Map();
-        for (const id of wanted) {
-          const held = directory.get(id);
-          if (held) out.set(id, held.user);
-        }
-        return out;
-      },
-      emoji() {
-        const team = currentTeamId();
-        if (team !== emojiTeam) {
-          emojiTeam = team;
-          emojiMap = null;
-        }
-        if (emojiMap) return emojiMap;
-        emojiMap = (async () => {
-          const out = /* @__PURE__ */ new Map();
-          let raw = {};
-          try {
-            const res = await call("emoji.list");
-            raw = res.emoji ?? {};
-          } catch {
-            return out;
-          }
-          for (const name of Object.keys(raw)) {
-            const seen = /* @__PURE__ */ new Set();
-            let target = name;
-            let value = raw[target];
-            while (typeof value === "string" && value.startsWith("alias:") && !seen.has(target)) {
-              seen.add(target);
-              target = value.slice("alias:".length);
-              value = raw[target];
-            }
-            if (typeof value === "string" && !value.startsWith("alias:")) out.set(name, value);
-          }
-          return out;
-        })();
-        return emojiMap;
-      },
-      presence: (userId) => call("users.getPresence", { user: userId }),
-      teamInfo: () => call("team.info"),
-      dndInfo: (userId) => call("dnd.info", { user: userId }),
-      async availability(userId) {
-        const [presence, dnd] = await Promise.all([
-          call("users.getPresence", { user: userId }).catch(() => null),
-          call("dnd.info", { user: userId }).catch(() => null)
-        ]);
-        const snoozed = Boolean(dnd?.snooze_enabled) || Boolean(dnd?.dnd_enabled && isInDndWindow(dnd));
-        if (snoozed) return { state: "dnd", presence, dnd };
-        if (!presence) return { state: "unknown", presence, dnd };
-        return { state: presence.presence === "active" ? "active" : "away", presence, dnd };
-      }
-    };
-  }
-  function isInDndWindow(dnd) {
-    const start = Number(dnd.next_dnd_start_ts ?? 0);
-    const end = Number(dnd.next_dnd_end_ts ?? 0);
-    if (!start || !end) return false;
-    const now = Date.now() / 1e3;
-    return now >= start && now < end;
-  }
-  function userIdFromAvatarUrl(url) {
-    if (!url) return null;
-    const match = url.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i);
-    return match ? match[1].toUpperCase() : null;
-  }
-
-  // src/runtime/slack-api.ts
-  var ACTIONS_GROUP = '[data-qa="message-actions"]';
-  var ACTIONS_ITEM_CLASS = "c-message_actions__overflow_item c-message_actions__overflow_item--button";
-  var MORE_ACTIONS = '[data-qa="more_message_actions"]';
-  var MESSAGE = '[data-qa="message_container"]';
-  var COMPOSER_EDITOR = ".ql-editor";
-  var COMPOSER = '[data-qa="message_input"]';
-  var CONVERSATION_ROUTE = /\/client\/[^/]+\/([CDG][A-Z0-9]{2,})(?:\/|$)/;
-  var TOOLBARS = {
-    /** Bottom strip of the rail: "Créer un nouveau", focus mode, avatar. */
-    controlStrip: {
-      container: ".p-control_strip",
-      buttonClass: "c-button-unstyled p-control_strip__circle_button",
-      /*
-       * Anchored on BetterSlack's own launcher, not on Slack's coachmark wrapper.
-       *
-       * Inserting next to `.c-coachmark-anchor:has([data-qa="user-button"])`
-       * freezes the renderer solid -- grey window, no error, no console, Slack
-       * has to be killed. Slack's coachmark code evidently reacts to changes
-       * around that node and ends up in a loop with whatever put them there.
-       * Bisected against a running client: the same button anchored here is fine,
-       * anchored there hangs every time.
-       */
-      before: "#betterslack-control-button",
-      placement: "right"
-    },
-    /**
-     * Formatting row under the message box: bold, italic, link…
-     * Anchored on whatever element holds the bold button, rather than on the
-     * composer body, so the button lands beside its peers and not at the end of
-     * an unrelated container.
-     */
-    composer: {
-      container: '*:has(> [data-qa="bold-composer-button"])',
-      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_smedium p-composer__button c-icon_button--default",
-      before: void 0,
-      placement: "top"
-    },
-    /**
-     * Right-hand end of the top bar, beside Slack's own help and account
-     * controls. The place for a switch that belongs to the whole client rather
-     * than to the conversation on screen.
-     *
-     * The container is a direct child on purpose: `display_flex` and
-     * `align_items_center` are utility classes that appear all over Slack's
-     * markup, and matching them anywhere under the right container would put the
-     * button in whichever one happened to come first.
-     */
-    topNav: {
-      container: ".p-ia4_top_nav__right_container > .display_flex.align_items_center",
-      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default",
-      before: void 0,
-      placement: "bottom"
-    },
-    /** Right-hand side of the channel header: huddle, search, more. */
-    channelHeader: {
-      container: ".p-view_header__actions",
-      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default",
-      before: void 0,
-      placement: "bottom"
-    }
-  };
-  var cachedHost = null;
-  function rememberHost(url) {
-    try {
-      cachedHost = new URL(url).origin;
-    } catch {
-    }
-  }
-  function describeMessage(element) {
-    const channelId = element.getAttribute("data-msg-channel-id");
-    const ts = element.getAttribute("data-msg-ts");
-    let permalink = null;
-    const timestampLink = element.querySelector("a.c-timestamp");
-    if (timestampLink?.href) {
-      permalink = timestampLink.href;
-      rememberHost(permalink);
-    } else if (cachedHost && channelId && ts) {
-      permalink = `${cachedHost}/archives/${channelId}/p${ts.replace(".", "")}`;
-    }
-    const body = element.querySelector('[data-qa="message-text"]');
-    return {
-      element,
-      channelId,
-      ts,
-      permalink,
-      text: (body?.textContent ?? element.textContent ?? "").trim()
-    };
-  }
-  function addMessageAction(pluginId, action) {
-    const nodeId = `betterslack-action-${pluginId}-${action.id}`;
-    const cleanup = onEach(ACTIONS_GROUP, (group) => {
-      if (group.querySelector(`#${CSS.escape(nodeId)}`)) return;
-      const message = group.closest(MESSAGE) ?? document.querySelector(".c-message_kit__hover--hovered")?.closest(MESSAGE) ?? null;
-      if (!message) return;
-      const button = h("button", {
-        class: "c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button betterslack-action",
-        type: "button",
-        "aria-label": action.label,
-        "data-qa": `betterslack_${pluginId}_${action.id}`
-      });
-      button.innerHTML = action.icon;
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        action.onClick(describeMessage(message), event);
-      });
-      attachTooltip(button, {
-        title: action.label,
-        subtitle: action.description,
-        placement: "top"
-      });
-      const item = h("div", { class: ACTIONS_ITEM_CLASS, id: nodeId }, [button]);
-      const more = group.querySelector(MORE_ACTIONS)?.closest(`.c-message_actions__overflow_item`);
-      if (more) more.before(item);
-      else group.append(item);
-    });
-    return () => {
-      cleanup();
-      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
-    };
-  }
-  var drawnEmoji = /* @__PURE__ */ new Map();
-  function harvestEmoji() {
-    for (const img of document.querySelectorAll(".c-emoji img[data-stringify-emoji]")) {
-      const name = img.getAttribute("data-stringify-emoji")?.replace(/^:|:$/g, "");
-      if (!name || drawnEmoji.has(name)) continue;
-      if (img.src) drawnEmoji.set(name, img.src);
-    }
-    return drawnEmoji;
-  }
-  function describeStatus(who, customEmoji) {
-    const profile = who && "profile" in who && who.profile ? who.profile : who;
-    if (!profile) return null;
-    const text = (profile.status_text ?? "").trim();
-    const emoji = (profile.status_emoji ?? "").replace(/^:|:$/g, "").trim() || null;
-    if (!text && !emoji) return null;
-    const expiration = Number(profile.status_expiration ?? 0);
-    return {
-      text,
-      emoji,
-      imageUrl: emoji ? imageForEmoji(emoji, profile, customEmoji) : null,
-      // 0 means "no end", which is not the same as the epoch.
-      expiresAt: expiration > 0 ? new Date(expiration * 1e3) : null
-    };
-  }
-  function imageForEmoji(name, profile, customEmoji) {
-    const sent = profile?.status_emoji_display_info?.find(
-      (entry) => !entry.emoji_name || entry.emoji_name.replace(/^:|:$/g, "") === name
-    );
-    if (sent?.display_url) return sent.display_url;
-    return customEmoji?.get(name) ?? harvestEmoji().get(name) ?? null;
-  }
-  function statusNode(status, profile, options = {}) {
-    const { showText = true, placement = "right", hint, tooltipOn } = options;
-    const node = h("span", { class: "betterslack-status" });
-    if (status.emoji) {
-      const unicode = profile?.status_emoji_display_info?.find((e) => e.unicode)?.unicode;
-      if (status.imageUrl) {
-        node.append(h("img", {
-          class: "betterslack-status__emoji",
-          src: status.imageUrl,
-          alt: status.emoji,
-          loading: "lazy"
-        }));
-      } else if (unicode) {
-        node.append(h("span", { class: "betterslack-status__emoji betterslack-status__emoji--char" }, [
-          // Slack sends it as codepoints joined by dashes: "1f1eb-1f1f7".
-          unicode.split("-").map((point) => String.fromCodePoint(parseInt(point, 16))).join("")
-        ]));
-      }
-    }
-    if (showText && status.text) {
-      node.append(h("span", { class: "betterslack-status__text" }, [status.text]));
-    }
-    const title = status.text || hint || (status.emoji ? `:${status.emoji}:` : "");
-    if (title) {
-      attachTooltip(tooltipOn ?? node, {
-        title,
-        subtitle: [
-          status.expiresAt ? untilSentence(status.expiresAt) : "",
-          // Not repeated when it is already the title.
-          status.text ? hint ?? "" : ""
-        ],
-        placement,
-        icon: node.querySelector(".betterslack-status__emoji") ?? void 0
-      });
-    }
-    return node;
-  }
-  function untilSentence(when) {
-    let locale = "en";
-    try {
-      locale = createI18n().locale;
-    } catch {
-    }
-    const day = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "long" });
-    const time = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
-    return statusStrings()("statusUntil", { when: `${day.format(when)}, ${time.format(when)}` });
-  }
-  var statusTranslator = null;
-  function statusStrings() {
-    statusTranslator ?? (statusTranslator = createI18n().strings(PANEL_STRINGS));
-    return statusTranslator;
-  }
-  var PROFILE_PANE = '[data-qa="member_profile_pane"]';
-  var PROFILE_AVATAR = ".p-r_member_profile__avatar__img";
-  var SELECTORS = Object.freeze({
-    message: MESSAGE,
-    messageActions: ACTIONS_GROUP,
-    composer: COMPOSER,
-    composerEditor: COMPOSER_EDITOR,
-    channelSidebar: '[data-qa="channel-sidebar"]',
-    tabRail: '[data-qa="tab_rail_desktop"]',
-    topNav: '[data-qa="top-nav"]',
-    messageText: '[data-qa="message-text"]',
-    profilePane: PROFILE_PANE,
-    profileAvatar: PROFILE_AVATAR
-  });
-  function addProfileButton(pluginId, button) {
-    const nodeId = `betterslack-profile-${pluginId}-${button.id}`;
-    const cleanup = onEach(PROFILE_PANE, (pane) => {
-      if (pane.querySelector(`#${CSS.escape(nodeId)}`)) return;
-      const element = h("button", {
-        class: "c-button c-button--outline c-button--medium betterslack-profile-button",
-        type: "button",
-        id: nodeId,
-        "data-qa": `betterslack_${pluginId}_${button.id}`
-      });
-      if (button.icon) element.innerHTML = button.icon;
-      element.append(h("span", {}, [button.label]));
-      element.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const avatar = pane.querySelector(PROFILE_AVATAR);
-        button.onClick({ element: pane, userId: userIdFromAvatarUrl(avatar?.src) });
-      });
-      const container = pane.querySelector(".p-r_member_profile__container") ?? pane;
-      container.append(h("div", { class: "betterslack-profile-row" }, [element]));
-    });
-    return () => {
-      cleanup();
-      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) {
-        node.closest(".betterslack-profile-row")?.remove();
-        node.remove();
-      }
-    };
-  }
-  function addToolbarButton(pluginId, toolbar, button) {
-    const spec2 = TOOLBARS[toolbar];
-    const nodeId = `betterslack-tb-${pluginId}-${button.id}`;
-    const unmount = keepMounted(
-      spec2.container,
-      nodeId,
-      () => {
-        const element = h("button", {
-          class: `${spec2.buttonClass} betterslack-toolbar-button`,
-          type: "button",
-          "aria-label": button.label,
-          "data-qa": `betterslack_${pluginId}_${button.id}`
-        });
-        element.innerHTML = button.icon;
-        element.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          button.onClick(event);
-        });
-        attachTooltip(element, {
-          title: button.label,
-          subtitle: button.description,
-          placement: spec2.placement
-        });
-        return element;
-      },
-      // Prepend rather than append when the anchor is missing: the end of a
-      // container is where the app's own re-renders land.
-      { before: button.before ?? spec2.before, position: "prepend" }
-    );
-    return () => {
-      unmount();
-      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
-    };
-  }
-  function escapeHtml(value) {
-    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-  var composer = {
-    element: () => document.querySelector(COMPOSER_EDITOR),
-    focus() {
-      const editor = composer.element();
-      if (!editor) return false;
-      editor.focus();
-      return document.activeElement === editor || editor.contains(document.activeElement);
-    },
-    caretToEnd() {
-      const editor = composer.element();
-      if (!editor) return;
-      const selection = window.getSelection();
-      if (!selection) return;
-      const range = document.createRange();
-      range.selectNodeContents(editor);
-      range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    },
-    insertText(text) {
-      if (!composer.focus()) return false;
-      composer.caretToEnd();
-      return document.execCommand("insertText", false, text);
-    },
-    insertLink(url, text) {
-      if (!composer.focus()) return false;
-      composer.caretToEnd();
-      let safe;
-      try {
-        safe = new URL(url);
-      } catch {
-        return false;
-      }
-      if (safe.protocol !== "https:" && safe.protocol !== "http:") return false;
-      return document.execCommand(
-        "insertHTML",
-        false,
-        `<a href="${escapeHtml(safe.href)}">${escapeHtml(text)}</a>`
-      );
-    },
-    isEmpty() {
-      const editor = composer.element();
-      if (!editor) return true;
-      return editor.innerText.replace(/\n/g, "").trim() === "";
-    }
-  };
-  var WINDOW_MATERIALS = Object.freeze([
-    "hud",
-    "fullscreen-ui",
-    "under-window",
-    "titlebar",
-    "none"
-  ]);
-  async function setMaterial(name) {
-    if (!WINDOW_MATERIALS.includes(name)) {
-      throw new Error(`"${name}" is not a window material BetterSlack will set`);
-    }
-    const bridge = window.desktop?.window;
-    if (typeof bridge?.getWindowId !== "function" || typeof bridge?.callBrowserWindowMethod !== "function") {
-      return false;
-    }
-    try {
-      const id = await bridge.getWindowId();
-      await bridge.callBrowserWindowMethod(id, "setVibrancy", name === "none" ? null : name);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  function createSlackApi(pluginId) {
-    const web = createWebApi();
-    return {
-      addMessageAction: (action) => addMessageAction(pluginId, action),
-      addToolbarButton: (toolbar, button) => addToolbarButton(pluginId, toolbar, button),
-      addProfileButton: (button) => addProfileButton(pluginId, button),
-      web,
-      openConversation(channelId) {
-        const team = currentTeamId();
-        if (!team) return;
-        window.location.href = `slack://channel?team=${team}&id=${encodeURIComponent(channelId)}`;
-      },
-      openMessage(channelId, ts, options = {}) {
-        const team = options.team ?? currentTeamId();
-        if (!team || !ts) return;
-        window.location.href = `slack://channel?team=${encodeURIComponent(team)}&id=${encodeURIComponent(channelId)}&message=${encodeURIComponent(ts)}`;
-      },
-      async openDirectMessage(userId) {
-        const res = await web.call("conversations.open", {
-          users: userId,
-          return_im: true
-        });
-        const id = res.channel?.id ?? null;
-        if (id) this.openConversation(id);
-        return id;
-      },
-      openUserProfile(userId) {
-        const team = currentTeamId();
-        if (!team) return;
-        window.location.href = `slack://user?team=${team}&id=${encodeURIComponent(userId)}`;
-      },
-      async hideConversation(channelId) {
-        await web.call("conversations.close", { channel: channelId });
-      },
-      async startHuddle(userId) {
-        await this.openDirectMessage(userId);
-        const button = await waitFor(
-          '[data-qa="huddle_channel_header_button__start_button"]',
-          8e3
-        );
-        if (!button) return false;
-        button.click();
-        return true;
-      },
-      async openStatusEditor() {
-        const button = document.querySelector('[data-qa="user-button"]');
-        if (!button) return false;
-        button.click();
-        const item = await waitFor('[data-qa="main-menu-custom-status-item"]', 4e3);
-        if (!item) return false;
-        item.click();
-        return true;
-      },
-      async vipUsers() {
-        const res = await web.call("users.prefs.get");
-        return String(res.prefs?.vip_users ?? "").split(",").map((id) => id.trim()).filter(Boolean);
-      },
-      async setVip(userId, isVip) {
-        const current = await this.vipUsers();
-        const next = isVip ? [.../* @__PURE__ */ new Set([...current, userId])] : current.filter((id) => id !== userId);
-        await web.call("users.prefs.set", { name: "vip_users", value: next.join(",") });
-        return isVip;
-      },
-      async filesFrom(userId, limit = 20) {
-        const res = await web.call("files.list", {
-          user: userId,
-          count: limit
-        });
-        return Array.isArray(res.files) ? res.files : [];
-      },
-      describeMessage,
-      composer,
-      describeStatus,
-      statusNode,
-      emojiUrl: (name, customEmoji) => {
-        const clean = String(name ?? "").replace(/^:|:$/g, "").trim();
-        if (!clean) return null;
-        return imageForEmoji(clean, null, customEmoji);
-      },
-      avatarUrl: (url, size) => typeof url === "string" && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
-      userIdFromMessage: (message) => userIdFromAvatarUrl(
-        message.element.querySelector(".c-message_kit__avatar img, .c-avatar img")?.src
-      ),
-      currentChannelId: () => {
-        const fromUrl = location.pathname.match(CONVERSATION_ROUTE)?.[1] ?? null;
-        return drawnChannelId()?.toUpperCase() ?? fromUrl;
-      },
-      currentTeamId: () => currentTeamId(),
-      /*
-       * Filled in by `createPluginApi`, which is where the settings live. Left
-       * inert here so `createSlackApi` still satisfies the type on its own, and
-       * so a caller that somehow reaches this copy gets an honest "no" rather
-       * than a promise nobody keeps.
-       */
-      desktop: {
-        supported: false,
-        keys: () => [],
-        get: () => void 0,
-        launched: () => void 0,
-        needsRestart: () => false,
-        set: async () => void 0,
-        clear: async () => void 0,
-        managed: () => ({}),
-        materials: WINDOW_MATERIALS,
-        setMaterial
-      },
-      restart: async () => void 0,
-      selectors: SELECTORS
-    };
-  }
-
   // src/runtime/ui/code.ts
   var ESCAPES = {
     "&": "&amp;",
@@ -2603,6 +1706,1050 @@
   pointer-events: none;
 }
 `;
+  var VIEW_CSS = `
+.betterslack-view {
+  position: absolute;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--dt_color-base-pry, #1a1d21);
+  color: var(--dt_color-content-pry, #d1d2d3);
+  animation: betterslack-view-enter var(--sm-motion-base, 200ms) var(--sm-motion-ease, cubic-bezier(.2, .9, .25, 1));
+}
+
+@keyframes betterslack-view-enter {
+  from { opacity: 0; transform: translateX(var(--sm-motion-shift, 8px)); }
+  to { opacity: 1; transform: none; }
+}
+
+.betterslack-view-tab .p-tab_rail__button__icon_inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.betterslack-view-tab .p-tab_rail__button__icon_inner svg { width: 20px; height: 20px; }
+.betterslack-view-tab.p-tab_rail__button--active .p-tab_rail__button__icon_inner svg { width: 22px; height: 22px; }
+`;
+
+  // src/runtime/ui/strings.ts
+  var PANEL_STRINGS = {
+    en: {
+      title: "BetterSlack",
+      close: "Close",
+      themes: "Themes",
+      plugins: "Plugins",
+      css: "Custom CSS",
+      about: "About",
+      installed: "Installed",
+      browse: "Browse",
+      search: "Search mods\u2026",
+      noMatch: "Nothing matches that search.",
+      allInstalled: "Everything in the catalogue is already installed.",
+      nothingInstalled: "Nothing installed yet \u2014 the Browse shelf is where you start.",
+      sortLabel: "Sort",
+      sortRecent: "Recently installed",
+      sortAz: "Name A\u2013Z",
+      sortZa: "Name Z\u2013A",
+      sortEnabled: "Switched on first",
+      byLine: "v{version} \xB7 by {author}",
+      filterAll: "All",
+      backToList: "\u2039 All mods",
+      settingsTitle: "Settings",
+      install: "Install",
+      enable: "Enable",
+      disable: "Disable",
+      remove: "Remove",
+      notRunning: "not running",
+      settingsCount: "Settings ({count})",
+      settingsHide: "Hide settings",
+      uses: "Uses {names}",
+      needs: "Needs {names}",
+      enableIt: "Enable it",
+      enableThem: "Enable them",
+      enableAll: "Enable all {count}",
+      notInCatalogue: "Not in the catalogue: {names}",
+      cancel: "Cancel",
+      requiresTitle: "{name} needs {count} plugin(s)",
+      requiresBody: "A theme is CSS. This one needs behaviour CSS cannot do, which lives in plugins \u2014 code that keeps running after the theme is switched off. Enabling them is your call.",
+      safeTitle: "Safe mode \u2014 nothing is loaded",
+      safeAsked: "Started with --safe. Your mods are untouched; start again without it to load them.",
+      safeCrashed: "{reason}. Switch off whatever you suspect, then start BetterSlack again.",
+      skippedTitle: "{count} mod folder(s) were skipped",
+      skippedBody: "These are in the mods folder but could not be read, so they are not listed above. The message says which file and why.",
+      updateTitle: "An update is available",
+      /**
+       * Both numbers, where the eye lands. Used whenever the published version is
+       * known, which is nearly always; the body then says only what will happen.
+       */
+      updateTitleVersion: "BetterSlack {current} \u2192 {latest}",
+      updateGit: "Updating fetches that version and rebuilds.",
+      /** No version to name: a branch that moved without a release on it. */
+      updateGitCount: "{count} change(s) since this copy{headline}. Updating fetches them and rebuilds.",
+      updateHeadline: " \u2014 latest: {subject}",
+      updatePackage: "Updating downloads that version from GitHub and replaces this copy \u2014 your mods and settings are kept, they live outside it.",
+      updateGo: "Update and restart",
+      updateWorking: "Updating\u2026",
+      updateGitHub: "Open GitHub",
+      updatePulling: "Pulling and rebuilding\u2026",
+      updateDownloading: "Downloading and rebuilding\u2026",
+      updateDone: "Updated. Slack is restarting\u2026",
+      updateFailed: "Could not update: {reason}",
+      /** The dot on a tab and on the launcher. Read out; never drawn as words. */
+      updateAvailable: "Update available",
+      /**
+       * The second line of a status tooltip. Slack words its own the same way,
+       * and this is the app's dictionary rather than a mod's because the node it
+       * goes on comes from api.slack.statusNode -- shared, so it cannot reach any
+       * one mod's strings.
+       */
+      statusUntil: "Until {when}",
+      /** The start screen, under the mark. */
+      splashLoading: "Starting up\u2026",
+      splashStarting: "Starting {name} \u2014 {done} of {total}",
+      modUpdateTitle: "{name} {current} \u2192 {version}",
+      modUpdateBody: "Updating replaces this mod alone, and reapplies it if it is on.",
+      modUpdateGo: "Update",
+      modUpdateWorking: "Downloading\u2026",
+      modUpdateBlocked: "{name} {version} needs BetterSlack {needs}, and this is {running}. Update BetterSlack first \u2014 taking it now would leave a mod calling things this version does not have.",
+      slackTooOld: "Written against Slack {wanted}, and this is {have}. It may not find what it expects.",
+      cssHint: "Applied after every theme, so it always wins. Slack exposes its palette as CSS custom properties (--dt_color-*), which is a steadier target than its class names.",
+      cssSave: "Save and apply",
+      cssApplied: "Applied.",
+      aboutBody: "BetterSlack injects into the Slack renderer over the Chrome DevTools Protocol, carried on a private pipe rather than a debugging port \u2014 nothing listens on the network. It does not modify Slack.app, so Slack updates cannot break your install, but mods stay loaded only while the loader runs.",
+      hotReload: "Hot reload",
+      hotReloadHint: "Reapply a mod as soon as its file changes on disk.",
+      version: "Version",
+      catalogue: "Catalogue",
+      yourMods: "Your mods",
+      transport: "Transport",
+      repository: "Repository",
+      contribute: "Submit a mod",
+      remoteHint: "Install from a GitHub URL \u2014 a repository, or a folder inside one.",
+      remotePlaceholder: "github.com/someone/their-mods/tree/main/my-plugin",
+      remoteFetch: "Read it",
+      remoteReading: "Reading\u2026",
+      remoteInstalling: "Installing\u2026",
+      remoteInstalled: "{name} installed. It is off until you switch it on.",
+      remoteAccept: "Install anyway",
+      remoteFrom: "From",
+      remoteKind: "Kind",
+      remoteScripts: "Code that will run",
+      remoteNoScripts: "none \u2014 this one is stylesheets only",
+      remoteSize: "Size",
+      remoteBadge: "unreviewed",
+      remoteBadgeHint: "From {source}. Nobody in this project has read it.",
+      remoteWarningPlugin: "This is somebody else\u2019s code, and nobody here has read it. A plugin runs unsandboxed in your signed-in Slack: it can read every message you can, and the session token. Install it only if you trust whoever wrote it.",
+      remoteWarningTheme: "This is somebody else\u2019s theme, and nobody here has read it. A theme is CSS, so it cannot read your messages \u2014 but it can hide or fake parts of the interface. Install it only if you trust whoever wrote it.",
+      backupTitle: "Backup",
+      backupHint: "Your settings and the mods you wrote or installed yourself. Catalogue mods come back with the project, so they are not in it.",
+      backupExport: "Save a backup",
+      backupImport: "Restore one",
+      backupSaved: "Saved to your downloads.",
+      backupWorking: "Restoring\u2026",
+      backupRestored: "Restored {detail}.",
+      diagTitle: "What the mods cost",
+      diagHint: "Time spent starting, and how often Slack has undone each mod\u2019s work.",
+      diagTiming: "{ms} ms \xB7 {mounts} mounts",
+      diagCopy: "Copy a report",
+      diagCopied: "Copied",
+      diagCopyFailed: "Could not copy"
+    },
+    fr: {
+      title: "BetterSlack",
+      close: "Fermer",
+      themes: "Th\xE8mes",
+      plugins: "Plugins",
+      css: "CSS personnalis\xE9",
+      about: "\xC0 propos",
+      installed: "Install\xE9s",
+      browse: "Parcourir",
+      search: "Rechercher un mod\u2026",
+      noMatch: "Aucun r\xE9sultat pour cette recherche.",
+      allInstalled: "Tout le catalogue est d\xE9j\xE0 install\xE9.",
+      nothingInstalled: "Rien d\u2019install\xE9 pour l\u2019instant \u2014 tout commence dans l\u2019onglet Parcourir.",
+      sortLabel: "Trier",
+      sortRecent: "Install\xE9s r\xE9cemment",
+      sortAz: "Nom A\u2013Z",
+      sortZa: "Nom Z\u2013A",
+      sortEnabled: "Activ\xE9s d\u2019abord",
+      byLine: "v{version} \xB7 par {author}",
+      filterAll: "Tous",
+      backToList: "\u2039 Tous les mods",
+      settingsTitle: "R\xE9glages",
+      install: "Installer",
+      enable: "Activer",
+      disable: "D\xE9sactiver",
+      remove: "Retirer",
+      notRunning: "n\u2019a pas d\xE9marr\xE9",
+      settingsCount: "R\xE9glages ({count})",
+      settingsHide: "Masquer les r\xE9glages",
+      uses: "Utilise {names}",
+      needs: "N\xE9cessite {names}",
+      enableIt: "Activer le plugin",
+      enableThem: "Activer les plugins",
+      enableAll: "Activer les {count} plugins",
+      notInCatalogue: "Absent du catalogue : {names}",
+      cancel: "Annuler",
+      requiresTitle: "{name} n\xE9cessite {count} plugin(s)",
+      requiresBody: "Un th\xE8me, c\u2019est du CSS. Celui-ci a besoin d\u2019un comportement que le CSS ne permet pas, et ce comportement rel\xE8ve des plugins \u2014 du code qui continue de s\u2019ex\xE9cuter une fois le th\xE8me d\xE9sactiv\xE9. \xC0 vous de d\xE9cider de les activer.",
+      safeTitle: "Mode sans \xE9chec \u2014 rien n\u2019est charg\xE9",
+      safeAsked: "D\xE9marr\xE9 avec --safe. Vos mods sont intacts ; relancez sans l\u2019option pour les charger.",
+      safeCrashed: "{reason}. D\xE9sactivez ce que vous suspectez, puis relancez BetterSlack.",
+      skippedTitle: "{count} dossier(s) de mod ignor\xE9(s)",
+      skippedBody: "Ils sont dans le dossier mods mais n\u2019ont pas pu \xEAtre lus, donc ils ne sont pas list\xE9s ci-dessus. Le message indique quel fichier et pourquoi.",
+      updateTitle: "Une mise \xE0 jour est disponible",
+      updateTitleVersion: "BetterSlack {current} \u2192 {latest}",
+      updateGit: "Mettre \xE0 jour r\xE9cup\xE8re cette version et reconstruit.",
+      updateGitCount: "{count} changement(s) depuis votre copie{headline}. Mettre \xE0 jour les r\xE9cup\xE8re et reconstruit.",
+      updateHeadline: " \u2014 dernier : {subject}",
+      updatePackage: "Mettre \xE0 jour t\xE9l\xE9charge cette version depuis GitHub et remplace cette copie \u2014 vos mods et vos r\xE9glages sont conserv\xE9s, ils sont stock\xE9s ailleurs.",
+      updateGo: "Mettre \xE0 jour et relancer",
+      updateWorking: "Mise \xE0 jour\u2026",
+      updateGitHub: "Ouvrir GitHub",
+      updatePulling: "R\xE9cup\xE9ration et reconstruction\u2026",
+      updateDownloading: "T\xE9l\xE9chargement et reconstruction\u2026",
+      updateDone: "Mis \xE0 jour. Slack red\xE9marre\u2026",
+      updateFailed: "Mise \xE0 jour impossible : {reason}",
+      updateAvailable: "Mise \xE0 jour disponible",
+      statusUntil: "Jusqu\u2019\xE0 {when}",
+      splashLoading: "D\xE9marrage\u2026",
+      splashStarting: "D\xE9marrage de {name} \u2014 {done} sur {total}",
+      modUpdateTitle: "{name} {current} \u2192 {version}",
+      modUpdateBody: "Mettre \xE0 jour ne remplace que ce mod, et le r\xE9applique s\u2019il est activ\xE9.",
+      modUpdateGo: "Mettre \xE0 jour",
+      modUpdateWorking: "T\xE9l\xE9chargement\u2026",
+      modUpdateBlocked: "{name} {version} n\xE9cessite BetterSlack {needs}, et vous avez {running}. Mettez d'abord BetterSlack \xE0 jour \u2014 sinon ce mod appellerait des choses que cette version n'a pas.",
+      slackTooOld: "\xC9crit pour Slack {wanted}, et vous avez {have}. Il peut ne pas trouver ce qu'il attend.",
+      cssHint: "Appliqu\xE9 apr\xE8s tous les th\xE8mes, il l\u2019emporte donc toujours. Slack expose sa palette en propri\xE9t\xE9s CSS personnalis\xE9es (--dt_color-*), une cible plus stable que ses noms de classe.",
+      cssSave: "Enregistrer et appliquer",
+      cssApplied: "Appliqu\xE9.",
+      aboutBody: "BetterSlack s\u2019injecte dans le processus de rendu de Slack via le Chrome DevTools Protocol, achemin\xE9 par un pipe priv\xE9 plut\xF4t que par un port de d\xE9bogage \u2014 rien n\u2019\xE9coute sur le r\xE9seau. Slack.app n\u2019est jamais modifi\xE9 : une mise \xE0 jour de Slack ne peut donc pas casser votre installation, mais les mods ne restent charg\xE9s que tant que le loader s\u2019ex\xE9cute.",
+      hotReload: "Rechargement \xE0 chaud",
+      hotReloadHint: "R\xE9appliquer un mod d\xE8s que son fichier change sur le disque.",
+      version: "Version",
+      catalogue: "Catalogue",
+      yourMods: "Vos mods",
+      transport: "Transport",
+      repository: "D\xE9p\xF4t",
+      contribute: "Proposer un mod",
+      remoteHint: "Installer depuis une URL GitHub \u2014 un d\xE9p\xF4t, ou un dossier dedans.",
+      remotePlaceholder: "github.com/quelquun/ses-mods/tree/main/mon-plugin",
+      remoteFetch: "Examiner",
+      remoteReading: "Analyse\u2026",
+      remoteInstalling: "Installation\u2026",
+      remoteInstalled: "{name} est install\xE9, et restera d\xE9sactiv\xE9 tant que vous ne l\u2019activerez pas.",
+      remoteAccept: "Installer quand m\xEAme",
+      remoteFrom: "Provenance",
+      remoteKind: "Type",
+      remoteScripts: "Code qui s\u2019ex\xE9cutera",
+      remoteNoScripts: "aucun \u2014 uniquement des feuilles de style",
+      remoteSize: "Taille",
+      remoteBadge: "non relu",
+      remoteBadgeHint: "Depuis {source}. Personne dans ce projet ne l\u2019a lu.",
+      remoteWarningPlugin: "C\u2019est le code de quelqu\u2019un d\u2019autre, que personne ici n\u2019a relu. Un plugin s\u2019ex\xE9cute sans isolation dans votre session Slack : il peut lire tous les messages auxquels vous avez acc\xE8s, ainsi que votre jeton de session. Ne l\u2019installez que si vous faites confiance \xE0 son auteur.",
+      remoteWarningTheme: "C\u2019est le th\xE8me de quelqu\u2019un d\u2019autre, que personne ici n\u2019a lu. Un th\xE8me est du CSS, il ne peut donc pas lire vos messages \u2014 mais il peut masquer ou falsifier des parties de l\u2019interface. Ne l\u2019installez que si vous faites confiance \xE0 son auteur.",
+      backupTitle: "Sauvegarde",
+      backupHint: "Vos r\xE9glages, et les mods que vous avez \xE9crits ou install\xE9s vous-m\xEAme. Ceux du catalogue reviennent avec le projet : ils ne figurent pas dans la sauvegarde.",
+      backupExport: "Enregistrer une sauvegarde",
+      backupImport: "Restaurer une sauvegarde",
+      backupSaved: "Enregistr\xE9 dans vos t\xE9l\xE9chargements.",
+      backupWorking: "Restauration\u2026",
+      backupRestored: "{detail} \u2014 restaur\xE9.",
+      diagTitle: "Ce que co\xFBtent les mods",
+      diagHint: "Temps pass\xE9 au d\xE9marrage, et nombre de fois o\xF9 Slack a d\xE9fait le travail de chaque mod.",
+      diagTiming: "{ms} ms \xB7 {mounts} remontages",
+      diagCopy: "Copier un rapport",
+      diagCopied: "Copi\xE9",
+      diagCopyFailed: "Copie impossible"
+    }
+  };
+
+  // src/runtime/web-api.ts
+  var CONFIG_KEY = "localConfig_v2";
+  var METHOD_PATTERN = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)*$/;
+  var WebApiError = class extends Error {
+    constructor(method, slackError) {
+      super(`${method} failed: ${slackError}`);
+      this.method = method;
+      this.slackError = slackError;
+    }
+  };
+  function currentTeamId() {
+    const fromUrl = location.pathname.match(/\/client\/(T[A-Z0-9]+)/i)?.[1] ?? null;
+    const drawn = drawnTeams();
+    if (drawn.size === 0) return fromUrl;
+    if (fromUrl && drawn.has(fromUrl)) return fromUrl;
+    let best = null;
+    let bestCount = 0;
+    for (const [team, count] of drawn) {
+      if (count > bestCount) {
+        best = team;
+        bestCount = count;
+      }
+    }
+    return best ?? fromUrl;
+  }
+  function drawnTeams() {
+    const seen = /* @__PURE__ */ new Map();
+    const client = document.querySelector(".p-client_container");
+    if (!client) return seen;
+    for (const image of client.querySelectorAll("img")) {
+      const team = /\/(T[A-Z0-9]+)-U[A-Z0-9]+-/i.exec(image.src)?.[1];
+      if (team) seen.set(team, (seen.get(team) ?? 0) + 1);
+    }
+    return seen;
+  }
+  function drawnChannelId() {
+    const message = document.querySelector('[data-qa="message_container"][data-msg-channel-id]');
+    return message?.getAttribute("data-msg-channel-id") ?? null;
+  }
+  function readTeamConfig() {
+    const teamId = currentTeamId();
+    if (!teamId) return null;
+    try {
+      const raw = localStorage.getItem(CONFIG_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed.teams?.[teamId] ?? null;
+    } catch {
+      return null;
+    }
+  }
+  var DIRECTORY_TTL = 60 * 1e3;
+  function createWebApi() {
+    let cachedTeam;
+    const directory = /* @__PURE__ */ new Map();
+    let directoryTeam;
+    let emojiTeam;
+    let emojiMap = null;
+    let cached = null;
+    const config = () => {
+      const team = currentTeamId();
+      if (team !== cachedTeam) {
+        cachedTeam = team;
+        cached = readTeamConfig();
+      }
+      return cached;
+    };
+    const call = async (method, params = {}) => {
+      if (!METHOD_PATTERN.test(method)) {
+        throw new WebApiError(method, "invalid method name");
+      }
+      const token = config()?.token;
+      if (!token) throw new WebApiError(method, "no session token for this workspace");
+      const body = new FormData();
+      body.append("token", token);
+      for (const [key, value] of Object.entries(params)) body.append(key, String(value));
+      const response = await fetch(`/api/${method}`, {
+        method: "POST",
+        body,
+        credentials: "include"
+      });
+      if (!response.ok) throw new WebApiError(method, `HTTP ${response.status}`);
+      const payload = await response.json();
+      if (!payload.ok) throw new WebApiError(method, payload.error ?? "unknown error");
+      return payload;
+    };
+    return {
+      get available() {
+        return typeof config()?.token === "string";
+      },
+      get teamDomain() {
+        return config()?.domain ?? null;
+      },
+      get selfId() {
+        return config()?.user_id ?? null;
+      },
+      call,
+      async userInfo(userId) {
+        const res = await call("users.info", {
+          user: userId,
+          include_locale: true
+        });
+        return res.user;
+      },
+      async users(userIds) {
+        const team = currentTeamId();
+        if (team !== directoryTeam) {
+          directoryTeam = team;
+          directory.clear();
+        }
+        const wanted = [...new Set(userIds)].filter((id) => id);
+        const now = Date.now();
+        const missing = wanted.filter((id) => {
+          const held = directory.get(id);
+          return !held || now - held.at > DIRECTORY_TTL;
+        });
+        if (missing.length) {
+          try {
+            const res = await call("users.info", {
+              users: missing.join(","),
+              include_locale: true
+            });
+            for (const user of res.users ?? []) directory.set(user.id, { user, at: now });
+          } catch {
+            const each = await Promise.all(
+              missing.map(
+                (id) => call("users.info", { user: id, include_locale: true }).then((res) => res.user).catch(() => null)
+              )
+            );
+            for (const user of each) if (user) directory.set(user.id, { user, at: now });
+          }
+        }
+        const out = /* @__PURE__ */ new Map();
+        for (const id of wanted) {
+          const held = directory.get(id);
+          if (held) out.set(id, held.user);
+        }
+        return out;
+      },
+      emoji() {
+        const team = currentTeamId();
+        if (team !== emojiTeam) {
+          emojiTeam = team;
+          emojiMap = null;
+        }
+        if (emojiMap) return emojiMap;
+        emojiMap = (async () => {
+          const out = /* @__PURE__ */ new Map();
+          let raw = {};
+          try {
+            const res = await call("emoji.list");
+            raw = res.emoji ?? {};
+          } catch {
+            return out;
+          }
+          for (const name of Object.keys(raw)) {
+            const seen = /* @__PURE__ */ new Set();
+            let target = name;
+            let value = raw[target];
+            while (typeof value === "string" && value.startsWith("alias:") && !seen.has(target)) {
+              seen.add(target);
+              target = value.slice("alias:".length);
+              value = raw[target];
+            }
+            if (typeof value === "string" && !value.startsWith("alias:")) out.set(name, value);
+          }
+          return out;
+        })();
+        return emojiMap;
+      },
+      presence: (userId) => call("users.getPresence", { user: userId }),
+      teamInfo: () => call("team.info"),
+      dndInfo: (userId) => call("dnd.info", { user: userId }),
+      async availability(userId) {
+        const [presence, dnd] = await Promise.all([
+          call("users.getPresence", { user: userId }).catch(() => null),
+          call("dnd.info", { user: userId }).catch(() => null)
+        ]);
+        const snoozed = Boolean(dnd?.snooze_enabled) || Boolean(dnd?.dnd_enabled && isInDndWindow(dnd));
+        if (snoozed) return { state: "dnd", presence, dnd };
+        if (!presence) return { state: "unknown", presence, dnd };
+        return { state: presence.presence === "active" ? "active" : "away", presence, dnd };
+      }
+    };
+  }
+  function isInDndWindow(dnd) {
+    const start = Number(dnd.next_dnd_start_ts ?? 0);
+    const end = Number(dnd.next_dnd_end_ts ?? 0);
+    if (!start || !end) return false;
+    const now = Date.now() / 1e3;
+    return now >= start && now < end;
+  }
+  function userIdFromAvatarUrl(url) {
+    if (!url) return null;
+    const match = url.match(/\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i);
+    return match ? match[1].toUpperCase() : null;
+  }
+
+  // src/runtime/slack-api.ts
+  var ACTIONS_GROUP = '[data-qa="message-actions"]';
+  var ACTIONS_ITEM_CLASS = "c-message_actions__overflow_item c-message_actions__overflow_item--button";
+  var MORE_ACTIONS = '[data-qa="more_message_actions"]';
+  var MESSAGE = '[data-qa="message_container"]';
+  var COMPOSER_EDITOR = ".ql-editor";
+  var COMPOSER = '[data-qa="message_input"]';
+  var CONVERSATION_ROUTE = /\/client\/[^/]+\/([CDG][A-Z0-9]{2,})(?:\/|$)/;
+  var TOOLBARS = {
+    /** Bottom strip of the rail: "Créer un nouveau", focus mode, avatar. */
+    controlStrip: {
+      container: ".p-control_strip",
+      buttonClass: "c-button-unstyled p-control_strip__circle_button",
+      /*
+       * Anchored on BetterSlack's own launcher, not on Slack's coachmark wrapper.
+       *
+       * Inserting next to `.c-coachmark-anchor:has([data-qa="user-button"])`
+       * freezes the renderer solid -- grey window, no error, no console, Slack
+       * has to be killed. Slack's coachmark code evidently reacts to changes
+       * around that node and ends up in a loop with whatever put them there.
+       * Bisected against a running client: the same button anchored here is fine,
+       * anchored there hangs every time.
+       */
+      before: "#betterslack-control-button",
+      placement: "right"
+    },
+    /**
+     * Formatting row under the message box: bold, italic, link…
+     * Anchored on whatever element holds the bold button, rather than on the
+     * composer body, so the button lands beside its peers and not at the end of
+     * an unrelated container.
+     */
+    composer: {
+      container: '*:has(> [data-qa="bold-composer-button"])',
+      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_smedium p-composer__button c-icon_button--default",
+      before: void 0,
+      placement: "top"
+    },
+    /**
+     * Right-hand end of the top bar, beside Slack's own help and account
+     * controls. The place for a switch that belongs to the whole client rather
+     * than to the conversation on screen.
+     *
+     * The container is a direct child on purpose: `display_flex` and
+     * `align_items_center` are utility classes that appear all over Slack's
+     * markup, and matching them anywhere under the right container would put the
+     * button in whichever one happened to come first.
+     */
+    topNav: {
+      container: ".p-ia4_top_nav__right_container > .display_flex.align_items_center",
+      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default",
+      before: void 0,
+      placement: "bottom"
+    },
+    /** Right-hand side of the channel header: huddle, search, more. */
+    channelHeader: {
+      container: ".p-view_header__actions",
+      buttonClass: "c-button-unstyled c-icon_button c-icon_button--size_medium c-icon_button--default",
+      before: void 0,
+      placement: "bottom"
+    }
+  };
+  var cachedHost = null;
+  function rememberHost(url) {
+    try {
+      cachedHost = new URL(url).origin;
+    } catch {
+    }
+  }
+  function describeMessage(element) {
+    const channelId = element.getAttribute("data-msg-channel-id");
+    const ts = element.getAttribute("data-msg-ts");
+    let permalink = null;
+    const timestampLink = element.querySelector("a.c-timestamp");
+    if (timestampLink?.href) {
+      permalink = timestampLink.href;
+      rememberHost(permalink);
+    } else if (cachedHost && channelId && ts) {
+      permalink = `${cachedHost}/archives/${channelId}/p${ts.replace(".", "")}`;
+    }
+    const body = element.querySelector('[data-qa="message-text"]');
+    return {
+      element,
+      channelId,
+      ts,
+      permalink,
+      text: (body?.textContent ?? element.textContent ?? "").trim()
+    };
+  }
+  function addMessageAction(pluginId, action) {
+    const nodeId = `betterslack-action-${pluginId}-${action.id}`;
+    const cleanup = onEach(ACTIONS_GROUP, (group) => {
+      if (group.querySelector(`#${CSS.escape(nodeId)}`)) return;
+      const message = group.closest(MESSAGE) ?? document.querySelector(".c-message_kit__hover--hovered")?.closest(MESSAGE) ?? null;
+      if (!message) return;
+      const button = h("button", {
+        class: "c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button betterslack-action",
+        type: "button",
+        "aria-label": action.label,
+        "data-qa": `betterslack_${pluginId}_${action.id}`
+      });
+      button.innerHTML = action.icon;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        action.onClick(describeMessage(message), event);
+      });
+      attachTooltip(button, {
+        title: action.label,
+        subtitle: action.description,
+        placement: "top"
+      });
+      const item = h("div", { class: ACTIONS_ITEM_CLASS, id: nodeId }, [button]);
+      const more = group.querySelector(MORE_ACTIONS)?.closest(`.c-message_actions__overflow_item`);
+      if (more) more.before(item);
+      else group.append(item);
+    });
+    return () => {
+      cleanup();
+      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
+    };
+  }
+  var drawnEmoji = /* @__PURE__ */ new Map();
+  function harvestEmoji() {
+    for (const img of document.querySelectorAll(".c-emoji img[data-stringify-emoji]")) {
+      const name = img.getAttribute("data-stringify-emoji")?.replace(/^:|:$/g, "");
+      if (!name || drawnEmoji.has(name)) continue;
+      if (img.src) drawnEmoji.set(name, img.src);
+    }
+    return drawnEmoji;
+  }
+  function describeStatus(who, customEmoji) {
+    const profile = who && "profile" in who && who.profile ? who.profile : who;
+    if (!profile) return null;
+    const text = (profile.status_text ?? "").trim();
+    const emoji = (profile.status_emoji ?? "").replace(/^:|:$/g, "").trim() || null;
+    if (!text && !emoji) return null;
+    const expiration = Number(profile.status_expiration ?? 0);
+    return {
+      text,
+      emoji,
+      imageUrl: emoji ? imageForEmoji(emoji, profile, customEmoji) : null,
+      // 0 means "no end", which is not the same as the epoch.
+      expiresAt: expiration > 0 ? new Date(expiration * 1e3) : null
+    };
+  }
+  function imageForEmoji(name, profile, customEmoji) {
+    const sent = profile?.status_emoji_display_info?.find(
+      (entry) => !entry.emoji_name || entry.emoji_name.replace(/^:|:$/g, "") === name
+    );
+    if (sent?.display_url) return sent.display_url;
+    return customEmoji?.get(name) ?? harvestEmoji().get(name) ?? null;
+  }
+  function statusNode(status, profile, options = {}) {
+    const { showText = true, placement = "right", hint, tooltipOn } = options;
+    const node = h("span", { class: "betterslack-status" });
+    if (status.emoji) {
+      const unicode = profile?.status_emoji_display_info?.find((e) => e.unicode)?.unicode;
+      if (status.imageUrl) {
+        node.append(h("img", {
+          class: "betterslack-status__emoji",
+          src: status.imageUrl,
+          alt: status.emoji,
+          loading: "lazy"
+        }));
+      } else if (unicode) {
+        node.append(h("span", { class: "betterslack-status__emoji betterslack-status__emoji--char" }, [
+          // Slack sends it as codepoints joined by dashes: "1f1eb-1f1f7".
+          unicode.split("-").map((point) => String.fromCodePoint(parseInt(point, 16))).join("")
+        ]));
+      }
+    }
+    if (showText && status.text) {
+      node.append(h("span", { class: "betterslack-status__text" }, [status.text]));
+    }
+    const title = status.text || hint || (status.emoji ? `:${status.emoji}:` : "");
+    if (title) {
+      attachTooltip(tooltipOn ?? node, {
+        title,
+        subtitle: [
+          status.expiresAt ? untilSentence(status.expiresAt) : "",
+          // Not repeated when it is already the title.
+          status.text ? hint ?? "" : ""
+        ],
+        placement,
+        icon: node.querySelector(".betterslack-status__emoji") ?? void 0
+      });
+    }
+    return node;
+  }
+  function untilSentence(when) {
+    let locale = "en";
+    try {
+      locale = createI18n().locale;
+    } catch {
+    }
+    const day = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "long" });
+    const time = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
+    return statusStrings()("statusUntil", { when: `${day.format(when)}, ${time.format(when)}` });
+  }
+  var statusTranslator = null;
+  function statusStrings() {
+    statusTranslator ?? (statusTranslator = createI18n().strings(PANEL_STRINGS));
+    return statusTranslator;
+  }
+  var PROFILE_PANE = '[data-qa="member_profile_pane"]';
+  var PROFILE_AVATAR = ".p-r_member_profile__avatar__img";
+  var SELECTORS = Object.freeze({
+    message: MESSAGE,
+    messageActions: ACTIONS_GROUP,
+    composer: COMPOSER,
+    composerEditor: COMPOSER_EDITOR,
+    channelSidebar: '[data-qa="channel-sidebar"]',
+    tabRail: '[data-qa="tab_rail_desktop"]',
+    topNav: '[data-qa="top-nav"]',
+    messageText: '[data-qa="message-text"]',
+    profilePane: PROFILE_PANE,
+    profileAvatar: PROFILE_AVATAR
+  });
+  function installViewCss() {
+    if (document.getElementById("betterslack-view-css")) return;
+    const node = h("style", { id: "betterslack-view-css" });
+    node.textContent = VIEW_CSS;
+    (document.head ?? document.documentElement)?.append(node);
+  }
+  var TAB_MENU = ".p-tab_rail__tab_menu";
+  var VIEW_PANE = ".p-view_contents--primary";
+  var VIEW_OPEN_CLASS = "betterslack-view-open";
+  function addView(pluginId, options) {
+    installViewCss();
+    const nodeId = `betterslack-view-${pluginId}-${options.id}`;
+    const tabId = `betterslack-tab-${pluginId}-${options.id}`;
+    let open = false;
+    let mounted = null;
+    let unmountView = null;
+    let dimmed = [];
+    const tab = h("button", {
+      class: "c-button-unstyled p-tab_rail__button c-tabs__tab js-tab c-tabs__tab--full_width betterslack-view-tab",
+      id: tabId,
+      type: "button",
+      role: "tab",
+      tabindex: "0",
+      "aria-selected": "false",
+      "aria-label": options.label,
+      "data-qa": `betterslack_view_${pluginId}_${options.id}`
+    });
+    const iconInner = h("div", { class: "p-tab_rail__button__icon_inner" });
+    iconInner.innerHTML = options.icon;
+    tab.append(h("span", { class: "c-tabs__tab_content" }, [
+      h("div", { class: "p-tab_rail__button__icon" }, [iconInner]),
+      h("div", { class: "p-tab_rail__button__label" }, [options.label])
+    ]));
+    tab.addEventListener("click", () => show());
+    const unmountTab = keepMounted(TAB_MENU, `${tabId}-hook`, () => {
+      const hook = h("div", { class: "p-autoclog__hook" });
+      hook.append(tab);
+      return hook;
+    });
+    const lightTab = (on) => {
+      tab.classList.toggle("p-tab_rail__button--active", on);
+      tab.classList.toggle("c-tabs__tab--active", on);
+      tab.setAttribute("aria-selected", String(on));
+    };
+    const dimSlacksTabs = () => {
+      dimmed = [...document.querySelectorAll(".p-tab_rail__button--active")].filter((button) => button !== tab);
+      for (const button of dimmed) {
+        button.classList.remove("p-tab_rail__button--active", "c-tabs__tab--active");
+        button.setAttribute("aria-selected", "false");
+      }
+    };
+    const lightSlacksTabs = () => {
+      for (const button of dimmed) {
+        if (!button.isConnected) continue;
+        button.classList.add("p-tab_rail__button--active", "c-tabs__tab--active");
+        button.setAttribute("aria-selected", "true");
+      }
+      dimmed = [];
+    };
+    const show = () => {
+      if (open) {
+        refresh();
+        return;
+      }
+      open = true;
+      document.documentElement.classList.add(VIEW_OPEN_CLASS);
+      lightTab(true);
+      dimSlacksTabs();
+      unmountView = keepMounted(VIEW_PANE, nodeId, () => {
+        mounted = h("section", {
+          class: "betterslack-view",
+          role: "region",
+          "aria-label": options.label
+        }, [options.render()]);
+        return mounted;
+      });
+      options.onOpen?.();
+    };
+    const close = () => {
+      if (!open) return;
+      open = false;
+      unmountView?.();
+      unmountView = null;
+      mounted = null;
+      document.documentElement.classList.remove(VIEW_OPEN_CLASS);
+      lightTab(false);
+      lightSlacksTabs();
+      options.onClose?.();
+    };
+    const refresh = () => {
+      if (!open || !mounted) return;
+      mounted.replaceChildren(options.render());
+    };
+    const onNavigate = () => close();
+    const nav = window.navigation;
+    nav?.addEventListener("currententrychange", onNavigate);
+    window.addEventListener("popstate", onNavigate);
+    const onRailClick = (event) => {
+      if (!open) return;
+      const button = event.target?.closest?.(".p-tab_rail__button");
+      if (button && button !== tab) close();
+    };
+    document.addEventListener("click", onRailClick, true);
+    return {
+      open: show,
+      close,
+      isOpen: () => open,
+      element: () => mounted,
+      refresh,
+      tabSelector: `#${tabId}`,
+      dispose: () => {
+        close();
+        unmountTab();
+        tab.remove();
+        nav?.removeEventListener("currententrychange", onNavigate);
+        window.removeEventListener("popstate", onNavigate);
+        document.removeEventListener("click", onRailClick, true);
+      }
+    };
+  }
+  function addProfileButton(pluginId, button) {
+    const nodeId = `betterslack-profile-${pluginId}-${button.id}`;
+    const cleanup = onEach(PROFILE_PANE, (pane) => {
+      if (pane.querySelector(`#${CSS.escape(nodeId)}`)) return;
+      const element = h("button", {
+        class: "c-button c-button--outline c-button--medium betterslack-profile-button",
+        type: "button",
+        id: nodeId,
+        "data-qa": `betterslack_${pluginId}_${button.id}`
+      });
+      if (button.icon) element.innerHTML = button.icon;
+      element.append(h("span", {}, [button.label]));
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const avatar = pane.querySelector(PROFILE_AVATAR);
+        button.onClick({ element: pane, userId: userIdFromAvatarUrl(avatar?.src) });
+      });
+      const container = pane.querySelector(".p-r_member_profile__container") ?? pane;
+      container.append(h("div", { class: "betterslack-profile-row" }, [element]));
+    });
+    return () => {
+      cleanup();
+      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) {
+        node.closest(".betterslack-profile-row")?.remove();
+        node.remove();
+      }
+    };
+  }
+  function addToolbarButton(pluginId, toolbar, button) {
+    const spec2 = TOOLBARS[toolbar];
+    const nodeId = `betterslack-tb-${pluginId}-${button.id}`;
+    const unmount = keepMounted(
+      spec2.container,
+      nodeId,
+      () => {
+        const element = h("button", {
+          class: `${spec2.buttonClass} betterslack-toolbar-button`,
+          type: "button",
+          "aria-label": button.label,
+          "data-qa": `betterslack_${pluginId}_${button.id}`
+        });
+        element.innerHTML = button.icon;
+        element.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          button.onClick(event);
+        });
+        attachTooltip(element, {
+          title: button.label,
+          subtitle: button.description,
+          placement: spec2.placement
+        });
+        return element;
+      },
+      // Prepend rather than append when the anchor is missing: the end of a
+      // container is where the app's own re-renders land.
+      { before: button.before ?? spec2.before, position: "prepend" }
+    );
+    return () => {
+      unmount();
+      for (const node of document.querySelectorAll(`#${CSS.escape(nodeId)}`)) node.remove();
+    };
+  }
+  function escapeHtml(value) {
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  var composer = {
+    element: () => document.querySelector(COMPOSER_EDITOR),
+    focus() {
+      const editor = composer.element();
+      if (!editor) return false;
+      editor.focus();
+      return document.activeElement === editor || editor.contains(document.activeElement);
+    },
+    caretToEnd() {
+      const editor = composer.element();
+      if (!editor) return;
+      const selection = window.getSelection();
+      if (!selection) return;
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    },
+    insertText(text) {
+      if (!composer.focus()) return false;
+      composer.caretToEnd();
+      return document.execCommand("insertText", false, text);
+    },
+    insertLink(url, text) {
+      if (!composer.focus()) return false;
+      composer.caretToEnd();
+      let safe;
+      try {
+        safe = new URL(url);
+      } catch {
+        return false;
+      }
+      if (safe.protocol !== "https:" && safe.protocol !== "http:") return false;
+      return document.execCommand(
+        "insertHTML",
+        false,
+        `<a href="${escapeHtml(safe.href)}">${escapeHtml(text)}</a>`
+      );
+    },
+    isEmpty() {
+      const editor = composer.element();
+      if (!editor) return true;
+      return editor.innerText.replace(/\n/g, "").trim() === "";
+    }
+  };
+  var WINDOW_MATERIALS = Object.freeze([
+    "hud",
+    "fullscreen-ui",
+    "under-window",
+    "titlebar",
+    "none"
+  ]);
+  async function setMaterial(name) {
+    if (!WINDOW_MATERIALS.includes(name)) {
+      throw new Error(`"${name}" is not a window material BetterSlack will set`);
+    }
+    const bridge = window.desktop?.window;
+    if (typeof bridge?.getWindowId !== "function" || typeof bridge?.callBrowserWindowMethod !== "function") {
+      return false;
+    }
+    try {
+      const id = await bridge.getWindowId();
+      await bridge.callBrowserWindowMethod(id, "setVibrancy", name === "none" ? null : name);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function createSlackApi(pluginId) {
+    const web = createWebApi();
+    return {
+      addMessageAction: (action) => addMessageAction(pluginId, action),
+      addToolbarButton: (toolbar, button) => addToolbarButton(pluginId, toolbar, button),
+      addProfileButton: (button) => addProfileButton(pluginId, button),
+      addView: (options) => addView(pluginId, options),
+      web,
+      openConversation(channelId) {
+        const team = currentTeamId();
+        if (!team) return;
+        window.location.href = `slack://channel?team=${team}&id=${encodeURIComponent(channelId)}`;
+      },
+      openMessage(channelId, ts, options = {}) {
+        const team = options.team ?? currentTeamId();
+        if (!team || !ts) return;
+        window.location.href = `slack://channel?team=${encodeURIComponent(team)}&id=${encodeURIComponent(channelId)}&message=${encodeURIComponent(ts)}`;
+      },
+      async openDirectMessage(userId) {
+        const res = await web.call("conversations.open", {
+          users: userId,
+          return_im: true
+        });
+        const id = res.channel?.id ?? null;
+        if (id) this.openConversation(id);
+        return id;
+      },
+      openUserProfile(userId) {
+        const team = currentTeamId();
+        if (!team) return;
+        window.location.href = `slack://user?team=${team}&id=${encodeURIComponent(userId)}`;
+      },
+      async hideConversation(channelId) {
+        await web.call("conversations.close", { channel: channelId });
+      },
+      async startHuddle(userId) {
+        await this.openDirectMessage(userId);
+        const button = await waitFor(
+          '[data-qa="huddle_channel_header_button__start_button"]',
+          8e3
+        );
+        if (!button) return false;
+        button.click();
+        return true;
+      },
+      async openStatusEditor() {
+        const button = document.querySelector('[data-qa="user-button"]');
+        if (!button) return false;
+        button.click();
+        const item = await waitFor('[data-qa="main-menu-custom-status-item"]', 4e3);
+        if (!item) return false;
+        item.click();
+        return true;
+      },
+      async vipUsers() {
+        const res = await web.call("users.prefs.get");
+        return String(res.prefs?.vip_users ?? "").split(",").map((id) => id.trim()).filter(Boolean);
+      },
+      async setVip(userId, isVip) {
+        const current = await this.vipUsers();
+        const next = isVip ? [.../* @__PURE__ */ new Set([...current, userId])] : current.filter((id) => id !== userId);
+        await web.call("users.prefs.set", { name: "vip_users", value: next.join(",") });
+        return isVip;
+      },
+      async filesFrom(userId, limit = 20) {
+        const res = await web.call("files.list", {
+          user: userId,
+          count: limit
+        });
+        return Array.isArray(res.files) ? res.files : [];
+      },
+      describeMessage,
+      composer,
+      describeStatus,
+      statusNode,
+      emojiUrl: (name, customEmoji) => {
+        const clean = String(name ?? "").replace(/^:|:$/g, "").trim();
+        if (!clean) return null;
+        return imageForEmoji(clean, null, customEmoji);
+      },
+      avatarUrl: (url, size) => typeof url === "string" && /-\d+$/.test(url) ? url.replace(/-\d+$/, `-${size}`) : null,
+      userIdFromMessage: (message) => userIdFromAvatarUrl(
+        message.element.querySelector(".c-message_kit__avatar img, .c-avatar img")?.src
+      ),
+      currentChannelId: () => {
+        const fromUrl = location.pathname.match(CONVERSATION_ROUTE)?.[1] ?? null;
+        return drawnChannelId()?.toUpperCase() ?? fromUrl;
+      },
+      currentTeamId: () => currentTeamId(),
+      /*
+       * Filled in by `createPluginApi`, which is where the settings live. Left
+       * inert here so `createSlackApi` still satisfies the type on its own, and
+       * so a caller that somehow reaches this copy gets an honest "no" rather
+       * than a promise nobody keeps.
+       */
+      desktop: {
+        supported: false,
+        keys: () => [],
+        get: () => void 0,
+        launched: () => void 0,
+        needsRestart: () => false,
+        set: async () => void 0,
+        clear: async () => void 0,
+        managed: () => ({}),
+        materials: WINDOW_MATERIALS,
+        setMaterial
+      },
+      restart: async () => void 0,
+      selectors: SELECTORS
+    };
+  }
 
   // src/runtime/ui/palette.ts
   var HOST_ID = "betterslack-palette";
@@ -5506,6 +5653,25 @@
         keep(addMessageAction("demo", { id: "demo", label: v.label, icon: ICON, onClick: () => {
         } }));
         focusChrome(frame, '[data-qa="message_container"]');
+        return void 0;
+      }
+    },
+    "slack-addview": {
+      render: (v, { stage, keep }) => {
+        const frame = slackChrome({ pane: true });
+        stage.replaceChildren(frame);
+        const view = addView("demo", {
+          id: "demo",
+          label: v.label,
+          icon: ICON,
+          render: () => kit.el("div", { class: "pg__stub" }, [
+            kit.el("h3", { textContent: v.label }),
+            kit.el("p", { textContent: v.body ?? "" })
+          ])
+        });
+        keep(view.dispose);
+        view.open();
+        focusChrome(frame, ".p-tab_rail__tab_menu");
         return void 0;
       }
     },

@@ -135,7 +135,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">api.helpers</p>
       <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-cache">cache</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.slack</p>
-      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-emojiurl">emojiUrl</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openmessage">openMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
+      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-addview">addView</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-emojiurl">emojiUrl</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openmessage">openMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.ui</p>
       <ul><li><a href="#ui-confirm">confirm</a></li><li><a href="#ui-kit">kit</a></li><li><a href="#ui-kitcss">kitCss</a></li><li><a href="#ui-menu">menu</a></li><li><a href="#ui-modal">modal</a></li><li><a href="#ui-palette">palette</a></li><li><a href="#ui-toast">toast</a></li><li><a href="#ui-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.dom</p>
@@ -1076,6 +1076,27 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
   before: '#betterslack-control-button',
   onClick: () =&gt; open(),
 });</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-slack-addview" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.slack</p>
+    <h1><code>addView</code></h1>
+    <p class="api-sig api-sig--big">(options: ViewOptions): ViewHandle</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>A whole view of your own, with its tab in Slack's rail — everything Home, Direct messages and Activity do. The tab sits beside theirs wearing Slack's own classes, so it follows every theme; the page covers the conversation while the workspace rail and the channel sidebar stay live; one tab is lit at a time, and clicking another of Slack's tabs leaves, exactly as leaving Activity does. <code>render</code> is called each time it opens, and <code>refresh()</code> runs it again in place. Use <code>tabSelector</code> to hang a <code>helpers.badge</code> on the tab rather than rebuilding the selector by hand.</p>
+    <div class="api-demo" data-demo="slack-addview" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;History&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;body&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;value&quot;:&quot;Everything Slack changed and did not tell you about.\nOne page, in the place Slack keeps its own.&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>const view = api.slack.addView({
+  id: 'log',
+  label: 'History',
+  icon: ICON,
+  render: () =&gt; api.dom.h('div', {}, ['Everything that happened']),
+});
+
+api.helpers.badge(view.tabSelector, 'new', () =&gt; unread || null);</code></pre>
   </div>
 </section>
 <section class="panel" id="p-slack-avatarurl" hidden>

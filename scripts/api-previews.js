@@ -17,7 +17,7 @@
  */
 
 import {
-  addMessageAction, addProfileButton, addToolbarButton, createSlackApi, describeMessage,
+  addMessageAction, addProfileButton, addToolbarButton, addView, createSlackApi, describeMessage,
 } from '../src/runtime/slack-api.js';
 import { keepMounted, onEach, onShortcut, waitFor } from '../src/runtime/dom.js';
 import { PANEL_CSS, LAUNCHER_CSS } from '../src/runtime/ui/styles.js';
@@ -647,6 +647,26 @@ const CHROME = {
       return undefined;
     },
   },
+  'slack-addview': {
+    render: (v, { stage, keep }) => {
+      const frame = slackChrome({ pane: true });
+      stage.replaceChildren(frame);
+      const view = addView('demo', {
+        id: 'demo',
+        label: v.label,
+        icon: ICON,
+        render: () => kit.el('div', { class: 'pg__stub' }, [
+          kit.el('h3', { textContent: v.label }),
+          kit.el('p', { textContent: v.body ?? '' }),
+        ]),
+      });
+      keep(view.dispose);
+      view.open();
+      focusChrome(frame, '.p-tab_rail__tab_menu');
+      return undefined;
+    },
+  },
+
   'slack-addprofilebutton': {
     render: (v, { stage, keep }) => {
       const frame = slackChrome({ pane: true });

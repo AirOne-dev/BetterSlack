@@ -227,15 +227,17 @@ test('the tally counts every family, for the chips', () => {
 
 /* -- the client ----------------------------------------------------------- */
 
-test('puts its button in the left rail, with a shortcut and a command', async () => {
+test('takes a tab in Slack’s rail, beside Slack’s own', async () => {
   const dom = installDom();
   const { api, recorded } = createTestApi({ files: FILES });
   try {
     await plugin.start(api);
 
-    const button = recorded.toolbarButtons.find((entry) => entry.button.id === 'open');
-    assert.ok(button, 'the button is registered');
-    assert.equal(button.toolbar, 'controlStrip', 'in the rail, not on the conversation');
+    const tab = document.querySelector('.betterslack-view-tab');
+    assert.ok(tab, 'the tab is in the rail');
+    assert.ok(tab.closest('.p-tab_rail__tab_menu'), 'beside Slack’s own tabs, not somewhere else');
+    assert.ok(tab.classList.contains('p-tab_rail__button'), 'wearing Slack’s class, so it follows every theme');
+    assert.equal(tab.getAttribute('aria-selected'), 'false', 'and lit only when you are on it');
     assert.ok(recorded.commands.some((command) => command.id === 'open'), 'and it is in the palette');
 
     // The real `helpers.hotkey`, so the assertion is that the key works rather
@@ -245,9 +247,45 @@ test('puts its button in the left rail, with a shortcut and a command', async ()
       key: 'h', code: 'KeyH', metaKey: true, shiftKey: true, bubbles: true,
     }));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.ok(document.querySelector('#betterslack-history-view'), 'and the shortcut opens the view');
+    assert.ok(document.querySelector('.betterslack-view'), 'and the shortcut opens the view');
   } finally {
     // The sweeps are intervals; left running they hold the test process open.
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('one tab is lit at a time, and Slack’s goes out while you are here', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi({ files: FILES });
+  try {
+    await plugin.start(api);
+    const mine = document.querySelector('.betterslack-view-tab');
+    const slacks = document.querySelector('[data-qa="tab_rail_home_button"]');
+    assert.equal(slacks.classList.contains('p-tab_rail__button--active'), true, 'Slack starts on Home');
+
+    mine.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(mine.getAttribute('aria-selected'), 'true', 'mine lights up');
+    assert.equal(slacks.classList.contains('p-tab_rail__button--active'), false, 'and Slack’s goes out');
+
+    // Slack's tabs do not toggle: clicking the one you are on does nothing,
+    // and leaving is choosing somewhere else.
+    mine.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(mine.getAttribute('aria-selected'), 'true', 'clicking it again does not close it');
+
+    /*
+     * Leaving is clicking one of Slack's, and that has to work with no route
+     * change behind it: clicking Accueil while you are already on a channel
+     * navigates nowhere, and a view that only listened for navigation stayed
+     * over the thing you had just asked to see.
+     */
+    slacks.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(mine.getAttribute('aria-selected'), 'false');
+    assert.equal(slacks.classList.contains('p-tab_rail__button--active'), true, 'and Slack’s comes back exactly as it was');
+  } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
   }
@@ -261,7 +299,7 @@ test('the view opens where Slack renders its own views, not over the middle', as
     recorded.commands.find((command) => command.id === 'open').run();
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const view = document.querySelector('#betterslack-history-view');
+    const view = document.querySelector('.betterslack-view');
     assert.ok(view, 'the view is on screen');
     // Inside the conversation pane, so the rail and the sidebar stay live
     // beside it. A dialog in the middle of the client is the thing this is not.

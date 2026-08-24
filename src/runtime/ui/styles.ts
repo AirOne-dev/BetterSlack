@@ -1262,3 +1262,48 @@ export const LAUNCHER_CSS = `
   pointer-events: none;
 }
 `;
+
+/**
+ * A mod's own view, and its entry in Slack's tab rail.
+ *
+ * Installed by `api.slack.addView` the first time one is created, in the
+ * plugin layer beside the launcher's. Two numbers here were measured in a
+ * live client and neither is guessable from the symptom:
+ *
+ * The pane a view is pinned to is `.p-view_contents--primary`, which is
+ * `position: relative`, and the conversation Slack draws inside it sits at
+ * z-index 201 -- so a view below that is present, correctly sized and
+ * completely see through, which reads as a stylesheet that never loaded. And
+ * Slack's own modal overlay is 1053, so a view has to stay well under it or
+ * every confirmation a view opens appears behind the view that asked for it.
+ *
+ * The rail entry copies Slack's own metrics rather than its class names for
+ * the parts that are ours: a 40px square, an icon at 20px, a label at 11px.
+ * Slack's classes do the rest, so the entry follows every theme.
+ */
+export const VIEW_CSS = `
+.betterslack-view {
+  position: absolute;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--dt_color-base-pry, #1a1d21);
+  color: var(--dt_color-content-pry, #d1d2d3);
+  animation: betterslack-view-enter var(--sm-motion-base, 200ms) var(--sm-motion-ease, cubic-bezier(.2, .9, .25, 1));
+}
+
+@keyframes betterslack-view-enter {
+  from { opacity: 0; transform: translateX(var(--sm-motion-shift, 8px)); }
+  to { opacity: 1; transform: none; }
+}
+
+.betterslack-view-tab .p-tab_rail__button__icon_inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.betterslack-view-tab .p-tab_rail__button__icon_inner svg { width: 20px; height: 20px; }
+.betterslack-view-tab.p-tab_rail__button--active .p-tab_rail__button__icon_inner svg { width: 22px; height: 22px; }
+`;

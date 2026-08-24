@@ -4,7 +4,6 @@ export const STRINGS = {
     buttonHint: 'Everything Slack changed and did not tell you about',
     subtitle: 'Kept on this machine, in BetterSlack’s own settings file. Only what your client has drawn.',
     search: 'Search names, channels, words…',
-    close: 'Close',
     dismiss: 'Dismiss',
 
     group_all: 'Everything',
@@ -60,7 +59,6 @@ export const STRINGS = {
     buttonHint: 'Tout ce que Slack a changé sans vous le dire',
     subtitle: 'Conservé sur cette machine, dans le fichier de réglages de BetterSlack. Uniquement ce que votre client a affiché.',
     search: 'Chercher un nom, un canal, un mot…',
-    close: 'Fermer',
     dismiss: 'Écarter',
 
     group_all: 'Tout',
