@@ -203,6 +203,9 @@
     const show = () => {
       if (layer || !trigger.isConnected) return;
       layer = build();
+      document.addEventListener("keydown", onKeyDown, true);
+      window.addEventListener("scroll", onLeave, true);
+      window.addEventListener("resize", onLeave);
       layer.style.visibility = "hidden";
       document.body.append(layer);
       position(layer);
@@ -211,6 +214,11 @@
     const hide = () => {
       clearTimeout(timer);
       timer = void 0;
+      if (layer) {
+        document.removeEventListener("keydown", onKeyDown, true);
+        window.removeEventListener("scroll", onLeave, true);
+        window.removeEventListener("resize", onLeave);
+      }
       layer?.remove();
       layer = null;
     };
@@ -234,9 +242,6 @@
     trigger.addEventListener("click", onLeave);
     trigger.addEventListener("focus", onFocus);
     trigger.addEventListener("blur", onLeave);
-    document.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("scroll", onLeave, true);
-    window.addEventListener("resize", onLeave);
     return () => {
       hide();
       trigger.removeEventListener("mouseenter", onEnter);
@@ -245,9 +250,6 @@
       trigger.removeEventListener("click", onLeave);
       trigger.removeEventListener("focus", onFocus);
       trigger.removeEventListener("blur", onLeave);
-      document.removeEventListener("keydown", onKeyDown, true);
-      window.removeEventListener("scroll", onLeave, true);
-      window.removeEventListener("resize", onLeave);
     };
   }
 
