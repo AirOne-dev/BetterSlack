@@ -291,15 +291,30 @@ protocols.
 **Linux and Windows are written and reviewed, not executed.** Only macOS has
 been run end to end.
 
-**pnpm, not npm.** `pnpm-workspace.yaml` names esbuild under
-`onlyBuiltDependencies` -- pnpm refuses to run a dependency's install script
-unless it is listed there, and esbuild fetches its platform binary in one, so a
-fresh checkout fails on every command that touches the bundler without it. The
-file also needs a `packages` field (`- .`, this one repo): pnpm 11 treats the
-mere presence of a `pnpm-workspace.yaml` as a workspace and aborts with
-`packages field missing or empty` if it is absent -- so both keys are load-
-bearing, and there are only two: an `allowBuilds` key is not something pnpm
-reads.
+**pnpm, not npm, and `allowBuilds` is the key that does it.** esbuild fetches
+its platform binary in an install script, and pnpm refuses to run one unless it
+is allowed by name -- without that, every command that touches the bundler
+fails on a fresh checkout with `ERR_PNPM_IGNORED_BUILDS`, and so does
+`install.sh`. Measured against the pinned pnpm 11.5.2 in a clean store, one key
+at a time:
+
+| `pnpm-workspace.yaml` | `pnpm install --frozen-lockfile` |
+| --- | --- |
+| `allowBuilds: esbuild: true` | succeeds |
+| `onlyBuiltDependencies: [esbuild]` | `ERR_PNPM_IGNORED_BUILDS: esbuild` |
+| both | succeeds |
+
+So `allowBuilds` is load-bearing and `onlyBuiltDependencies` alone is not, which
+is worth knowing before tidying either away: taking `allowBuilds` out shipped a
+release whose install could not build, and pnpm quietly rewrote the key as
+`set this to true or false` -- not a boolean, so the builds stayed ignored and
+the file still *looked* like it said something. Both are kept, because
+`onlyBuiltDependencies` is pnpm's own documented spelling and a later version
+may prefer it.
+
+The file also needs a `packages` field (`- .`, this one repo): pnpm 11 treats
+the mere presence of a `pnpm-workspace.yaml` as a workspace and aborts with
+`packages field missing or empty` if it is absent.
 
 ```bash
 pnpm check             # the whole gate, in one command -- run this before pushing

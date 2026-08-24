@@ -1,9 +1,25 @@
 # esbuild fetches its platform binary in an install script, and pnpm refuses to
-# run one unless it is allowed here by name. Without this, every command that
-# touches the bundler fails on a fresh checkout with "Ignored build scripts".
+# run one unless it is allowed here by name. Without that, every command that
+# touches the bundler fails on a fresh checkout with ERR_PNPM_IGNORED_BUILDS,
+# and `install.sh` fails with it too.
+#
+# `allowBuilds` is the key that does it, measured against the pinned pnpm
+# 11.5.2 in a clean store, one key at a time:
+#
+#   allowBuilds only              install --frozen-lockfile succeeds
+#   onlyBuiltDependencies only    ERR_PNPM_IGNORED_BUILDS: esbuild
+#   both                          succeeds
+#
+# So `allowBuilds` is load-bearing and must not be removed -- and pnpm rewrites
+# it to `set this to true or false` if it is, which is not a boolean and leaves
+# the builds ignored just the same. `onlyBuiltDependencies` is pnpm's own
+# documented spelling and is kept beside it for a version that prefers it.
+#
+# `packages` is load-bearing too: pnpm 11 treats the mere presence of this file
+# as a workspace and aborts with "packages field missing or empty" without it.
 packages:
   - .
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
 onlyBuiltDependencies:
   - esbuild
