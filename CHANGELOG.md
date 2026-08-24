@@ -4,6 +4,22 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.1.1 — 2026-08-24
+
+### Fixed
+
+- **3.1.0 could not be installed.** `pnpm-workspace.yaml` had lost the key that
+  lets esbuild run its install script, so a fresh checkout — which is what
+  `install.sh` makes — stopped with `ERR_PNPM_IGNORED_BUILDS: esbuild` before
+  it could build anything. An existing install is unaffected; if you took 3.1.0
+  and it would not build, this is why, and running the installer again is all
+  it needs.
+
+  The key was removed on the strength of a note claiming pnpm does not read it.
+  Measured instead, against the pnpm this project pins, one key at a time:
+  `allowBuilds` alone works, `onlyBuiltDependencies` alone fails with exactly
+  that error, both work. The measurement is written down where the claim was.
+
 ## 3.1.0 — 2026-08-24
 
 ### Added
