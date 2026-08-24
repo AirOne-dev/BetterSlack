@@ -144,7 +144,9 @@
   var SHOW_DELAY_MS = 150;
   var EDGE_OVERLAP = 4;
   var VIEWPORT_MARGIN = 8;
+  var attached = /* @__PURE__ */ new WeakMap();
   function attachTooltip(trigger, options) {
+    attached.get(trigger)?.();
     const { title, subtitle, placement = "right", delayMs = SHOW_DELAY_MS, icon } = options;
     trigger.removeAttribute("title");
     const lines = (subtitle === void 0 ? [] : [subtitle].flat()).filter((line) => line !== "");
@@ -242,7 +244,7 @@
     trigger.addEventListener("click", onLeave);
     trigger.addEventListener("focus", onFocus);
     trigger.addEventListener("blur", onLeave);
-    return () => {
+    const detach = () => () => {
       hide();
       trigger.removeEventListener("mouseenter", onEnter);
       trigger.removeEventListener("mouseleave", onLeave);
@@ -250,7 +252,11 @@
       trigger.removeEventListener("click", onLeave);
       trigger.removeEventListener("focus", onFocus);
       trigger.removeEventListener("blur", onLeave);
+      if (attached.get(trigger) === cleanup) attached.delete(trigger);
     };
+    const cleanup = detach();
+    attached.set(trigger, cleanup);
+    return cleanup;
   }
 
   // src/runtime/ui/strings.ts

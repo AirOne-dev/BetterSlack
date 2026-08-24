@@ -4,6 +4,16 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.0.5 — 2026-08-24
+
+### Fixed
+
+- **The account strip opened one tooltip on its status emoji, not several.**
+  It keeps a single button and re-describes it whenever your status changes, and
+  each description was left attached — so after a few changes, hovering the
+  emoji opened a stack of them. Describing an element now replaces whatever was
+  there.
+
 ## 3.0.4 — 2026-08-24
 
 ### Added
