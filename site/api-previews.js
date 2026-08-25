@@ -4335,6 +4335,10 @@
     document.addEventListener("click", toggle, true);
     document.addEventListener("keydown", onKey, true);
     const refresh = () => {
+      const mine = new Set(panels.values());
+      for (const stray of document.querySelectorAll(`.${DISCLOSURE_CLASS.panel}`)) {
+        if (!mine.has(stray)) stray.remove();
+      }
       const wanted = /* @__PURE__ */ new Set();
       for (const element of document.querySelectorAll(options.trigger)) {
         const key = options.keyFor(element);
@@ -4354,6 +4358,7 @@
       document.removeEventListener("keydown", onKey, true);
       for (const key of [...panels.keys()]) fold(key);
       open.clear();
+      for (const stray of document.querySelectorAll(`.${DISCLOSURE_CLASS.panel}`)) stray.remove();
       for (const element of document.querySelectorAll(`.${DISCLOSURE_CLASS.trigger}`)) {
         element.classList.remove(DISCLOSURE_CLASS.trigger);
         element.removeAttribute("aria-expanded");

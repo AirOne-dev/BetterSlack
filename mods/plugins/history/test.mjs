@@ -1130,3 +1130,48 @@ test('two wordings that say the same thing are one wording', async () => {
     dom.cleanup();
   }
 });
+
+test('a panel left behind by a previous life of the mod is swept', async () => {
+  /*
+   * A mod is stopped and started again whenever its files change, and switched
+   * off and on by hand. What it left inside Slack's own markup is not
+   * something Slack will ever clean up -- two of them appeared in a real
+   * client this way, one per reload, and read as the same content printed
+   * twice.
+   */
+  const dom = installDom();
+  const message = document.querySelector('[data-qa="message_container"]');
+  const label = document.createElement('span');
+  label.className = 'c-message__edited_label';
+  label.textContent = '(edited)';
+  message.querySelector('[data-qa="message-text"]').after(label);
+
+  // What an instance that is gone left on screen.
+  const orphan = document.createElement('div');
+  orphan.className = 'betterslack-disclosure__panel';
+  orphan.textContent = 'from a previous life';
+  message.append(orphan);
+
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [
+        { id: '1', kind: 'edited', at: 10, channelId: 'C0BFQCYBRAB', ts: '1786386808.130969', before: 'first', after: 'second' },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    assert.equal(document.querySelectorAll('.betterslack-disclosure__panel').length, 0,
+      'nothing this instance did not put there survives its first sweep');
+
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(document.querySelectorAll('.betterslack-disclosure__panel').length, 1,
+      'and opening one gives exactly one');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

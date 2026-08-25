@@ -160,6 +160,20 @@ export function createDisclosure(options: DisclosureOptions): DisclosureHandle {
   document.addEventListener('keydown', onKey, true);
 
   const refresh = (): void => {
+    /*
+     * A panel this instance did not put there is one from a previous life.
+     *
+     * A mod is stopped and started again whenever its files change, and it is
+     * switched off and on by hand -- and what it left inside Slack's own
+     * markup is not something Slack will ever clean up. Two of them appeared
+     * in a real client this way, one per reload, and read as the same content
+     * printed twice.
+     */
+    const mine = new Set(panels.values());
+    for (const stray of document.querySelectorAll(`.${DISCLOSURE_CLASS.panel}`)) {
+      if (!mine.has(stray as HTMLElement)) stray.remove();
+    }
+
     const wanted = new Set<string>();
     for (const element of document.querySelectorAll(options.trigger)) {
       const key = options.keyFor(element);
@@ -191,6 +205,9 @@ export function createDisclosure(options: DisclosureOptions): DisclosureHandle {
     document.removeEventListener('keydown', onKey, true);
     for (const key of [...panels.keys()]) fold(key);
     open.clear();
+    // Everything, not only what was tracked: this is putting somebody else's
+    // markup back, and a panel left behind is one nothing else can remove.
+    for (const stray of document.querySelectorAll(`.${DISCLOSURE_CLASS.panel}`)) stray.remove();
     for (const element of document.querySelectorAll(`.${DISCLOSURE_CLASS.trigger}`)) {
       // Somebody else's element, put back as theirs.
       element.classList.remove(DISCLOSURE_CLASS.trigger);

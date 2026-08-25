@@ -1394,6 +1394,14 @@ Shape of it:
   180°. A keyframe rather than a transition, since the panel is built already
   open and a transition needs a frame between insertion and the change.
 
+  **And it sweeps what a previous life of the mod left.** A mod is stopped and
+  started again whenever its files change, and switched off and on by hand;
+  what it left inside Slack's own markup is not something Slack will ever
+  remove. Measured in a real client: two panels, one per reload, reading as the
+  same content printed twice. `refresh()` removes any panel this instance does
+  not own, and disposing removes every one in the document rather than only the
+  tracked ones. The same rule the headstones follow, for the same reason.
+
   **The caret is drawn with borders, never typed as a glyph.** A character sits
   wherever its font puts it in the em box, which is never the middle, so
   rotating one turns it about a point that is not its own centre and it lands
