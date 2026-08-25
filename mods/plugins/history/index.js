@@ -20,14 +20,14 @@
  * name, through `api.slack.web`, which is cached per workspace.
  *
  * The judgement -- is this a change, or Slack re-rendering -- lives in
- * `watch-messages.js` and `watch-names.js`, away from the DOM, because that is
- * the part that has to be right and the part worth a test.
+ * `watch-names.js`, away from the DOM, because that is the part that has to be
+ * right and the part worth a test.
  */
 
 import { createView } from './view.js';
 import { STRINGS } from './strings.js';
 import { add, tally, view, without } from './store.js';
-import { createMessageWatcher, reactionChanges } from './watch-messages.js';
+import { createMessageStore } from './messages.js';
 import { createNameWatcher, displayNameChanges, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, snapshotOf } from './catch-up.js';
 import { harvest, merge, namesFor } from './emoji.js';
@@ -64,8 +64,6 @@ const SWEEP_MS = 1500;
 const CATCH_UP_LIMIT = 60;
 /** Channels whose last state is remembered. Each one is a page of text. */
 const CATCH_UP_CHANNELS = 8;
-/** The floor between two "who reacted" questions about the same channel. */
-const ASK_MS = 8000;
 
 /** People change their status in minutes, not seconds, and every ask is a request. */
 const PEOPLE_MS = 5 * 60 * 1000;
@@ -88,7 +86,7 @@ export default {
    */
   start(api) {
     const t = api.i18n.strings(STRINGS);
-    const { message: MESSAGE, messageText: TEXT, channelSidebar: SIDEBAR } = api.slack.selectors;
+    const { message: MESSAGE, channelSidebar: SIDEBAR } = api.slack.selectors;
 
     const keep = Math.max(50, Number(api.settings.get('keep', 500)) || 500);
     const showDeleted = api.settings.get('showDeleted', true) !== false;
@@ -109,7 +107,7 @@ export default {
 
     api.css(api.assets.text('view.css'));
 
-    const messages = createMessageWatcher();
+    const messages = createMessageStore();
     const names = createNameWatcher();
     /*
      * What each channel looked like when you last left it.
@@ -165,6 +163,9 @@ export default {
      * characters and a message here has the width of the page, and a link
      * pasted on its own is usually the point of the message.
      */
+    /** A time, the way the page writes one. */
+    const time = (at) => new Date(at).toLocaleTimeString(api.i18n.locale, { hour: '2-digit', minute: '2-digit' });
+
     const drawText = (text, people) => api.slack.renderMrkdwn(text, {
       userName: (id) => people?.get(id)?.name ?? null,
       channelName: (id) => nameOfChannel(id),
@@ -318,96 +319,6 @@ export default {
     const open = () => page.open();
 
     // --------------------------------------------------------------- reading
-
-    /**
-     * Everything on screen, in the order Slack drew it.
-     *
-     * Null while Demo Mode is on: it replaces every name and every message on
-     * screen with invented ones, so reading then would fill the log with words
-     * nobody wrote and mark everything on screen as changed twice over -- once
-     * when it starts and once when it is switched off again.
-     */
-    const readMessages = () => {
-      const out = [];
-      for (const element of document.querySelectorAll(MESSAGE)) {
-        const channelId = element.getAttribute('data-msg-channel-id');
-        const ts = element.getAttribute('data-msg-ts');
-        if (!channelId || !ts) continue;
-        const body = element.querySelector(TEXT);
-        // A join notice or a bare file card has no message text to compare.
-        if (!body) continue;
-        out.push({
-          key: `${channelId}:${ts}`,
-          channelId,
-          ts,
-          text: textOf(body),
-          // Slack draws no avatar on a follow-up message from the same person,
-          // so this is null for plenty of them. An absent author is shown as
-          // one rather than guessed from the message above.
-          userId: api.slack.userIdFromMessage(api.slack.describeMessage(element)),
-          /*
-           * Which app posted it, from what the socket and the catch-up were
-           * told. The screen cannot answer this on its own: Slack draws an
-           * app's message like anybody else's with a small badge, and a
-           * follow-up carries no badge at all.
-           */
-          botId: messages.appFor(`${channelId}:${ts}`),
-          who: senderName(element),
-          reactions: readReactions(element),
-        });
-      }
-      return out;
-    };
-
-    /**
-     * What a message says, with its emoji written down rather than dropped.
-     *
-     * `textContent` loses every emoji: Slack draws them as `<img>`, and an
-     * image has no text. So the body is walked and each one contributes its
-     * shortcode -- which is what `conversations.history` sends too, so the two
-     * halves of this mod describe a message the same way.
-     */
-    const textOf = (body) => {
-      const parts = [];
-      const walk = (node) => {
-        if (node.nodeType === Node.TEXT_NODE) { parts.push(node.nodeValue ?? ''); return; }
-        const name = node.getAttribute?.('data-stringify-emoji');
-        if (name) { parts.push(`:${String(name).replace(/^:|:$/g, '')}:`); return; }
-        for (const child of node.childNodes) walk(child);
-      };
-      walk(body);
-      return parts.join('').trim();
-    };
-
-    /**
-     * The reaction tally on one message: emoji to count.
-     *
-     * Slack says *who* reacted only in a tooltip it builds when you hover, in
-     * the reader's language and with names rather than ids, so the count is
-     * what can be known honestly. `data-stringify-emoji` is the shortcode,
-     * which is the same name whatever the reader's language is.
-     */
-    const readReactions = (element) => {
-      const out = {};
-      for (const pill of element.querySelectorAll('[data-qa="reactji"]')) {
-        const drawn = pill.querySelector('[data-stringify-emoji]');
-        const emoji = drawn?.getAttribute('data-stringify-emoji');
-        const count = Number(pill.querySelector('.c-reaction__count')?.textContent?.trim());
-        if (!emoji || !Number.isFinite(count)) continue;
-        /*
-         * The picture, taken from the screen rather than built from the name.
-         *
-         * A shortcode is not always one name: a reaction with a skin tone is
-         * `:raised_hands::skin-tone-2:`, two of them run together, and a custom
-         * emoji is a name only this workspace knows. Slack has already resolved
-         * both into an `<img>`, so the honest source of the picture is the
-         * picture. Printed as its shortcode instead, the row read
-         * `:raised_hands::skin-tone-2:`, which is a rendering that failed.
-         */
-        out[emoji] = { count, url: drawn.tagName === 'IMG' ? drawn.src : (drawn.querySelector('img')?.src ?? null) };
-      }
-      return out;
-    };
 
     /** Every name on screen, with what it names. */
     const readNames = () => {
@@ -719,27 +630,6 @@ export default {
       }
     };
 
-    /**
-     * Channels where a reaction moved and nobody has been named yet.
-     *
-     * Asked at a floor rather than on the sweep that noticed: a busy channel
-     * would otherwise be a request every second and a half, against a rate
-     * limit shared with Slack's own client. Nothing is lost by waiting -- the
-     * snapshot only moves when the answer arrives, so a second reaction landing
-     * in the meantime is in the same diff.
-     */
-    const wantsAsking = new Set();
-    const askedAt = new Map();
-    const askWhoReacted = () => {
-      const now = Date.now();
-      for (const channelId of [...wantsAsking]) {
-        if (now - (askedAt.get(channelId) ?? 0) < ASK_MS) continue;
-        wantsAsking.delete(channelId);
-        askedAt.set(channelId, now);
-        void catchUpOn(channelId);
-      }
-    };
-
     /*
      * Everything Slack tells this client, for every conversation it is in.
      *
@@ -935,34 +825,14 @@ export default {
       }
 
       /*
-       * A reaction seen on screen is a question, not an answer.
+       * The sidebar's section names, which is all the screen is read for now.
        *
-       * Slack draws a count and names nobody -- who reacted is in a tooltip it
-       * builds on hover, in the reader's language, with names rather than ids.
-       * So a row written from the screen could only ever say "somebody", which
-       * is the one thing a history is no use for: knowing something was taken
-       * back and not by whom is worse than not knowing at all.
-       *
-       * `conversations.history` does name them, so a count moving is what
-       * sends this to ask. The answer is diffed against the snapshot from the
-       * last look and recorded there, with the person on it. Nothing is
-       * written from the sighting itself.
+       * Slack pushes messages, edits, deletions, reactions, renames and people
+       * down its socket; it says nothing about the sections *you* made in your
+       * own sidebar, because they are yours and no other client has them. So
+       * the heading is still the only place those names are written down.
        */
-      const seen = messages.sweep(readMessages());
-      const changes = [];
-      for (const change of seen) {
-        // An app rewriting or removing its own message, seen from the screen
-        // this time. Same non-event, same rule.
-        if (change.botId && !watchApps
-          && (change.kind === 'edited' || change.kind === 'deleted')) continue;
-        if (change.kind === 'reaction-added' || change.kind === 'reaction-removed') {
-          if (change.channelId) wantsAsking.add(change.channelId);
-          continue;
-        }
-        changes.push(change);
-      }
-      record([...changes, ...names.sweep(readNames())]);
-      askWhoReacted();
+      record(names.sweep(readNames()));
       placeStones();
 
       for (const element of document.querySelectorAll(MESSAGE)) {
@@ -1049,6 +919,72 @@ export default {
       return since.length || null;
     });
 
+    /*
+     * Every wording a message has had, in the conversation itself.
+     *
+     * Slack writes "(edited)" and shows you the current wording; what it
+     * replaced is gone. The log has it, and a page you have to go and open is
+     * the wrong place to answer "what did that say before" -- the question is
+     * asked while looking at the message.
+     *
+     * A chain rather than a list of changes: an edit is a pair, so the
+     * wordings are the first `before` followed by every `after`. Two edits of
+     * one message share a wording, and printing that twice would read as an
+     * edit that changed nothing.
+     */
+    const wordingsOf = (channelId, ts) => {
+      const edits = log
+        .filter((entry) => entry.kind === 'edited' && entry.channelId === channelId && entry.ts === ts)
+        .sort((a, b) => a.at - b.at);
+      if (edits.length === 0) return [];
+      return [
+        { text: edits[0].before, at: null },
+        ...edits.map((edit) => ({ text: edit.after, at: edit.at })),
+      ];
+    };
+
+    api.slack.addMessageAction({
+      id: 'wordings',
+      label: t('wordings'),
+      description: t('wordingsHint'),
+      icon: `<svg viewBox="0 0 20 20" aria-hidden="true" fill="none">
+        <path d="M10 3.2a6.8 6.8 0 1 1-6.6 8.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M3.4 7.6 3.2 4.4M3.4 7.6l3.2-.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10 6.8V10l2.3 2.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`,
+      // Only where there is something to show. A button on every message that
+      // does nothing for nearly all of them is worse than no button: the
+      // toolbar is four items wide and Slack's own are all live.
+      when: (message) => wordingsOf(message.channelId, message.ts).length > 1,
+      onClick: async (message) => {
+        const wordings = wordingsOf(message.channelId, message.ts);
+        if (wordings.length < 2) return;
+        const people = await peopleFor(
+          log.filter((entry) => entry.channelId === message.channelId && entry.ts === message.ts),
+        );
+        const list = api.dom.h('div', { class: 'bsh-wordings' });
+        for (const [index, wording] of wordings.entries()) {
+          const last = index === wordings.length - 1;
+          const line = api.dom.h('div', { class: `bsh-wording${last ? ' bsh-wording--now' : ''}` }, [
+            api.dom.h('div', { class: 'bsh-wording__when bsh-dim' }, [
+              wording.at ? time(wording.at) : t('wordingFirst'),
+              ...(last ? [' · ', t('wordingNow')] : []),
+            ]),
+          ]);
+          const words = api.dom.h('div', { class: 'bsh-wording__text' }, []);
+          words.append(drawText(wording.text, people));
+          line.append(words);
+          list.append(line);
+          if (!last) list.append(api.dom.h('div', { class: 'bsh-wording__rule' }));
+        }
+        api.ui.modal({
+          title: t('wordings'),
+          content: list,
+          actions: [{ label: t('close'), variant: 'primary' }],
+        });
+      },
+    });
+
     api.helpers.hotkey(api.settings.get('shortcut', 'mod+shift+h'), () => {
       if (page.isOpen()) page.close();
       else open();
@@ -1074,25 +1010,6 @@ export default {
 };
 
 /**
- * The sender's name as drawn, cleaned of the copy Slack draws for screen
- * readers.
- *
- * Measured in a live client: `[data-qa="message_sender"]` holds the name twice
- * on some messages -- "Ada LovelaceAda Lovelace :" -- and once on others. This
- * is only a label on a row, never a value anything is compared against (see
- * `watch-names.js`), but a label that reads as a stutter is still wrong.
- */
-function senderName(element) {
-  const raw = (element.querySelector('.c-message__sender_button')
-    ?? element.querySelector('[data-qa="message_sender"]'))?.textContent ?? '';
-  const text = raw.replace(/\s+/g, ' ').replace(/\s*:\s*$/, '').trim();
-  if (!text) return null;
-  const half = text.length / 2;
-  if (text.length % 2 === 0 && text.slice(0, half) === text.slice(half)) return text.slice(0, half);
-  return text;
-}
-
-/**
  * Somebody's face, at the size a row draws it.
  *
  * `avatarUrl` rewrites the `<base>-<size>` shape a message's avatar has and
@@ -1110,5 +1027,3 @@ function displayName(user) {
   if (!user) return null;
   return user.profile?.display_name || user.real_name || user.name || null;
 }
-
-export { reactionChanges };

@@ -1038,6 +1038,13 @@ tests fail below it.
   with the column rather than with the mod being switched on.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
+- **Editing a message takes it out of the document.** Slack replaces the
+  message with an editor while you type, so anything inferring a deletion from
+  "the message left the window" writes down your own edit as your own deletion
+  -- and typing takes longer than any sane debounce, so no amount of waiting
+  fixes it. The socket says which of the two happened, and
+  `conversations.history` catches what the socket missed on the next visit;
+  between them there is nothing left for a heuristic to add.
 - **A reaction is `[data-qa="reactji"]`**, one button per emoji, carrying
   `data-stringify-emoji` (the shortcode, which is the same name in every
   language) and `.c-reaction__count`. The bar around them is

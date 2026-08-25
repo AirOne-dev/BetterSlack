@@ -2410,6 +2410,7 @@
       if (group.querySelector(`#${CSS.escape(nodeId)}`)) return;
       const message = group.closest(MESSAGE) ?? document.querySelector(".c-message_kit__hover--hovered")?.closest(MESSAGE) ?? null;
       if (!message) return;
+      if (action.when && !action.when(describeMessage(message))) return;
       const button = h("button", {
         class: "c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button betterslack-action",
         type: "button",

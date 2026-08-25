@@ -1033,6 +1033,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
   </header>
   <div class="panel__body">
     <p>A button in the toolbar Slack draws while the pointer is over a message. The handler is given the message: its channel, its timestamp, its permalink and its text.</p>
+<p><code>when</code> decides which messages it belongs on, asked as the toolbar is built. A button that is there for every message and does nothing for most of them is worse than no button: the toolbar is four items wide and Slack's own are all live.</p>
     <div class="api-demo" data-demo="slack-addmessageaction" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Copy link&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.slack.addMessageAction({
@@ -1040,6 +1041,15 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
   label: 'Copy link to message',
   icon: '&lt;svg viewBox=&quot;0 0 20 20&quot;&gt;…&lt;/svg&gt;',
   onClick: (message) =&gt; api.helpers.copy(message.permalink),
+});
+
+api.slack.addMessageAction({
+  id: 'edits',
+  label: 'Earlier wordings',
+  icon: '&lt;svg viewBox=&quot;0 0 20 20&quot;&gt;…&lt;/svg&gt;',
+  // Only where there is something to show.
+  when: (message) =&gt; versionsOf(message.channelId, message.ts).length &gt; 1,
+  onClick: (message) =&gt; showVersions(message),
 });</code></pre>
   </div>
 </section>

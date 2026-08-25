@@ -31,6 +31,12 @@ export const STRINGS = {
     verb_left: '{who} left',
     'verb_status-changed': '{who} changed their status',
 
+    wordings: 'Earlier wordings',
+    wordingsHint: 'What this message said before it was edited',
+    wordingFirst: 'as written',
+    wordingNow: 'now',
+    close: 'Close',
+
     openChannel: 'Go to {channel}',
     jump: 'Go to it',
     copy: 'Copy',
@@ -80,6 +86,12 @@ export const STRINGS = {
     verb_joined: '{who} a rejoint',
     verb_left: '{who} a quitté',
     'verb_status-changed': '{who} a changé de statut',
+
+    wordings: 'Versions précédentes',
+    wordingsHint: 'Ce que ce message disait avant d’être modifié',
+    wordingFirst: 'à l’écriture',
+    wordingNow: 'actuel',
+    close: 'Fermer',
 
     openChannel: 'Aller dans {channel}',
     jump: 'Y aller',

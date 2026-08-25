@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url';
 import { assertPluginShape, createTestApi, installDom, readModFiles, switchWorkspace } from '../../../tests/harness.mjs';
 import plugin from './index.js';
 import { add, foldReactions, group, GROUPS, sortRows, tally, view, without } from './store.js';
-import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, reactionDiff, snapshotOf } from './catch-up.js';
 import { harvest, merge, namesFor } from './emoji.js';
@@ -25,176 +24,6 @@ const screen = (...pairs) => pairs.map(([ts, text, reactions]) => ({
 test('has the shape the runtime loads', () => assertPluginShape(assert, plugin));
 
 /* -- messages ------------------------------------------------------------- */
-
-test('a first sighting is never a change', () => {
-  const watcher = createMessageWatcher();
-  assert.deepEqual(watcher.sweep(screen(['1', 'hello'], ['2', 'there'])), []);
-  assert.equal(watcher.watching(), 2);
-});
-
-test('text that moves before it has settled is not an edit', () => {
-  /*
-   * Full Links replaces a truncated link's label with the whole URL moments
-   * after the message is drawn. Read once and compared on the next sweep, that
-   * is somebody editing their message, which they did not do.
-   */
-  const watcher = createMessageWatcher();
-  watcher.sweep(screen(['1', 'see example.com/a…']));
-  assert.deepEqual(watcher.sweep(screen(['1', 'see https://example.com/a/b/c'])), []);
-});
-
-test('a change after two identical readings is an edit, with both wordings', () => {
-  const watcher = createMessageWatcher();
-  watcher.sweep(screen(['1', 'ship it']));
-  watcher.sweep(screen(['1', 'ship it']));
-  const [change, ...rest] = watcher.sweep(screen(['1', 'ship it tomorrow']));
-  assert.equal(rest.length, 0);
-  assert.equal(change.kind, 'edited');
-  assert.equal(change.before, 'ship it');
-  assert.equal(change.after, 'ship it tomorrow');
-  assert.equal(change.who, 'Ada');
-});
-
-test('scrolling is not a massacre', () => {
-  /*
-   * Slack's list is virtual: thirteen messages out of thousands are in the
-   * document, and scrolling drops some at one end. Everything that leaves that
-   * way has a missing neighbour, which is what tells it apart from a deletion.
-   */
-  const watcher = createMessageWatcher();
-  const first = screen(['1', 'a'], ['2', 'b'], ['3', 'c'], ['4', 'd']);
-  watcher.sweep(first);
-  watcher.sweep(first);
-  const scrolled = screen(['3', 'c'], ['4', 'd'], ['5', 'e'], ['6', 'f']);
-  assert.deepEqual(watcher.sweep(scrolled), []);
-  assert.deepEqual(watcher.sweep(scrolled), []);
-});
-
-test('a gap with both neighbours still there is a deletion', () => {
-  const watcher = createMessageWatcher();
-  const before = screen(['1', 'a'], ['2', 'oops'], ['3', 'c']);
-  watcher.sweep(before);
-  watcher.sweep(before);
-
-  const after = screen(['1', 'a'], ['3', 'c']);
-  // Once is not enough: Slack re-renders, and a message can come back.
-  assert.deepEqual(watcher.sweep(after), []);
-
-  const [change, ...rest] = watcher.sweep(after);
-  assert.equal(rest.length, 0);
-  assert.equal(change.kind, 'deleted');
-  assert.equal(change.before, 'oops');
-  // The two it sat between, so the headstone goes back where the message was.
-  assert.equal(change.previousTs, '1');
-  assert.equal(change.nextTs, '3');
-});
-
-test('the message you just wrote, deleted, is the common case and is caught', () => {
-  /*
-   * It is the last one in the conversation, so it has nothing after it. Asking
-   * for a neighbour on both sides means never seeing the thing people actually
-   * do, which is exactly what happened.
-   */
-  const watcher = createMessageWatcher();
-  const before = screen(['1', 'a'], ['2', 'b'], ['3', 'oops']);
-  watcher.sweep(before);
-  watcher.sweep(before);
-
-  const after = screen(['1', 'a'], ['2', 'b']);
-  assert.deepEqual(watcher.sweep(after), [], 'not on the first sweep: Slack re-renders');
-
-  const [change, ...rest] = watcher.sweep(after);
-  assert.equal(rest.length, 0);
-  assert.equal(change.kind, 'deleted');
-  assert.equal(change.before, 'oops');
-  assert.equal(change.previousTs, '2');
-  assert.equal(change.nextTs, null, 'nothing followed it, so there is nowhere to put a headstone');
-});
-
-test('scrolling up drops from the bottom too, and is not a deletion', () => {
-  // The one case that looks identical until you notice what came *in*: scrolling
-  // up takes messages off the end and brings older ones in at the top.
-  const watcher = createMessageWatcher();
-  const first = screen(['3', 'c'], ['4', 'd'], ['5', 'e']);
-  watcher.sweep(first);
-  watcher.sweep(first);
-  const scrolledUp = screen(['1', 'a'], ['2', 'b'], ['3', 'c']);
-  assert.deepEqual(watcher.sweep(scrolledUp), []);
-  assert.deepEqual(watcher.sweep(scrolledUp), []);
-});
-
-test('the oldest message leaving the top is never a deletion on its own', () => {
-  // Scrolling down does this constantly, so the top of the window keeps the
-  // strict rule: both neighbours, or nothing.
-  const watcher = createMessageWatcher();
-  const first = screen(['1', 'a'], ['2', 'b'], ['3', 'c']);
-  watcher.sweep(first);
-  watcher.sweep(first);
-  const trimmed = screen(['2', 'b'], ['3', 'c']);
-  assert.deepEqual(watcher.sweep(trimmed), []);
-  assert.deepEqual(watcher.sweep(trimmed), []);
-});
-
-test('a message that comes straight back was a re-render, not a deletion', () => {
-  const watcher = createMessageWatcher();
-  const full = screen(['1', 'a'], ['2', 'b'], ['3', 'c']);
-  watcher.sweep(full);
-  watcher.sweep(full);
-  watcher.sweep(screen(['1', 'a'], ['3', 'c']));
-  assert.deepEqual(watcher.sweep(full), []);
-  assert.deepEqual(watcher.sweep(full), []);
-});
-
-test('changing channel does not read as everybody deleting everything', () => {
-  const watcher = createMessageWatcher();
-  const here = screen(['1', 'a'], ['2', 'b'], ['3', 'c']);
-  watcher.sweep(here);
-  watcher.sweep(here);
-  const elsewhere = [{ key: 'C2:9', channelId: 'C2', ts: '9', text: 'x', reactions: {} }];
-  assert.deepEqual(watcher.sweep(elsewhere), []);
-  assert.deepEqual(watcher.sweep(elsewhere), []);
-});
-
-/* -- reactions ------------------------------------------------------------ */
-
-/** A tally as the sweep reads it: the count, and the picture Slack drew. */
-const pills = (entries) => Object.fromEntries(
-  Object.entries(entries).map(([emoji, count]) => [emoji, { count, url: `https://e/${emoji}.png` }]),
-);
-
-test('a reaction is a count, and never a guess about who', () => {
-  assert.deepEqual(reactionChanges(pills({}), pills({ ':tada:': 1 })).map((c) => c.kind), ['reaction-added']);
-  assert.deepEqual(reactionChanges(pills({ ':tada:': 2 }), pills({ ':tada:': 1 })).map((c) => c.kind), ['reaction-removed']);
-  assert.deepEqual(reactionChanges(pills({ ':tada:': 1 }), pills({})).map((c) => c.kind), ['reaction-removed']);
-  assert.deepEqual(reactionChanges(pills({ ':tada:': 1 }), pills({ ':tada:': 1 })), []);
-
-  const [taken] = reactionChanges(pills({ ':eyes:': 3 }), pills({ ':eyes:': 1 }));
-  assert.equal(taken.emoji, ':eyes:');
-  assert.equal(taken.before, '3');
-  assert.equal(taken.after, '1');
-  assert.equal(taken.who, undefined, 'Slack never says who, so neither does this');
-});
-
-test('the picture travels with the reaction, because the name cannot be turned back into one', () => {
-  /*
-   * `:raised_hands::skin-tone-2:` is two shortcodes run together, and a custom
-   * emoji is a name only one workspace knows. Printed as its name the row read
-   * exactly that, which is a rendering that failed.
-   */
-  const [gone] = reactionChanges(pills({ ':raised_hands::skin-tone-2:': 1 }), pills({}));
-  assert.equal(gone.emojiUrl, 'https://e/:raised_hands::skin-tone-2:.png',
-    'the one Slack had already drawn, kept even though the reaction is gone');
-});
-
-test('a reaction on a message that has not settled is not reported', () => {
-  const watcher = createMessageWatcher();
-  watcher.sweep(screen(['1', 'a', pills({ ':tada:': 1 })]));
-  assert.deepEqual(watcher.sweep(screen(['1', 'a', pills({ ':tada:': 2 })])).map((c) => c.kind), []);
-  const [change] = watcher.sweep(screen(['1', 'a', pills({ ':tada:': 3 })]));
-  assert.equal(change.kind, 'reaction-added');
-});
-
-/* -- names and people ----------------------------------------------------- */
 
 test('a name is only a rename once it has been read twice unchanged', () => {
   const watcher = createNameWatcher();
@@ -692,49 +521,6 @@ test('nothing is recorded while Demo Mode is rewriting the screen', async () => 
   }
 });
 
-test('the remembered order is the conversation’s, not the document’s', () => {
-  /*
-   * What put a deleted last message in the middle of the day before.
-   *
-   * The message list is virtual, so for a frame a node can sit on the far side
-   * of its own neighbours while Slack rebuilds the window. Believed once, that
-   * order is remembered for as long as the channel stays open, and the gap is
-   * then reported as sitting between the wrong two messages -- which is where
-   * the line replacing it gets drawn.
-   */
-  const watcher = createMessageWatcher();
-  const out = (...ts) => ts.map((value) => ({
-    key: `C1:${value}`, channelId: 'C1', ts: value, text: 't', reactions: {},
-  }));
-
-  // Drawn with the newest message ahead of the two before it.
-  watcher.sweep(out('1787645635.000000', '1787566399.000000', '1787645310.000000'));
-  watcher.sweep(out('1787645635.000000', '1787566399.000000', '1787645310.000000'));
-  // And now the newest one is deleted, which is the common case.
-  watcher.sweep(out('1787566399.000000', '1787645310.000000'));
-  const [change] = watcher.sweep(out('1787566399.000000', '1787645310.000000'));
-
-  assert.equal(change.kind, 'deleted');
-  assert.equal(change.ts, '1787645635.000000');
-  assert.equal(change.nextTs, null, 'nothing followed it, whatever order it was drawn in');
-  assert.equal(change.previousTs, '1787645310.000000', 'and the one before it is the one before it');
-});
-
-test('a message drawn twice at once is one message, not two', () => {
-  // A conversation and a thread draw the same node, and a jump leaves the old
-  // one in place for a frame. Read twice, the second reading is compared with
-  // the first and any difference between the copies is an edit nobody made.
-  const watcher = createMessageWatcher();
-  const twice = [
-    { key: 'C1:1', channelId: 'C1', ts: '1', text: 'hello', reactions: {} },
-    { key: 'C1:1', channelId: 'C1', ts: '1', text: 'hello …', reactions: {} },
-  ];
-  watcher.sweep(twice);
-  watcher.sweep(twice);
-  assert.deepEqual(watcher.sweep(twice), []);
-  assert.equal(watcher.watching(), 1, 'and it is one message being watched');
-});
-
 test('a deletion caught while you were away knows where it was', () => {
   // The screen-reading half learns the neighbours from the order it drew them
   // in; here they come from the conversation itself, so the line goes back
@@ -1142,4 +928,54 @@ test('a catch-up skips what an app did to its own messages, and nothing else', (
     catchUp(was, now, { channelId: 'C1', channelName: null }, { apps: true }).map((e) => e.ts).sort(),
     ['1', '2', '3'],
   );
+});
+
+test('a message with earlier wordings offers them, and one without offers nothing', async () => {
+  /*
+   * Slack writes "(edited)" and shows the current wording; what it replaced is
+   * gone. The question "what did that say before" is asked while looking at
+   * the message, so the answer belongs there rather than on a page you have to
+   * go and open.
+   *
+   * The button is only on messages that have something to show: the toolbar is
+   * four items wide and Slack's own are all live.
+   */
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [
+        { id: '1', kind: 'edited', at: 20, channelId: 'C1', ts: '9', before: 'second', after: 'third' },
+        { id: '2', kind: 'edited', at: 10, channelId: 'C1', ts: '9', before: 'first', after: 'second' },
+        { id: '3', kind: 'deleted', at: 30, channelId: 'C1', ts: '4', before: 'gone' },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    const action = recorded.messageActions.find((entry) => entry.id === 'wordings');
+    assert.ok(action, 'the action is registered');
+
+    assert.equal(action.when({ channelId: 'C1', ts: '9' }), true);
+    assert.equal(action.when({ channelId: 'C1', ts: '4' }), false, 'a deletion is not an edit');
+    assert.equal(action.when({ channelId: 'C1', ts: '1' }), false, 'and a message nobody touched');
+    assert.equal(action.when({ channelId: 'C2', ts: '9' }), false, 'the same ts in another channel');
+
+    await action.onClick({ channelId: 'C1', ts: '9' });
+    const modal = recorded.modals.at(-1);
+    assert.ok(modal, 'a dialog opened');
+    const wordings = [...modal.body.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent);
+    /*
+     * A chain, not a list of changes. Two edits share a wording -- the second
+     * one's `before` is the first one's `after` -- and printing it twice reads
+     * as an edit that changed nothing.
+     */
+    assert.deepEqual(wordings, ['first', 'second', 'third']);
+    assert.ok(modal.body.querySelector('.bsh-wording--now .bsh-wording__text').textContent === 'third',
+      'and the one on screen now is marked');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
 });

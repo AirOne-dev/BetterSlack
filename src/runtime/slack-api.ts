@@ -127,6 +127,14 @@ export interface MessageAction {
   icon: string;
   /** Optional second line in the tooltip, like Slack's own actions have. */
   description?: string;
+  /**
+   * Which messages it belongs on. Every one, unless you say otherwise.
+   *
+   * A button that is there for every message and does nothing for most of them
+   * is worse than no button: the toolbar is four items wide and Slack's own
+   * are all live. Asked as the toolbar is built, which is when you hover.
+   */
+  when?: (message: MessageRef) => boolean;
   onClick: (message: MessageRef, event: MouseEvent) => void;
 }
 
@@ -188,6 +196,7 @@ export function addMessageAction(pluginId: string, action: MessageAction): Clean
       ?? document.querySelector<HTMLElement>('.c-message_kit__hover--hovered')?.closest<HTMLElement>(MESSAGE)
       ?? null;
     if (!message) return;
+    if (action.when && !action.when(describeMessage(message))) return;
 
     const button = h('button', {
       class: 'c-button-unstyled c-icon_button c-icon_button--size_smedium c-message_actions__button betterslack-action',

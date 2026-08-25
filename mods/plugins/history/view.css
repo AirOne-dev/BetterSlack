@@ -375,3 +375,25 @@ button.betterslack-mention:hover { text-decoration: underline; }
   color: var(--dt_color-content-sec, #ababad);
 }
 .bsh-stone__close:hover { color: var(--dt_color-content-pry, #d1d2d3); }
+
+/*
+ * Every wording a message has had, in a dialog opened from the message itself.
+ *
+ * Slack writes "(edited)" and shows the current one; what it replaced is gone.
+ * A page you have to go and open is the wrong place to answer "what did that
+ * say before", because the question is asked while looking at the message.
+ */
+.bsh-wordings { display: flex; flex-direction: column; gap: 2px; }
+.bsh-wording { padding: 8px 0; }
+.bsh-wording__when { font-size: 12px; margin-bottom: 2px; }
+.bsh-wording__text {
+  font-size: 15px;
+  line-height: 1.46668;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--dt_color-content-sec, #ababad);
+}
+/* The wording on screen right now, at full strength: everything above it is
+   what it replaced, and the difference has to be visible at a glance. */
+.bsh-wording--now .bsh-wording__text { color: var(--dt_color-content-pry, #d1d2d3); }
+.bsh-wording__rule { height: 1px; background: var(--dt_color-otl-sec, rgba(94, 93, 96, .35)); }

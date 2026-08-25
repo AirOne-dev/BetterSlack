@@ -13,7 +13,7 @@ A tab in Slack's rail, under Home and Activity, or `⌘⇧H`, or `⌘K` → **Hi
 | **Names** | A channel renamed, a sidebar section renamed, somebody changing their display name. Slack says nothing about any of the three. A section is told apart by Slack's own id for it, so reordering the sidebar — or switching workspace — is not a rename. |
 | **People** | Somebody joining or leaving a conversation, and people's statuses as they change. |
 
-Each card can be forgotten on its own, beside the button that empties the lot. The page has a search that runs over everything a row draws — a name finds it whether it was the person, the channel, or the word that changed — filters by family, and five sorts. Each row offers the old text to copy, and takes you to the message where there is still one to land on.
+Each card can be forgotten on its own, beside the button that empties the lot. The page has a search that runs over everything a row draws — a name finds it whether it was the person, the channel, or the word that changed — filters by family, and five sorts. Each row offers the old text to copy, and takes you to the message where there is still one to land on. A message that has been edited also carries a button in Slack's own hover toolbar — **Earlier wordings** — which shows every wording it has had, in the conversation, since that is where the question is asked. It is only on messages there is something to show for.
 
 ## What it can and cannot see
 
@@ -25,12 +25,9 @@ Each card can be forgotten on its own, beside the button that empties the lot. T
 
 That second half is also the only place **who** reacted can be known: Slack hands over the ids there, while on screen it says so only in a tooltip built on hover, in the reader's language, with names rather than ids.
 
-Telling a real change from Slack redrawing itself is the whole of the work, and three rules do it:
+**What the screen is still read for is the sidebar's section names.** Slack pushes messages, edits, deletions, reactions, renames and people down its socket; it says nothing about the sections *you* made in your own sidebar, because they are yours and no other client has them.
 
-- **Nothing is comparable the first time it is seen.** Other mods rewrite what is on screen — Full Links replaces a truncated link's label with the whole URL moments after a message is drawn — so a reading has to be repeated unchanged before a later difference counts.
-- **A deletion is a gap with both neighbours still on screen.** Slack's message list is virtual: thirteen messages out of thousands are in the document, and scrolling drops some at one end. That is a gap with a missing neighbour; a deletion is a gap with both. The one exception is the message you just wrote, at the bottom, with nothing after it: that counts as long as nothing scrolled in behind it.
-- **Which messages are the neighbours comes from their timestamps**, not from the order the document holds them in. The list being virtual means a node can sit on the far side of its own neighbours for a frame while Slack rebuilds the window, and an order believed once is remembered for as long as the channel stays open.
-- **And only after two sweeps**, because Slack re-renders constantly and a message can leave the document and come back in the same second.
+Nothing else is inferred from the screen any more, and the reason is worth stating: **editing a message takes it out of the document.** Slack replaces it with an editor while you type, so working a deletion out from "the message left the window" wrote your own edit down as your own deletion — and typing takes longer than any amount of waiting. Slack's socket says which of the two happened, and the catch-up covers what the socket missed.
 
 **What an app does to its own messages is not kept.** A deploy status moving through its stages, an alert resolving, a bot rewriting the same line six times a minute: every one of those is an edit, and none of them is somebody taking something back. They also arrive far faster than anything a person does, so a log that keeps them is a log with nothing else visible in it. Only the app's *own* changes — a person reacting to an alert is still a person, and the message arriving in the first place was never an event here. **Keep what apps change about their own messages** turns it back on.
 

@@ -13,7 +13,7 @@ Un onglet dans le rail de Slack, sous Accueil et Activité, ou `⌘⇧H`, ou `�
 | **Noms** | Un canal renommé, une section de sidebar renommée, quelqu'un qui change de nom d'affichage. Slack ne dit rien des trois. Une section est reconnue par l'identifiant que Slack lui donne, donc réordonner la sidebar — ou changer d'espace de travail — n'est pas un renommage. |
 | **Personnes** | Quelqu'un qui rejoint ou quitte une conversation, et les statuts au fil de leurs changements. |
 
-Chaque carte peut être oubliée séparément, à côté du bouton qui vide tout. La page a une recherche qui porte sur tout ce qu'une ligne affiche — un nom se retrouve qu'il ait été la personne, le canal ou le mot changé —, des filtres par famille et cinq tris. Chaque ligne propose de copier l'ancien texte, et d'aller au message quand il en reste un.
+Chaque carte peut être oubliée séparément, à côté du bouton qui vide tout. La page a une recherche qui porte sur tout ce qu'une ligne affiche — un nom se retrouve qu'il ait été la personne, le canal ou le mot changé —, des filtres par famille et cinq tris. Chaque ligne propose de copier l'ancien texte, et d'aller au message quand il en reste un. Un message qui a été modifié porte aussi un bouton dans la barre d'action de Slack — **Versions précédentes** — qui montre toutes les formulations qu'il a eues, dans la conversation, puisque c'est là que la question se pose. Il n'apparaît que sur les messages qui ont quelque chose à montrer.
 
 ## Ce qu'il peut voir, et ce qu'il ne peut pas
 
@@ -25,12 +25,9 @@ Chaque carte peut être oubliée séparément, à côté du bouton qui vide tout
 
 C'est aussi le seul endroit où **qui** a réagi peut être su : Slack y donne les identifiants, alors qu'à l'écran il ne le dit que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms.
 
-Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et trois règles s'en chargent :
+**Ce pour quoi l'écran est encore lu, ce sont les noms des sections de la sidebar.** Slack pousse messages, modifications, suppressions, réactions, renommages et personnes sur sa socket ; il ne dit rien des sections que *vous* avez faites dans votre propre sidebar, parce qu'elles sont à vous et qu'aucun autre client ne les a.
 
-- **Rien n'est comparable à la première lecture.** D'autres mods réécrivent ce qui est à l'écran — Full Links remplace le libellé tronqué d'un lien par l'URL entière juste après l'affichage — donc une lecture doit se répéter à l'identique avant qu'une différence ultérieure compte.
-- **Une suppression est un trou dont les deux voisins sont encore là.** La liste de Slack est virtuelle : treize messages sur des milliers sont dans le document, et défiler en retire à une extrémité. Ça, c'est un trou avec un voisin manquant ; une suppression, c'est un trou avec les deux. La seule exception est le message qu'on vient d'écrire, tout en bas, sans rien après lui : il compte tant que rien n'est arrivé derrière.
-- **Qui sont les voisins vient de leurs horodatages**, pas de l'ordre dans lequel le document les tient. La liste étant virtuelle, un nœud peut se retrouver de l'autre côté de ses propres voisins le temps d'une image pendant que Slack reconstruit la fenêtre, et un ordre cru une fois est mémorisé tant que le canal reste ouvert.
-- **Et seulement après deux passages**, parce que Slack re-rend en permanence et qu'un message peut quitter le document et revenir dans la même seconde.
+Plus rien d'autre n'est déduit de l'écran, et la raison mérite d'être dite : **modifier un message le sort du document.** Slack le remplace par un éditeur pendant que vous tapez, donc déduire une suppression de « le message a quitté la fenêtre » écrivait votre propre modification comme votre propre suppression — et taper prend plus de temps que n'importe quelle attente. La socket de Slack dit laquelle des deux s'est produite, et le rattrapage couvre ce que la socket a manqué.
 
 **Ce qu'une application fait à ses propres messages n'est pas conservé.** Un statut de déploiement qui avance, une alerte qui se résout, un bot qui réécrit six fois la même ligne : chacun est une modification, et aucun n'est quelqu'un qui reprend quelque chose. Ils arrivent aussi bien plus vite que tout ce que fait une personne, donc un journal qui les garde est un journal où plus rien d'autre n'est visible. Uniquement les changements de l'application sur ses *propres* messages — une personne qui réagit à une alerte reste une personne, et l'arrivée du message n'a jamais été un événement ici. **Garder ce que les applications changent dans leurs propres messages** le réactive.
 
