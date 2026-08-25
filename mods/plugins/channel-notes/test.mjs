@@ -4,6 +4,7 @@ import { assertPluginShape, createTestApi, installDom } from '../../../tests/har
 import plugin from './index.js';
 
 /** The fixture URL is /client/T0EXAMPLE1/C0BFQCYBRAB. */
+const TEAM = 'T0EXAMPLE1';
 const CHANNEL = 'C0BFQCYBRAB';
 
 async function mount(settings = {}) {
@@ -60,7 +61,9 @@ test('saves under the current channel without touching the others', async () => 
     modal.body.querySelector('textarea').value = 'new note';
     await modal.options.actions.find((a) => a.label === 'Save').onClick();
 
-    assert.deepEqual(store.notes, { OTHER: 'keep me', [CHANNEL]: 'new note' });
+    // Keyed by workspace as well as by conversation: two workspaces can use
+    // the same channel id, and this file is shared by all of them.
+    assert.deepEqual(store.notes, { OTHER: 'keep me', [`${TEAM}:${CHANNEL}`]: 'new note' });
   } finally {
     dom.cleanup();
   }
@@ -106,6 +109,37 @@ test('an empty note is dropped rather than stored blank', async () => {
     await modal.options.actions.find((a) => a.label === 'Save').onClick();
 
     assert.deepEqual(store.notes, {});
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('a note belongs to a conversation in a workspace, not to a channel id', async () => {
+  // Two workspaces can use the same channel id, and this file is shared by all
+  // of them -- so an unscoped note would appear under somebody else's channel.
+  const { dom, recorded, store } = await mount({ notes: { [`T0OTHER:${CHANNEL}`]: 'theirs' } });
+  try {
+    assert.equal(openNotes(recorded).body.querySelector('textarea').value, '',
+      'the other workspace’s note is not this one’s');
+
+    const modal = openNotes(recorded);
+    modal.body.querySelector('textarea').value = 'mine';
+    await modal.options.actions.find((a) => a.label === 'Save').onClick();
+    assert.deepEqual(store.notes, { [`T0OTHER:${CHANNEL}`]: 'theirs', [`${TEAM}:${CHANNEL}`]: 'mine' });
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('a note written before it was scoped is still read, and moves when saved', async () => {
+  const { dom, recorded, store } = await mount({ notes: { [CHANNEL]: 'from before' } });
+  try {
+    const modal = openNotes(recorded);
+    assert.equal(modal.body.querySelector('textarea').value, 'from before');
+    modal.body.querySelector('textarea').value = 'still mine';
+    await modal.options.actions.find((a) => a.label === 'Save').onClick();
+    assert.deepEqual(store.notes, { [`${TEAM}:${CHANNEL}`]: 'still mine' },
+      'and the bare key goes, or the fallback would resurrect it');
   } finally {
     dom.cleanup();
   }

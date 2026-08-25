@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertPluginShape, createTestApi, installDom, readModFiles } from '../../../tests/harness.mjs';
+import { assertPluginShape, createTestApi, installDom, readModFiles, switchWorkspace } from '../../../tests/harness.mjs';
 import plugin from './index.js';
 import { add, foldReactions, group, GROUPS, sortRows, tally, view, without } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
@@ -884,9 +884,17 @@ test('a conversation you never opened is recorded, from Slack’s own socket', a
   const { api, recorded } = createTestApi({ files: FILES, settings: { people: false } });
   try {
     await plugin.start(api);
-    const asked = recorded.slackEvents.flatMap((sub) => sub.types).sort();
-    assert.deepEqual(asked, ['message', 'reaction_added', 'reaction_removed'],
-      'and only those: nothing is forwarded that nobody asked for');
+    /*
+     * What the loader is told to forward, which a reviewer should be able to
+     * read off a mod's tests: asking for `message` is asking to be handed
+     * every message in every conversation this account is in.
+     */
+    assert.deepEqual(recorded.watching, [
+      'channel_archive', 'channel_created', 'channel_deleted', 'channel_rename',
+      'channel_unarchive', 'group_archive', 'group_rename', 'group_unarchive',
+      'member_joined_channel', 'member_left_channel', 'message',
+      'reaction_added', 'reaction_removed', 'user_change',
+    ]);
 
     // A channel in a workspace this window is not even showing.
     recorded.emitSlackEvent({
@@ -950,6 +958,42 @@ test('an unfurl arriving is not an edit', async () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 500));
     assert.deepEqual(api.settings.get('entries', []), []);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('what belongs to a workspace is dropped when the workspace changes', async () => {
+  /*
+   * Switching workspace does not reload the client: same page, same mod, same
+   * objects, new team in the address. Two workspaces can use the same channel
+   * id as well, so a member list or a snapshot kept across a switch is
+   * compared against the wrong conversation -- which reads as everybody
+   * leaving and a different everybody arriving.
+   *
+   * The log itself stays. It names the workspace's channels and is the whole
+   * point of the mod.
+   */
+  const dom = installDom();
+  const { api, recorded } = createTestApi({ files: FILES, settings: { people: false } });
+  try {
+    await plugin.start(api);
+    assert.ok(recorded.teamListeners.length > 0, 'it asked to hear about the switch');
+
+    recorded.emitSlackEvent({
+      type: 'message', channel: 'C0SHARED', ts: '10.000100', user: 'U1', text: 'the first wording',
+    });
+    switchWorkspace(dom, 'T0OTHER');
+
+    // The same channel id in the other workspace, deleted. What it said here
+    // must not be handed over as what it said there.
+    recorded.emitSlackEvent({
+      type: 'message', subtype: 'message_deleted', channel: 'C0SHARED', deleted_ts: '10.000100',
+    });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    assert.deepEqual(api.settings.get('entries', []), [],
+      'nothing invented from the workspace that was left');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

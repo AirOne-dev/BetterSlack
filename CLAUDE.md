@@ -882,10 +882,27 @@ tests fail below it.
   belongs to the workspace the user has left. `web-api.ts` keys its config on
   `currentTeamId()` for exactly this reason — caching the token once made every
   call go out for the wrong team, which Slack reports as ordinary errors and
-  which reads as "this plugin is broken". If a mod holds per-workspace state
-  (members, VIPs, anything from `users.info`), it has to watch the team in the
-  URL and drop it. Two workspaces can also use the same channel id, so compare
-  the team, not only the channel.
+  which reads as "this plugin is broken".
+
+  **`api.slack.onTeamChange` is the signal**, and a mod holding anything about
+  a workspace has to take it. Four kinds of state have been found wrong across
+  a switch, and each failed quietly rather than visibly:
+
+  - **Anything from `users.info`.** The id is the same string in both, the
+    answer is not: it is what *this* workspace's token can see of that person.
+  - **Your own id is not the same person.** Slack gives everybody a separate
+    `U…` per workspace, so a strip built once around the one read off the rail
+    describes an account that is not on screen.
+  - **The workspace's custom emoji**, or a status draws a picture from
+    somewhere the user has left.
+  - **Anything keyed by channel id alone.** Two workspaces can use the same
+    one, so a note, a roster or a snapshot has to carry the team as well —
+    `T…:C…` — or it belongs to whichever workspace asked last.
+
+  A test gets the signal for free: `switchWorkspace` in the harness fires the
+  listeners, because in a real client the address moving *is* the signal and a
+  test that had to say so separately would pass for a mod that never
+  subscribed.
 - **Slack's API refuses cookie-only auth.** It needs the `xoxc-` token from
   `localStorage`. Only `src/runtime/web-api.ts` may read it; mods use
   `api.slack.web`.
@@ -1190,7 +1207,15 @@ tests fail below it.
 
   The filter is the union of what mods asked for, and nothing is forwarded
   until something asks: `Network.enable` is not even sent before the first
-  listener.
+  listener. `api.slack.events` is the surface: `on(types, handler)` for
+  anything Slack pushes, and a named reading for each of the ones a mod
+  actually wants -- `onMessage`, `onMessageChanged`, `onMessageDeleted`,
+  `onReaction`, `onMembership`, `onConversation`, `onUserChanged`,
+  `onPresence`, `onTyping`, `onRead`, `onPin`, `onSaved`, `onEmojiChanged`.
+  Each hands over what the event is *about* (an edit carries both wordings, a
+  reaction the message it is on) plus `raw` for the rest, because Slack's
+  frames are shaped for its own client and every mod was about to write the
+  same three lines finding the text in `previous_message`.
 - **Discovering the API surface beats intercepting it.** Slack answers
   `unknown_method` for what does not exist and an argument error for what does,
   so calling a candidate with no arguments maps the surface without performing
@@ -1332,7 +1357,7 @@ Shape of it:
   channelHeader, with `before` to sit above another button), `addMessageAction`,
   `addProfileButton`, `describeMessage`, `userIdFromMessage`,
   `currentChannelId`, `composer`, `web`, `selectors`, `renderMrkdwn`,
-  `onEvent` (Slack's realtime socket -- see the section above).
+  `events` (Slack's realtime socket -- see the section above), `onTeamChange`.
 - `api.ui` — `toast`, `modal`, `confirm`, `tooltip`, in shadow roots.
 - `api.i18n` — `strings({ en, fr, ... })` returns `t(key, vars)`; `locale` and
   `language` come from Slack's `<html lang>`, never from `localConfig_v2` (that

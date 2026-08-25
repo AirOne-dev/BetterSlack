@@ -235,7 +235,16 @@ export default {
       .${NODE_CLASS} .betterslack-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
     `);
 
+    /*
+     * Profiles already fetched, and dropped the moment the workspace changes.
+     *
+     * A user id is the same string in both, but the answer is not: it is what
+     * *this* workspace's token can see of that person -- their title, their
+     * status, whether they are in it at all -- so a profile held across a
+     * switch is a pane describing somebody as they are somewhere else.
+     */
     const cache = new Map();
+    api.slack.onTeamChange(() => cache.clear());
 
     // Slack's own field and section shells, straight from the API.
     const { field, section } = api.helpers;

@@ -17,7 +17,11 @@ Each card can be forgotten on its own, beside the button that empties the lot. T
 
 ## What it can and cannot see
 
-**It reads the screen, and it asks Slack once per channel you open.** The screen is what catches a change as it happens, second by second. Opening a channel also asks `conversations.history` for its last sixty messages and compares them with what the channel looked like when you left it — so an edit, a deletion or a reaction taken back while you were somewhere else is caught the moment you come back. The first visit to a channel is the baseline and never an event, and a message older than that page is outside the window rather than deleted.
+**It listens to Slack's own socket, and it works in conversations you never open.** Slack keeps a socket per workspace and pushes everything that happens in every conversation you are in down it — a message, an edit, a deletion, a reaction, somebody's name or status changing, somebody joining — whether or not that conversation is open. It is how the unread badges in the sidebar move without you looking. That is where nearly everything here now comes from, and it is why a message edited in a channel you have not opened in a month is in this list.
+
+**Nothing is marked read by any of it.** Slack marks a conversation read when its client sends `conversations.mark`; being told that a message exists sends nothing at all. Watching every conversation leaves every unread exactly where it was — which is the difference between this and the obvious alternative of opening conversations to look at them.
+
+**It also reads the screen, and asks Slack once per channel you open.** The screen is what catches a change as it happens, second by second. Opening a channel also asks `conversations.history` for its last sixty messages and compares them with what the channel looked like when you left it — so an edit, a deletion or a reaction taken back while you were somewhere else is caught the moment you come back. The first visit to a channel is the baseline and never an event, and a message older than that page is outside the window rather than deleted.
 
 That second half is also the only place **who** reacted can be known: Slack hands over the ids there, while on screen it says so only in a tooltip built on hover, in the reader's language, with names rather than ids.
 

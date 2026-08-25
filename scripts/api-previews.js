@@ -27,6 +27,7 @@ import { openMenu } from '../src/runtime/ui/menu.js';
 import { attachTooltip } from '../src/runtime/ui/tooltip.js';
 import { userIdFromAvatarUrl } from '../src/runtime/web-api.js';
 import { renderMrkdwn } from '../src/runtime/mrkdwn.js';
+import { createSlackEvents } from '../src/runtime/slack-events.js';
 import { h } from '../src/runtime/dom.js';
 import { SLACK_FIXTURE } from '../tests/slack-fixture.mjs';
 import { SLACK_PREFS } from '../src/shared/protocol.js';
@@ -684,34 +685,65 @@ const CHROME = {
       return undefined;
     },
   },
-  'slack-onevent': {
+  'slack-onteamchange': {
     render: (v) => {
       /*
-       * The frame Slack sends, since a web page has no socket to listen to.
-       * Its shape is the thing worth showing: what a handler is handed, and
-       * where the words are in it -- `previous_message` on an edit, `item` on
-       * a reaction -- which is what a reader comes to this entry to find out.
+       * The address either side of the switch, since a docs page has no client
+       * to move. What the entry is really about is that the page does not
+       * reload -- the URL is the only thing that changes.
+       */
+      const line = (team) => `https://app.slack.com/client/${team}/C0BQ8AG3771`;
+      return kit.el('div', {}, [
+        kit.el('pre', { class: 'pg__out' }, [
+          `before  ${line(v.from)}\nafter   ${line(v.to)}\n\n`
+          + `handler(${JSON.stringify(v.to)}, ${JSON.stringify(v.from)})`
+          + (v.to === v.from ? '   \u2014 not called: same workspace' : ''),
+        ]),
+        stubbed('Same document, same mods, same api objects. Only the address moved.'),
+      ]);
+    },
+  },
+  'slack-events': {
+    render: (v) => {
+      /*
+       * The frame Slack sends and the reading handed to the listener, side by
+       * side. A web page has no socket, and the shape is what a reader comes
+       * to this entry for: where the words are in an edit, which timestamp a
+       * reaction is about.
        */
       const frames = {
-        message: { type: 'message', channel: 'C0BQ8AG3771', ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it', team: 'T025V5WN2' },
-        message_changed: {
+        onMessage: { type: 'message', channel: 'C0BQ8AG3771', ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it', team: 'T025V5WN2' },
+        onMessageChanged: {
           type: 'message', subtype: 'message_changed', channel: 'C0BQ8AG3771',
           previous_message: { ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it' },
-          message: { ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it *tomorrow*', edited: { user: 'U04ED8UPV', ts: '1787645702.000000' } },
+          message: { ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it *tomorrow*' },
         },
-        message_deleted: {
+        onMessageDeleted: {
           type: 'message', subtype: 'message_deleted', channel: 'C0BQ8AG3771',
           deleted_ts: '1787645635.864779',
           previous_message: { ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it' },
         },
-        reaction_added: { type: 'reaction_added', user: 'U02NTAZJXKP', reaction: 'tada', item: { type: 'message', channel: 'C0BQ8AG3771', ts: '1787645635.864779' }, event_ts: '1787645640.000100' },
-        reaction_removed: { type: 'reaction_removed', user: 'U02NTAZJXKP', reaction: 'tada', item: { type: 'message', channel: 'C0BQ8AG3771', ts: '1787645635.864779' }, event_ts: '1787645912.000200' },
+        onReaction: { type: 'reaction_removed', user: 'U02NTAZJXKP', reaction: 'tada', item: { type: 'message', channel: 'C0BQ8AG3771', ts: '1787645635.864779' }, event_ts: '1787645912.000200' },
+        onMembership: { type: 'member_joined_channel', channel: 'C0BQ8AG3771', user: 'U04ED8UPV', team: 'T025V5WN2' },
+        onConversation: { type: 'channel_rename', channel: { id: 'C0BQ8AG3771', name: 'tech-archive' } },
+        onUserChanged: { type: 'user_change', user: { id: 'U04ED8UPV', name: 'ludo', profile: { display_name: 'Ludo', status_text: 'en réunion', status_emoji: ':calendar:' } } },
+        onPresence: { type: 'presence_change', users: ['U04ED8UPV', 'U02NTAZJXKP'], presence: 'away' },
       };
-      const pane = kit.el('pre', { class: 'pg__out' });
-      pane.textContent = JSON.stringify(frames[v.kind] ?? frames.message, null, 2);
+      const frame = frames[v.listener] ?? frames.onMessage;
+      // The shipped readings, so the page shows what a listener is really
+      // handed rather than a description of it.
+      const events = createSlackEvents({ request: async () => null });
+      let read = null;
+      events[v.listener]?.((value) => { read = value; });
+      events.deliver(frame);
+      const pane = (label, value) => kit.el('div', {}, [
+        kit.el('p', { class: 'sm-hint', textContent: label }),
+        kit.el('pre', { class: 'pg__out' }, [JSON.stringify(value, (key, v2) => (key === 'raw' ? undefined : v2), 2)]),
+      ]);
       return kit.el('div', {}, [
-        pane,
-        stubbed('The frames are Slack’s own shape; there is no socket to listen to on a web page.'),
+        pane('what Slack sends', frame),
+        pane('what the listener is handed (raw omitted)', read ?? '\u2014 nothing, which is what an unfurl gets'),
+        stubbed('There is no socket to listen to on a web page; the frames are Slack\u2019s own shape.'),
       ]);
     },
   },

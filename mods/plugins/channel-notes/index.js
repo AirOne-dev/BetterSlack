@@ -62,15 +62,33 @@ export default {
    */
   start(api) {
     const t = api.i18n.strings(STRINGS);
+    /*
+     * A note belongs to a conversation in a workspace, not to a channel id.
+     *
+     * Two workspaces can use the same id, and this file is shared by all of
+     * them -- so a note written in one would appear under somebody else's
+     * channel in the other. Keyed `T…:C…` now; a note stored under the bare id
+     * is still read, and moves to the scoped key the next time it is saved.
+     */
+    const keyFor = (channelId) => {
+      const team = api.slack.currentTeamId();
+      return team ? `${team}:${channelId}` : channelId;
+    };
+
     const notesFor = (channelId) => {
       const all = api.settings.get('notes', {}) ?? {};
-      return all[channelId] ?? '';
+      return all[keyFor(channelId)] ?? all[channelId] ?? '';
     };
 
     const saveNotes = async (channelId, text) => {
       const all = { ...(api.settings.get('notes', {}) ?? {}) };
-      if (text.trim() === '') delete all[channelId];
-      else all[channelId] = text;
+      const key = keyFor(channelId);
+      // The bare id goes either way: saving is what moves an older note onto
+      // its workspace, and leaving both would have the fallback above resurrect
+      // a note somebody has just cleared.
+      delete all[channelId];
+      if (text.trim() === '') delete all[key];
+      else all[key] = text;
       await api.settings.set('notes', all);
     };
 

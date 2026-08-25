@@ -253,6 +253,19 @@ export default {
     api.onDispose(() => window.removeEventListener('resize', onResize));
     api.css(CSS);
 
+    /*
+     * You are a different person in another workspace.
+     *
+     * Slack gives everybody a separate `U…` per workspace, and this strip is
+     * built once around the one it read off the rail's avatar -- so after a
+     * switch it shows the name, face and status of an account that is not the
+     * one on screen, and asks Slack about it with the new workspace's token.
+     * Switching workspace does not reload the client, so nothing rebuilds it
+     * on its own: taking the node out is what makes `keepMounted` build it
+     * again, against whatever Slack has now drawn in the rail.
+     */
+    api.slack.onTeamChange(() => document.getElementById(STRIP_ID)?.remove());
+
     api.dom.keepMounted('.p-channel_sidebar', STRIP_ID, () => {
       /*
        * The avatar, not merely the first image in the button.

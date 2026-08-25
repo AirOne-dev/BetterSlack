@@ -854,7 +854,6 @@ export default {
     // Slack changes channel without any navigation event a mod can hook, so the
     // URL is polled. One string comparison a second is cheaper than the
     // MutationObserver on the header it would otherwise take.
-    let seenTeam = currentTeamId();
     let seen = currentChannelId();
 
     /*
@@ -889,24 +888,26 @@ export default {
       api.onDispose(() => nav.removeEventListener('currententrychange', syncView));
     }
 
+    /*
+     * A different workspace: different people, different VIPs.
+     *
+     * The user directory belongs to api.slack.web, which drops it on the same
+     * signal; what is cleared here is what only this plugin knows.
+     */
+    api.slack.onTeamChange(() => {
+      presence.clear();
+      profiles.clear();
+      // A different workspace has different custom emoji, and a status drawn
+      // with the last one's is a picture from somewhere the user has left.
+      customEmoji = null;
+      loadEmoji();
+      loadVips();
+      // Force the redraw: two workspaces can have the same channel id in the
+      // URL, and then nothing below would notice anything had changed.
+      seen = null;
+    });
+
     const watcher = api.helpers.poll(() => {
-      const team = currentTeamId();
-      if (team !== seenTeam) {
-        // A different workspace: different people, different VIPs. The user
-        // directory belongs to api.slack.web, which drops it on the same
-        // signal; what is left here is what only this plugin knows.
-        seenTeam = team;
-        presence.clear();
-        profiles.clear();
-        // A different workspace has different custom emoji, and a status drawn
-        // with the last one's is a picture from somewhere the user has left.
-        customEmoji = null;
-        loadEmoji();
-        loadVips();
-        // Force the redraw: two workspaces can have the same channel id in the
-        // URL, and then nothing below would notice anything had changed.
-        seen = null;
-      }
       if (!syncView()) return;
       const column = document.getElementById(COLUMN_ID);
       const channel = currentChannelId();

@@ -95,6 +95,10 @@ export function createDirectory(api, { onResults }) {
    */
   const currentTeam = () => api.slack.currentTeamId();
   let team = currentTeam();
+  // Said as it happens as well as checked on the way in: the recent list and
+  // the counts are refreshed behind the palette, and those would otherwise go
+  // on filling with the old workspace's answers until it is next opened.
+  api.slack.onTeamChange(() => checkTeam());
   /** Conversations you are in: channels, groups and DMs, with people resolved. */
   let conversations = [];
   let loadedAt = 0;
@@ -184,7 +188,14 @@ export function createDirectory(api, { onResults }) {
     }
   };
 
-  /** Anything held about a workspace is wrong the moment you leave it. */
+  /**
+   * Anything held about a workspace is wrong the moment you leave it.
+   *
+   * Called both ways: `api.slack.onTeamChange` says so as it happens, and
+   * every entry point calls this as well, since the palette is opened by a
+   * keystroke and a list drawn from the wrong workspace is worse than one
+   * drawn a beat late.
+   */
   const checkTeam = () => {
     const now = currentTeam();
     if (now === team) return;

@@ -16,6 +16,7 @@ import { createKit } from '../dist/ui/kit.mjs';
 import { openMenu } from '../dist/ui/menu.mjs';
 import { KIT_CSS } from '../dist/ui/kit-css.mjs';
 import { addView, SELECTORS } from '../dist/slack-api.mjs';
+import { createSlackEvents } from '../dist/slack-events.mjs';
 
 export { SLACK_FIXTURE } from './slack-fixture.mjs';
 import { SLACK_FIXTURE } from './slack-fixture.mjs';
@@ -33,7 +34,16 @@ import { SLACK_FIXTURE } from './slack-fixture.mjs';
  * start. A test that changed only the address was testing a state the client is
  * never in, and would have gone on passing while the fix for that lag broke it.
  */
+/**
+ * Every listener `api.slack.onTeamChange` handed back, across the apis a test
+ * has built. Module-level so `switchWorkspace` can fire them: in a real client
+ * the address moving *is* the signal, and a test that had to remember to say
+ * so separately would pass for a mod that never subscribed.
+ */
+const TEAM_LISTENERS = new Set();
+
 export function switchWorkspace(dom, teamId, channelId = 'C0BFQCYBRAB') {
+  const previous = /\/client\/(T[A-Z0-9]+)/i.exec(dom.dom.window.location.pathname)?.[1] ?? null;
   dom.dom.reconfigure({ url: `https://app.slack.com/client/${teamId}/${channelId}` });
   for (const image of document.querySelectorAll('.p-client_container img')) {
     const src = image.getAttribute('src') ?? '';
@@ -41,6 +51,9 @@ export function switchWorkspace(dom, teamId, channelId = 'C0BFQCYBRAB') {
   }
   const message = document.querySelector('[data-qa="message_container"]');
   if (message) message.setAttribute('data-msg-channel-id', channelId);
+  if (teamId !== previous) {
+    for (const handler of [...TEAM_LISTENERS]) handler(teamId, previous);
+  }
 }
 
 export function installDom(html = SLACK_FIXTURE) {
@@ -178,14 +191,31 @@ export function createTestApi({
     modChanges: [],
     /** Every `api.files.screenshot(...)`, with what was still visible. */
     screenshots: [],
-    /** Every `api.slack.onEvent(...)`: the types asked for and the handler. */
-    slackEvents: [],
-    /** Hand a frame to whoever asked for its type, the way the loader does. */
-    emitSlackEvent(event) {
-      for (const sub of [...recorded.slackEvents]) {
-        if (sub.types.includes(event.type)) sub.handler(event);
-      }
+    /** Every type the mod's listeners asked the loader to forward. */
+    watching: [],
+    /** Whoever asked to hear about the workspace changing. */
+    teamListeners: [],
+  };
+
+  /*
+   * The shipped event registry, on a bridge that records rather than sends.
+   *
+   * The filter it publishes is worth watching in a test: a mod that asks for
+   * `message` is a mod that will be handed every message in the workspace, and
+   * that is a thing a reviewer should be able to see from its tests.
+   */
+  const slackEvents = createSlackEvents({
+    request: async (payload) => {
+      if (payload?.type === 'slack.watch') recorded.watching = [...payload.types];
+      return null;
     },
+  });
+  recorded.emitSlackEvent = (event) => slackEvents.deliver(event);
+  recorded.disposers.push(() => { recorded.watching = []; });
+  /** Say the workspace moved without moving the address, for a test that wants
+   *  only the signal. `switchWorkspace` fires these on its own. */
+  recorded.changeTeam = (teamId, previous = null) => {
+    for (const handler of [...recorded.teamListeners]) handler(teamId, previous);
   };
   const store = { ...settings };
   let confirmAnswer = true;
@@ -383,18 +413,29 @@ export function createTestApi({
       },
 
       /**
-       * Slack's own realtime events.
+       * Slack's own realtime events, through the shipped readings.
        *
-       * Recorded rather than connected: there is no socket in a test, and the
-       * point is what the mod does with a frame. `recorded.emitSlackEvent`
-       * hands one to whoever subscribed, exactly as the loader does.
+       * The real `createSlackEvents`, not a stand-in: what a mod leans on is
+       * the shape each listener hands over -- where the words are in an edit,
+       * which timestamp a reaction is about -- and a stub of that is a stub of
+       * the thing being tested. There is no socket in a test, so
+       * `recorded.emitSlackEvent` plays the loader.
        */
-      onEvent: (types, handler) => {
-        const sub = { types: [...types], handler };
-        recorded.slackEvents.push(sub);
+      events: slackEvents,
+      /**
+       * The workspace changing under the mod.
+       *
+       * Recorded rather than driven by the address: a test that wants to move
+       * workspace calls `switchWorkspace` and then `recorded.changeTeam`, and
+       * one that does not is not left with a timer running.
+       */
+      onTeamChange: (handler) => {
+        recorded.teamListeners.push(handler);
+        TEAM_LISTENERS.add(handler);
         const off = () => {
-          const at = recorded.slackEvents.indexOf(sub);
-          if (at !== -1) recorded.slackEvents.splice(at, 1);
+          TEAM_LISTENERS.delete(handler);
+          const at = recorded.teamListeners.indexOf(handler);
+          if (at !== -1) recorded.teamListeners.splice(at, 1);
         };
         recorded.disposers.push(off);
         return off;

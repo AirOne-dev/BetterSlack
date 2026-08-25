@@ -135,7 +135,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">api.helpers</p>
       <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-cache">cache</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.slack</p>
-      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-addview">addView</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-emojiurl">emojiUrl</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onevent">onEvent</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openmessage">openMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-rendermrkdwn">renderMrkdwn</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
+      <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-addview">addView</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-emojiurl">emojiUrl</a></li><li><a href="#slack-events">events</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onteamchange">onTeamChange</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openmessage">openMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-rendermrkdwn">renderMrkdwn</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.ui</p>
       <ul><li><a href="#ui-confirm">confirm</a></li><li><a href="#ui-kit">kit</a></li><li><a href="#ui-kitcss">kitCss</a></li><li><a href="#ui-menu">menu</a></li><li><a href="#ui-modal">modal</a></li><li><a href="#ui-palette">palette</a></li><li><a href="#ui-toast">toast</a></li><li><a href="#ui-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.dom</p>
@@ -1250,6 +1250,29 @@ const url = api.slack.emojiUrl('tada', custom);
 if (url) row.append(Object.assign(new Image(), { src: url, alt: ':tada:' }));</code></pre>
   </div>
 </section>
+<section class="panel" id="p-slack-events" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">Slack</p>
+    <h1><code>events</code></h1>
+    <p class="api-sig api-sig--big">SlackEvents — on, onMessage, onMessageChanged, onMessageDeleted, onReaction, onMembership, onConversation, onUserChanged, onPresence, onTyping, onRead, onPin, onSaved, onEmojiChanged</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>Slack keeps a socket per workspace and pushes everything that happens in every conversation you are in down it — a message, an edit, a deletion, a reaction, somebody's status, somebody joining — whether or not that conversation is open. It is how the unread badges in the sidebar move without you looking at them, and it is the only way for a mod to know about a conversation it is not in front of without asking Slack for it one at a time.</p>
+<p><strong>Listening is not reading.</strong> Slack marks a conversation read when its client sends <code>conversations.mark</code>; being told that a message exists sends nothing at all. A mod can watch every conversation you are in and leave every unread exactly where it was.</p>
+<p>Each listener hands over what the event is *about* rather than Slack's frame: an edit carries both wordings, a deletion carries what the message said, a reaction carries the message it is on rather than the moment it happened. <code>raw</code> is always there for what a shape leaves out, and <code>on(types, handler)</code> is the escape hatch — Slack pushes far more than this names. Every one returns a cleanup, and all of them are torn down with the plugin.</p>
+<p>Two things done for you. <code>onMessageChanged</code> only fires when the words actually moved, because Slack sends <code>message_changed</code> when an unfurl attaches too. And nothing at all is forwarded until a mod asks: the loader does not switch its tap on before the first listener, and only the types asked for cross the bridge.</p>
+    <div class="api-demo" data-demo="slack-events" data-controls="[{&quot;key&quot;:&quot;listener&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;onMessageDeleted&quot;,&quot;label&quot;:&quot;listener&quot;,&quot;options&quot;:[&quot;onMessage&quot;,&quot;onMessageChanged&quot;,&quot;onMessageDeleted&quot;,&quot;onReaction&quot;,&quot;onMembership&quot;,&quot;onConversation&quot;,&quot;onUserChanged&quot;,&quot;onPresence&quot;]}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>api.slack.events.onMessageDeleted((gone) =&gt; {
+  keep(gone.channelId, gone.ts, gone.userId, gone.text);
+});
+
+api.slack.events.onReaction(({ added, channelId, ts, emoji, userId }) =&gt; {
+  if (!added) note(`${userId} took :${emoji}: back`);
+});</code></pre>
+  </div>
+</section>
 <section class="panel" id="p-slack-filesfrom" hidden>
   <header class="panel__head">
     <p class="eyebrow">api.slack</p>
@@ -1280,24 +1303,25 @@ for (const file of files) api.log.info(file.name);</code></pre>
 await api.slack.hideConversation('C0BFQCYBRAB');</code></pre>
   </div>
 </section>
-<section class="panel" id="p-slack-onevent" hidden>
+<section class="panel" id="p-slack-onteamchange" hidden>
   <header class="panel__head">
     <p class="eyebrow">Slack</p>
-    <h1><code>onEvent</code></h1>
-    <p class="api-sig api-sig--big">(types: string[], handler: (event: SlackEvent) =&gt; void): Cleanup</p>
+    <h1><code>onTeamChange</code></h1>
+    <p class="api-sig api-sig--big">(handler: (teamId: string | null, previous: string | null) =&gt; void): Cleanup</p>
     <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
   </header>
   <div class="panel__body">
-    <p>Slack keeps a socket per workspace and pushes everything that happens in every conversation you are in down it — a message, an edit, a deletion, a reaction — whether or not that conversation is open. It is how the unread badges in the sidebar move without you looking at them, and it is the only way for a mod to know about a conversation it is not in front of without asking Slack for it one conversation at a time.</p>
-<p><strong>Listening is not reading.</strong> Slack marks a conversation read when its client sends <code>conversations.mark</code>; being told that a message exists sends nothing at all. A mod can watch every conversation you are in and leave every unread exactly where it was.</p>
-<p>The types are Slack's own, and the frame is passed through as Slack sent it: <code>message</code> with a <code>subtype</code> of <code>message_changed</code> or <code>message_deleted</code> carries <code>previous_message</code> alongside <code>message</code>, and a reaction carries the message it is about in <code>item</code>. Nothing is forwarded until something asks — the loader does not switch its tap on before the first listener — and only the types asked for cross the bridge.</p>
-<p>The page cannot do this for itself: Slack's own bundle opens the socket before anything else runs, so patching <code>WebSocket</code> in the renderer catches nothing. The loader reads the frames off the debugging protocol, where they are visible whatever the bundle does.</p>
-    <div class="api-demo" data-demo="slack-onevent" data-controls="[{&quot;key&quot;:&quot;kind&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;message_deleted&quot;,&quot;label&quot;:&quot;event&quot;,&quot;options&quot;:[&quot;message&quot;,&quot;message_changed&quot;,&quot;message_deleted&quot;,&quot;reaction_added&quot;,&quot;reaction_removed&quot;]}]"></div>
+    <p>Switching workspace does not reload the client. Same page, same mods, same api objects, new team id in the address — so anything a mod cached belongs to the workspace the user has just left, and a mod that does not drop it goes quietly wrong rather than visibly broken: a member list of people who are not there, a status from somewhere else, a channel name on the wrong conversation.</p>
+<p>It fires with the workspace now on screen and the one before it, never at boot and never twice for the same id. Under it are Slack's own in-place navigations, which fire in the same tick as the route change, and a slow check for the one case they miss: at a cold start Slack restores the view before it settles the address, so the workspace is corrected from what has been drawn rather than by navigating.</p>
+<p>Two workspaces can also use the same channel id, so state keyed by conversation has to be keyed by both — dropping it here is the simplest way to be sure.</p>
+    <div class="api-demo" data-demo="slack-onteamchange" data-controls="[{&quot;key&quot;:&quot;from&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;T025V5WN2&quot;,&quot;label&quot;:&quot;leaving&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;to&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;T0BQ89Z4L4F&quot;,&quot;label&quot;:&quot;arriving at&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
-    <pre class="api-code"><code>api.slack.onEvent(['message', 'reaction_removed'], (event) =&gt; {
-  if (event.subtype === 'message_deleted') {
-    keep(event.channel, event.deleted_ts, event.previous_message?.text);
-  }
+    <pre class="api-code"><code>const profiles = new Map();
+
+api.slack.onTeamChange(() =&gt; {
+  // Different people, different custom emoji, different everything.
+  profiles.clear();
+  customEmoji = null;
 });</code></pre>
   </div>
 </section>

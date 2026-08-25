@@ -111,6 +111,7 @@ const runtimeModules = {
     `${root}/src/runtime/ui/splash.ts`,
     `${root}/src/runtime/slack-api.ts`,
     `${root}/src/runtime/mrkdwn.ts`,
+    `${root}/src/runtime/slack-events.ts`,
   ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },

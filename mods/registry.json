@@ -152,7 +152,7 @@
           }
         }
       ],
-      "needsBetterSlack": "2.0.1",
+      "needsBetterSlack": "2.1.0",
       "path": "plugins/channel-notes"
     },
     {
@@ -853,7 +853,7 @@
           }
         }
       ],
-      "needsBetterSlack": "2.1.0",
+      "needsBetterSlack": "unreleased",
       "path": "plugins/member-sidebar"
     },
     {
@@ -1087,7 +1087,7 @@
           }
         }
       ],
-      "needsBetterSlack": "2.1.0",
+      "needsBetterSlack": "unreleased",
       "path": "plugins/sidebar-account"
     },
     {
@@ -1242,7 +1242,7 @@
           }
         }
       ],
-      "needsBetterSlack": "2.0.1",
+      "needsBetterSlack": "unreleased",
       "path": "plugins/user-inspector"
     }
   ]

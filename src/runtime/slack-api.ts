@@ -10,7 +10,7 @@ import type { Cleanup } from './dom.js';
 import { h, keepMounted, onEach, waitFor } from './dom.js';
 import { createI18n } from './i18n.js';
 import { renderMrkdwn, type MrkdwnOptions } from './mrkdwn.js';
-import type { SlackEvent } from '../shared/protocol.js';
+import type { SlackEvents } from './slack-events.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
 import { VIEW_CSS } from './ui/styles.js';
 import { PANEL_STRINGS } from './ui/strings.js';
@@ -911,6 +911,63 @@ export const composer: ComposerApi = {
   },
 };
 
+/**
+ * The event surface a SlackApi built without a bridge can offer: none.
+ *
+ * Every listener hands back a cleanup that does nothing, so a caller's teardown
+ * is the same shape either way.
+ */
+const DEAF: SlackEvents = {
+  on: () => () => {},
+  onMessage: () => () => {},
+  onMessageChanged: () => () => {},
+  onMessageDeleted: () => () => {},
+  onReaction: () => () => {},
+  onMembership: () => () => {},
+  onConversation: () => () => {},
+  onUserChanged: () => () => {},
+  onPresence: () => () => {},
+  onTyping: () => () => {},
+  onRead: () => () => {},
+  onPin: () => () => {},
+  onSaved: () => () => {},
+  onEmojiChanged: () => () => {},
+  deliver: () => {},
+  watching: () => [],
+};
+
+/**
+ * Watch the workspace in the address, and say when it changes.
+ *
+ * Slack routes in place -- `navigation.currententrychange` fires in the same
+ * tick as the `pushState`, measured at 9ms -- so this costs nothing while
+ * nothing happens. The slow interval underneath is for the one case those
+ * events do not cover: at a cold start Slack restores the view before it
+ * settles the address, so `currentTeamId` overrules the URL from what has been
+ * drawn, and the correction is not a navigation.
+ */
+function onTeamChange(
+  handler: (teamId: string | null, previous: string | null) => void,
+): Cleanup {
+  let last = currentTeamId();
+  const check = (): void => {
+    const now = currentTeamId();
+    if (now === last) return;
+    const before = last;
+    last = now;
+    handler(now, before);
+  };
+  const nav = (window as unknown as { navigation?: EventTarget }).navigation;
+  nav?.addEventListener('currententrychange', check);
+  window.addEventListener('popstate', check);
+  const timer = setInterval(check, 2000);
+  return () => {
+    nav?.removeEventListener('currententrychange', check);
+    window.removeEventListener('popstate', check);
+    clearInterval(timer);
+  };
+}
+
 export interface SlackApi {
   /** Add a button to the hover toolbar on messages. */
   addMessageAction(action: MessageAction): Cleanup;
@@ -1068,11 +1125,34 @@ export interface SlackApi {
   /**
    * Slack's own realtime events, for every conversation you are in.
    *
-   * See the note on the implementation in `api.ts`: it is filled in there
-   * rather than here, because the subscription is the runtime's and not
-   * Slack's chrome.
+   * Slack keeps a socket per workspace and pushes everything that happens in
+   * every one of them down it -- a message, an edit, a deletion, a reaction,
+   * somebody's status, somebody joining -- whether or not that conversation is
+   * open. It is how the unread badges move without you looking, and it is the
+   * only way for a mod to know about a conversation it is not in front of.
+   *
+   * **Listening is not reading.** Slack marks a conversation read when its
+   * client sends `conversations.mark`; being told a message exists sends
+   * nothing at all.
+   *
+   * Filled in by `createPluginApi`, which has the bridge: the socket is the
+   * loader's, since the page cannot see it.
    */
-  onEvent(types: string[], handler: (event: SlackEvent) => void): Cleanup;
+  events: SlackEvents;
+
+  /**
+   * The workspace changed under you.
+   *
+   * Switching workspace does not reload the client: same page, same mods, same
+   * api objects, new team id in the address. So anything a mod cached -- a
+   * member list, a name, a token-scoped answer -- belongs to the workspace the
+   * user has just left, and a mod that does not drop it is a mod that goes
+   * quietly wrong rather than visibly broken.
+   *
+   * Fires with the workspace now on screen and the one before it. Never at
+   * boot, and never for the same id twice.
+   */
+  onTeamChange(handler: (teamId: string | null, previous: string | null) => void): Cleanup;
   /** The channel currently open, read from the client URL. */
   currentChannelId(): string | null;
   /**
@@ -1307,12 +1387,13 @@ export function createSlackApi(pluginId: string): SlackApi {
      * Replaced by `createPluginApi`, which has the bridge.
      *
      * The socket is the loader's -- the page cannot see it -- so a SlackApi
-     * built on its own has no way to reach the events. Answering with a
-     * cleanup that does nothing rather than throwing: the docs page builds one
-     * of these to draw its previews, and a preview may not be the thing that
-     * decides whether an API member exists.
+     * built on its own has no way to reach the events. Every listener answers
+     * with a cleanup that does nothing rather than throwing: the docs page
+     * builds one of these to draw its previews, and a preview may not be the
+     * thing that decides whether an API member exists.
      */
-    onEvent: () => () => {},
+    events: DEAF,
+    onTeamChange: (handler) => onTeamChange(handler),
     statusNode,
     emojiUrl: (name, customEmoji) => {
       const clean = String(name ?? '').replace(/^:|:$/g, '').trim();

@@ -17,7 +17,11 @@ Chaque carte peut être oubliée séparément, à côté du bouton qui vide tout
 
 ## Ce qu'il peut voir, et ce qu'il ne peut pas
 
-**Il lit l'écran, et il interroge Slack une fois par canal ouvert.** L'écran attrape un changement au moment où il se produit, seconde par seconde. Ouvrir un canal demande en plus à `conversations.history` ses soixante derniers messages et les compare à ce que le canal était quand vous l'avez quitté — une modification, une suppression ou une réaction retirée pendant que vous étiez ailleurs est donc rattrapée dès votre retour. La première visite d'un canal sert de référence et ne produit jamais d'événement, et un message plus ancien que cette page est hors de la fenêtre, pas supprimé.
+**Il écoute la socket de Slack, et fonctionne dans les conversations que vous n'ouvrez jamais.** Slack tient une socket par espace de travail et y pousse tout ce qui se passe dans chaque conversation dont vous êtes membre — un message, une modification, une suppression, une réaction, un nom ou un statut qui change, quelqu'un qui rejoint — que la conversation soit ouverte ou non. C'est comme ça que les pastilles de non-lus bougent sans que vous regardiez. C'est de là que vient presque tout ce qui suit, et c'est pourquoi un message modifié dans un canal que vous n'avez pas ouvert depuis un mois est dans cette liste.
+
+**Rien n'est marqué comme lu par tout ça.** Slack marque une conversation lue quand son client envoie `conversations.mark` ; être prévenu qu'un message existe n'envoie rien du tout. Surveiller toutes les conversations laisse chaque non-lu exactement où il était — c'est toute la différence avec l'autre solution évidente, ouvrir les conversations pour les regarder.
+
+**Il lit aussi l'écran, et interroge Slack une fois par canal ouvert.** L'écran attrape un changement au moment où il se produit, seconde par seconde. Ouvrir un canal demande en plus à `conversations.history` ses soixante derniers messages et les compare à ce que le canal était quand vous l'avez quitté — une modification, une suppression ou une réaction retirée pendant que vous étiez ailleurs est donc rattrapée dès votre retour. La première visite d'un canal sert de référence et ne produit jamais d'événement, et un message plus ancien que cette page est hors de la fenêtre, pas supprimé.
 
 C'est aussi le seul endroit où **qui** a réagi peut être su : Slack y donne les identifiants, alors qu'à l'écran il ne le dit que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms.
 

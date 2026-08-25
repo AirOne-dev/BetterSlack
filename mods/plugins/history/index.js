@@ -128,8 +128,16 @@ export default {
       }
       return null;
     };
-    /** Channel ids to names, as the log learns them, so `<#C…>` reads as one. */
+    /**
+     * Channel ids to names, as the log learns them, so `<#C…>` reads as one.
+     *
+     * Keyed by workspace as well as by id, because two workspaces can use the
+     * same channel id -- and a name is what the reader trusts to know which
+     * conversation a card is about.
+     */
     const channelNames = new Map();
+    const nameKey = (channelId, teamId) => `${teamId ?? api.slack.currentTeamId() ?? '?'}:${channelId}`;
+    const nameOfChannel = (channelId, teamId) => channelNames.get(nameKey(channelId, teamId)) ?? null;
 
     /**
      * Somebody's message, as Slack would have drawn it.
@@ -146,7 +154,7 @@ export default {
      */
     const drawText = (text, people) => api.slack.renderMrkdwn(text, {
       userName: (id) => people?.get(id)?.name ?? null,
-      channelName: (id) => channelNames.get(id) ?? null,
+      channelName: (id) => nameOfChannel(id),
       emojiUrl: (name) => emojiFor(name),
       onChannel: (id) => { page.close(); api.slack.openConversation(id); },
     });
@@ -182,7 +190,9 @@ export default {
     // Every channel the log has already named, so a `<#C…>` in a message read
     // today is drawn as a name even in a channel this session never opened.
     for (const entry of log) {
-      if (entry.channelId && entry.channelName) channelNames.set(entry.channelId, entry.channelName);
+      if (entry.channelId && entry.channelName) {
+        channelNames.set(nameKey(entry.channelId, entry.teamId), entry.channelName);
+      }
     }
 
     const save = api.helpers.debounce(() => { void api.settings.set('entries', log); }, 400);
@@ -609,7 +619,7 @@ export default {
       if (events.length === 0) return;
       const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
       const here = api.slack.currentChannelId();
-      if (here && channelName) channelNames.set(here, channelName);
+      if (here && channelName) channelNames.set(nameKey(here), channelName);
       log = add(log, events.map((event) => ({
         ...event,
         // The name only where we are certain it is the one on screen; the id is
@@ -703,81 +713,156 @@ export default {
      * cannot: a conversation you are *not* in, and anything that happened
      * while Slack was closed.
      */
-    const fromSocket = (event) => {
-      const channelId = event.channel ?? event.item?.channel ?? null;
-      if (!channelId) return;
-      const ts = event.ts ?? event.item?.ts ?? null;
+    /*
+     * Which conversation a socket event was about.
+     *
+     * The workspace travels with it: the event names the socket it arrived on,
+     * and two workspaces can use the same channel id, so an entry that only
+     * said `C0BQ8AG3771` could not be told apart from another workspace's.
+     */
+    const where = (channelId, teamId) => ({
+      channelId,
+      teamId: teamId ?? null,
+      channelName: nameOfChannel(channelId, teamId),
+    });
 
-      if (event.type === 'reaction_added' || event.type === 'reaction_removed') {
-        // The event names the person, which the screen never can. `item.ts` is
-        // the message reacted to; `ts` on the event itself is when it happened.
-        if (!event.item?.ts || !event.user) return;
-        record([{
-          kind: event.type === 'reaction_added' ? 'reaction-added' : 'reaction-removed',
-          channelId,
-          channelName: channelNames.get(channelId) ?? null,
-          ts: event.item.ts,
-          emoji: `:${event.reaction}:`,
-          userId: event.user,
-        }]);
-        return;
+    const events = api.slack.events;
+
+    // A message, remembered rather than recorded. Nobody wants "somebody said
+    // something" in a history, and it is the only thing that can say what a
+    // message said before it is edited or deleted in a channel this client
+    // never drew.
+    events.onMessage((message) => {
+      messages.remember(`${message.channelId}:${message.ts}`, message.text, message.userId);
+    });
+
+    events.onMessageChanged((edit) => record([{
+      kind: 'edited',
+      ...where(edit.channelId, edit.teamId),
+      ts: edit.ts,
+      before: edit.before,
+      after: edit.after,
+      subject: edit.after,
+      userId: edit.userId,
+      subjectUser: edit.userId,
+    }]));
+
+    events.onMessageDeleted((gone) => {
+      // Slack sends `previous_message` with a deletion, so the words are its
+      // own account of them. What it does not send is what the message said
+      // when the client never received the frame that carried it -- an app
+      // restarted since, most often -- and there the fallback is what this
+      // client happened to hear.
+      const said = gone.text || messages.textFor(`${gone.channelId}:${gone.ts}`) || '';
+      if (!said) return;
+      record([{
+        kind: 'deleted',
+        ...where(gone.channelId, gone.teamId),
+        ts: gone.ts,
+        before: said,
+        subject: said,
+        userId: gone.userId,
+        subjectUser: gone.userId,
+      }]);
+    });
+
+    events.onReaction((reaction) => record([{
+      kind: reaction.added ? 'reaction-added' : 'reaction-removed',
+      ...where(reaction.channelId, reaction.teamId),
+      ts: reaction.ts,
+      emoji: `:${reaction.emoji}:`,
+      userId: reaction.userId,
+    }]));
+
+    /*
+     * Somebody arriving or leaving, said outright.
+     *
+     * The slow sweep works this out by comparing two member lists, which is
+     * one request per channel and only for the channel you are looking at.
+     * Slack says it for every conversation you are in, the moment it happens.
+     * Both are kept: the sweep is what catches somebody who left while Slack
+     * was closed, and the log writes an event once however many halves saw it.
+     */
+    events.onMembership((change) => record([{
+      kind: change.joined ? 'joined' : 'left',
+      ...where(change.channelId, change.teamId),
+      userId: change.userId,
+    }]));
+
+    /*
+     * A channel renamed, which Slack never tells you about.
+     *
+     * The event carries the new name and not the old one, so the first sighting
+     * seeds and never reports -- the same rule every watcher here follows.
+     */
+    events.onConversation((change) => {
+      if (change.kind !== 'renamed' || !change.name) return;
+      const was = nameOfChannel(change.channelId, change.teamId);
+      channelNames.set(nameKey(change.channelId, change.teamId), change.name);
+      if (!was || was === change.name) return;
+      record([{
+        kind: 'channel-renamed',
+        channelId: change.channelId,
+        teamId: change.teamId ?? null,
+        channelName: change.name,
+        before: was,
+        after: change.name,
+      }]);
+    });
+
+    /*
+     * A name or a status changing, for everybody rather than for the sixty
+     * people this client happened to draw.
+     *
+     * `user_change` carries the profile as Slack now has it and nothing about
+     * what it was, so the maps the slow sweep already keeps are what make it a
+     * change. Unknown means seeded, never reported: a first sighting is not
+     * something that happened.
+     */
+    events.onUserChanged((change) => {
+      const name = displayName(change.user) ?? '';
+      const status = String(change.user?.profile?.status_text ?? '');
+      const events_ = [];
+      const knownName = people.get(change.userId);
+      const knownStatus = statuses.get(change.userId);
+      if (knownName !== undefined && name && knownName !== name) {
+        events_.push({ kind: 'name-changed', userId: change.userId, who: knownName, before: knownName, after: name });
       }
-
-      if (event.type !== 'message') return;
-      if (event.subtype === 'message_changed') {
-        // Slack sends both wordings with an edit, which is the honest source.
-        const before = String(event.previous_message?.text ?? '')
-          || messages.textFor(`${channelId}:${event.message?.ts}`);
-        const after = String(event.message?.text ?? '');
-        // Slack sends a `message_changed` for things that are not edits at
-        // all -- an unfurl arriving is one -- so the text has to have moved,
-        // and there has to be something to compare it against.
-        if (!before || before === after) return;
-        record([{
-          kind: 'edited',
-          channelId,
-          channelName: channelNames.get(channelId) ?? null,
-          ts: event.message?.ts ?? ts,
-          before,
-          after,
-          subject: after,
-          userId: event.message?.user ?? null,
-          subjectUser: event.message?.user ?? null,
-        }]);
-        return;
+      if (knownStatus !== undefined && knownStatus !== status) {
+        events_.push({ kind: 'status-changed', userId: change.userId, who: name || knownName || null, before: knownStatus, after: status });
       }
+      people.set(change.userId, name);
+      statuses.set(change.userId, status);
+      if (events_.length) record(events_);
+    });
 
-      if (event.subtype === 'message_deleted') {
-        const gone = event.deleted_ts ?? event.previous_message?.ts ?? null;
-        const said = String(event.previous_message?.text ?? '')
-          || messages.textFor(`${channelId}:${gone}`);
-        if (!gone || !said) return;
-        record([{
-          kind: 'deleted',
-          channelId,
-          channelName: channelNames.get(channelId) ?? null,
-          ts: gone,
-          before: said,
-          subject: said,
-          userId: event.previous_message?.user ?? null,
-          subjectUser: event.previous_message?.user ?? null,
-        }]);
-        return;
-      }
-
-      // An ordinary message, remembered rather than recorded: it is not an
-      // event anybody wants in a history, and it is the only thing that can
-      // say what a message said before it is edited or deleted in a channel
-      // this client never drew.
-      if (!event.subtype || event.subtype === 'bot_message') {
-        if (ts) messages.remember(`${channelId}:${ts}`, String(event.text ?? ''), event.user ?? null);
-      }
-    };
-
-    api.slack.onEvent(
-      ['message', 'reaction_added', 'reaction_removed'],
-      (event) => { try { fromSocket(event); } catch { /* one bad frame is not a failure */ } },
-    );
+    /*
+     * A different workspace, and everything held about the last one is wrong.
+     *
+     * The log itself stays -- it names the workspace's channels and is the
+     * whole point of the mod -- but nothing that is a *reading* of the
+     * workspace survives: the members of a channel, what somebody was called,
+     * the faces, the emoji table, and the snapshot of what a channel looked
+     * like. Two workspaces can use the same channel id, so a roster kept
+     * across a switch is compared against the wrong one and reads as everybody
+     * leaving and a different everybody arriving.
+     *
+     * The message watcher goes too. It holds what is on screen, and the screen
+     * is about to be replaced wholesale.
+     */
+    api.slack.onTeamChange(() => {
+      roster.clear();
+      statuses.clear();
+      people.clear();
+      faces.clear();
+      peopleSeen.length = 0;
+      messages.forget();
+      names.forget();
+      customEmoji = null;
+      lastChannel = null;
+      for (const [key, node] of headstones) { node.remove(); headstones.delete(key); }
+      page.refresh();
+    });
 
     /** The channel the last sweep saw, so opening another one triggers a look. */
     let lastChannel = null;

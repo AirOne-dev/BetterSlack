@@ -531,7 +531,7 @@ export class ModManager {
     }
     const api = createPluginApi(record, {
       version: this.boot.version,
-      onSlackEvent: (types, handler) => this.slackEvents.on(types, handler),
+      slackEvents: this.slackEvents,
       files,
       styles: this.styles,
       getSettings: () => this.settings,

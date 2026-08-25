@@ -2767,6 +2767,58 @@
       return editor.innerText.replace(/\n/g, "").trim() === "";
     }
   };
+  var DEAF = {
+    on: () => () => {
+    },
+    onMessage: () => () => {
+    },
+    onMessageChanged: () => () => {
+    },
+    onMessageDeleted: () => () => {
+    },
+    onReaction: () => () => {
+    },
+    onMembership: () => () => {
+    },
+    onConversation: () => () => {
+    },
+    onUserChanged: () => () => {
+    },
+    onPresence: () => () => {
+    },
+    onTyping: () => () => {
+    },
+    onRead: () => () => {
+    },
+    onPin: () => () => {
+    },
+    onSaved: () => () => {
+    },
+    onEmojiChanged: () => () => {
+    },
+    deliver: () => {
+    },
+    watching: () => []
+  };
+  function onTeamChange(handler) {
+    let last = currentTeamId();
+    const check = () => {
+      const now = currentTeamId();
+      if (now === last) return;
+      const before = last;
+      last = now;
+      handler(now, before);
+    };
+    const nav = window.navigation;
+    nav?.addEventListener("currententrychange", check);
+    window.addEventListener("popstate", check);
+    const timer = setInterval(check, 2e3);
+    return () => {
+      nav?.removeEventListener("currententrychange", check);
+      window.removeEventListener("popstate", check);
+      clearInterval(timer);
+    };
+  }
   var WINDOW_MATERIALS = Object.freeze([
     "hud",
     "fullscreen-ui",
@@ -2869,13 +2921,13 @@
        * Replaced by `createPluginApi`, which has the bridge.
        *
        * The socket is the loader's -- the page cannot see it -- so a SlackApi
-       * built on its own has no way to reach the events. Answering with a
-       * cleanup that does nothing rather than throwing: the docs page builds one
-       * of these to draw its previews, and a preview may not be the thing that
-       * decides whether an API member exists.
+       * built on its own has no way to reach the events. Every listener answers
+       * with a cleanup that does nothing rather than throwing: the docs page
+       * builds one of these to draw its previews, and a preview may not be the
+       * thing that decides whether an API member exists.
        */
-      onEvent: () => () => {
-      },
+      events: DEAF,
+      onTeamChange: (handler) => onTeamChange(handler),
       statusNode,
       emojiUrl: (name, customEmoji) => {
         const clean = String(name ?? "").replace(/^:|:$/g, "").trim();
@@ -3418,6 +3470,227 @@
       doc.addEventListener("keydown", onKey, true);
     }, 0);
     return close;
+  }
+
+  // src/runtime/slack-events.ts
+  var NOT_A_POST = /* @__PURE__ */ new Set([
+    "message_changed",
+    "message_deleted",
+    "message_replied",
+    "channel_join",
+    "channel_leave",
+    "group_join",
+    "group_leave"
+  ]);
+  var str = (value) => typeof value === "string" ? value : "";
+  var orNull = (value) => typeof value === "string" && value ? value : null;
+  function createSlackEvents(bridge) {
+    const subscriptions = /* @__PURE__ */ new Set();
+    let told = "";
+    const watching = () => {
+      const all = /* @__PURE__ */ new Set();
+      for (const sub of subscriptions) for (const type of sub.types) all.add(type);
+      return [...all].sort();
+    };
+    const publish = () => {
+      const types = watching();
+      const key = types.join(",");
+      if (key === told) return;
+      told = key;
+      void bridge.request({ type: "slack.watch", types }).catch(() => {
+        told = "";
+      });
+    };
+    const on = (types, handler) => {
+      const sub = { types: new Set(types.filter(Boolean)), handler };
+      subscriptions.add(sub);
+      publish();
+      return () => {
+        subscriptions.delete(sub);
+        publish();
+      };
+    };
+    const shaped = (types, read, handler) => on(types, (event) => {
+      const value = read(event);
+      if (value !== null) handler(value);
+    });
+    const team = (event) => orNull(event.teamId) ?? orNull(event.team);
+    return {
+      on,
+      watching,
+      onMessage: (handler) => shaped(["message"], (event) => {
+        const subtype = orNull(event.subtype);
+        if (subtype && NOT_A_POST.has(subtype)) return null;
+        const channelId = orNull(event.channel);
+        const ts = orNull(event.ts);
+        if (!channelId || !ts) return null;
+        return {
+          channelId,
+          teamId: team(event),
+          ts,
+          userId: orNull(event.user),
+          text: str(event.text),
+          threadTs: orNull(event.thread_ts),
+          subtype,
+          raw: event
+        };
+      }, handler),
+      onMessageChanged: (handler) => shaped(["message"], (event) => {
+        if (event.subtype !== "message_changed") return null;
+        const message = event.message ?? {};
+        const previous = event.previous_message ?? {};
+        const channelId = orNull(event.channel);
+        const ts = orNull(message.ts) ?? orNull(event.ts);
+        const before = str(previous.text);
+        const after = str(message.text);
+        if (!channelId || !ts || !before || before === after) return null;
+        return {
+          channelId,
+          teamId: team(event),
+          ts,
+          userId: orNull(message.user) ?? orNull(previous.user),
+          before,
+          after,
+          raw: event
+        };
+      }, handler),
+      onMessageDeleted: (handler) => shaped(["message"], (event) => {
+        if (event.subtype !== "message_deleted") return null;
+        const previous = event.previous_message ?? {};
+        const channelId = orNull(event.channel);
+        const ts = orNull(event.deleted_ts) ?? orNull(previous.ts);
+        if (!channelId || !ts) return null;
+        return {
+          channelId,
+          teamId: team(event),
+          ts,
+          userId: orNull(previous.user),
+          text: str(previous.text),
+          raw: event
+        };
+      }, handler),
+      onReaction: (handler) => shaped(["reaction_added", "reaction_removed"], (event) => {
+        const item = event.item ?? {};
+        const channelId = orNull(item.channel) ?? orNull(event.channel);
+        const ts = orNull(item.ts);
+        const userId = orNull(event.user);
+        const emoji2 = orNull(event.reaction);
+        if (!channelId || !ts || !userId || !emoji2) return null;
+        return {
+          added: event.type === "reaction_added",
+          channelId,
+          teamId: team(event),
+          ts,
+          emoji: emoji2,
+          userId,
+          raw: event
+        };
+      }, handler),
+      onMembership: (handler) => shaped(
+        ["member_joined_channel", "member_left_channel", "message"],
+        (event) => {
+          const joining = event.type === "member_joined_channel" || event.subtype === "channel_join" || event.subtype === "group_join";
+          const leaving = event.type === "member_left_channel" || event.subtype === "channel_leave" || event.subtype === "group_leave";
+          if (!joining && !leaving) return null;
+          const channelId = orNull(event.channel);
+          const userId = orNull(event.user);
+          if (!channelId || !userId) return null;
+          return { joined: joining, channelId, teamId: team(event), userId, raw: event };
+        },
+        handler
+      ),
+      onConversation: (handler) => shaped(
+        [
+          "channel_created",
+          "channel_rename",
+          "channel_archive",
+          "channel_unarchive",
+          "channel_deleted",
+          "group_rename",
+          "group_archive",
+          "group_unarchive"
+        ],
+        (event) => {
+          const channel2 = typeof event.channel === "object" && event.channel ? event.channel : {};
+          const channelId = orNull(channel2.id) ?? orNull(event.channel);
+          if (!channelId) return null;
+          const kind = event.type.includes("created") ? "created" : event.type.includes("rename") ? "renamed" : event.type.includes("unarchive") ? "unarchived" : event.type.includes("archive") ? "archived" : "deleted";
+          return {
+            kind,
+            channelId,
+            teamId: team(event),
+            name: orNull(channel2.name),
+            raw: event
+          };
+        },
+        handler
+      ),
+      onUserChanged: (handler) => shaped(["user_change"], (event) => {
+        const user = event.user ?? {};
+        const userId = orNull(user.id);
+        if (!userId) return null;
+        return { userId, teamId: team(event) ?? orNull(user.team_id), user, raw: event };
+      }, handler),
+      onPresence: (handler) => shaped(["presence_change"], (event) => {
+        const userIds = Array.isArray(event.users) ? event.users.map(str).filter(Boolean) : [orNull(event.user)].filter((id) => Boolean(id));
+        if (userIds.length === 0) return null;
+        return { userIds, presence: str(event.presence), teamId: team(event), raw: event };
+      }, handler),
+      onTyping: (handler) => shaped(["user_typing"], (event) => {
+        const channelId = orNull(event.channel);
+        const userId = orNull(event.user);
+        if (!channelId || !userId) return null;
+        return { channelId, teamId: team(event), userId, raw: event };
+      }, handler),
+      onRead: (handler) => shaped(
+        ["channel_marked", "im_marked", "group_marked", "thread_marked"],
+        (event) => {
+          const channelId = orNull(event.channel);
+          if (!channelId) return null;
+          return { channelId, teamId: team(event), ts: str(event.ts), raw: event };
+        },
+        handler
+      ),
+      onPin: (handler) => shaped(["pin_added", "pin_removed"], (event) => {
+        const item = event.item ?? {};
+        const message = item.message ?? {};
+        return {
+          added: event.type === "pin_added",
+          channelId: orNull(event.channel_id) ?? orNull(event.channel) ?? orNull(item.channel),
+          teamId: team(event),
+          ts: orNull(message.ts) ?? orNull(item.ts),
+          raw: event
+        };
+      }, handler),
+      onSaved: (handler) => shaped(["star_added", "star_removed"], (event) => {
+        const item = event.item ?? {};
+        const message = item.message ?? {};
+        return {
+          added: event.type === "star_added",
+          channelId: orNull(item.channel) ?? orNull(event.channel),
+          teamId: team(event),
+          ts: orNull(message.ts) ?? orNull(item.ts),
+          raw: event
+        };
+      }, handler),
+      onEmojiChanged: (handler) => shaped(["emoji_changed"], (event) => ({
+        kind: str(event.subtype) || "add",
+        names: Array.isArray(event.names) ? event.names.map(str).filter(Boolean) : [orNull(event.name)].filter((n) => Boolean(n)),
+        teamId: team(event),
+        raw: event
+      }), handler),
+      deliver(event) {
+        if (typeof event?.type !== "string") return;
+        for (const sub of [...subscriptions]) {
+          if (!sub.types.has(event.type)) continue;
+          try {
+            sub.handler(event);
+          } catch (err) {
+            console.error("[betterslack] a listener threw on a Slack event:", err);
+          }
+        }
+      }
+    };
   }
 
   // tests/slack-fixture.mjs
@@ -5852,32 +6125,59 @@
         return void 0;
       }
     },
-    "slack-onevent": {
+    "slack-onteamchange": {
+      render: (v) => {
+        const line = (team) => `https://app.slack.com/client/${team}/C0BQ8AG3771`;
+        return kit.el("div", {}, [
+          kit.el("pre", { class: "pg__out" }, [
+            `before  ${line(v.from)}
+after   ${line(v.to)}
+
+handler(${JSON.stringify(v.to)}, ${JSON.stringify(v.from)})` + (v.to === v.from ? "   \u2014 not called: same workspace" : "")
+          ]),
+          stubbed("Same document, same mods, same api objects. Only the address moved.")
+        ]);
+      }
+    },
+    "slack-events": {
       render: (v) => {
         const frames = {
-          message: { type: "message", channel: "C0BQ8AG3771", ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it", team: "T025V5WN2" },
-          message_changed: {
+          onMessage: { type: "message", channel: "C0BQ8AG3771", ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it", team: "T025V5WN2" },
+          onMessageChanged: {
             type: "message",
             subtype: "message_changed",
             channel: "C0BQ8AG3771",
             previous_message: { ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it" },
-            message: { ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it *tomorrow*", edited: { user: "U04ED8UPV", ts: "1787645702.000000" } }
+            message: { ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it *tomorrow*" }
           },
-          message_deleted: {
+          onMessageDeleted: {
             type: "message",
             subtype: "message_deleted",
             channel: "C0BQ8AG3771",
             deleted_ts: "1787645635.864779",
             previous_message: { ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it" }
           },
-          reaction_added: { type: "reaction_added", user: "U02NTAZJXKP", reaction: "tada", item: { type: "message", channel: "C0BQ8AG3771", ts: "1787645635.864779" }, event_ts: "1787645640.000100" },
-          reaction_removed: { type: "reaction_removed", user: "U02NTAZJXKP", reaction: "tada", item: { type: "message", channel: "C0BQ8AG3771", ts: "1787645635.864779" }, event_ts: "1787645912.000200" }
+          onReaction: { type: "reaction_removed", user: "U02NTAZJXKP", reaction: "tada", item: { type: "message", channel: "C0BQ8AG3771", ts: "1787645635.864779" }, event_ts: "1787645912.000200" },
+          onMembership: { type: "member_joined_channel", channel: "C0BQ8AG3771", user: "U04ED8UPV", team: "T025V5WN2" },
+          onConversation: { type: "channel_rename", channel: { id: "C0BQ8AG3771", name: "tech-archive" } },
+          onUserChanged: { type: "user_change", user: { id: "U04ED8UPV", name: "ludo", profile: { display_name: "Ludo", status_text: "en r\xE9union", status_emoji: ":calendar:" } } },
+          onPresence: { type: "presence_change", users: ["U04ED8UPV", "U02NTAZJXKP"], presence: "away" }
         };
-        const pane = kit.el("pre", { class: "pg__out" });
-        pane.textContent = JSON.stringify(frames[v.kind] ?? frames.message, null, 2);
+        const frame = frames[v.listener] ?? frames.onMessage;
+        const events = createSlackEvents({ request: async () => null });
+        let read = null;
+        events[v.listener]?.((value) => {
+          read = value;
+        });
+        events.deliver(frame);
+        const pane = (label, value) => kit.el("div", {}, [
+          kit.el("p", { class: "sm-hint", textContent: label }),
+          kit.el("pre", { class: "pg__out" }, [JSON.stringify(value, (key, v2) => key === "raw" ? void 0 : v2, 2)])
+        ]);
         return kit.el("div", {}, [
-          pane,
-          stubbed("The frames are Slack\u2019s own shape; there is no socket to listen to on a web page.")
+          pane("what Slack sends", frame),
+          pane("what the listener is handed (raw omitted)", read ?? "\u2014 nothing, which is what an unfurl gets"),
+          stubbed("There is no socket to listen to on a web page; the frames are Slack\u2019s own shape.")
         ]);
       }
     },
