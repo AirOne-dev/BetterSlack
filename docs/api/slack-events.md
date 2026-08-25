@@ -3,7 +3,7 @@ name: events
 group: slack
 title: Slack
 signature: SlackEvents — on, onMessage, onMessageChanged, onMessageDeleted, onReaction, onMembership, onConversation, onUserChanged, onPresence, onTyping, onRead, onPin, onSaved, onEmojiChanged
-since: unreleased
+since: 3.2.0
 preview: slack-events
 control: listener | select | onMessageDeleted | listener | onMessage, onMessageChanged, onMessageDeleted, onReaction, onMembership, onConversation, onUserChanged, onPresence
 ---

@@ -4,6 +4,63 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.2.0 — 2026-08-25
+
+### History works everywhere now
+
+The plugin only knew what your client had drawn, so anything that happened
+while you were in another channel was simply missing. It listens to Slack's own
+realtime connection instead: a message edited or deleted, a reaction taken
+back, somebody renaming a channel or changing their status, in **any**
+conversation you are in — open or not, in the workspace on screen or not.
+
+**Nothing is marked as read by any of it.** Being told a message exists is not
+opening it, which is the whole reason this is not a plugin that visits your
+conversations to look at them.
+
+- **An edited message answers for itself.** Slack's own *(edited)* is now the
+  way in: click it and what the message used to say unfolds underneath, each
+  wording with the time it was written.
+- **A deleted message stays where it was**, struck through, with the face and
+  the name of whoever wrote it, in Slack's own message layout — so your theme
+  styles it like everything else.
+- **A reaction says who.** Reading the screen never could; the connection does.
+  A reaction nobody can be named for is not recorded at all.
+- **Messages are drawn the way Slack draws them** — mentions as names, channels
+  as links you can click, emoji as emoji, bold as bold.
+- **What an app does to its own messages is ignored**, so a deploy bot
+  rewriting the same line all day no longer fills the page. There is a setting
+  if you want it.
+- **Each card can be forgotten on its own**, beside the button that clears
+  everything.
+
+### Everything keeps working when you switch workspace
+
+Slack does not reload when you change workspace, so anything a mod remembered
+belonged to the one you left. Four were quietly wrong and are fixed: the
+account strip showed the previous workspace's profile, channel notes could
+surface under someone else's channel, and two plugins served people and
+profiles from the workspace you had gone from.
+
+### Every setting is translated
+
+Mods are required to ship English and French, and the forms you actually change
+things in were English only — all of them. That is fixed, and a test now
+refuses a mod that does it again.
+
+### For people writing mods
+
+- `api.slack.events` — Slack's realtime events, as named listeners:
+  `onMessage`, `onMessageChanged`, `onMessageDeleted`, `onReaction`,
+  `onMembership`, `onConversation`, `onUserChanged`, `onPresence`, and more.
+- `api.slack.onTeamChange` — the workspace changed under you; drop what you
+  cached.
+- `api.slack.renderMrkdwn` — Slack's own markup, drawn rather than shown raw.
+- `api.helpers.disclosure` — make something Slack already draws open and close,
+  with a caret and a panel that folds. Motion animates it if it is installed.
+- `api.slack.addMessageAction` takes a `when`, so a button only appears on the
+  messages it has something to say about.
+
 ## 3.1.1 — 2026-08-24
 
 ### Fixed

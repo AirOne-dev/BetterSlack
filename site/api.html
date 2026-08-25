@@ -876,7 +876,7 @@ box.addEventListener('input', () =&gt; search(box.value));</code></pre>
     <p class="eyebrow">api.helpers</p>
     <h1><code>disclosure</code></h1>
     <p class="api-sig api-sig--big">(options: DisclosureOptions): DisclosureHandle</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.2.0</p>
   </header>
   <div class="panel__body">
     <p>Make something Slack already draws open and close. It marks an edited message with &quot;(edited)&quot; and a channel with a member count: exactly where a reader would ask for more, and neither answers. A mod with the answer makes that label the way in rather than adding a fifth button to a toolbar of four.</p>
@@ -1299,7 +1299,7 @@ if (url) row.append(Object.assign(new Image(), { src: url, alt: ':tada:' }));</c
     <p class="eyebrow">Slack</p>
     <h1><code>events</code></h1>
     <p class="api-sig api-sig--big">SlackEvents — on, onMessage, onMessageChanged, onMessageDeleted, onReaction, onMembership, onConversation, onUserChanged, onPresence, onTyping, onRead, onPin, onSaved, onEmojiChanged</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.2.0</p>
   </header>
   <div class="panel__body">
     <p>Slack keeps a socket per workspace and pushes everything that happens in every conversation you are in down it — a message, an edit, a deletion, a reaction, somebody's status, somebody joining — whether or not that conversation is open. It is how the unread badges in the sidebar move without you looking at them, and it is the only way for a mod to know about a conversation it is not in front of without asking Slack for it one at a time.</p>
@@ -1352,7 +1352,7 @@ await api.slack.hideConversation('C0BFQCYBRAB');</code></pre>
     <p class="eyebrow">Slack</p>
     <h1><code>onTeamChange</code></h1>
     <p class="api-sig api-sig--big">(handler: (teamId: string | null, previous: string | null) =&gt; void): Cleanup</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.2.0</p>
   </header>
   <div class="panel__body">
     <p>Switching workspace does not reload the client. Same page, same mods, same api objects, new team id in the address — so anything a mod cached belongs to the workspace the user has just left, and a mod that does not drop it goes quietly wrong rather than visibly broken: a member list of people who are not there, a status from somewhere else, a channel name on the wrong conversation.</p>
@@ -1455,7 +1455,7 @@ if (!opened) api.ui.toast('Slack did not open the status dialog', { variant: 'wa
     <p class="eyebrow">Slack</p>
     <h1><code>renderMrkdwn</code></h1>
     <p class="api-sig api-sig--big">(text: string, options?: MrkdwnOptions): DocumentFragment</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.2.0</p>
   </header>
   <div class="panel__body">
     <p>What Slack's API answers with is not what Slack draws. A mention arrives as <code>&lt;@U04ED8UPV&gt;</code>, a link as <code>&lt;https://…|label&gt;</code>, an ampersand as <code>&amp;amp;</code>, and emphasis as the asterisks somebody typed — so anything showing a message as it came off the wire shows the wire.</p>

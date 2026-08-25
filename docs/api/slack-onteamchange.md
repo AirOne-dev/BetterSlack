@@ -3,7 +3,7 @@ name: onTeamChange
 group: slack
 title: Slack
 signature: (handler: (teamId: string | null, previous: string | null) => void): Cleanup
-since: unreleased
+since: 3.2.0
 preview: slack-onteamchange
 control: from | text | T025V5WN2 | leaving
 control: to | text | T0BQ89Z4L4F | arriving at

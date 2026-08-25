@@ -285,7 +285,7 @@
           }
         }
       ],
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.2.0",
       "path": "plugins/command-palette"
     },
     {
@@ -790,7 +790,7 @@
           }
         }
       ],
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.2.0",
       "path": "plugins/history"
     },
     {
@@ -866,7 +866,7 @@
           }
         }
       ],
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.2.0",
       "path": "plugins/member-sidebar"
     },
     {
@@ -1100,7 +1100,7 @@
           }
         }
       ],
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.2.0",
       "path": "plugins/sidebar-account"
     },
     {
@@ -1255,7 +1255,7 @@
           }
         }
       ],
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.2.0",
       "path": "plugins/user-inspector"
     }
   ]

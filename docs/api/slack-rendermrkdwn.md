@@ -3,7 +3,7 @@ name: renderMrkdwn
 group: slack
 title: Slack
 signature: (text: string, options?: MrkdwnOptions): DocumentFragment
-since: unreleased
+since: 3.2.0
 preview: slack-rendermrkdwn
 control: text | textarea | joyeux anniversaire à <@U04ED8UPV> qui fête ses 37 ans dans <#C01BQ8AG3|tech> :tada:\nle ticket : <https://github.com/anthropics/claude-code/issues/87575|#87575>, *urgent* et `bloquant` — merci &amp; bonne journée
 control: shortLinks | boolean | false

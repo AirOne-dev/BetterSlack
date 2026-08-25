@@ -3,7 +3,7 @@ name: disclosure
 group: helpers
 title: api.helpers
 signature: (options: DisclosureOptions): DisclosureHandle
-since: unreleased
+since: 3.2.0
 preview: helpers-disclosure
 control: label | text | (edited)
 control: motion | boolean | true | animated by Motion
