@@ -155,24 +155,40 @@ test('changing channel does not read as everybody deleting everything', () => {
 
 /* -- reactions ------------------------------------------------------------ */
 
-test('a reaction is a count, and never a guess about who', () => {
-  assert.deepEqual(reactionChanges({}, { ':tada:': 1 }).map((c) => c.kind), ['reaction-added']);
-  assert.deepEqual(reactionChanges({ ':tada:': 2 }, { ':tada:': 1 }).map((c) => c.kind), ['reaction-removed']);
-  assert.deepEqual(reactionChanges({ ':tada:': 1 }, {}).map((c) => c.kind), ['reaction-removed']);
-  assert.deepEqual(reactionChanges({ ':tada:': 1 }, { ':tada:': 1 }), []);
+/** A tally as the sweep reads it: the count, and the picture Slack drew. */
+const pills = (entries) => Object.fromEntries(
+  Object.entries(entries).map(([emoji, count]) => [emoji, { count, url: `https://e/${emoji}.png` }]),
+);
 
-  const [taken] = reactionChanges({ ':eyes:': 3 }, { ':eyes:': 1 });
+test('a reaction is a count, and never a guess about who', () => {
+  assert.deepEqual(reactionChanges(pills({}), pills({ ':tada:': 1 })).map((c) => c.kind), ['reaction-added']);
+  assert.deepEqual(reactionChanges(pills({ ':tada:': 2 }), pills({ ':tada:': 1 })).map((c) => c.kind), ['reaction-removed']);
+  assert.deepEqual(reactionChanges(pills({ ':tada:': 1 }), pills({})).map((c) => c.kind), ['reaction-removed']);
+  assert.deepEqual(reactionChanges(pills({ ':tada:': 1 }), pills({ ':tada:': 1 })), []);
+
+  const [taken] = reactionChanges(pills({ ':eyes:': 3 }), pills({ ':eyes:': 1 }));
   assert.equal(taken.emoji, ':eyes:');
   assert.equal(taken.before, '3');
   assert.equal(taken.after, '1');
   assert.equal(taken.who, undefined, 'Slack never says who, so neither does this');
 });
 
+test('the picture travels with the reaction, because the name cannot be turned back into one', () => {
+  /*
+   * `:raised_hands::skin-tone-2:` is two shortcodes run together, and a custom
+   * emoji is a name only one workspace knows. Printed as its name the row read
+   * exactly that, which is a rendering that failed.
+   */
+  const [gone] = reactionChanges(pills({ ':raised_hands::skin-tone-2:': 1 }), pills({}));
+  assert.equal(gone.emojiUrl, 'https://e/:raised_hands::skin-tone-2:.png',
+    'the one Slack had already drawn, kept even though the reaction is gone');
+});
+
 test('a reaction on a message that has not settled is not reported', () => {
   const watcher = createMessageWatcher();
-  watcher.sweep(screen(['1', 'a', { ':tada:': 1 }]));
-  assert.deepEqual(watcher.sweep(screen(['1', 'a', { ':tada:': 2 }])).map((c) => c.kind), []);
-  const [change] = watcher.sweep(screen(['1', 'a', { ':tada:': 3 }]));
+  watcher.sweep(screen(['1', 'a', pills({ ':tada:': 1 })]));
+  assert.deepEqual(watcher.sweep(screen(['1', 'a', pills({ ':tada:': 2 })])).map((c) => c.kind), []);
+  const [change] = watcher.sweep(screen(['1', 'a', pills({ ':tada:': 3 })]));
   assert.equal(change.kind, 'reaction-added');
 });
 
@@ -386,6 +402,55 @@ test('the sort menu hands api.ui.menu an onSelect, which is what it reads', asyn
     await new Promise((resolve) => setTimeout(resolve, 0));
     assert.match(document.querySelector('.bsh-sort').textContent, /ancien|oldest/i,
       'and the button says what it is sorted by');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('the badge counts what somebody took back, not everything that moved', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      openedAt: 1,
+      entries: [
+        { id: '1', kind: 'edited', at: 10 },
+        { id: '2', kind: 'deleted', at: 11 },
+        { id: '3', kind: 'reaction-removed', at: 12 },
+        { id: '4', kind: 'joined', at: 13 },
+        { id: '5', kind: 'section-renamed', at: 14 },
+        { id: '6', kind: 'status-changed', at: 15 },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    // The harness registers a view under its own plugin id, so the badge's own
+    // id carries that rather than "history". What matters is that it is there,
+    // on the tab, saying the right number.
+    const badge = document.querySelector('[id^="betterslack-badge-"]');
+    assert.ok(badge, 'the badge is on the tab');
+    assert.ok(badge.closest('.betterslack-view-tab'), 'on the tab in the rail');
+    // Three of the six: a workspace renames and greets all day, and a tab
+    // wearing a permanent number is a tab nobody reads.
+    assert.equal(badge.textContent, '3');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('and counts nothing at all when it is told to', async () => {
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: { badgeFor: 'none', openedAt: 1, entries: [{ id: '1', kind: 'deleted', at: 10 }] },
+  });
+  try {
+    await plugin.start(api);
+    const badge = document.querySelector('[id^="betterslack-badge-"]');
+    assert.equal(badge?.hasAttribute('hidden'), true);
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

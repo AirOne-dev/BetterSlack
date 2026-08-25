@@ -32,6 +32,31 @@
   ],
   "settings": [
     {
+      "key": "badgeFor",
+      "type": "choice",
+      "label": "Count on the tab",
+      "hint": "A badge means something only while it is rare, and a workspace renames and greets all day.",
+      "default": "changes",
+      "options": [
+        {
+          "value": "changes",
+          "label": "Edits, deletions and reactions taken back"
+        },
+        {
+          "value": "messages",
+          "label": "Edits and deletions only"
+        },
+        {
+          "value": "all",
+          "label": "Everything"
+        },
+        {
+          "value": "none",
+          "label": "Nothing"
+        }
+      ]
+    },
+    {
       "key": "showDeleted",
       "type": "boolean",
       "label": "Leave deleted messages on screen",

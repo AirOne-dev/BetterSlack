@@ -95,12 +95,38 @@ export default {
 
     // ------------------------------------------------------------------ page
 
-    const namesFor = async (rows) => {
+    /** The workspace's custom emoji, asked for once and kept. */
+    let customEmoji = null;
+
+    /**
+     * Who a row is about: the name, the face and the status.
+     *
+     * One request for the whole page through `web.users`, which is batched and
+     * cached per workspace, and the status through the same answer -- a row
+     * that looks like a message wants what a message shows.
+     */
+    const peopleFor = async (rows) => {
       const ids = [...new Set(rows.map((entry) => entry.userId).filter(Boolean))].slice(0, 200);
       if (ids.length === 0 || !api.slack.web.available) return new Map();
       try {
+        if (!customEmoji) customEmoji = await api.slack.web.emoji().catch(() => new Map());
         const users = await api.slack.web.users(ids);
-        return new Map([...users].map(([id, user]) => [id, displayName(user) ?? id]));
+        return new Map([...users].map(([id, user]) => [id, {
+          name: displayName(user) ?? id,
+          /*
+           * `avatarUrl` rewrites the `<base>-<size>` shape a message's avatar
+           * has, and answers null for anything else -- a profile's `image_72`
+           * ends in `.png`, so it comes back null and every row drew a coloured
+           * square instead of a face. It is already the URL, so it is used as
+           * it is where the rewrite declines.
+           */
+          avatar: (() => {
+            const url = user?.profile?.image_72 ?? user?.profile?.image_48 ?? null;
+            return api.slack.avatarUrl(url, 72) ?? url;
+          })(),
+          status: api.slack.describeStatus(user, customEmoji),
+          profile: user?.profile ?? null,
+        }]));
       } catch {
         return new Map();
       }
@@ -113,7 +139,19 @@ export default {
       getLog: () => log,
       view,
       tally,
-      namesFor,
+      peopleFor,
+      /*
+       * The picture for a shortcode, for entries recorded before the picture
+       * was kept beside the name. `:raised_hands::skin-tone-2:` is two names
+       * run together, and only the first is an emoji anything can draw -- the
+       * tone is lost, which is a better row than the raw shortcode was.
+       */
+      emojiUrl: (shortcode) => {
+        const base = String(shortcode ?? '').replace(/^:|:$/g, '').split('::')[0];
+        if (!base) return null;
+        try { return api.slack.emojiUrl(base, customEmoji ?? undefined); } catch { return null; }
+      },
+      openConversation: (channelId) => api.slack.openConversation(channelId),
       openMessage: (channelId, ts) => api.slack.openMessage(channelId, ts),
       clear: async () => {
         log = [];
@@ -184,10 +222,21 @@ export default {
     const readReactions = (element) => {
       const out = {};
       for (const pill of element.querySelectorAll('[data-qa="reactji"]')) {
-        const emoji = pill.querySelector('[data-stringify-emoji]')?.getAttribute('data-stringify-emoji');
+        const drawn = pill.querySelector('[data-stringify-emoji]');
+        const emoji = drawn?.getAttribute('data-stringify-emoji');
         const count = Number(pill.querySelector('.c-reaction__count')?.textContent?.trim());
         if (!emoji || !Number.isFinite(count)) continue;
-        out[emoji] = count;
+        /*
+         * The picture, taken from the screen rather than built from the name.
+         *
+         * A shortcode is not always one name: a reaction with a skin tone is
+         * `:raised_hands::skin-tone-2:`, two of them run together, and a custom
+         * emoji is a name only this workspace knows. Slack has already resolved
+         * both into an `<img>`, so the honest source of the picture is the
+         * picture. Printed as its shortcode instead, the row read
+         * `:raised_hands::skin-tone-2:`, which is a rendering that failed.
+         */
+        out[emoji] = { count, url: drawn.tagName === 'IMG' ? drawn.src : (drawn.querySelector('img')?.src ?? null) };
       }
       return out;
     };
@@ -352,11 +401,30 @@ export default {
 
     // ------------------------------------------------------------- the chrome
 
-    // What arrived since you last looked, on the tab in Slack's rail that
-    // `addView` put there. Nothing new means no badge at all, rather than a
-    // zero sitting on the tab for ever.
-    api.helpers.badge(page.tabSelector, 'new',
-      () => log.filter((entry) => entry.at > openedAt).length || null);
+    /**
+     * What arrived since you last looked, on the tab in Slack's rail.
+     *
+     * Not everything, by default. A workspace of any size renames a section,
+     * greets somebody and changes a status all day, and a tab wearing a
+     * permanent number is a tab nobody reads -- the count means something only
+     * while it is rare. So it is the three that are somebody taking something
+     * back: an edit, a deletion, a reaction removed. The setting opens it up
+     * or closes it entirely.
+     */
+    const BADGE_KINDS = {
+      changes: ['edited', 'deleted', 'reaction-removed'],
+      messages: ['edited', 'deleted'],
+      all: null,
+      none: [],
+    };
+    const badgeKinds = BADGE_KINDS[api.settings.get('badgeFor', 'changes')] ?? BADGE_KINDS.changes;
+
+    api.helpers.badge(page.tabSelector, 'new', () => {
+      if (badgeKinds !== null && badgeKinds.length === 0) return null;
+      const since = log.filter((entry) => entry.at > openedAt
+        && (badgeKinds === null || badgeKinds.includes(entry.kind)));
+      return since.length || null;
+    });
 
     api.helpers.hotkey(api.settings.get('shortcut', 'mod+shift+h'), () => {
       if (page.isOpen()) page.close();

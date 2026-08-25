@@ -27,6 +27,8 @@ Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et tro
 
 **Il ne prétend pas savoir qui a réagi.** Slack ne le dit que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms plutôt que des identifiants. L'émoji et le compte sont ce qui peut être su honnêtement, donc c'est ce qui est enregistré.
 
+**L'émoji est l'image que Slack a dessinée, pas son nom.** Une réaction avec un ton de peau, ce sont deux shortcodes accolés, et un émoji personnalisé est un nom que seul un espace de travail connaît : l'image est donc conservée à côté du compte. Quand aucune ne peut être dessinée — une entrée d'avant ce changement, un émoji que l'espace a retiré — rien n'est dessiné et le nom passe dans l'infobulle de la ligne, parce qu'un shortcode au milieu d'une ligne se lit comme un rendu raté, pas comme un émoji.
+
 **Une arrivée est une différence entre deux listes de membres**, pas un avis analysé dans une phrase. Slack affiche bien « X a rejoint », puis le replie et finit par ne plus le montrer — et la formulation dépend de la langue du lecteur.
 
 **Un nom d'affichage vient de `users.info`, pas de l'écran.** Mesuré dans un vrai client : `[data-qa="message_sender"]` contient le nom en double sur certains messages — « Ada LovelaceAda Lovelace : » — et une seule fois sur d'autres, donc comparer ce qui est affiché signale un renommage toutes les quelques secondes de la part de quelqu'un qui n'a rien changé. Ce que le client de Slack croit que quelqu'un s'appelle est ce qui change vraiment.

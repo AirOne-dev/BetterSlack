@@ -227,13 +227,24 @@ export function createMessageWatcher() {
  */
 export function reactionChanges(before, after) {
   const changes = [];
-  for (const [emoji, count] of Object.entries(after)) {
-    const was = before[emoji] ?? 0;
-    if (count > was) changes.push({ kind: 'reaction-added', emoji, count, before: String(was), after: String(count) });
+  // Each side is `{ count, url }`: the picture travels with the tally, because
+  // a shortcode is not always something a name can be turned back into.
+  const tally = (side, emoji) => side[emoji]?.count ?? 0;
+  const picture = (emoji) => after[emoji]?.url ?? before[emoji]?.url ?? null;
+
+  for (const emoji of Object.keys(after)) {
+    const was = tally(before, emoji);
+    const count = tally(after, emoji);
+    if (count > was) {
+      changes.push({ kind: 'reaction-added', emoji, emojiUrl: picture(emoji), count, before: String(was), after: String(count) });
+    }
   }
-  for (const [emoji, was] of Object.entries(before)) {
-    const count = after[emoji] ?? 0;
-    if (count < was) changes.push({ kind: 'reaction-removed', emoji, count, before: String(was), after: String(count) });
+  for (const emoji of Object.keys(before)) {
+    const was = tally(before, emoji);
+    const count = tally(after, emoji);
+    if (count < was) {
+      changes.push({ kind: 'reaction-removed', emoji, emojiUrl: picture(emoji), count, before: String(was), after: String(count) });
+    }
   }
   return changes;
 }

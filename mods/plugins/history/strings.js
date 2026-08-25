@@ -38,6 +38,7 @@ export const STRINGS = {
     joinedBody: 'Joined the conversation.',
     leftBody: 'Left the conversation.',
 
+    openChannel: 'Go to {channel}',
     jump: 'Go to it',
     copy: 'Copy',
     copied: 'Copied',
@@ -93,6 +94,7 @@ export const STRINGS = {
     joinedBody: 'A rejoint la conversation.',
     leftBody: 'A quitté la conversation.',
 
+    openChannel: 'Aller dans {channel}',
     jump: 'Y aller',
     copy: 'Copier',
     copied: 'Copié',

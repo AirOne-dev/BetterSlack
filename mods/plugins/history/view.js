@@ -57,10 +57,27 @@ export function createView(api, t, deps) {
   /** One event, as the sentence a person reads. */
   const change = (entry) => {
     if (entry.kind === 'reaction-added' || entry.kind === 'reaction-removed') {
-      return [h('div', { class: 'bsh-line' }, [
-        h('span', { class: 'bsh-emoji' }, [entry.emoji ?? '?']),
-        h('span', { class: 'bsh-dim' }, [t('reactionCount', { before: entry.before, after: entry.after })]),
-      ])];
+      /*
+       * The picture, and never the shortcode.
+       *
+       * `:raised_hands::skin-tone-2:` is two names run together, and a custom
+       * emoji is a name only one workspace knows, so what is kept is the URL
+       * Slack had already drawn. An entry from before that was kept falls back
+       * to resolving the name -- which works for a custom emoji and for one
+       * that is on screen, and not otherwise, because Slack serves a standard
+       * emoji by codepoint and a name builds no URL.
+       *
+       * When nothing can draw it, nothing is drawn: the same rule
+       * `api.slack.statusNode` follows, because `:raised_hands::skin-tone-2:`
+       * in the middle of a row does not read as an emoji, it reads as a
+       * rendering that failed. The name stays in the row's tooltip, so a
+       * picture nobody could draw is still findable.
+       */
+      const src = entry.emojiUrl ?? deps.emojiUrl?.(entry.emoji) ?? null;
+      const line = h('div', { class: 'bsh-line', title: entry.emoji ?? '' }, []);
+      if (src) line.append(h('img', { class: 'bsh-emoji', src, alt: entry.emoji ?? '' }));
+      line.append(h('span', { class: 'bsh-dim' }, [t('reactionCount', { before: entry.before, after: entry.after })]));
+      return [line];
     }
     if (entry.kind === 'joined' || entry.kind === 'left') {
       return [h('div', { class: 'bsh-line bsh-dim' }, [t(entry.kind === 'joined' ? 'joinedBody' : 'leftBody')])];
@@ -72,8 +89,9 @@ export function createView(api, t, deps) {
     return lines;
   };
 
-  const row = (entry, names) => {
-    const who = entry.who || (entry.userId ? (names.get(entry.userId) ?? entry.userId) : t('someone'));
+  const row = (entry, people) => {
+    const person = entry.userId ? people.get(entry.userId) : null;
+    const who = person?.name || entry.who || entry.userId || t('someone');
     const where = entry.channelName ?? entry.channelId ?? null;
 
     const actions = h('div', { class: 'bsh-row__actions' });
@@ -96,20 +114,49 @@ export function createView(api, t, deps) {
       actions.append(copy);
     }
 
-    const meta = h('div', { class: 'bsh-row__meta' }, [
-      h('span', { class: 'bsh-who' }, [who]),
+    // Laid out the way Slack lays out a message: the face on the left, the
+    // name and the time on one line, what was said under them.
+    const meta = h('div', { class: 'bsh-row__meta' }, [h('span', { class: 'bsh-who' }, [who])]);
+    // The same status node Slack's own sidebar draws, with its tooltip: the
+    // emoji, the sentence, and when it runs out.
+    if (person?.status) {
+      meta.append(api.slack.statusNode(person.status, person.profile, { showText: false }));
+    }
+    meta.append(
+      h('span', { class: 'bsh-time' }, [time(entry.at)]),
       h('span', { class: `bsh-kind bsh-kind--${FAMILY[entry.kind] ?? 'messages'}` }, [t(entry.kind)]),
-    ]);
+    );
     if (where) {
-      meta.append(h('span', { class: 'bsh-dim' }, ['·']), h('span', { class: 'bsh-where' }, [where]));
+      meta.append(h('span', { class: 'bsh-dim' }, ['·']), channelLink(entry, where));
     }
 
+    const avatar = person?.avatar
+      ? h('img', { class: 'bsh-avatar', src: person.avatar, alt: '', loading: 'lazy' })
+      : h('span', { class: `bsh-avatar bsh-avatar--none bsh-avatar--${FAMILY[entry.kind] ?? 'messages'}` });
+
     return h('div', { class: 'bsh-row' }, [
-      h('span', { class: 'bsh-row__time' }, [time(entry.at)]),
-      h('span', { class: `bsh-dot bsh-dot--${FAMILY[entry.kind] ?? 'messages'}`, 'aria-hidden': 'true' }),
+      avatar,
       h('div', { class: 'bsh-row__body' }, [meta, ...change(entry)]),
       actions,
     ]);
+  };
+
+  /**
+   * The channel, as a way back to it.
+   *
+   * A name that looks like a link and is not is worse than plain text, so where
+   * there is no id to open there is no button either -- a section rename and a
+   * status change belong to nobody's channel.
+   */
+  const channelLink = (entry, where) => {
+    if (!entry.channelId) return h('span', { class: 'bsh-where' }, [where]);
+    const link = h('button', {
+      class: 'c-button-unstyled bsh-where bsh-where--link',
+      type: 'button',
+      title: t('openChannel', { channel: where }),
+    }, [where]);
+    link.addEventListener('click', () => { close(); deps.openConversation(entry.channelId); });
+    return link;
   };
 
   const draw = async () => {
@@ -140,8 +187,8 @@ export function createView(api, t, deps) {
     }
 
     // Drawn with what is known first, so the list is never blank while the
-    // names are being fetched.
-    const names = await deps.namesFor(rows);
+    // faces and the names are being fetched.
+    const people = await deps.peopleFor(rows);
     if (!panel) return;
 
     const nodes = [];
@@ -156,7 +203,7 @@ export function createView(api, t, deps) {
           nodes.push(h('div', { class: 'bsh-day' }, [h('span', { class: 'bsh-day__label' }, [dayLabel(stamp)])]));
         }
       }
-      nodes.push(row(entry, names));
+      nodes.push(row(entry, people));
     }
     list.replaceChildren(...nodes);
   };

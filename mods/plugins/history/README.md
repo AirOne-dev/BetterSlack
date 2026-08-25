@@ -27,6 +27,8 @@ Telling a real change from Slack redrawing itself is the whole of the work, and 
 
 **It does not claim to know who reacted.** Slack says that only in a tooltip it builds when you hover, in the reader's language and with names rather than ids. The emoji and the count are what can be known honestly, so that is what is recorded.
 
+**The emoji is the picture Slack drew, not its name.** A reaction with a skin tone is two shortcodes run together and a custom emoji is a name only one workspace knows, so the image is kept beside the count. Where none can be drawn — an entry recorded before that, an emoji the workspace has dropped — nothing is drawn and the name is in the row's tooltip, because a shortcode in the middle of a row reads as a rendering that failed rather than as an emoji.
+
 **A join is a difference between two member lists**, not a notice parsed out of a sentence. Slack does draw "X joined", then folds it away and eventually stops showing it — and the wording depends on the reader's language.
 
 **A display name comes from `users.info`, not from the screen.** Measured in a live client: `[data-qa="message_sender"]` holds the name twice on some messages — "Ada LovelaceAda Lovelace :" — and once on others, so comparing what is drawn reports a rename every few seconds from somebody who changed nothing. What Slack's own client believes somebody is called is the thing that actually changes.

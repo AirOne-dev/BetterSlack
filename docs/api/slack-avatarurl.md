@@ -20,4 +20,8 @@ what a custom image or a data URI will be.
 ```js
 // Slack serves them as <base>-<size>, so this is a string edit
 api.slack.avatarUrl(user.image_48, 192);
+
+// It answers null for a URL that is not that shape -- a profile's `image_72`
+// ends in `.png` -- so fall back to the one you were given.
+const face = api.slack.avatarUrl(profile.image_72, 72) ?? profile.image_72;
 ```
