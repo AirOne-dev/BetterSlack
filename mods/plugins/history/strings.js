@@ -33,8 +33,6 @@ export const STRINGS = {
 
     wordings: 'Earlier wordings',
     wordingsHint: 'See what this said before',
-    wordingFirst: 'as written',
-    wordingNow: 'now',
 
     openChannel: 'Go to {channel}',
     jump: 'Go to it',
@@ -88,8 +86,6 @@ export const STRINGS = {
 
     wordings: 'Versions précédentes',
     wordingsHint: 'Voir ce que ceci disait avant',
-    wordingFirst: 'à l’écriture',
-    wordingNow: 'actuel',
 
     openChannel: 'Aller dans {channel}',
     jump: 'Y aller',

@@ -870,10 +870,18 @@ export default {
         .filter((entry) => entry.kind === 'edited' && entry.channelId === channelId && entry.ts === ts)
         .sort((a, b) => a.at - b.at);
       if (edits.length === 0) return [];
-      return [
-        { text: edits[0].before, at: null },
+      const chain = [
+        // The first wording is the one that was posted, so its time is the
+        // message's own -- which `ts` is, in seconds. Every row then carries a
+        // real time, and two wordings a minute apart read as a minute apart
+        // rather than as the same thing written twice.
+        { text: edits[0].before, at: Number(String(ts).split('.')[0]) * 1000 },
         ...edits.map((edit) => ({ text: edit.after, at: edit.at })),
       ];
+      // Two wordings running that say the same thing read as an edit that
+      // changed nothing. One entry cannot produce that; two halves both
+      // catching the same edit can.
+      return chain.filter((wording, index) => index === 0 || wording.text !== chain[index - 1].text);
     };
 
     /**
@@ -901,20 +909,26 @@ export default {
     /** The panels on screen, keyed the way everything here is keyed. */
     const panels = new Map();
 
+    /*
+     * A time and what it said, on one line each.
+     *
+     * The wordings of one message are usually a few words apart, so anything
+     * that separates them -- a heading, a rule, a label saying which is
+     * current -- makes two nearly identical lines look like the same line
+     * printed twice. Side by side under a time, they read as a sequence, and
+     * the only mark left is that the wording on screen now is at full
+     * strength while what it replaced is not.
+     */
     const wordingsNode = (wordings, people) => {
       const list = api.dom.h('div', { class: 'bsh-wordings' });
       for (const [index, wording] of wordings.entries()) {
         const last = index === wordings.length - 1;
-        const line = api.dom.h('div', { class: `bsh-wording${last ? ' bsh-wording--now' : ''}` }, [
-          api.dom.h('div', { class: 'bsh-wording__when bsh-dim' }, [
-            wording.at ? time(wording.at) : t('wordingFirst'),
-            ...(last ? [' · ', t('wordingNow')] : []),
-          ]),
-        ]);
         const words = api.dom.h('div', { class: 'bsh-wording__text' }, []);
         words.append(drawText(wording.text, people));
-        line.append(words);
-        list.append(line);
+        list.append(api.dom.h('div', { class: `bsh-wording${last ? ' bsh-wording--now' : ''}` }, [
+          api.dom.h('span', { class: 'bsh-wording__when bsh-dim' }, [time(wording.at)]),
+          words,
+        ]));
       }
       return list;
     };
@@ -929,9 +943,7 @@ export default {
       const wordings = wordingsOf(channelId, ts);
       if (wordings.length < 2) return;
       foldAway(key);
-      const panel = api.dom.h('div', { class: 'bsh-fold' }, [
-        api.dom.h('div', { class: 'bsh-fold__title bsh-dim' }, [t('wordings')]),
-      ]);
+      const panel = api.dom.h('div', { class: 'bsh-fold' }, []);
       // Drawn with what is known, so it opens on the click rather than after a
       // request. The names arrive a moment later and replace it.
       panel.append(wordingsNode(wordings, faces));
@@ -945,10 +957,7 @@ export default {
 
       const people = await peopleFor(log.filter((entry) => entry.channelId === channelId && entry.ts === ts));
       if (panels.get(key) !== panel || !panel.isConnected) return;
-      panel.replaceChildren(
-        api.dom.h('div', { class: 'bsh-fold__title bsh-dim' }, [t('wordings')]),
-        wordingsNode(wordings, people.size ? people : faces),
-      );
+      panel.replaceChildren(wordingsNode(wordings, people.size ? people : faces));
     };
 
     const markEdits = () => {

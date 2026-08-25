@@ -1019,6 +1019,14 @@ test('Slack’s own “(edited)” is the way in, and only where there is someth
     assert.deepEqual([...fold.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent),
       ['first', 'second', 'third']);
     assert.equal(fold.querySelector('.bsh-wording--now .bsh-wording__text').textContent, 'third');
+    /*
+     * A time on every row, the first one being the message's own -- `ts` is
+     * when it was posted. Two wordings a minute apart then read as a minute
+     * apart rather than as the same thing written twice, which is what a
+     * heading and a rule between them made of them.
+     */
+    assert.equal(fold.querySelectorAll('.bsh-wording__when').length, 3);
+    assert.ok([...fold.querySelectorAll('.bsh-wording__when')].every((n) => /\d/.test(n.textContent)));
 
     label.click();
     assert.equal(document.querySelector('.bsh-fold'), null, 'and folds away again');
@@ -1050,6 +1058,42 @@ test('a label Slack drew for an edit this never saw is left alone', async () => 
     assert.equal(label.className, 'c-message__edited_label', 'exactly as Slack drew it');
     label.click();
     assert.equal(document.querySelector('.bsh-fold'), null);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('two wordings that say the same thing are one wording', async () => {
+  // A run that repeats reads as an edit that changed nothing. One entry cannot
+  // produce that; two halves both catching the same edit can.
+  const dom = installDom();
+  const message = document.querySelector('[data-qa="message_container"]');
+  const label = document.createElement('span');
+  label.className = 'c-message__edited_label';
+  label.textContent = '(edited)';
+  message.querySelector('[data-qa="message-text"]').after(label);
+
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [
+        { id: '1', kind: 'edited', at: 10, channelId: 'C0BFQCYBRAB', ts: '1786386808.130969', before: 'first', after: 'second' },
+        { id: '2', kind: 'edited', at: 20, channelId: 'C0BFQCYBRAB', ts: '1786386808.130969', before: 'second', after: 'second' },
+        { id: '3', kind: 'edited', at: 30, channelId: 'C0BFQCYBRAB', ts: '1786386808.130969', before: 'second', after: 'third' },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(
+      [...document.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent),
+      ['first', 'second', 'third'],
+    );
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

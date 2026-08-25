@@ -384,13 +384,11 @@ button.betterslack-mention:hover { text-decoration: underline; }
  * the control, and what it opens goes under the words rather than over them:
  * a dialog would cover the conversation the wording belongs to.
  */
-.bsh-edited {
-  cursor: pointer;
-  border-bottom: 1px dotted currentColor;
-}
+.bsh-edited { cursor: pointer; }
 .bsh-edited:hover { color: var(--dt_color-content-highlight, #1d9bd1); }
-/* A caret rather than an icon: it is three characters wide inside Slack's own
-   label, and which way it points is the whole state. */
+/* A caret rather than an icon or an underline: it is one character inside
+   Slack's own label, and which way it points is the whole state. An underline
+   under a word Slack draws in parentheses reads as a mistake. */
 .bsh-edited::after {
   content: '⌄';
   display: inline-block;
@@ -400,19 +398,18 @@ button.betterslack-mention:hover { text-decoration: underline; }
 .bsh-edited[aria-expanded="true"]::after { transform: rotate(180deg) translateY(2px); }
 
 .bsh-fold {
-  margin: 6px 0 2px;
-  padding: 6px 0 6px 10px;
+  margin: 4px 0 2px;
+  padding: 4px 0 4px 10px;
   border-left: 2px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
 }
-.bsh-fold__title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .4px;
-  margin-bottom: 4px;
+.bsh-wordings { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; }
+.bsh-wording { display: contents; }
+.bsh-wording__when {
+  font-size: 12px;
+  line-height: 1.46668;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.bsh-wordings { display: flex; flex-direction: column; gap: 6px; }
-.bsh-wording__when { font-size: 12px; }
 .bsh-wording__text {
   font-size: 15px;
   line-height: 1.46668;
@@ -421,5 +418,5 @@ button.betterslack-mention:hover { text-decoration: underline; }
   color: var(--dt_color-content-sec, #ababad);
 }
 /* The wording on screen right now, at full strength: everything above it is
-   what it replaced, and the difference has to be visible at a glance. */
+   what it replaced, and that difference is the only mark the list needs. */
 .bsh-wording--now .bsh-wording__text { color: var(--dt_color-content-pry, #d1d2d3); }
