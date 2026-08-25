@@ -59,9 +59,28 @@ export function createMessageWatcher() {
    * @param {Reading[]} readings everything on screen, in the order it is drawn
    * @returns {object[]} what changed, oldest first
    */
-  const sweep = (readings) => {
+  const sweep = (drawnReadings) => {
     const changes = [];
-    const present = new Set(readings.map((r) => r.key));
+    /*
+     * One reading per message.
+     *
+     * The same message can be on screen twice -- a conversation and a thread
+     * draw the same node, and a jump leaves the old one in place for a frame.
+     * Read twice in one sweep, the second reading is compared against the
+     * first and any difference between the two copies is reported as an edit
+     * by somebody who wrote nothing.
+     */
+    const byKey = new Map();
+    for (const reading of drawnReadings) {
+      const held = byKey.get(reading.key);
+      if (!held) { byKey.set(reading.key, reading); continue; }
+      // Slack draws no avatar on a follow-up, and a copy in a thread may carry
+      // what the copy in the conversation does not. Take whichever knows more.
+      held.userId ??= reading.userId ?? null;
+      held.who ??= reading.who ?? null;
+    }
+    const readings = [...byKey.values()];
+    const present = new Set(byKey.keys());
 
     for (const reading of readings) {
       const known = seen.get(reading.key);
@@ -134,16 +153,40 @@ export function createMessageWatcher() {
       known.text = reading.text;
     }
 
-    // Deletions, per channel: a channel that is not on screen at all is a
-    // channel you navigated away from, and its whole window going missing must
-    // never read as everybody deleting everything at once.
+    /*
+     * Deletions, per channel, in the order Slack's own timestamps put them.
+     *
+     * Not the order the document holds them in. A message's neighbours are
+     * what says a gap is a deletion and where the line replacing it goes, and
+     * the document's order is only *usually* the conversation's: the message
+     * list is virtual, so a node can be moved, re-inserted or drawn on the far
+     * side of its neighbours for a frame while Slack rebuilds the window.
+     * Believe that for one sweep and the remembered order keeps the mistake
+     * for as long as the channel stays open -- which is how a deleted last
+     * message came to be filed between two messages from the day before, and
+     * had its line drawn there.
+     *
+     * `ts` cannot be scrambled that way: it is what Slack orders the
+     * conversation by, and every one is ten digits, a dot and six, so
+     * comparing them as text is exact where comparing them as numbers is at
+     * the edge of what a double holds.
+     *
+     * A channel that is not on screen at all is a channel you navigated away
+     * from, and its whole window going missing must never read as everybody
+     * deleting everything at once.
+     */
     const drawn = new Map();
     for (const reading of readings) {
-      if (!drawn.has(reading.channelId)) drawn.set(reading.channelId, []);
-      drawn.get(reading.channelId).push(reading.key);
+      if (!drawn.has(reading.channelId)) drawn.set(reading.channelId, new Map());
+      // A Map, so a message drawn twice at once -- the conversation and a
+      // thread, a jump that leaves the old node in place for a frame -- is one
+      // entry rather than two neighbours of itself.
+      drawn.get(reading.channelId).set(reading.key, reading.ts);
     }
 
-    for (const [channelId, keys] of drawn) {
+    for (const [channelId, drawnKeys] of drawn) {
+      const keys = [...drawnKeys.keys()]
+        .sort((a, b) => String(drawnKeys.get(a)).localeCompare(String(drawnKeys.get(b))));
       const before = order.get(channelId) ?? [];
       /** Gone, surrounded, but not yet gone often enough to be believed. */
       const waiting = [];
@@ -192,8 +235,8 @@ export function createMessageWatcher() {
           who: known.who,
           // The two it sat between, so a headstone can be put back exactly
           // where the message was rather than at the end of the list. The last
-          // message in a conversation has nothing after it, and there is
-          // nothing to anchor a headstone to -- it is recorded all the same.
+          // message in a conversation has nothing after it and hangs off the
+          // one before instead, which is the same place.
           previousTs: previous ? (seen.get(previous)?.ts ?? null) : null,
           nextTs: next ? (seen.get(next)?.ts ?? null) : null,
         });

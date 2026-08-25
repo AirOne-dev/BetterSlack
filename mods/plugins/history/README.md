@@ -8,7 +8,7 @@ A tab in Slack's rail, under Home and Activity, or `⌘⇧H`, or `⌘K` → **Hi
 
 | | |
 | --- | --- |
-| **Messages** | A message rewritten, with both wordings. A message deleted, with what it said — and the message left where it was, struck through, with whose it was beside it, instead of the gap closing over it. |
+| **Messages** | A message rewritten, with both wordings. A message deleted, with what it said — and the message left where it was, struck through, with whose it was beside it, instead of the gap closing over it. Where it was is worked out from the timestamps of what is on screen each time it is drawn, so it lands in the right place even when the conversation has moved on. |
 | **Reactions** | A reaction added or taken back, with the emoji and the person who did it. |
 | **Names** | A channel renamed, a sidebar section renamed, somebody changing their display name. Slack says nothing about any of the three. |
 | **People** | Somebody joining or leaving a conversation, and people's statuses as they change. |
@@ -24,7 +24,8 @@ That second half is also the only place **who** reacted can be known: Slack hand
 Telling a real change from Slack redrawing itself is the whole of the work, and three rules do it:
 
 - **Nothing is comparable the first time it is seen.** Other mods rewrite what is on screen — Full Links replaces a truncated link's label with the whole URL moments after a message is drawn — so a reading has to be repeated unchanged before a later difference counts.
-- **A deletion is a gap with both neighbours still on screen.** Slack's message list is virtual: thirteen messages out of thousands are in the document, and scrolling drops some at one end. That is a gap with a missing neighbour; a deletion is a gap with both.
+- **A deletion is a gap with both neighbours still on screen.** Slack's message list is virtual: thirteen messages out of thousands are in the document, and scrolling drops some at one end. That is a gap with a missing neighbour; a deletion is a gap with both. The one exception is the message you just wrote, at the bottom, with nothing after it: that counts as long as nothing scrolled in behind it.
+- **Which messages are the neighbours comes from their timestamps**, not from the order the document holds them in. The list being virtual means a node can sit on the far side of its own neighbours for a frame while Slack rebuilds the window, and an order believed once is remembered for as long as the channel stays open.
 - **And only after two sweeps**, because Slack re-renders constantly and a message can leave the document and come back in the same second.
 
 **A reaction is named or it is not recorded.** Watching the screen can see a count move and nothing more — Slack says who reacted only in a tooltip it builds when you hover, in the reader's language and with names rather than ids. So a count moving is not written down: it is what sends this to ask `conversations.history`, which does hand over the ids, and the row is written from that answer with the person on it. "Somebody took a reaction back" answers the only question it raises with a shrug, and a history that cannot say who is no use as a history.

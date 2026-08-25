@@ -8,7 +8,7 @@ Un onglet dans le rail de Slack, sous Accueil et Activité, ou `⌘⇧H`, ou `�
 
 | | |
 | --- | --- |
-| **Messages** | Un message réécrit, avec les deux formulations. Un message supprimé, avec ce qu'il disait — et le message laissé là où il était, barré, avec le nom et le visage de celui à qui il était, au lieu du trou qui se referme dessus. |
+| **Messages** | Un message réécrit, avec les deux formulations. Un message supprimé, avec ce qu'il disait — et le message laissé là où il était, barré, avec le nom et le visage de celui à qui il était, au lieu du trou qui se referme dessus. L'endroit est recalculé à partir des horodatages de ce qui est à l'écran à chaque affichage, donc la ligne tombe au bon endroit même quand la conversation a avancé. |
 | **Réactions** | Une réaction ajoutée ou retirée, avec l'émoji et la personne qui l'a faite. |
 | **Noms** | Un canal renommé, une section de sidebar renommée, quelqu'un qui change de nom d'affichage. Slack ne dit rien des trois. |
 | **Personnes** | Quelqu'un qui rejoint ou quitte une conversation, et les statuts au fil de leurs changements. |
@@ -24,7 +24,8 @@ C'est aussi le seul endroit où **qui** a réagi peut être su : Slack y donne l
 Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et trois règles s'en chargent :
 
 - **Rien n'est comparable à la première lecture.** D'autres mods réécrivent ce qui est à l'écran — Full Links remplace le libellé tronqué d'un lien par l'URL entière juste après l'affichage — donc une lecture doit se répéter à l'identique avant qu'une différence ultérieure compte.
-- **Une suppression est un trou dont les deux voisins sont encore là.** La liste de Slack est virtuelle : treize messages sur des milliers sont dans le document, et défiler en retire à une extrémité. Ça, c'est un trou avec un voisin manquant ; une suppression, c'est un trou avec les deux.
+- **Une suppression est un trou dont les deux voisins sont encore là.** La liste de Slack est virtuelle : treize messages sur des milliers sont dans le document, et défiler en retire à une extrémité. Ça, c'est un trou avec un voisin manquant ; une suppression, c'est un trou avec les deux. La seule exception est le message qu'on vient d'écrire, tout en bas, sans rien après lui : il compte tant que rien n'est arrivé derrière.
+- **Qui sont les voisins vient de leurs horodatages**, pas de l'ordre dans lequel le document les tient. La liste étant virtuelle, un nœud peut se retrouver de l'autre côté de ses propres voisins le temps d'une image pendant que Slack reconstruit la fenêtre, et un ordre cru une fois est mémorisé tant que le canal reste ouvert.
 - **Et seulement après deux passages**, parce que Slack re-rend en permanence et qu'un message peut quitter le document et revenir dans la même seconde.
 
 **Une réaction est nommée, ou elle n'est pas enregistrée.** Lire l'écran permet de voir un compte bouger et rien de plus — Slack ne dit qui a réagi que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms plutôt que des identifiants. Un compte qui bouge n'est donc pas écrit : c'est ce qui envoie interroger `conversations.history`, qui donne les identifiants, et la ligne est écrite à partir de cette réponse, avec la personne dessus. « Quelqu'un a retiré une réaction » répond par un haussement d'épaules à la seule question que la ligne pose, et un historique incapable de dire qui ne sert à rien comme historique.

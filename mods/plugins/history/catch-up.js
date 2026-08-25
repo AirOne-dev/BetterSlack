@@ -79,6 +79,27 @@ export function catchUp(before, messages, where) {
    */
   const oldest = Object.keys(now).sort()[0] ?? null;
 
+  /**
+   * The messages either side of a gap, so the line replacing a deleted one can
+   * be put where it was.
+   *
+   * The screen-reading half knows this from the order it drew them in; here the
+   * answer is the conversation itself, so the neighbours are whichever
+   * surviving messages are nearest on each side. Sorted once rather than per
+   * deletion: a channel where several went at the same time is the normal case,
+   * not the exception.
+   */
+  const standing = Object.keys(now).sort();
+  const neighbours = (ts) => {
+    let previousTs = null;
+    let nextTs = null;
+    for (const other of standing) {
+      if (other < ts) previousTs = other;
+      else if (other > ts) { nextTs = other; break; }
+    }
+    return { previousTs, nextTs };
+  };
+
   for (const [ts, was] of Object.entries(before)) {
     const is = now[ts];
 
@@ -93,6 +114,7 @@ export function catchUp(before, messages, where) {
         subject: was.text,
         userId: was.user ?? null,
         subjectUser: was.user ?? null,
+        ...neighbours(ts),
       });
       continue;
     }

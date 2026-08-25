@@ -431,13 +431,52 @@ export default {
     };
 
     /**
+     * The message a headstone hangs off, and which side of it to sit on.
+     *
+     * Worked out from what is drawn now rather than from the neighbours the
+     * deletion was recorded with. Those were written from the screen at the
+     * moment the message went, and a stored neighbour cannot be corrected
+     * afterwards -- while a timestamp is exactly what Slack orders a
+     * conversation by, so the two messages a gap sits between can be found
+     * again every time, from whatever the client happens to have drawn.
+     *
+     * The message that came after is the anchor, and the line goes above it:
+     * that is where the message was. A message deleted from the end of a
+     * conversation has nothing after it, so it hangs under the one before
+     * instead -- but only then, because a window scrolled away from the bottom
+     * has a newest drawn message that is not the newest message, and hanging
+     * the line under that one would put it in the middle of the conversation.
+     *
+     * Timestamps compare as text: every one is ten digits, a dot and six, so
+     * that is exact where comparing them as numbers is at the edge of what a
+     * double holds.
+     */
+    const anchorFor = (entry) => {
+      let newer = null;
+      let older = null;
+      for (const node of document.querySelectorAll(
+        `${MESSAGE}[data-msg-channel-id="${CSS.escape(entry.channelId)}"]`,
+      )) {
+        const ts = node.getAttribute('data-msg-ts');
+        if (!ts) continue;
+        if (ts > entry.ts) { if (!newer || ts < newer.ts) newer = { node, ts }; }
+        else if (ts < entry.ts) { if (!older || ts > older.ts) older = { node, ts }; }
+      }
+      if (newer) return { node: newer.node, after: false };
+      // Recorded as having had something after it, so its place is above a
+      // message this window is not showing. A stored neighbour older than the
+      // message itself is not one: it says nothing about what followed.
+      const hadNext = Boolean(entry.nextTs) && entry.nextTs > entry.ts;
+      if (!hadNext && older) return { node: older.node, after: true };
+      return null;
+    };
+
+    /**
      * Keep every headstone where its message was, and only while it can be.
      *
-     * The anchor is the message that came after it, matched on both the channel
-     * and the timestamp: a bare `data-msg-ts` would match the same second in
-     * another conversation. When that anchor is not drawn -- you scrolled away,
-     * or changed channel -- the headstone comes off rather than drifting to the
-     * end of whatever list is on screen.
+     * When the anchor is not drawn -- you scrolled away, or changed channel --
+     * the headstone comes off rather than drifting to the end of whatever list
+     * is on screen.
      */
     const placeStones = (redraw = false) => {
       /*
@@ -453,7 +492,7 @@ export default {
       if (!showDeleted) return;
       const wanted = new Map();
       for (const entry of log) {
-        if (entry.kind !== 'deleted' || !entry.nextTs) continue;
+        if (entry.kind !== 'deleted' || (!entry.nextTs && !entry.previousTs)) continue;
         const key = `${entry.channelId}:${entry.ts}`;
         if (dismissed.has(key) || wanted.has(key)) continue;
         wanted.set(key, entry);
@@ -465,18 +504,20 @@ export default {
       }
 
       for (const [key, entry] of wanted) {
-        const anchor = document.querySelector(
-          `${MESSAGE}[data-msg-channel-id="${CSS.escape(entry.channelId)}"][data-msg-ts="${CSS.escape(entry.nextTs)}"]`,
-        );
+        const anchor = anchorFor(entry);
         const existing = headstones.get(key);
         if (!anchor) {
           if (existing) { existing.remove(); headstones.delete(key); }
           continue;
         }
-        if (!redraw && existing?.isConnected && existing.nextElementSibling === anchor) continue;
+        const placed = anchor.after
+          ? existing?.previousElementSibling === anchor.node
+          : existing?.nextElementSibling === anchor.node;
+        if (!redraw && existing?.isConnected && placed) continue;
         existing?.remove();
         const node = buildStone(entry);
-        anchor.before(node);
+        if (anchor.after) anchor.node.after(node);
+        else anchor.node.before(node);
         headstones.set(key, node);
       }
     };

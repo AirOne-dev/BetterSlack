@@ -689,6 +689,61 @@ test('nothing is recorded while Demo Mode is rewriting the screen', async () => 
   }
 });
 
+test('the remembered order is the conversation’s, not the document’s', () => {
+  /*
+   * What put a deleted last message in the middle of the day before.
+   *
+   * The message list is virtual, so for a frame a node can sit on the far side
+   * of its own neighbours while Slack rebuilds the window. Believed once, that
+   * order is remembered for as long as the channel stays open, and the gap is
+   * then reported as sitting between the wrong two messages -- which is where
+   * the line replacing it gets drawn.
+   */
+  const watcher = createMessageWatcher();
+  const out = (...ts) => ts.map((value) => ({
+    key: `C1:${value}`, channelId: 'C1', ts: value, text: 't', reactions: {},
+  }));
+
+  // Drawn with the newest message ahead of the two before it.
+  watcher.sweep(out('1787645635.000000', '1787566399.000000', '1787645310.000000'));
+  watcher.sweep(out('1787645635.000000', '1787566399.000000', '1787645310.000000'));
+  // And now the newest one is deleted, which is the common case.
+  watcher.sweep(out('1787566399.000000', '1787645310.000000'));
+  const [change] = watcher.sweep(out('1787566399.000000', '1787645310.000000'));
+
+  assert.equal(change.kind, 'deleted');
+  assert.equal(change.ts, '1787645635.000000');
+  assert.equal(change.nextTs, null, 'nothing followed it, whatever order it was drawn in');
+  assert.equal(change.previousTs, '1787645310.000000', 'and the one before it is the one before it');
+});
+
+test('a message drawn twice at once is one message, not two', () => {
+  // A conversation and a thread draw the same node, and a jump leaves the old
+  // one in place for a frame. Read twice, the second reading is compared with
+  // the first and any difference between the copies is an edit nobody made.
+  const watcher = createMessageWatcher();
+  const twice = [
+    { key: 'C1:1', channelId: 'C1', ts: '1', text: 'hello', reactions: {} },
+    { key: 'C1:1', channelId: 'C1', ts: '1', text: 'hello …', reactions: {} },
+  ];
+  watcher.sweep(twice);
+  watcher.sweep(twice);
+  assert.deepEqual(watcher.sweep(twice), []);
+  assert.equal(watcher.watching(), 1, 'and it is one message being watched');
+});
+
+test('a deletion caught while you were away knows where it was', () => {
+  // The screen-reading half learns the neighbours from the order it drew them
+  // in; here they come from the conversation itself, so the line goes back
+  // where the message was rather than nowhere at all.
+  const before = snapshotOf([said('3', 'c'), said('2', 'gone'), said('1', 'a')]);
+  const [change] = catchUp(before, [said('3', 'c'), said('1', 'a')],
+    { channelId: 'C1', channelName: null });
+  assert.equal(change.kind, 'deleted');
+  assert.equal(change.previousTs, '1');
+  assert.equal(change.nextTs, '3');
+});
+
 test('a deleted message leaves a line with the face and the name on it', async () => {
   /*
    * A struck-through sentence and nothing else is a sentence floating in a
@@ -745,6 +800,49 @@ test('a deleted message leaves a line with the face and the name on it', async (
      */
     await plugin.stop();
     assert.equal(document.querySelector('.bsh-stone'), null, 'the line goes with the mod');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('the last message in a conversation leaves its line at the bottom', async () => {
+  /*
+   * It has nothing after it, so it hangs under the one before and sits where it
+   * was. Which message that is comes from what is drawn now, not from the
+   * neighbours the deletion was recorded with: those were written from the
+   * screen at the moment the message went and cannot be corrected afterwards,
+   * and an anchor on the wrong side of the message puts the line in the middle
+   * of the day before -- which reads as a bug in a way that a missing line
+   * does not.
+   */
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      entries: [{
+        id: '1',
+        kind: 'deleted',
+        at: 10,
+        channelId: 'C0BFQCYBRAB',
+        // Newer than the one message the fixture draws, which is therefore the
+        // one before it. The stored neighbours are both wrong, and both are
+        // older than the message itself -- the shape a scrambled order leaves
+        // behind, and the reason the placement does not read them.
+        ts: '1786386900.000000',
+        previousTs: '1786387000.000000',
+        nextTs: '1786386700.000000',
+        before: 'the last thing anybody said',
+        userId: 'U0EXAMPLE2',
+      }],
+    },
+  });
+  try {
+    await plugin.start(api);
+    const stone = document.querySelector('.bsh-stone');
+    assert.ok(stone, 'the line is on screen');
+    assert.equal(stone.previousElementSibling?.getAttribute('data-msg-ts'), '1786386808.130969',
+      'under the message it followed, not above one from before it');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
