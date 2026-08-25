@@ -893,32 +893,14 @@ export default {
      * Slack's own, and what it opens unfolds under the message instead of over
      * it: a dialog would cover the conversation the wording belongs to.
      *
-     * Only where there is something to show. Slack marks every edit, including
-     * ones made before this mod was installed, and a control that opens an
-     * empty panel is worse than a label that never looked like one.
-     *
-     * Decorated from the poll rather than from an observer. This is the list
-     * Slack re-renders most, and an observer that reacts to Slack's own
-     * re-render by putting a node back into that list is the shape that has
-     * frozen this renderer before. Slack replacing the label is what undoes
-     * the decoration, and the next sweep is what puts it back.
+     * `helpers.disclosure` owns the hard parts, all four of which were got
+     * wrong here first: Slack replaces the label, Slack tears out what was
+     * opened, which one is open has to survive both, and none of it may be
+     * driven from an observer on the message list. It animates nothing --
+     * Motion is what does that, if it is installed.
      */
     const EDITED_LABEL = '.c-message__edited_label';
-    /** Which messages have their wordings unfolded, so a re-render keeps them. */
-    const unfolded = new Set();
-    /** The panels on screen, keyed the way everything here is keyed. */
-    const panels = new Map();
 
-    /*
-     * A time and what it said, on one line each.
-     *
-     * The wordings of one message are usually a few words apart, so anything
-     * that separates them -- a heading, a rule, a label saying which is
-     * current -- makes two nearly identical lines look like the same line
-     * printed twice. Side by side under a time, they read as a sequence, and
-     * the only mark left is that the wording on screen now is at full
-     * strength while what it replaced is not.
-     */
     const wordingsNode = (wordings, people) => {
       const list = api.dom.h('div', { class: 'bsh-wordings' });
       for (const [index, wording] of wordings.entries()) {
@@ -933,127 +915,42 @@ export default {
       return list;
     };
 
-    const foldAway = (key) => {
-      panels.get(key)?.remove();
-      panels.delete(key);
-    };
-
-    const unfold = async (message, channelId, ts) => {
-      const key = `${channelId}:${ts}`;
-      const wordings = wordingsOf(channelId, ts);
-      if (wordings.length < 2) return;
-      foldAway(key);
-      const panel = api.dom.h('div', { class: 'bsh-fold' }, []);
-      // Drawn with what is known, so it opens on the click rather than after a
-      // request. The names arrive a moment later and replace it.
-      panel.append(wordingsNode(wordings, faces));
-      // Under the words, inside the message, which is where "what did this say
-      // before" belongs -- and where Slack's own thread and reaction rows go.
-      const body = message.querySelector('[data-qa="message-text"]')
-        ?? message.querySelector('.p-rich_text_section');
-      if (!body) return;
-      body.after(panel);
-      panels.set(key, panel);
-
-      const people = await peopleFor(log.filter((entry) => entry.channelId === channelId && entry.ts === ts));
-      if (panels.get(key) !== panel || !panel.isConnected) return;
-      panel.replaceChildren(wordingsNode(wordings, people.size ? people : faces));
-    };
-
-    /**
-     * The click, delegated rather than bound to Slack's own node.
-     *
-     * A listener on the label itself works exactly once. The label belongs to
-     * React, and putting a panel into the message makes React reconcile that
-     * subtree and build a fresh label -- so the node the pointer lands on the
-     * second time is not the node the listener was attached to, and the click
-     * does nothing. The next sweep decorates the new one and it works again,
-     * which makes it look intermittent rather than broken.
-     *
-     * One listener on the document, matched by class, survives every re-render
-     * because it never depended on the node. In the capture phase for the same
-     * reason Slack's own handlers are: whatever the message body does with a
-     * click, this has already been decided.
-     */
-    const clickedLabel = (event) => {
-      // Duck-typed rather than `instanceof Element`: the target of a keydown
-      // can be the document itself, and a global is a thing to depend on.
-      const target = event.target;
-      const label = typeof target?.closest === 'function' ? target.closest(EDITED_LABEL) : null;
-      if (!label) return null;
-      const message = label.closest(MESSAGE);
-      const channelId = message?.getAttribute('data-msg-channel-id');
-      const ts = message?.getAttribute('data-msg-ts');
-      if (!channelId || !ts) return null;
+    const wordings = api.helpers.disclosure({
+      trigger: EDITED_LABEL,
+      label: t('wordingsHint'),
       /*
-       * Decided from the log, not from the class this mod put on the label.
+       * Which message, and null for one this knows nothing about.
        *
-       * The class is styling, and it is applied by a sweep -- so a label Slack
-       * has just rebuilt is a label the sweep has not reached yet, and asking
-       * for the class would make the click do nothing for up to a sweep. Which
-       * is the same intermittency the delegation is here to end.
+       * Slack marks every edit, including ones made before this mod was
+       * installed, and a control that opens an empty panel is worse than a
+       * label that never looked like one.
        */
-      if (wordingsOf(channelId, ts).length < 2) return null;
-      return { label, message, channelId, ts, key: `${channelId}:${ts}` };
-    };
-
-    const toggleWordings = (event) => {
-      const hit = clickedLabel(event);
-      if (!hit) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (unfolded.has(hit.key)) {
-        unfolded.delete(hit.key);
-        foldAway(hit.key);
-      } else {
-        unfolded.add(hit.key);
-        void unfold(hit.message, hit.channelId, hit.ts);
-      }
-      hit.label.setAttribute('aria-expanded', String(unfolded.has(hit.key)));
-    };
-
-    const onLabelKey = (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      if (!clickedLabel(event)) return;
-      toggleWordings(event);
-    };
-
-    document.addEventListener('click', toggleWordings, true);
-    document.addEventListener('keydown', onLabelKey, true);
-
-    const markEdits = () => {
-      const wanted = new Set();
-      for (const label of document.querySelectorAll(EDITED_LABEL)) {
+      keyFor: (label) => {
         const message = label.closest(MESSAGE);
         const channelId = message?.getAttribute('data-msg-channel-id');
         const ts = message?.getAttribute('data-msg-ts');
-        if (!channelId || !ts || wordingsOf(channelId, ts).length < 2) continue;
-        const key = `${channelId}:${ts}`;
-        wanted.add(key);
-
-        /*
-         * Dressed on every sweep, with no per-node state at all.
-         *
-         * Slack replaces this node whenever it re-renders the message, so
-         * anything remembered on it -- a marker, a listener -- is remembered
-         * about a node that is on its way out. Setting the same four
-         * attributes again costs nothing and is always right.
-         */
-        label.classList.add('bsh-edited');
-        label.setAttribute('role', 'button');
-        label.setAttribute('tabindex', '0');
-        label.setAttribute('title', t('wordingsHint'));
-        label.setAttribute('aria-expanded', String(unfolded.has(key)));
-
-        // React takes the panel with it when it rebuilds the message; putting
-        // it back is what keeps an open one open, rather than making somebody
-        // click twice.
-        if (unfolded.has(key) && !panels.get(key)?.isConnected) void unfold(message, channelId, ts);
-      }
-      // A message that scrolled away takes its panel with it, and keeps its
-      // place in `unfolded` so coming back to it opens it again.
-      for (const key of [...panels.keys()]) if (!wanted.has(key)) foldAway(key);
-    };
+        if (!channelId || !ts || wordingsOf(channelId, ts).length < 2) return null;
+        return `${channelId}:${ts}`;
+      },
+      // Under the message, not under the word "(edited)" in the middle of it.
+      anchor: (label) => label.closest(MESSAGE)?.querySelector('[data-qa="message-text"]')
+        ?? label.closest('.p-rich_text_section'),
+      content: (label, key) => {
+        const at = key.lastIndexOf(':');
+        const channelId = key.slice(0, at);
+        const ts = key.slice(at + 1);
+        const rows = wordingsOf(channelId, ts);
+        if (rows.length < 2) return null;
+        const host = api.dom.h('div', { class: 'bsh-fold' }, []);
+        // Drawn with what is known, so it opens on the click rather than after
+        // a request; the names replace it a moment later if it is still there.
+        const draw = (people) => host.replaceChildren(wordingsNode(rows, people));
+        draw(faces);
+        void peopleFor(log.filter((entry) => entry.channelId === channelId && entry.ts === ts))
+          .then((people) => { if (host.isConnected) draw(people.size ? people : faces); });
+        return host;
+      },
+    });
 
     /** The channel the last sweep saw, so opening another one triggers a look. */
     let lastChannel = null;
@@ -1083,7 +980,7 @@ export default {
        */
       record(names.sweep(readNames()));
       placeStones();
-      markEdits();
+      wordings.refresh();
 
       for (const element of document.querySelectorAll(MESSAGE)) {
         const id = api.slack.userIdFromMessage(api.slack.describeMessage(element));
@@ -1184,16 +1081,6 @@ export default {
 
     sweepUp = () => {
       for (const [key, node] of headstones) { node.remove(); headstones.delete(key); }
-      for (const [key, node] of panels) { node.remove(); panels.delete(key); }
-      document.removeEventListener('click', toggleWordings, true);
-      document.removeEventListener('keydown', onLabelKey, true);
-      for (const label of document.querySelectorAll(EDITED_LABEL)) {
-        // Slack's own label, put back as Slack's own.
-        label.removeAttribute('aria-expanded');
-        label.removeAttribute('role');
-        label.removeAttribute('tabindex');
-        label.classList.remove('bsh-edited');
-      }
     };
   },
 

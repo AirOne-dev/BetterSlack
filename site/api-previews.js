@@ -4274,6 +4274,129 @@
 
 ` + CODE_CSS;
 
+  // src/runtime/ui/disclosure.ts
+  var DISCLOSURE_CLASS = {
+    /** On the element that opens it. */
+    trigger: "betterslack-disclosure",
+    /** On the wrapper holding what it opened. */
+    panel: "betterslack-disclosure__panel",
+    /** Inside the wrapper. The pair is what makes an unfold animatable. */
+    inner: "betterslack-disclosure__inner"
+  };
+  function createDisclosure(options) {
+    const open = /* @__PURE__ */ new Set();
+    const panels = /* @__PURE__ */ new Map();
+    const hit = (target) => {
+      const from = target;
+      const element = typeof from?.closest === "function" ? from.closest(options.trigger) : null;
+      if (!element) return null;
+      const key = options.keyFor(element);
+      return key ? { element, key } : null;
+    };
+    const fold = (key) => {
+      panels.get(key)?.remove();
+      panels.delete(key);
+    };
+    const unfold = (element, key) => {
+      fold(key);
+      const content = options.content(element, key);
+      if (!content) return;
+      const where = options.anchor?.(element, key) ?? element;
+      if (!where.parentNode) return;
+      const inner = document.createElement("div");
+      inner.className = DISCLOSURE_CLASS.inner;
+      inner.append(content);
+      const panel = document.createElement("div");
+      panel.className = DISCLOSURE_CLASS.panel;
+      panel.append(inner);
+      where.after(panel);
+      panels.set(key, panel);
+    };
+    const toggle = (event) => {
+      const found = hit(event.target);
+      if (!found) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (open.has(found.key)) {
+        open.delete(found.key);
+        fold(found.key);
+      } else {
+        open.add(found.key);
+        unfold(found.element, found.key);
+      }
+      found.element.setAttribute("aria-expanded", String(open.has(found.key)));
+      options.onToggle?.(open.has(found.key), found.key);
+    };
+    const onKey = (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (!hit(event.target)) return;
+      toggle(event);
+    };
+    document.addEventListener("click", toggle, true);
+    document.addEventListener("keydown", onKey, true);
+    const refresh = () => {
+      const wanted = /* @__PURE__ */ new Set();
+      for (const element of document.querySelectorAll(options.trigger)) {
+        const key = options.keyFor(element);
+        if (!key) continue;
+        wanted.add(key);
+        element.classList.add(DISCLOSURE_CLASS.trigger);
+        element.setAttribute("role", "button");
+        element.setAttribute("tabindex", "0");
+        if (options.label) element.setAttribute("title", options.label);
+        element.setAttribute("aria-expanded", String(open.has(key)));
+        if (open.has(key) && !panels.get(key)?.isConnected) unfold(element, key);
+      }
+      for (const key of [...panels.keys()]) if (!wanted.has(key)) fold(key);
+    };
+    const dispose = () => {
+      document.removeEventListener("click", toggle, true);
+      document.removeEventListener("keydown", onKey, true);
+      for (const key of [...panels.keys()]) fold(key);
+      open.clear();
+      for (const element of document.querySelectorAll(`.${DISCLOSURE_CLASS.trigger}`)) {
+        element.classList.remove(DISCLOSURE_CLASS.trigger);
+        element.removeAttribute("aria-expanded");
+        element.removeAttribute("role");
+        element.removeAttribute("tabindex");
+      }
+    };
+    return Object.assign(dispose, {
+      refresh,
+      isOpen: (key) => open.has(key),
+      close: (key) => {
+        open.delete(key);
+        fold(key);
+        refresh();
+      },
+      closeAll: () => {
+        for (const key of [...open]) {
+          open.delete(key);
+          fold(key);
+        }
+        refresh();
+      }
+    });
+  }
+  var DISCLOSURE_CSS = `
+.${DISCLOSURE_CLASS.trigger} { cursor: pointer; }
+.${DISCLOSURE_CLASS.trigger}:hover { color: var(--dt_color-content-highlight, #1d9bd1); }
+.${DISCLOSURE_CLASS.trigger}::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 4px;
+  vertical-align: .12em;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
+}
+.${DISCLOSURE_CLASS.trigger}[aria-expanded="true"]::after { transform: rotate(180deg); }
+.${DISCLOSURE_CLASS.panel} { display: grid; grid-template-rows: 1fr; }
+.${DISCLOSURE_CLASS.inner} { overflow: hidden; min-height: 0; }
+`;
+
   // src/runtime/helpers.ts
   var CACHE_KEYS = 40;
   var BUTTON_CLASSES = {
@@ -4323,6 +4446,11 @@
     const scopedCss = /* @__PURE__ */ new Map();
     const applyCss = () => ctx.css([...scopedCss.values()].join("\n"));
     return {
+      disclosure(options) {
+        scopedCss.set("disclosure", DISCLOSURE_CSS);
+        applyCss();
+        return ctx.track(createDisclosure(options));
+      },
       toggle({ key, className, defaultOn = false, whenOn, onChange }) {
         const flag = className ?? `betterslack-${ctx.pluginId}-${key}`;
         if (whenOn) {
@@ -6211,6 +6339,30 @@ handler(${JSON.stringify(v.to)}, ${JSON.stringify(v.from)})` + (v.to === v.from 
     }
   };
   var SLACK_HELPERS = {
+    "helpers-disclosure": {
+      render: (v, { stage, keep }) => {
+        const frame = slackChrome();
+        stage.replaceChildren(frame);
+        const line = kit.el("div", { class: "p-rich_text_section" });
+        line.append(document.createTextNode("the wording that is there now "));
+        const label = kit.el("span", { class: "c-message__edited_label", textContent: v.label });
+        line.append(label);
+        frame.querySelector('[data-qa="message-text"]').append(line);
+        document.documentElement.classList.toggle("betterslack-motion-panels", v.motion !== false);
+        document.documentElement.classList.toggle("betterslack-motion", v.motion !== false);
+        const handle = helpers.disclosure({
+          trigger: ".c-message__edited_label",
+          label: "See what this said before",
+          keyFor: () => "demo",
+          anchor: () => frame.querySelector('[data-qa="message-text"]'),
+          content: () => kit.el("div", { class: "pg__stub", textContent: "what it said before" })
+        });
+        handle.refresh();
+        keep(handle);
+        focusChrome(frame, '[data-qa="message_container"]');
+        return void 0;
+      }
+    },
     "helpers-iconbutton": {
       render: (v) => helpers.iconButton({ icon: ICON, label: v.label, surface: v.surface, onClick: () => {
       } })

@@ -1373,7 +1373,31 @@ Shape of it:
   class on `<html>` so behaviour is pure CSS), `hotkey` (`mod+shift+f`, with a
   `when` guard that gates the *match* so an inapplicable shortcut does not
   swallow the key), `mount`, `each`, `badge`, `tooltip`, `copy`, `iconButton`,
-  `field`, `section`, `debounce`.
+  `field`, `section`, `debounce`, `disclosure`.
+- **`api.helpers.disclosure` makes something Slack already draws open and
+  close**, which is four problems rather than one and every one of them was got
+  wrong here first: Slack replaces the element (so the click is delegated from
+  the document and nothing is remembered *on* the node -- a bound listener
+  works exactly once and reads as intermittent), Slack tears out what was
+  opened (so it is put back), which one is open has to survive both (so
+  identity is a key the caller derives, never the node), and none of it may be
+  driven from an observer on the message list. `refresh()` is called from the
+  mod's own sweep. `keyFor` returning null leaves the trigger exactly as Slack
+  drew it.
+
+  **It animates nothing, and that is the arrangement.** The classes
+  (`betterslack-disclosure`, `__panel`, `__inner`) are stable so Motion can,
+  under `betterslack-motion-panels`. Two nodes rather than one because the
+  unfold is `grid-template-rows: 0fr -> 1fr` on the outer with `overflow:
+  hidden` on the inner, which animates a height nobody had to measure --
+  measured in Slack 4.51: 41px at 120ms, 60px at rest, and the caret 171° then
+  180°. A keyframe rather than a transition, since the panel is built already
+  open and a transition needs a frame between insertion and the change.
+
+  **The caret is drawn with borders, never typed as a glyph.** A character sits
+  wherever its font puts it in the em box, which is never the middle, so
+  rotating one turns it about a point that is not its own centre and it lands
+  off to one side.
 - `api.slack` — Slack's chrome: `addView` (a whole view, with its tab in the
   rail), `addToolbarButton` (controlStrip / composer /
   channelHeader, with `before` to sit above another button), `addMessageAction`,

@@ -48,6 +48,7 @@ from exactly these numbers and what the mod calls.
 - [`copy`](api/helpers-copy.md) — Put text on the clipboard and confirm it with a toast, which is the pair almost every copy button wants. Resolves false if the clipboard refused. _(since 2.0.1)_
 - [`debounce`](api/helpers-debounce.md) — Debounce. No shipped mod calls this today -- the two that debounce _(since 2.0.1)_
 - [`describeHotkey`](api/helpers-describehotkey.md) — A combo as a person would read it: `mod` becomes ⌘ on a Mac and Ctrl elsewhere, and the modifiers come out in the order that platform writes them. For a tooltip or a menu subtitle. _(since 2.0.1)_
+- [`disclosure`](api/helpers-disclosure.md) — Make something Slack already draws open and close. It marks an edited message with "(edited)" and a channel with a member count: exactly where a reader would ask for more, and neither answers. A mod with the answer makes that label the way in rather than adding a fifth button to a toolbar of four. _(unreleased)_
 - [`each`](api/helpers-each.md) — Run a handler for every element matching a selector, now and in future, _(since 2.0.1)_
 - [`field`](api/helpers-field.md) — A labelled row in Slack's own profile style, so a mod's extra details sit in a profile pane looking like the details Slack put there. _(since 2.0.1)_
 - [`hotkey`](api/helpers-hotkey.md) — Bind a keyboard shortcut in the platform's idiom: `mod+shift+f`. _(since 2.0.1)_

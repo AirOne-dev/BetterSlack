@@ -384,30 +384,11 @@ button.betterslack-mention:hover { text-decoration: underline; }
  * the control, and what it opens goes under the words rather than over them:
  * a dialog would cover the conversation the wording belongs to.
  */
-.bsh-edited { cursor: pointer; }
-.bsh-edited:hover { color: var(--dt_color-content-highlight, #1d9bd1); }
-/*
- * A caret drawn rather than typed.
- *
- * A glyph like the one this used to be sits wherever its font puts it in the
- * em box, which is never the middle -- so rotating it turns it about a point
- * that is not its own centre and it lands off to one side. Three borders make
- * a triangle that fills its box exactly, and a box rotates about its middle.
- */
-.bsh-edited::after {
-  content: '';
-  display: inline-block;
-  width: 0;
-  height: 0;
-  margin-left: 4px;
-  vertical-align: .12em;
-  border-left: 3.5px solid transparent;
-  border-right: 3.5px solid transparent;
-  border-top: 4px solid currentColor;
-  transition: transform 120ms ease;
-}
-.bsh-edited[aria-expanded="true"]::after { transform: rotate(180deg); }
 
+/*
+ * What is unfolded under a message. The caret, the wrapper and the control are
+ * `api.helpers.disclosure`; this is only what History puts inside it.
+ */
 .bsh-fold {
   margin: 4px 0 2px;
   padding: 4px 0 4px 10px;

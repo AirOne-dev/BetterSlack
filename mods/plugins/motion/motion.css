@@ -204,6 +204,33 @@ html.betterslack-motion-panels .c-dialog {
  * bare `.c-menu` to the document, so both are covered and the mods' menus move
  * exactly like the app's.
  */
+/*
+ * Something a mod folded open inside Slack's own surfaces.
+ *
+ * `api.helpers.disclosure` draws the caret and the wrapper and deliberately
+ * animates neither: installing a mod called Motion is the statement of intent
+ * about animation, and a component that moves whether or not you asked takes
+ * that decision away. This is where it is asked for.
+ *
+ * A keyframe rather than a transition, because the panel is built already
+ * open: a transition needs a frame between insertion and the change, and an
+ * animation fires on exactly the right one with no trigger at all. Rows from
+ * `0fr` to `1fr` unfolds something whose height nobody had to measure, which
+ * is the only reason the wrapper is two nodes rather than one.
+ */
+@keyframes betterslack-motion-unfold {
+  from { grid-template-rows: 0fr; opacity: 0; }
+  to { grid-template-rows: 1fr; opacity: 1; }
+}
+
+html.betterslack-motion-panels .betterslack-disclosure__panel {
+  animation: betterslack-motion-unfold var(--bsm-base) var(--bsm-ease);
+}
+
+html.betterslack-motion-panels .betterslack-disclosure::after {
+  transition: transform var(--bsm-quick) var(--bsm-ease);
+}
+
 html.betterslack-motion-panels .ReactModal__Content.c-popover__content,
 html.betterslack-motion-panels .c-menu:not(.c-popover__content *) {
   transform-origin: top left;

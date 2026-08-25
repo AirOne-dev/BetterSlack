@@ -1000,15 +1000,18 @@ test('Slack’s own “(edited)” is the way in, and only where there is someth
   });
   try {
     await plugin.start(api);
-    assert.ok(label.classList.contains('bsh-edited'), 'the label became a control');
+    // The runtime's class, not this mod's: the caret, the keyboard control and
+    // the wrapper are `api.helpers.disclosure`, which is also what lets Motion
+    // animate them without knowing anything about History.
+    assert.ok(label.classList.contains('betterslack-disclosure'), 'the label became a control');
     assert.equal(label.getAttribute('aria-expanded'), 'false');
-    assert.equal(document.querySelector('.bsh-fold'), null, 'and nothing is unfolded yet');
+    assert.equal(document.querySelector('.betterslack-disclosure__panel'), null, 'and nothing is unfolded yet');
 
     label.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const fold = document.querySelector('.bsh-fold');
+    const fold = document.querySelector('.betterslack-disclosure__panel');
     assert.ok(fold, 'it unfolded');
     assert.ok(message.contains(fold), 'under the message, not over it');
     /*
@@ -1029,7 +1032,7 @@ test('Slack’s own “(edited)” is the way in, and only where there is someth
     assert.ok([...fold.querySelectorAll('.bsh-wording__when')].every((n) => /\d/.test(n.textContent)));
 
     label.click();
-    assert.equal(document.querySelector('.bsh-fold'), null, 'and folds away again');
+    assert.equal(document.querySelector('.betterslack-disclosure__panel'), null, 'and folds away again');
     assert.equal(label.getAttribute('aria-expanded'), 'false');
 
     /*
@@ -1043,20 +1046,27 @@ test('Slack’s own “(edited)” is the way in, and only where there is someth
     label.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.ok(document.querySelector('.bsh-fold'), 'open again');
+    assert.ok(document.querySelector('.betterslack-disclosure__panel'), 'open again');
 
     const fresh = document.createElement('span');
     fresh.className = 'c-message__edited_label';
     fresh.textContent = '(edited)';
     label.replaceWith(fresh);
     fresh.click();
-    assert.equal(document.querySelector('.bsh-fold'), null, 'a label Slack rebuilt still closes it');
+    assert.equal(document.querySelector('.betterslack-disclosure__panel'), null, 'a label Slack rebuilt still closes it');
 
-    // Nothing of ours is left on Slack's own label when the mod stops.
+    /*
+     * Nothing of ours is left on Slack's own label when the mod stops.
+     *
+     * `stop()` and then the cleanups the api collected, which is the order the
+     * runtime runs them in: the disclosure is one of those cleanups, so a test
+     * that only called `stop()` would be checking half the teardown.
+     */
     fresh.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await plugin.stop();
-    assert.equal(document.querySelector('.bsh-fold'), null);
+    for (const dispose of recorded.disposers) dispose();
+    assert.equal(document.querySelector('.betterslack-disclosure__panel'), null);
     assert.equal(fresh.className, 'c-message__edited_label');
     assert.equal(fresh.getAttribute('role'), null);
   } finally {
@@ -1078,7 +1088,7 @@ test('a label Slack drew for an edit this never saw is left alone', async () => 
     await plugin.start(api);
     assert.equal(label.className, 'c-message__edited_label', 'exactly as Slack drew it');
     label.click();
-    assert.equal(document.querySelector('.bsh-fold'), null);
+    assert.equal(document.querySelector('.betterslack-disclosure__panel'), null);
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

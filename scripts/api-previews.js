@@ -776,6 +776,37 @@ const CHROME = {
 /* -- helpers that need Slack's classes ----------------------------------- */
 
 const SLACK_HELPERS = {
+  'helpers-disclosure': {
+    render: (v, { stage, keep }) => {
+      /*
+       * The real thing, on a label shaped like Slack's: the delegated click,
+       * the caret and the wrapper are what the entry is about, and a drawing
+       * of them would be a drawing.
+       */
+      const frame = slackChrome();
+      stage.replaceChildren(frame);
+      const line = kit.el('div', { class: 'p-rich_text_section' });
+      line.append(document.createTextNode('the wording that is there now '));
+      const label = kit.el('span', { class: 'c-message__edited_label', textContent: v.label });
+      line.append(label);
+      frame.querySelector('[data-qa="message-text"]').append(line);
+      // Motion is a mod; the class it keys off is on the root either way.
+      document.documentElement.classList.toggle('betterslack-motion-panels', v.motion !== false);
+      document.documentElement.classList.toggle('betterslack-motion', v.motion !== false);
+
+      const handle = helpers.disclosure({
+        trigger: '.c-message__edited_label',
+        label: 'See what this said before',
+        keyFor: () => 'demo',
+        anchor: () => frame.querySelector('[data-qa="message-text"]'),
+        content: () => kit.el('div', { class: 'pg__stub', textContent: 'what it said before' }),
+      });
+      handle.refresh();
+      keep(handle);
+      focusChrome(frame, '[data-qa="message_container"]');
+      return undefined;
+    },
+  },
   'helpers-iconbutton': {
     render: (v) => helpers.iconButton({ icon: ICON, label: v.label, surface: v.surface, onClick: () => {} }),
   },

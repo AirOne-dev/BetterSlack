@@ -133,7 +133,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">Component kit</p>
       <ul><li><a href="#kit-button">button</a></li><li><a href="#kit-card">card</a></li><li><a href="#kit-checker">CHECKER</a></li><li><a href="#kit-code">code</a></li><li><a href="#kit-confirm">confirm</a></li><li><a href="#kit-copytext">copyText</a></li><li><a href="#kit-el">el</a></li><li><a href="#kit-emptystate">emptyState</a></li><li><a href="#kit-field">field</a></li><li><a href="#kit-hoverable">hoverable</a></li><li><a href="#kit-iconbutton">iconButton</a></li><li><a href="#kit-input">input</a></li><li><a href="#kit-popover">popover</a></li><li><a href="#kit-segmented">segmented</a></li><li><a href="#kit-select">select</a></li><li><a href="#kit-swatch">swatch</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.helpers</p>
-      <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-cache">cache</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
+      <ul><li><a href="#helpers-badge">badge</a></li><li><a href="#helpers-cache">cache</a></li><li><a href="#helpers-copy">copy</a></li><li><a href="#helpers-debounce">debounce</a></li><li><a href="#helpers-describehotkey">describeHotkey</a></li><li><a href="#helpers-disclosure">disclosure</a></li><li><a href="#helpers-each">each</a></li><li><a href="#helpers-field">field</a></li><li><a href="#helpers-hotkey">hotkey</a></li><li><a href="#helpers-iconbutton">iconButton</a></li><li><a href="#helpers-mount">mount</a></li><li><a href="#helpers-poll">poll</a></li><li><a href="#helpers-section">section</a></li><li><a href="#helpers-toggle">toggle</a></li><li><a href="#helpers-tooltip">tooltip</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.slack</p>
       <ul><li><a href="#slack-addmessageaction">addMessageAction</a></li><li><a href="#slack-addprofilebutton">addProfileButton</a></li><li><a href="#slack-addtoolbarbutton">addToolbarButton</a></li><li><a href="#slack-addview">addView</a></li><li><a href="#slack-avatarurl">avatarUrl</a></li><li><a href="#slack-composer">composer</a></li><li><a href="#slack-currentchannelid">currentChannelId</a></li><li><a href="#slack-currentteamid">currentTeamId</a></li><li><a href="#slack-describemessage">describeMessage</a></li><li><a href="#slack-describestatus">describeStatus</a></li><li><a href="#slack-desktop">desktop</a></li><li><a href="#slack-emojiurl">emojiUrl</a></li><li><a href="#slack-events">events</a></li><li><a href="#slack-filesfrom">filesFrom</a></li><li><a href="#slack-hideconversation">hideConversation</a></li><li><a href="#slack-onteamchange">onTeamChange</a></li><li><a href="#slack-openconversation">openConversation</a></li><li><a href="#slack-opendirectmessage">openDirectMessage</a></li><li><a href="#slack-openmessage">openMessage</a></li><li><a href="#slack-openstatuseditor">openStatusEditor</a></li><li><a href="#slack-openuserprofile">openUserProfile</a></li><li><a href="#slack-rendermrkdwn">renderMrkdwn</a></li><li><a href="#slack-restart">restart</a></li><li><a href="#slack-selectors">selectors</a></li><li><a href="#slack-setvip">setVip</a></li><li><a href="#slack-starthuddle">startHuddle</a></li><li><a href="#slack-statusnode">statusNode</a></li><li><a href="#slack-useridfrommessage">userIdFromMessage</a></li><li><a href="#slack-vipusers">vipUsers</a></li><li><a href="#slack-web">web</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.ui</p>
@@ -869,6 +869,39 @@ box.addEventListener('input', () =&gt; search(box.value));</code></pre>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.helpers.describeHotkey('mod+shift+k');
 // '⌘⇧K' on a Mac, 'Ctrl+Shift+K' elsewhere</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-helpers-disclosure" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.helpers</p>
+    <h1><code>disclosure</code></h1>
+    <p class="api-sig api-sig--big">(options: DisclosureOptions): DisclosureHandle</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>Make something Slack already draws open and close. It marks an edited message with &quot;(edited)&quot; and a channel with a member count: exactly where a reader would ask for more, and neither answers. A mod with the answer makes that label the way in rather than adding a fifth button to a toolbar of four.</p>
+<p>You get a caret, a keyboard control and a wrapper. What you avoid is the four things that make it hard, every one of which has been got wrong here first:</p>
+<ul><li><strong>Slack replaces the element.</strong> A listener bound to the node works exactly once — putting anything into a message makes React rebuild that subtree, so the second click lands on a different node. It reads as intermittent rather than broken. The click is delegated from the document and matched by selector, and nothing is ever remembered *on* the element.</li><li><strong>Slack tears out what you opened</strong>, by the same re-render, so it is put back rather than left to vanish under whoever opened it.</li><li><strong>Which one is open has to survive both</strong>, so identity is a key you derive from what the element is about, never the node.</li><li><strong>None of it may be driven from an observer.</strong> The message list is what Slack re-renders most, and an observer that reacts to that by putting a node back into it is the shape that has frozen this renderer twice. You call <code>refresh()</code> from your own sweep.</li></ul>
+<p><code>keyFor</code> returning null is how a trigger says it has nothing to show, and that trigger is left exactly as Slack drew it.</p>
+<p><strong>Nothing here animates.</strong> The classes are stable so that Motion can: installing a mod called Motion is the statement of intent about animation, and a component that moves whether or not you asked takes that decision away.</p>
+    <div class="api-demo" data-demo="helpers-disclosure" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;(edited)&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;motion&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;animated by Motion&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>const wordings = api.helpers.disclosure({
+  trigger: '.c-message__edited_label',
+  label: 'See what this said before',
+  keyFor: (label) =&gt; {
+    const message = label.closest(api.slack.selectors.message);
+    const id = message?.getAttribute('data-msg-channel-id');
+    const ts = message?.getAttribute('data-msg-ts');
+    return id &amp;&amp; ts &amp;&amp; versionsOf(id, ts).length &gt; 1 ? `${id}:${ts}` : null;
+  },
+  // Under the message, not under the word in the middle of it.
+  anchor: (label) =&gt; label.closest(api.slack.selectors.message)
+    ?.querySelector('[data-qa=&quot;message-text&quot;]'),
+  content: (label, key) =&gt; renderVersions(key),
+});
+
+api.helpers.poll(() =&gt; wordings.refresh(), 1500);</code></pre>
   </div>
 </section>
 <section class="panel" id="p-helpers-each" hidden>

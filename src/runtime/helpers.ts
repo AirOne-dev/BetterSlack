@@ -6,6 +6,7 @@
 //
 // If you find yourself writing the same block in two mods, it belongs here.
 
+import { createDisclosure, DISCLOSURE_CSS, type DisclosureHandle, type DisclosureOptions } from './ui/disclosure.js';
 import { h, keepMounted, onEach, onShortcut, type Cleanup } from './dom.js';
 import { attachTooltip } from './ui/tooltip.js';
 
@@ -124,6 +125,22 @@ export interface Helpers {
   /** Keep an element mounted somewhere, surviving Slack's re-renders. */
   mount(container: string, id: string, factory: () => HTMLElement, options?: { before?: string }): Cleanup;
 
+  /**
+   * Make something Slack already draws open and close.
+   *
+   * Slack marks an edited message with "(edited)" and a channel with a member
+   * count: exactly where a reader would ask for more, and neither answers. A
+   * mod with the answer makes that label the way in, gets a caret and a
+   * keyboard control for nothing, and does not have to solve the four things
+   * that make it hard -- Slack replacing the element, Slack tearing out what
+   * it opened, which one is open surviving both, and never touching the
+   * message list from an observer.
+   *
+   * `refresh()` is called from your own sweep. Nothing animates: the classes
+   * are stable so that Motion can.
+   */
+  disclosure(options: DisclosureOptions): DisclosureHandle;
+
   /** Slack-styled tooltip on anything. */
   tooltip(element: HTMLElement, title: string, subtitle?: string): Cleanup;
 
@@ -219,6 +236,14 @@ export function createHelpers(ctx: HelperContext): Helpers {
   const applyCss = () => ctx.css([...scopedCss.values()].join('\n'));
 
   return {
+    disclosure(options) {
+      // Its own scope in the helper stylesheet, like every other helper here:
+      // a mod that uses two of them writes the base rules once.
+      scopedCss.set('disclosure', DISCLOSURE_CSS);
+      applyCss();
+      return ctx.track(createDisclosure(options)) as ReturnType<Helpers['disclosure']>;
+    },
+
     toggle({ key, className, defaultOn = false, whenOn, onChange }) {
       const flag = className ?? `betterslack-${ctx.pluginId}-${key}`;
       if (whenOn) {
