@@ -68,6 +68,10 @@ export function installDom(html = SLACK_FIXTURE) {
     navigator: dom.window.navigator,
     location: dom.window.location,
     HTMLElement: dom.window.HTMLElement,
+    // A mod may reasonably write `instanceof Element`: it is a browser global
+    // like the two beside it, and leaving it out makes a test fail with a
+    // ReferenceError inside a listener, where nothing says what is missing.
+    Element: dom.window.Element,
     Node: dom.window.Node,
     MutationObserver: dom.window.MutationObserver,
     CSS: dom.window.CSS ?? { escape: (s) => s.replace(/[^a-zA-Z0-9_-]/g, '\\$&') },

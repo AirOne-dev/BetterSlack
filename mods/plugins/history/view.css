@@ -386,16 +386,27 @@ button.betterslack-mention:hover { text-decoration: underline; }
  */
 .bsh-edited { cursor: pointer; }
 .bsh-edited:hover { color: var(--dt_color-content-highlight, #1d9bd1); }
-/* A caret rather than an icon or an underline: it is one character inside
-   Slack's own label, and which way it points is the whole state. An underline
-   under a word Slack draws in parentheses reads as a mistake. */
+/*
+ * A caret drawn rather than typed.
+ *
+ * A glyph like the one this used to be sits wherever its font puts it in the
+ * em box, which is never the middle -- so rotating it turns it about a point
+ * that is not its own centre and it lands off to one side. Three borders make
+ * a triangle that fills its box exactly, and a box rotates about its middle.
+ */
 .bsh-edited::after {
-  content: '⌄';
+  content: '';
   display: inline-block;
-  margin-left: 2px;
+  width: 0;
+  height: 0;
+  margin-left: 4px;
+  vertical-align: .12em;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid currentColor;
   transition: transform 120ms ease;
 }
-.bsh-edited[aria-expanded="true"]::after { transform: rotate(180deg) translateY(2px); }
+.bsh-edited[aria-expanded="true"]::after { transform: rotate(180deg); }
 
 .bsh-fold {
   margin: 4px 0 2px;

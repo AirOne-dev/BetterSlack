@@ -1030,14 +1030,35 @@ test('Slack’s own “(edited)” is the way in, and only where there is someth
 
     label.click();
     assert.equal(document.querySelector('.bsh-fold'), null, 'and folds away again');
+    assert.equal(label.getAttribute('aria-expanded'), 'false');
+
+    /*
+     * And it still closes after Slack has rebuilt the label.
+     *
+     * Putting a panel into the message makes React reconcile that subtree and
+     * build a fresh label, so a listener bound to the node works exactly once
+     * -- the second click lands on a node that never had one. Delegated from
+     * the document, it never depended on the node at all.
+     */
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.ok(document.querySelector('.bsh-fold'), 'open again');
+
+    const fresh = document.createElement('span');
+    fresh.className = 'c-message__edited_label';
+    fresh.textContent = '(edited)';
+    label.replaceWith(fresh);
+    fresh.click();
+    assert.equal(document.querySelector('.bsh-fold'), null, 'a label Slack rebuilt still closes it');
 
     // Nothing of ours is left on Slack's own label when the mod stops.
-    label.click();
+    fresh.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await plugin.stop();
     assert.equal(document.querySelector('.bsh-fold'), null);
-    assert.equal(label.className, 'c-message__edited_label');
-    assert.equal(label.getAttribute('role'), null);
+    assert.equal(fresh.className, 'c-message__edited_label');
+    assert.equal(fresh.getAttribute('role'), null);
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

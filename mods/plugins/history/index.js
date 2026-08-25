@@ -960,6 +960,67 @@ export default {
       panel.replaceChildren(wordingsNode(wordings, people.size ? people : faces));
     };
 
+    /**
+     * The click, delegated rather than bound to Slack's own node.
+     *
+     * A listener on the label itself works exactly once. The label belongs to
+     * React, and putting a panel into the message makes React reconcile that
+     * subtree and build a fresh label -- so the node the pointer lands on the
+     * second time is not the node the listener was attached to, and the click
+     * does nothing. The next sweep decorates the new one and it works again,
+     * which makes it look intermittent rather than broken.
+     *
+     * One listener on the document, matched by class, survives every re-render
+     * because it never depended on the node. In the capture phase for the same
+     * reason Slack's own handlers are: whatever the message body does with a
+     * click, this has already been decided.
+     */
+    const clickedLabel = (event) => {
+      // Duck-typed rather than `instanceof Element`: the target of a keydown
+      // can be the document itself, and a global is a thing to depend on.
+      const target = event.target;
+      const label = typeof target?.closest === 'function' ? target.closest(EDITED_LABEL) : null;
+      if (!label) return null;
+      const message = label.closest(MESSAGE);
+      const channelId = message?.getAttribute('data-msg-channel-id');
+      const ts = message?.getAttribute('data-msg-ts');
+      if (!channelId || !ts) return null;
+      /*
+       * Decided from the log, not from the class this mod put on the label.
+       *
+       * The class is styling, and it is applied by a sweep -- so a label Slack
+       * has just rebuilt is a label the sweep has not reached yet, and asking
+       * for the class would make the click do nothing for up to a sweep. Which
+       * is the same intermittency the delegation is here to end.
+       */
+      if (wordingsOf(channelId, ts).length < 2) return null;
+      return { label, message, channelId, ts, key: `${channelId}:${ts}` };
+    };
+
+    const toggleWordings = (event) => {
+      const hit = clickedLabel(event);
+      if (!hit) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (unfolded.has(hit.key)) {
+        unfolded.delete(hit.key);
+        foldAway(hit.key);
+      } else {
+        unfolded.add(hit.key);
+        void unfold(hit.message, hit.channelId, hit.ts);
+      }
+      hit.label.setAttribute('aria-expanded', String(unfolded.has(hit.key)));
+    };
+
+    const onLabelKey = (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (!clickedLabel(event)) return;
+      toggleWordings(event);
+    };
+
+    document.addEventListener('click', toggleWordings, true);
+    document.addEventListener('keydown', onLabelKey, true);
+
     const markEdits = () => {
       const wanted = new Set();
       for (const label of document.querySelectorAll(EDITED_LABEL)) {
@@ -970,27 +1031,23 @@ export default {
         const key = `${channelId}:${ts}`;
         wanted.add(key);
 
-        if (!label.hasAttribute('data-betterslack-wordings')) {
-          label.setAttribute('data-betterslack-wordings', '');
-          label.classList.add('bsh-edited');
-          label.setAttribute('role', 'button');
-          label.setAttribute('tabindex', '0');
-          label.setAttribute('title', t('wordingsHint'));
-          const toggle = () => {
-            if (unfolded.has(key)) { unfolded.delete(key); foldAway(key); }
-            else { unfolded.add(key); void unfold(message, channelId, ts); }
-            label.setAttribute('aria-expanded', String(unfolded.has(key)));
-          };
-          label.addEventListener('click', toggle);
-          label.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault();
-            toggle();
-          });
-        }
+        /*
+         * Dressed on every sweep, with no per-node state at all.
+         *
+         * Slack replaces this node whenever it re-renders the message, so
+         * anything remembered on it -- a marker, a listener -- is remembered
+         * about a node that is on its way out. Setting the same four
+         * attributes again costs nothing and is always right.
+         */
+        label.classList.add('bsh-edited');
+        label.setAttribute('role', 'button');
+        label.setAttribute('tabindex', '0');
+        label.setAttribute('title', t('wordingsHint'));
         label.setAttribute('aria-expanded', String(unfolded.has(key)));
-        // Slack re-renders and takes the panel with it; put it back where it
-        // was rather than making somebody click twice.
+
+        // React takes the panel with it when it rebuilds the message; putting
+        // it back is what keeps an open one open, rather than making somebody
+        // click twice.
         if (unfolded.has(key) && !panels.get(key)?.isConnected) void unfold(message, channelId, ts);
       }
       // A message that scrolled away takes its panel with it, and keeps its
@@ -1128,9 +1185,10 @@ export default {
     sweepUp = () => {
       for (const [key, node] of headstones) { node.remove(); headstones.delete(key); }
       for (const [key, node] of panels) { node.remove(); panels.delete(key); }
+      document.removeEventListener('click', toggleWordings, true);
+      document.removeEventListener('keydown', onLabelKey, true);
       for (const label of document.querySelectorAll(EDITED_LABEL)) {
         // Slack's own label, put back as Slack's own.
-        label.removeAttribute('data-betterslack-wordings');
         label.removeAttribute('aria-expanded');
         label.removeAttribute('role');
         label.removeAttribute('tabindex');
