@@ -1084,6 +1084,14 @@ tests fail below it.
   the team, because search answers across every workspace you are signed into
   and a link built without one lands on a channel id the current client has not
   got.
+- **`conversations.history` answers for an `xoxc` token**, and it carries two
+  things the screen cannot: `edited: { user, ts }` -- who rewrote a message and
+  when -- and `reactions: [{ name, users, count }]`, where `users` are **ids**.
+  So who took a reaction back is knowable through the API and not through the
+  DOM, where Slack only says it in a hover tooltip, in the reader's language,
+  with names. It answers a page with `has_more`, so a message older than the
+  page is outside the window and not deleted -- treating the two the same
+  empties somebody's history into a log every time they open a busy channel.
 - **`client.counts` is where you have been, in one request.** It is what Slack's
   own client asks for at boot, and it answers a record per conversation:
   `last_read`, `latest`, `has_unreads`, `mention_count`. Measured: 52 channels

@@ -17,7 +17,9 @@ The page has a search that runs over everything a row draws — a name finds it 
 
 ## What it can and cannot see
 
-**It only knows what your client drew.** There is no history endpoint behind this. It reads the screen every second and a half and compares it with what it read last time, so something that changed while you were in another channel was never on your screen and is not here.
+**It reads the screen, and it asks Slack once per channel you open.** The screen is what catches a change as it happens, second by second. Opening a channel also asks `conversations.history` for its last sixty messages and compares them with what the channel looked like when you left it — so an edit, a deletion or a reaction taken back while you were somewhere else is caught the moment you come back. The first visit to a channel is the baseline and never an event, and a message older than that page is outside the window rather than deleted.
+
+That second half is also the only place **who** took a reaction back can be known: Slack hands over the ids there, while on screen it says so only in a tooltip built on hover, in the reader's language, with names rather than ids.
 
 Telling a real change from Slack redrawing itself is the whole of the work, and three rules do it:
 
@@ -39,7 +41,7 @@ Telling a real change from Slack redrawing itself is the whole of the work, and 
 
 The log is in `~/.betterslack/settings.json` under this plugin, capped by a setting, and the page empties it. Nothing is sent to Slack or anywhere else.
 
-The only requests it makes are the ones it cannot avoid: the member list of the channel you are in, and the statuses of people you have seen, both every five minutes and both switchable off. Turning names into names uses `api.slack.web`, which is cached per workspace.
+The requests it makes are the ones it cannot avoid: one page of history per channel you open, the member list of the channel you are in, and the statuses of people you have seen — the last two every five minutes and both switchable off. Turning names into names uses `api.slack.web`, which is cached per workspace.
 
 ## Settings
 

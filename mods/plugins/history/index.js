@@ -29,6 +29,7 @@ import { STRINGS } from './strings.js';
 import { add, tally, view } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, displayNameChanges, rosterChanges, statusChanges } from './watch-names.js';
+import { catchUp, snapshotOf } from './catch-up.js';
 
 const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true" fill="none">
   <path d="M10 3.2a6.8 6.8 0 1 1-6.6 8.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -51,6 +52,18 @@ const DEMO_ON = 'betterslack-demo-on';
  */
 const SWEEP_MS = 1500;
 
+/**
+ * How far back a catch-up looks when you open a channel.
+ *
+ * One page of `conversations.history`. Further back costs another request and
+ * answers about messages nobody is going to scroll to; a message older than
+ * this that changed while you were away is not caught, and the mod says so
+ * rather than pretending otherwise.
+ */
+const CATCH_UP_LIMIT = 60;
+/** Channels whose last state is remembered. Each one is a page of text. */
+const CATCH_UP_CHANNELS = 8;
+
 /** People change their status in minutes, not seconds, and every ask is a request. */
 const PEOPLE_MS = 5 * 60 * 1000;
 /** How many of the people you have seen are asked about. */
@@ -72,6 +85,14 @@ export default {
 
     const messages = createMessageWatcher();
     const names = createNameWatcher();
+    /*
+     * What each channel looked like when you last left it.
+     *
+     * Through `helpers.cache`, which is bounded by key and persisted, so this
+     * survives a restart -- the whole point is the day you were not looking --
+     * without letting the loader's settings file grow without limit.
+     */
+    const snapshots = api.helpers.cache('snapshots', { keys: CATCH_UP_CHANNELS });
     /** Members per channel, so a join is a difference and not a parsed sentence. */
     const roster = new Map();
     /** Statuses per person, the same way, and what each of them is called. */
@@ -337,7 +358,53 @@ export default {
       page.refresh();
     };
 
+    /**
+     * What happened in this channel while you were somewhere else.
+     *
+     * Reading the screen can only ever know what your client drew, which is the
+     * first thing anybody notices about this mod: a message edited in a channel
+     * you were not in was never in front of you. `conversations.history` is
+     * asked once per channel you open, compared against what it looked like
+     * when you left, and the difference is written down -- including who took a
+     * reaction back, which Slack says here and nowhere the screen can read.
+     *
+     * The first visit to a channel is the baseline and never an event, or
+     * opening a busy channel would write a hundred rows about things that
+     * happened before this mod existed.
+     */
+    let catchingUp = false;
+    const catchUpOn = async (channelId) => {
+      if (catchingUp || !channelId || !api.slack.web.available) return;
+      if (document.documentElement.classList.contains(DEMO_ON)) return;
+      catchingUp = true;
+      try {
+        const answer = await api.slack.web.call('conversations.history', {
+          channel: channelId,
+          limit: CATCH_UP_LIMIT,
+        });
+        const list = Array.isArray(answer?.messages) ? answer.messages : [];
+        if (list.length === 0) return;
+        const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
+        record(catchUp(snapshots.get(channelId) ?? null, list, { channelId, channelName }));
+        snapshots.set(channelId, snapshotOf(list));
+      } catch {
+        // A conversation this token cannot read is not a failure worth saying
+        // anything about: it simply has no history to compare.
+      } finally {
+        catchingUp = false;
+      }
+    };
+
+    /** The channel the last sweep saw, so opening another one triggers a look. */
+    let lastChannel = null;
+
     api.helpers.poll(() => {
+      const here = api.slack.currentChannelId();
+      if (here && here !== lastChannel) {
+        lastChannel = here;
+        void catchUpOn(here);
+      }
+
       if (document.documentElement.classList.contains(DEMO_ON)) return;
       record([...messages.sweep(readMessages()), ...names.sweep(readNames())]);
       placeStones();

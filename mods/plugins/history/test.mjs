@@ -11,6 +11,7 @@ import plugin from './index.js';
 import { add, GROUPS, sortRows, tally, view } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, rosterChanges, statusChanges } from './watch-names.js';
+import { catchUp, reactionDiff, snapshotOf } from './catch-up.js';
 
 /** The mod's own folder, so `api.assets.text` finds the stylesheet it ships. */
 const FILES = readModFiles(path.dirname(fileURLToPath(import.meta.url)));
@@ -232,6 +233,77 @@ test('a status nobody had before is not a change', () => {
   assert.equal(change.kind, 'status-changed');
   assert.equal(change.before, '');
   assert.equal(change.after, 'On holiday');
+});
+
+/* -- what changed while nobody was looking --------------------------------- */
+
+/** What `conversations.history` answers, measured against a live workspace. */
+const said = (ts, text, extra = {}) => ({ ts, user: 'U1', text, ...extra });
+
+test('a first visit is the baseline, never a hundred events', () => {
+  // Opening a busy channel for the first time would otherwise write a row for
+  // everything that happened before this mod existed.
+  assert.deepEqual(catchUp(null, [said('3', 'a'), said('2', 'b')], { channelId: 'C1', channelName: 'general' }), []);
+});
+
+test('an edit made while you were elsewhere is caught, with both wordings', () => {
+  const before = snapshotOf([said('2', 'ship it'), said('1', 'hello')]);
+  const [change, ...rest] = catchUp(before, [said('2', 'ship it tomorrow'), said('1', 'hello')],
+    { channelId: 'C1', channelName: 'general' });
+  assert.equal(rest.length, 0);
+  assert.equal(change.kind, 'edited');
+  assert.equal(change.before, 'ship it');
+  assert.equal(change.after, 'ship it tomorrow');
+  assert.equal(change.channelName, 'general');
+});
+
+test('a message that is gone from a page that reaches it was deleted', () => {
+  const before = snapshotOf([said('3', 'c'), said('2', 'oops'), said('1', 'a')]);
+  const [change] = catchUp(before, [said('3', 'c'), said('1', 'a')], { channelId: 'C1', channelName: null });
+  assert.equal(change.kind, 'deleted');
+  assert.equal(change.before, 'oops');
+});
+
+test('a message older than the page is out of the window, not deleted', () => {
+  /*
+   * `conversations.history` answers one page. Everything before it is missing
+   * from the answer and present in the channel, and calling that a deletion
+   * empties somebody's history into the log every time they open it.
+   */
+  const before = snapshotOf([said('9', 'recent'), said('1', 'ancient')]);
+  assert.deepEqual(catchUp(before, [said('9', 'recent')], { channelId: 'C1', channelName: null }), []);
+});
+
+test('Slack says who reacted here, so the log says it too', () => {
+  // The one thing the screen-reading half refuses to claim: Slack only says it
+  // there in a tooltip, in the reader's language, with names rather than ids.
+  const before = snapshotOf([said('1', 'a', { reactions: [{ name: 'tada', users: ['U1', 'U2'], count: 2 }] })]);
+  const [change] = catchUp(before, [said('1', 'a', { reactions: [{ name: 'tada', users: ['U1'], count: 1 }] })],
+    { channelId: 'C1', channelName: null });
+  assert.equal(change.kind, 'reaction-removed');
+  assert.equal(change.emoji, ':tada:');
+  assert.equal(change.userId, 'U2', 'and names the person who took it back');
+});
+
+test('a count that moves with nobody named is still recorded', () => {
+  // Slack truncates `users` on a reaction with a great many of them.
+  const [change, ...rest] = reactionDiff(
+    { tada: { count: 40, users: ['U1'] } },
+    { tada: { count: 41, users: ['U1'] } },
+  );
+  assert.equal(rest.length, 0);
+  assert.equal(change.kind, 'reaction-added');
+  assert.equal(change.userId, undefined, 'nobody to attribute it to, and it does not invent one');
+});
+
+test('the same event seen by both halves is written once', () => {
+  const seen = { kind: 'reaction-removed', channelId: 'C1', ts: '1', emoji: ':tada:', userId: 'U2', after: '1' };
+  const log = add([], [seen], 100, 1000);
+  assert.equal(log.length, 1);
+  // The screen catches it live; the next catch-up compares against a snapshot
+  // from before it happened and finds it again.
+  assert.equal(add(log, [{ ...seen }], 100, 2000).length, 1);
+  assert.equal(add(log, [{ ...seen, ts: '2' }], 100, 2000).length, 2, 'a different message is a different event');
 });
 
 /* -- the log and the page ------------------------------------------------- */

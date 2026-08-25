@@ -32,7 +32,21 @@ export const GROUPS = {
  */
 export function add(log, events, keep, now) {
   if (events.length === 0) return log;
-  const stamped = [...events].reverse().map((event, index) => ({
+
+  /*
+   * The same thing, seen twice.
+   *
+   * A reaction taken back while you are looking is caught by the screen; open
+   * the channel again and the catch-up compares against a snapshot from before
+   * it happened and finds it a second time. The pair is the same event, so it
+   * is written once -- matched on what it is rather than on when it was
+   * noticed, because the two halves notice at different moments by design.
+   */
+  const seen = new Set(log.map(fingerprint));
+  const fresh = events.filter((event) => !seen.has(fingerprint(event)));
+  if (fresh.length === 0) return log;
+
+  const stamped = [...fresh].reverse().map((event, index) => ({
     ...event,
     at: event.at ?? now,
     // Unique enough to key a row and to survive a redraw: two events of the
@@ -63,6 +77,13 @@ export function view(log, { query = '', groups = null, sort = 'newest' } = {}) {
   });
 
   return sortRows(rows, sort);
+}
+
+/** What makes two events the same event, whichever half saw it. */
+function fingerprint(event) {
+  return [event.kind, event.channelId, event.ts, event.emoji, event.userId, event.after]
+    .map((part) => part ?? '')
+    .join('\u0000');
 }
 
 /** Everything a row draws, as one lowercase line, for the search to run over. */

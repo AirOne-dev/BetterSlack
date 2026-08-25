@@ -17,7 +17,9 @@ La page a une recherche qui porte sur tout ce qu'une ligne affiche — un nom se
 
 ## Ce qu'il peut voir, et ce qu'il ne peut pas
 
-**Il ne connaît que ce que votre client a affiché.** Il n'y a pas d'historique côté serveur derrière tout ça. Il lit l'écran toutes les secondes et demie et le compare à ce qu'il a lu la fois d'avant : ce qui a changé pendant que vous étiez dans un autre canal n'est jamais passé par votre écran, et n'est pas là.
+**Il lit l'écran, et il interroge Slack une fois par canal ouvert.** L'écran attrape un changement au moment où il se produit, seconde par seconde. Ouvrir un canal demande en plus à `conversations.history` ses soixante derniers messages et les compare à ce que le canal était quand vous l'avez quitté — une modification, une suppression ou une réaction retirée pendant que vous étiez ailleurs est donc rattrapée dès votre retour. La première visite d'un canal sert de référence et ne produit jamais d'événement, et un message plus ancien que cette page est hors de la fenêtre, pas supprimé.
+
+C'est aussi le seul endroit où **qui** a retiré une réaction peut être su : Slack y donne les identifiants, alors qu'à l'écran il ne le dit que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms.
 
 Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et trois règles s'en chargent :
 
@@ -39,7 +41,7 @@ Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et tro
 
 Le journal est dans `~/.betterslack/settings.json` sous ce plugin, plafonné par un réglage, et la page permet de tout effacer. Rien n'est envoyé à Slack ni ailleurs.
 
-Les seules requêtes qu'il fait sont celles qu'il ne peut pas éviter : la liste des membres du canal ouvert, et les statuts des personnes vues, toutes les cinq minutes et toutes deux désactivables. Transformer un identifiant en nom passe par `api.slack.web`, mis en cache par espace de travail.
+Les requêtes qu'il fait sont celles qu'il ne peut pas éviter : une page d'historique par canal ouvert, la liste des membres du canal ouvert, et les statuts des personnes vues — les deux dernières toutes les cinq minutes et toutes deux désactivables. Transformer un identifiant en nom passe par `api.slack.web`, mis en cache par espace de travail.
 
 ## Réglages
 
