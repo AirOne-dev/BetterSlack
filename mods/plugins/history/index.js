@@ -865,6 +865,14 @@ export default {
      * one message share a wording, and printing that twice would read as an
      * edit that changed nothing.
      */
+    /**
+     * What a message used to say, oldest first -- and not what it says now.
+     *
+     * The current wording is the message this unfolds from, an inch above it.
+     * Repeating it there is the thing that made two nearly identical lines
+     * read as the same line printed twice, which is what this list is for
+     * avoiding.
+     */
     const wordingsOf = (channelId, ts) => {
       const edits = log
         .filter((entry) => entry.kind === 'edited' && entry.channelId === channelId && entry.ts === ts)
@@ -880,8 +888,10 @@ export default {
       ];
       // Two wordings running that say the same thing read as an edit that
       // changed nothing. One entry cannot produce that; two halves both
-      // catching the same edit can.
-      return chain.filter((wording, index) => index === 0 || wording.text !== chain[index - 1].text);
+      // catching the same edit can. Collapsed before the last is dropped, or
+      // a repeat of the current wording would be left standing in for it.
+      const kept = chain.filter((wording, index) => index === 0 || wording.text !== chain[index - 1].text);
+      return kept.slice(0, -1);
     };
 
     /**
@@ -903,11 +913,10 @@ export default {
 
     const wordingsNode = (wordings, people) => {
       const list = api.dom.h('div', { class: 'bsh-wordings' });
-      for (const [index, wording] of wordings.entries()) {
-        const last = index === wordings.length - 1;
+      for (const wording of wordings) {
         const words = api.dom.h('div', { class: 'bsh-wording__text' }, []);
         words.append(drawText(wording.text, people));
-        list.append(api.dom.h('div', { class: `bsh-wording${last ? ' bsh-wording--now' : ''}` }, [
+        list.append(api.dom.h('div', { class: 'bsh-wording' }, [
           api.dom.h('span', { class: 'bsh-wording__when bsh-dim' }, [time(wording.at)]),
           words,
         ]));
@@ -929,7 +938,7 @@ export default {
         const message = label.closest(MESSAGE);
         const channelId = message?.getAttribute('data-msg-channel-id');
         const ts = message?.getAttribute('data-msg-ts');
-        if (!channelId || !ts || wordingsOf(channelId, ts).length < 2) return null;
+        if (!channelId || !ts || wordingsOf(channelId, ts).length === 0) return null;
         return `${channelId}:${ts}`;
       },
       // Under the message, not under the word "(edited)" in the middle of it.
@@ -940,7 +949,7 @@ export default {
         const channelId = key.slice(0, at);
         const ts = key.slice(at + 1);
         const rows = wordingsOf(channelId, ts);
-        if (rows.length < 2) return null;
+        if (rows.length === 0) return null;
         const host = api.dom.h('div', { class: 'bsh-fold' }, []);
         // Drawn with what is known, so it opens on the click rather than after
         // a request; the names replace it a moment later if it is still there.

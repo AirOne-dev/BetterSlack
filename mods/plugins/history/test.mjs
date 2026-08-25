@@ -1015,20 +1015,20 @@ test('Slack’s own “(edited)” is the way in, and only where there is someth
     assert.ok(fold, 'it unfolded');
     assert.ok(message.contains(fold), 'under the message, not over it');
     /*
-     * A chain, not a list of changes. Two edits of one message share a wording
-     * -- the second one's `before` is the first one's `after` -- and printing
-     * it twice would read as an edit that changed nothing.
+     * What it used to say, and not what it says now: the current wording is
+     * the message this unfolds from, an inch above it. Two edits of one
+     * message share a wording as well -- the second one's `before` is the
+     * first one's `after` -- so a chain rather than a list of changes.
      */
     assert.deepEqual([...fold.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent),
-      ['first', 'second', 'third']);
-    assert.equal(fold.querySelector('.bsh-wording--now .bsh-wording__text').textContent, 'third');
+      ['first', 'second']);
     /*
      * A time on every row, the first one being the message's own -- `ts` is
      * when it was posted. Two wordings a minute apart then read as a minute
      * apart rather than as the same thing written twice, which is what a
      * heading and a rule between them made of them.
      */
-    assert.equal(fold.querySelectorAll('.bsh-wording__when').length, 3);
+    assert.equal(fold.querySelectorAll('.bsh-wording__when').length, 2);
     assert.ok([...fold.querySelectorAll('.bsh-wording__when')].every((n) => /\d/.test(n.textContent)));
 
     label.click();
@@ -1123,7 +1123,8 @@ test('two wordings that say the same thing are one wording', async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     assert.deepEqual(
       [...document.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent),
-      ['first', 'second', 'third'],
+      ['first', 'second'],
+      'the repeat collapses, and the current wording is the message above',
     );
   } finally {
     for (const dispose of recorded.disposers) dispose();

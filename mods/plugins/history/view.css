@@ -409,6 +409,3 @@ button.betterslack-mention:hover { text-decoration: underline; }
   word-break: break-word;
   color: var(--dt_color-content-sec, #ababad);
 }
-/* The wording on screen right now, at full strength: everything above it is
-   what it replaced, and that difference is the only mark the list needs. */
-.bsh-wording--now .bsh-wording__text { color: var(--dt_color-content-pry, #d1d2d3); }
