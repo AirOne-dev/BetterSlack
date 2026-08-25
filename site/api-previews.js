@@ -4281,8 +4281,29 @@
     /** On the wrapper holding what it opened. */
     panel: "betterslack-disclosure__panel",
     /** Inside the wrapper. The pair is what makes an unfold animatable. */
-    inner: "betterslack-disclosure__inner"
+    inner: "betterslack-disclosure__inner",
+    /**
+     * On the wrapper between being closed and being gone.
+     *
+     * Closing has to be a state rather than a removal, or there is nothing left
+     * on screen to animate. Nothing here decides how long that lasts: the panel
+     * is asked what its own stylesheet says, and with no animation on it the
+     * answer is zero and it goes at once -- a client without Motion must not
+     * wait for something that is not happening.
+     */
+    closing: "betterslack-disclosure__panel--closing"
   };
+  var CLOSE_GRACE_MS = 80;
+  function animatedFor(element) {
+    const style = getComputedStyle(element);
+    const times = `${style.animationDuration},${style.transitionDuration}`.split(",").map((part) => {
+      const value = part.trim();
+      if (value.endsWith("ms")) return Number.parseFloat(value);
+      if (value.endsWith("s")) return Number.parseFloat(value) * 1e3;
+      return 0;
+    }).filter((value) => Number.isFinite(value));
+    return times.length ? Math.max(...times) : 0;
+  }
   function createDisclosure(options) {
     const open = /* @__PURE__ */ new Set();
     const panels = /* @__PURE__ */ new Map();
@@ -4293,12 +4314,38 @@
       const key = options.keyFor(element);
       return key ? { element, key } : null;
     };
-    const fold = (key) => {
-      panels.get(key)?.remove();
+    const closing = /* @__PURE__ */ new Map();
+    const takeAway = (panel) => {
+      closing.get(panel)?.();
+      closing.delete(panel);
+      panel.remove();
+    };
+    const fold = (key, now = false) => {
+      const panel = panels.get(key);
       panels.delete(key);
+      if (!panel) return;
+      if (now || !panel.isConnected) {
+        takeAway(panel);
+        return;
+      }
+      panel.classList.add(DISCLOSURE_CLASS.closing);
+      const ms = animatedFor(panel);
+      if (ms <= 0) {
+        takeAway(panel);
+        return;
+      }
+      const done = () => takeAway(panel);
+      panel.addEventListener("animationend", done, { once: true });
+      panel.addEventListener("transitionend", done, { once: true });
+      const timer = setTimeout(done, ms + CLOSE_GRACE_MS);
+      closing.set(panel, () => {
+        clearTimeout(timer);
+        panel.removeEventListener("animationend", done);
+        panel.removeEventListener("transitionend", done);
+      });
     };
     const unfold = (element, key) => {
-      fold(key);
+      fold(key, true);
       const content = options.content(element, key);
       if (!content) return;
       const where = options.anchor?.(element, key) ?? element;
@@ -4335,7 +4382,7 @@
     document.addEventListener("click", toggle, true);
     document.addEventListener("keydown", onKey, true);
     const refresh = () => {
-      const mine = new Set(panels.values());
+      const mine = /* @__PURE__ */ new Set([...panels.values(), ...closing.keys()]);
       for (const stray of document.querySelectorAll(`.${DISCLOSURE_CLASS.panel}`)) {
         if (!mine.has(stray)) stray.remove();
       }
@@ -4356,7 +4403,8 @@
     const dispose = () => {
       document.removeEventListener("click", toggle, true);
       document.removeEventListener("keydown", onKey, true);
-      for (const key of [...panels.keys()]) fold(key);
+      for (const key of [...panels.keys()]) fold(key, true);
+      for (const panel of [...closing.keys()]) takeAway(panel);
       open.clear();
       for (const stray of document.querySelectorAll(`.${DISCLOSURE_CLASS.panel}`)) stray.remove();
       for (const element of document.querySelectorAll(`.${DISCLOSURE_CLASS.trigger}`)) {

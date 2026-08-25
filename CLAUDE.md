@@ -1394,6 +1394,18 @@ Shape of it:
   180°. A keyframe rather than a transition, since the panel is built already
   open and a transition needs a frame between insertion and the change.
 
+  **Closing is a state, not a removal.** Taking the panel out leaves nothing on
+  screen to animate, so it wears a closing class and goes once whatever the
+  stylesheet put on it has finished -- and how long that is is read off the
+  panel (`animationDuration`/`transitionDuration`), so a client without Motion
+  removes it in the same breath rather than waiting for something that is not
+  happening. Measured with Motion on: rows at 0.7px and opacity 0.11 a hundred
+  and fifty milliseconds in, then gone. **No height is measured anywhere**, and
+  that is the point of the `fr` trick -- rows between `0fr` and `1fr`
+  interpolate over the animation's own time, so a long panel folds away in
+  exactly as long as a short one. Measuring the content is what would make the
+  duration vary.
+
   **And it sweeps what a previous life of the mod left.** A mod is stopped and
   started again whenever its files change, and switched off and on by hand;
   what it left inside Slack's own markup is not something Slack will ever

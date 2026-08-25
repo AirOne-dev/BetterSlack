@@ -223,8 +223,33 @@ html.betterslack-motion-panels .c-dialog {
   to { grid-template-rows: 1fr; opacity: 1; }
 }
 
+@keyframes betterslack-motion-fold {
+  from { grid-template-rows: 1fr; opacity: 1; }
+  to { grid-template-rows: 0fr; opacity: 0; }
+}
+
 html.betterslack-motion-panels .betterslack-disclosure__panel {
   animation: betterslack-motion-unfold var(--bsm-base) var(--bsm-ease);
+}
+
+/*
+ * And the same again, backwards.
+ *
+ * Closing is a state rather than a removal -- the helper waits for whatever
+ * this says before taking the panel away, and takes it away at once if nothing
+ * here says anything. The class is written twice so it beats the rule above on
+ * specificity rather than on source order, which is a thing to lose in a merge.
+ * `forwards` because the last frame has to hold until the node goes, or it
+ * springs back open for the frame in between.
+ *
+ * The duration does not depend on how tall the panel is: rows going from `1fr`
+ * to `0fr` interpolate over the animation's own time, so a long history folds
+ * away in exactly as long as a short one. Measuring the content would be what
+ * made it vary.
+ */
+html.betterslack-motion-panels
+.betterslack-disclosure__panel.betterslack-disclosure__panel--closing {
+  animation: betterslack-motion-fold var(--bsm-base) var(--bsm-ease) forwards;
 }
 
 html.betterslack-motion-panels .betterslack-disclosure::after {

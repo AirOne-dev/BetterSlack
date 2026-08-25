@@ -1175,3 +1175,52 @@ test('a panel left behind by a previous life of the mod is swept', async () => {
     dom.cleanup();
   }
 });
+
+test('closing is a state, and only lasts as long as the stylesheet says', async () => {
+  /*
+   * Removing the panel outright leaves nothing on screen to animate, which is
+   * why opening moved and closing snapped. So it is marked, then taken away --
+   * and how long that takes is read off the panel rather than decided here,
+   * because a client without Motion must not wait for something that is not
+   * happening.
+   */
+  const dom = installDom();
+  const message = document.querySelector('[data-qa="message_container"]');
+  const label = document.createElement('span');
+  label.className = 'c-message__edited_label';
+  label.textContent = '(edited)';
+  message.querySelector('[data-qa="message-text"]').after(label);
+
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [
+        { id: '1', kind: 'edited', at: 10, channelId: 'C0BFQCYBRAB', ts: '1786386808.130969', before: 'first', after: 'second' },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.ok(document.querySelector('.betterslack-disclosure__panel'));
+
+    // jsdom computes no animation, so nothing is running and it goes at once.
+    label.click();
+    assert.equal(document.querySelector('.betterslack-disclosure__panel'), null,
+      'with nothing animating it, there is nothing to wait for');
+
+    // Opened again while one is folding away: the old one goes rather than
+    // being left to disappear from under the new one.
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    label.click();
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(document.querySelectorAll('.betterslack-disclosure__panel').length, 1);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

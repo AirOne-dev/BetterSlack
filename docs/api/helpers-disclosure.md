@@ -22,6 +22,8 @@ You get a caret, a keyboard control and a wrapper. What you avoid is the four th
 
 **Nothing here animates.** The classes are stable so that Motion can: installing a mod called Motion is the statement of intent about animation, and a component that moves whether or not you asked takes that decision away.
 
+Closing is a *state* rather than a removal — removing the panel outright leaves nothing on screen to animate — so it is marked with a closing class, and then taken away once whatever the stylesheet put on it has finished. How long that is comes from the panel itself: with nothing animating it, the answer is zero and it goes in the same breath, so a client without Motion never waits for something that is not happening. No height is measured anywhere, and that is deliberate: rows going between `0fr` and `1fr` interpolate over the animation's own time, so a long panel folds away in exactly as long as a short one. Measuring the content is what would make it vary.
+
 ```js
 const wordings = api.helpers.disclosure({
   trigger: '.c-message__edited_label',

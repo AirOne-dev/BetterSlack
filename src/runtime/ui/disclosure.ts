@@ -42,7 +42,35 @@ export const DISCLOSURE_CLASS = {
   panel: 'betterslack-disclosure__panel',
   /** Inside the wrapper. The pair is what makes an unfold animatable. */
   inner: 'betterslack-disclosure__inner',
+  /**
+   * On the wrapper between being closed and being gone.
+   *
+   * Closing has to be a state rather than a removal, or there is nothing left
+   * on screen to animate. Nothing here decides how long that lasts: the panel
+   * is asked what its own stylesheet says, and with no animation on it the
+   * answer is zero and it goes at once -- a client without Motion must not
+   * wait for something that is not happening.
+   */
+  closing: 'betterslack-disclosure__panel--closing',
 };
+
+/** A backstop, in case a browser never fires the end of an animation. */
+const CLOSE_GRACE_MS = 80;
+
+/** The longest of whatever the stylesheet put on it, in milliseconds. */
+function animatedFor(element: Element): number {
+  const style = getComputedStyle(element);
+  const times = `${style.animationDuration},${style.transitionDuration}`
+    .split(',')
+    .map((part) => {
+      const value = part.trim();
+      if (value.endsWith('ms')) return Number.parseFloat(value);
+      if (value.endsWith('s')) return Number.parseFloat(value) * 1000;
+      return 0;
+    })
+    .filter((value) => Number.isFinite(value));
+  return times.length ? Math.max(...times) : 0;
+}
 
 export interface DisclosureOptions {
   /**
@@ -108,13 +136,53 @@ export function createDisclosure(options: DisclosureOptions): DisclosureHandle {
     return key ? { element, key } : null;
   };
 
-  const fold = (key: string): void => {
-    panels.get(key)?.remove();
+  /**
+   * Panels on their way out, still on screen while they fold away.
+   *
+   * Kept as `mine` for the sweep below, or the next refresh would tear one out
+   * mid-animation -- which is the snap this exists to remove.
+   */
+  const closing = new Map<HTMLElement, () => void>();
+
+  const takeAway = (panel: HTMLElement): void => {
+    closing.get(panel)?.();
+    closing.delete(panel);
+    panel.remove();
+  };
+
+  const fold = (key: string, now = false): void => {
+    const panel = panels.get(key);
     panels.delete(key);
+    if (!panel) return;
+    if (now || !panel.isConnected) { takeAway(panel); return; }
+
+    /*
+     * Closed, then gone -- and the stylesheet says how long that takes.
+     *
+     * Removing it outright leaves nothing on screen to animate, which is why
+     * opening moved and closing snapped. The class is what a stylesheet keys
+     * the fold on, and the panel is then asked what it is actually running:
+     * zero means nothing is, and it goes in the same breath.
+     */
+    panel.classList.add(DISCLOSURE_CLASS.closing);
+    const ms = animatedFor(panel);
+    if (ms <= 0) { takeAway(panel); return; }
+
+    const done = () => takeAway(panel);
+    panel.addEventListener('animationend', done, { once: true });
+    panel.addEventListener('transitionend', done, { once: true });
+    const timer = setTimeout(done, ms + CLOSE_GRACE_MS);
+    closing.set(panel, () => {
+      clearTimeout(timer);
+      panel.removeEventListener('animationend', done);
+      panel.removeEventListener('transitionend', done);
+    });
   };
 
   const unfold = (element: Element, key: string): void => {
-    fold(key);
+    // Opened again before it finished closing: the one folding away goes at
+    // once rather than being left to disappear from under the new one.
+    fold(key, true);
     const content = options.content(element, key);
     if (!content) return;
     const where = options.anchor?.(element, key) ?? element;
@@ -169,7 +237,7 @@ export function createDisclosure(options: DisclosureOptions): DisclosureHandle {
      * in a real client this way, one per reload, and read as the same content
      * printed twice.
      */
-    const mine = new Set(panels.values());
+    const mine = new Set([...panels.values(), ...closing.keys()]);
     for (const stray of document.querySelectorAll(`.${DISCLOSURE_CLASS.panel}`)) {
       if (!mine.has(stray as HTMLElement)) stray.remove();
     }
@@ -203,7 +271,8 @@ export function createDisclosure(options: DisclosureOptions): DisclosureHandle {
   const dispose = (): void => {
     document.removeEventListener('click', toggle, true);
     document.removeEventListener('keydown', onKey, true);
-    for (const key of [...panels.keys()]) fold(key);
+    for (const key of [...panels.keys()]) fold(key, true);
+    for (const panel of [...closing.keys()]) takeAway(panel);
     open.clear();
     // Everything, not only what was tracked: this is putting somebody else's
     // markup back, and a panel left behind is one nothing else can remove.
