@@ -24,7 +24,7 @@
  * and worth borrowing outright.
  */
 
-import { foldReactions, group } from './store.js';
+import { foldReactions, group, without } from './store.js';
 
 const SORTS = ['newest', 'oldest', 'where'];
 const GROUP_KEYS = ['messages', 'reactions', 'names', 'people'];
@@ -205,6 +205,21 @@ export function createView(api, t, deps) {
         onClick: () => void api.helpers.copy(copyable, t('copied')),
       }));
     }
+
+    /*
+     * And a way to take this one out.
+     *
+     * No confirmation: it removes one card from a log that is a convenience,
+     * and a dialog for every line would be the thing people complain about.
+     * Emptying the whole log still asks, because that one cannot be walked
+     * back by waiting for the next sweep.
+     */
+    actions.append(api.helpers.iconButton({
+      label: t('forget'),
+      danger: true,
+      icon: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M8 2.75a.75.75 0 0 0-.75.75V4H4.5a.75.75 0 0 0 0 1.5h11a.75.75 0 0 0 0-1.5h-2.75v-.5a.75.75 0 0 0-.75-.75H8Zm-2.5 4.5a.75.75 0 0 1 .75.75v7.25c0 .14.11.25.25.25h7a.25.25 0 0 0 .25-.25V8a.75.75 0 0 1 1.5 0v7.25c0 .97-.78 1.75-1.75 1.75h-7c-.97 0-1.75-.78-1.75-1.75V8a.75.75 0 0 1 .75-.75Z"/></svg>',
+      onClick: () => void deps.forget(card),
+    }));
 
     return h('div', { class: `bsh-card bsh-card--${family}` }, [face, body, actions]);
   };

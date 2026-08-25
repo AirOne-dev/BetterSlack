@@ -13,7 +13,7 @@ Un onglet dans le rail de Slack, sous Accueil et Activité, ou `⌘⇧H`, ou `�
 | **Noms** | Un canal renommé, une section de sidebar renommée, quelqu'un qui change de nom d'affichage. Slack ne dit rien des trois. |
 | **Personnes** | Quelqu'un qui rejoint ou quitte une conversation, et les statuts au fil de leurs changements. |
 
-La page a une recherche qui porte sur tout ce qu'une ligne affiche — un nom se retrouve qu'il ait été la personne, le canal ou le mot changé —, des filtres par famille et cinq tris. Chaque ligne propose de copier l'ancien texte, et d'aller au message quand il en reste un.
+Chaque carte peut être oubliée séparément, à côté du bouton qui vide tout. La page a une recherche qui porte sur tout ce qu'une ligne affiche — un nom se retrouve qu'il ait été la personne, le canal ou le mot changé —, des filtres par famille et cinq tris. Chaque ligne propose de copier l'ancien texte, et d'aller au message quand il en reste un.
 
 ## Ce qu'il peut voir, et ce qu'il ne peut pas
 

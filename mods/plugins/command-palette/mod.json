@@ -17,7 +17,13 @@
       "label": "Shortcuts",
       "hint": "One or more, separated by commas -- mod+k, mod+shift+p. `mod` is Cmd on a Mac and Ctrl elsewhere. Whatever you bind is taken from Slack if Slack had it: the palette listens before the app does. Easier from the palette itself: run \"Change the shortcuts\" and press the keys.",
       "default": "mod+k",
-      "placeholder": "mod+k, mod+shift+p"
+      "placeholder": "mod+k, mod+shift+p",
+      "labels": {
+        "fr": "Raccourcis"
+      },
+      "hints": {
+        "fr": "Un ou plusieurs, séparés par des virgules — mod+k, mod+shift+p. `mod` est Cmd sur un Mac et Ctrl ailleurs. Ce que vous liez est pris à Slack s’il l’utilisait : la palette écoute avant l’application. Plus simple depuis la palette elle-même : lancez « Changer les raccourcis » et tapez les touches."
+      }
     }
   ],
   "betterslackApi": 1,

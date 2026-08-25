@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertPluginShape, createTestApi, installDom, readModFiles } from '../../../tests/harness.mjs';
 import plugin from './index.js';
-import { add, foldReactions, group, GROUPS, sortRows, tally, view } from './store.js';
+import { add, foldReactions, group, GROUPS, sortRows, tally, view, without } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, reactionDiff, snapshotOf } from './catch-up.js';
@@ -468,6 +468,25 @@ test('the search reaches the message a reaction was about', () => {
     { kind: 'reaction-added', channelId: 'C1', ts: '9', emoji: ':tada:', subject: 'la grande poubelle' },
   ], 100, 1000);
   assert.equal(view(log, { query: 'poubelle' }).length, 1);
+});
+
+test('forgetting one card takes its whole run out and leaves the rest', () => {
+  // A card is several events, so forgetting it is forgetting the run of them
+  // that belong to the same message -- not the one line under the pointer.
+  const log = add([], [
+    { kind: 'reaction-added', channelId: 'C1', ts: '9', emoji: ':tada:', userId: 'U1' },
+    { kind: 'reaction-removed', channelId: 'C1', ts: '9', emoji: ':tada:', userId: 'U2' },
+    { kind: 'edited', channelId: 'C1', ts: '4', before: 'a', after: 'b' },
+    { kind: 'channel-renamed', before: 'x', after: 'y' },
+  ], 100, 1000);
+
+  const cards = group(log);
+  const busy = cards.find((card) => card.ts === '9');
+  const left = without(log, busy);
+
+  assert.equal(left.length, 2, 'both of that message’s events go');
+  assert.equal(group(left).length, 2, 'and the other two cards stay');
+  assert.deepEqual(without(left, null), left, 'nothing to forget changes nothing');
 });
 
 /* -- the client ----------------------------------------------------------- */

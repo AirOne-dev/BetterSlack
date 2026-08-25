@@ -19,7 +19,13 @@
       "default": 100,
       "min": 25,
       "max": 300,
-      "step": 5
+      "step": 5,
+      "labels": {
+        "fr": "Vitesse"
+      },
+      "hints": {
+        "fr": "En pour cent. 100 est le réglage d’origine, 200 deux fois plus vif, 50 deux fois plus lent. Tout suit ensemble, donc l’application garde un seul tempo."
+      }
     },
     {
       "key": "amplitude",
@@ -29,42 +35,78 @@
       "default": 100,
       "min": 0,
       "max": 200,
-      "step": 10
+      "step": 10,
+      "labels": {
+        "fr": "Amplitude"
+      },
+      "hints": {
+        "fr": "En pour cent. La distance parcourue et l’ampleur des changements d’échelle. 0 garde les fondus et supprime tout mouvement ; 150 est franchement théâtral et reste lisible."
+      }
     },
     {
       "key": "views",
       "type": "boolean",
       "label": "Views",
       "hint": "Switching conversation brings the message pane in from below, changing section inside a dialog brings its panel in, and the rail's active tab settles into place.",
-      "default": true
+      "default": true,
+      "labels": {
+        "fr": "Vues"
+      },
+      "hints": {
+        "fr": "Changer de conversation fait monter le panneau des messages, changer de section dans une fenêtre fait entrer son panneau, et l’onglet actif du rail se pose en place."
+      }
     },
     {
       "key": "panels",
       "type": "boolean",
       "label": "Dialogs and menus",
       "hint": "Dialogs, menus and the command palette arrive on a spring from the corner they belong to; the thread pane slides in from the edge.",
-      "default": true
+      "default": true,
+      "labels": {
+        "fr": "Fenêtres et menus"
+      },
+      "hints": {
+        "fr": "Fenêtres, menus et palette de commandes arrivent sur un ressort depuis le coin dont ils dépendent ; le panneau des fils glisse depuis le bord."
+      }
     },
     {
       "key": "hover",
       "type": "boolean",
       "label": "Hover",
       "hint": "Colours ease instead of snapping, sidebar rows lean towards the pointer, avatars and reactions answer it, a message's hover actions fade in, and the sidebar's selection cross-fades from row to row.",
-      "default": true
+      "default": true,
+      "labels": {
+        "fr": "Survol"
+      },
+      "hints": {
+        "fr": "Les couleurs glissent au lieu de sauter, les lignes de la sidebar penchent vers le pointeur, avatars et réactions lui répondent, les actions d’un message apparaissent en fondu, et la sélection de la sidebar passe d’une ligne à l’autre en fondu."
+      }
     },
     {
       "key": "press",
       "type": "boolean",
       "label": "Press",
       "hint": "Buttons acknowledge being pressed. Short and shallow: this is meant to be felt rather than watched.",
-      "default": true
+      "default": true,
+      "labels": {
+        "fr": "Appui"
+      },
+      "hints": {
+        "fr": "Les boutons accusent réception de l’appui. Court et discret : c’est fait pour être senti, pas regardé."
+      }
     },
     {
       "key": "arrivals",
       "type": "boolean",
       "label": "Arrivals",
       "hint": "Small things that appear in place pop into it instead of blinking: a reaction someone just added, the jump-to-unread pill, a tooltip.",
-      "default": true
+      "default": true,
+      "labels": {
+        "fr": "Apparitions"
+      },
+      "hints": {
+        "fr": "Les petites choses qui apparaissent sur place y entrent au lieu de clignoter : une réaction qu’on vient d’ajouter, la pastille de saut vers les non-lus, une infobulle."
+      }
     }
   ],
   "betterslackApi": 1,

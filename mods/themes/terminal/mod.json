@@ -17,7 +17,13 @@
       "label": "Phosphor",
       "default": "#35e07f",
       "cssVar": "--term-green",
-      "hint": "Text, borders and every tint derived from them."
+      "hint": "Text, borders and every tint derived from them.",
+      "labels": {
+        "fr": "Phosphore"
+      },
+      "hints": {
+        "fr": "Le texte, les bordures et toutes les teintes qui en dérivent."
+      }
     },
     {
       "key": "attention",
@@ -25,7 +31,13 @@
       "label": "Attention",
       "default": "#ffb638",
       "cssVar": "--term-amber",
-      "hint": "Mentions, unread badges and anything asking for you."
+      "hint": "Mentions, unread badges and anything asking for you.",
+      "labels": {
+        "fr": "Attention"
+      },
+      "hints": {
+        "fr": "Mentions, pastilles de non-lus et tout ce qui vous réclame."
+      }
     },
     {
       "key": "background",
@@ -33,7 +45,13 @@
       "label": "Background",
       "default": "#05080a",
       "cssVar": "--term-bg",
-      "hint": "The screen behind it all."
+      "hint": "The screen behind it all.",
+      "labels": {
+        "fr": "Fond"
+      },
+      "hints": {
+        "fr": "L’écran derrière tout le reste."
+      }
     }
   ],
   "betterslackApi": 1,

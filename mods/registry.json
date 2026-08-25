@@ -57,21 +57,39 @@
           "options": [
             {
               "value": "best",
-              "label": "The largest available"
+              "label": "The largest available",
+              "labels": {
+                "fr": "La plus grande disponible"
+              }
             },
             {
               "value": "image_original",
-              "label": "Original upload"
+              "label": "Original upload",
+              "labels": {
+                "fr": "Fichier d’origine"
+              }
             },
             {
               "value": "image_512",
-              "label": "512 px"
+              "label": "512 px",
+              "labels": {
+                "fr": "512 px"
+              }
             },
             {
               "value": "image_192",
-              "label": "192 px"
+              "label": "192 px",
+              "labels": {
+                "fr": "192 px"
+              }
             }
-          ]
+          ],
+          "labels": {
+            "fr": "Taille à enregistrer"
+          },
+          "hints": {
+            "fr": "Slack en garde plusieurs. « D’origine » est ce qui a été téléversé, ce qui n’est pas toujours la plus grande."
+          }
         }
       ],
       "betterslackApi": 1,
@@ -224,7 +242,13 @@
           "label": "Shortcuts",
           "hint": "One or more, separated by commas -- mod+k, mod+shift+p. `mod` is Cmd on a Mac and Ctrl elsewhere. Whatever you bind is taken from Slack if Slack had it: the palette listens before the app does. Easier from the palette itself: run \"Change the shortcuts\" and press the keys.",
           "default": "mod+k",
-          "placeholder": "mod+k, mod+shift+p"
+          "placeholder": "mod+k, mod+shift+p",
+          "labels": {
+            "fr": "Raccourcis"
+          },
+          "hints": {
+            "fr": "Un ou plusieurs, séparés par des virgules — mod+k, mod+shift+p. `mod` est Cmd sur un Mac et Ctrl ailleurs. Ce que vous liez est pris à Slack s’il l’utilisait : la palette écoute avant l’application. Plus simple depuis la palette elle-même : lancez « Changer les raccourcis » et tapez les touches."
+          }
         }
       ],
       "betterslackApi": 1,
@@ -285,14 +309,26 @@
           "default": 3000,
           "min": 200,
           "max": 40000,
-          "step": 100
+          "step": 100,
+          "labels": {
+            "fr": "Alerter au-delà de"
+          },
+          "hints": {
+            "fr": "En caractères. Slack lui-même commence à découper les messages autour de 4000."
+          }
         },
         {
           "key": "alwaysShow",
           "type": "boolean",
           "label": "Always show the count",
           "hint": "Off: it stays out of the way until you are near the warning.",
-          "default": true
+          "default": true,
+          "labels": {
+            "fr": "Toujours afficher le compteur"
+          },
+          "hints": {
+            "fr": "Désactivé : il reste discret jusqu’à ce que vous approchiez du seuil."
+          }
         }
       ],
       "betterslackApi": 1,
@@ -398,17 +434,32 @@
           "options": [
             {
               "value": "1600x1000",
-              "label": "1600 x 1000 — a mod in the catalogue"
+              "label": "1600 x 1000 — a mod in the catalogue",
+              "labels": {
+                "fr": "1600 x 1000 — un mod dans le catalogue"
+              }
             },
             {
               "value": "1800x990",
-              "label": "1800 x 990 — the wide frames on the site"
+              "label": "1800 x 990 — the wide frames on the site",
+              "labels": {
+                "fr": "1800 x 990 — les images larges du site"
+              }
             },
             {
               "value": "1280x800",
-              "label": "1280 x 800 — smaller, for a readme"
+              "label": "1280 x 800 — smaller, for a readme",
+              "labels": {
+                "fr": "1280 x 800 — plus petit, pour un readme"
+              }
             }
-          ]
+          ],
+          "labels": {
+            "fr": "Taille des captures"
+          },
+          "hints": {
+            "fr": "La fenêtre est dessinée à cette taille le temps de la photo, puis remise comme elle était : le fichier n’a pas besoin d’être recadré. La première est celle de toutes les images de mods du catalogue BetterSlack."
+          }
         }
       ],
       "needsBetterSlack": "2.0.1",
@@ -637,35 +688,65 @@
           "options": [
             {
               "value": "changes",
-              "label": "Edits, deletions and reactions taken back"
+              "label": "Edits, deletions and reactions taken back",
+              "labels": {
+                "fr": "Modifications, suppressions et réactions retirées"
+              }
             },
             {
               "value": "messages",
-              "label": "Edits and deletions only"
+              "label": "Edits and deletions only",
+              "labels": {
+                "fr": "Modifications et suppressions seulement"
+              }
             },
             {
               "value": "all",
-              "label": "Everything"
+              "label": "Everything",
+              "labels": {
+                "fr": "Tout"
+              }
             },
             {
               "value": "none",
-              "label": "Nothing"
+              "label": "Nothing",
+              "labels": {
+                "fr": "Rien"
+              }
             }
-          ]
+          ],
+          "labels": {
+            "fr": "Compter sur l’onglet"
+          },
+          "hints": {
+            "fr": "Une pastille ne veut dire quelque chose que tant qu’elle est rare, et un espace de travail renomme et salue toute la journée."
+          }
         },
         {
           "key": "showDeleted",
           "type": "boolean",
           "label": "Leave deleted messages on screen",
           "hint": "Struck through, where the message was, with a cross to dismiss it.",
-          "default": true
+          "default": true,
+          "labels": {
+            "fr": "Laisser les messages supprimés à l’écran"
+          },
+          "hints": {
+            "fr": "Barré, là où était le message, avec une croix pour l’écarter."
+          }
         },
         {
           "key": "people",
           "type": "boolean",
           "label": "Watch statuses and who is in a channel",
           "hint": "The only part that makes requests: the member list of the channel you are in, and the statuses of people you have seen, every five minutes.",
-          "default": true
+          "default": true,
+          "labels": {
+            "fr": "Suivre les statuts et qui est dans un canal"
+          },
+          "hints": {
+            "fr": "La seule partie qui fait des requêtes : la liste des membres du canal ouvert et les statuts des personnes vues, toutes les cinq minutes."
+          }
         },
         {
           "key": "keep",
@@ -674,14 +755,26 @@
           "hint": "The log lives in BetterSlack's settings file, which is read at every launch, so it is capped.",
           "default": 500,
           "min": 50,
-          "max": 5000
+          "max": 5000,
+          "labels": {
+            "fr": "Entrées conservées"
+          },
+          "hints": {
+            "fr": "Le journal vit dans le fichier de réglages de BetterSlack, lu à chaque démarrage : il est donc plafonné."
+          }
         },
         {
           "key": "shortcut",
           "type": "text",
           "label": "Shortcut",
           "hint": "Opens and closes the page.",
-          "default": "mod+shift+h"
+          "default": "mod+shift+h",
+          "labels": {
+            "fr": "Raccourci"
+          },
+          "hints": {
+            "fr": "Ouvre et ferme la page."
+          }
         }
       ],
       "needsBetterSlack": "3.1.0",
@@ -708,7 +801,13 @@
           "default": 100,
           "min": 10,
           "max": 500,
-          "step": 10
+          "step": 10,
+          "labels": {
+            "fr": "Membres à lister"
+          },
+          "hints": {
+            "fr": "Slack pagine la liste au-delà. Plus haut coûte une requête par personne supplémentaire."
+          }
         },
         {
           "key": "presenceLimit",
@@ -718,7 +817,13 @@
           "default": 50,
           "min": 0,
           "max": 200,
-          "step": 10
+          "step": 10,
+          "labels": {
+            "fr": "Recherches de disponibilité"
+          },
+          "hints": {
+            "fr": "users.getPresence est une requête par personne et se limite autour de cinquante par minute. Au-delà, tout le monde est listé, sans les pastilles."
+          }
         }
       ],
       "betterslackApi": 1,
@@ -804,7 +909,13 @@
           "default": 100,
           "min": 25,
           "max": 300,
-          "step": 5
+          "step": 5,
+          "labels": {
+            "fr": "Vitesse"
+          },
+          "hints": {
+            "fr": "En pour cent. 100 est le réglage d’origine, 200 deux fois plus vif, 50 deux fois plus lent. Tout suit ensemble, donc l’application garde un seul tempo."
+          }
         },
         {
           "key": "amplitude",
@@ -814,42 +925,78 @@
           "default": 100,
           "min": 0,
           "max": 200,
-          "step": 10
+          "step": 10,
+          "labels": {
+            "fr": "Amplitude"
+          },
+          "hints": {
+            "fr": "En pour cent. La distance parcourue et l’ampleur des changements d’échelle. 0 garde les fondus et supprime tout mouvement ; 150 est franchement théâtral et reste lisible."
+          }
         },
         {
           "key": "views",
           "type": "boolean",
           "label": "Views",
           "hint": "Switching conversation brings the message pane in from below, changing section inside a dialog brings its panel in, and the rail's active tab settles into place.",
-          "default": true
+          "default": true,
+          "labels": {
+            "fr": "Vues"
+          },
+          "hints": {
+            "fr": "Changer de conversation fait monter le panneau des messages, changer de section dans une fenêtre fait entrer son panneau, et l’onglet actif du rail se pose en place."
+          }
         },
         {
           "key": "panels",
           "type": "boolean",
           "label": "Dialogs and menus",
           "hint": "Dialogs, menus and the command palette arrive on a spring from the corner they belong to; the thread pane slides in from the edge.",
-          "default": true
+          "default": true,
+          "labels": {
+            "fr": "Fenêtres et menus"
+          },
+          "hints": {
+            "fr": "Fenêtres, menus et palette de commandes arrivent sur un ressort depuis le coin dont ils dépendent ; le panneau des fils glisse depuis le bord."
+          }
         },
         {
           "key": "hover",
           "type": "boolean",
           "label": "Hover",
           "hint": "Colours ease instead of snapping, sidebar rows lean towards the pointer, avatars and reactions answer it, a message's hover actions fade in, and the sidebar's selection cross-fades from row to row.",
-          "default": true
+          "default": true,
+          "labels": {
+            "fr": "Survol"
+          },
+          "hints": {
+            "fr": "Les couleurs glissent au lieu de sauter, les lignes de la sidebar penchent vers le pointeur, avatars et réactions lui répondent, les actions d’un message apparaissent en fondu, et la sélection de la sidebar passe d’une ligne à l’autre en fondu."
+          }
         },
         {
           "key": "press",
           "type": "boolean",
           "label": "Press",
           "hint": "Buttons acknowledge being pressed. Short and shallow: this is meant to be felt rather than watched.",
-          "default": true
+          "default": true,
+          "labels": {
+            "fr": "Appui"
+          },
+          "hints": {
+            "fr": "Les boutons accusent réception de l’appui. Court et discret : c’est fait pour être senti, pas regardé."
+          }
         },
         {
           "key": "arrivals",
           "type": "boolean",
           "label": "Arrivals",
           "hint": "Small things that appear in place pop into it instead of blinking: a reaction someone just added, the jump-to-unread pill, a tooltip.",
-          "default": true
+          "default": true,
+          "labels": {
+            "fr": "Apparitions"
+          },
+          "hints": {
+            "fr": "Les petites choses qui apparaissent sur place y entrent au lieu de clignoter : une réaction qu’on vient d’ajouter, la pastille de saut vers les non-lus, une infobulle."
+          }
         }
       ],
       "betterslackApi": 1,
@@ -962,7 +1109,13 @@
           "label": "Phosphor",
           "default": "#35e07f",
           "cssVar": "--term-green",
-          "hint": "Text, borders and every tint derived from them."
+          "hint": "Text, borders and every tint derived from them.",
+          "labels": {
+            "fr": "Phosphore"
+          },
+          "hints": {
+            "fr": "Le texte, les bordures et toutes les teintes qui en dérivent."
+          }
         },
         {
           "key": "attention",
@@ -970,7 +1123,13 @@
           "label": "Attention",
           "default": "#ffb638",
           "cssVar": "--term-amber",
-          "hint": "Mentions, unread badges and anything asking for you."
+          "hint": "Mentions, unread badges and anything asking for you.",
+          "labels": {
+            "fr": "Attention"
+          },
+          "hints": {
+            "fr": "Mentions, pastilles de non-lus et tout ce qui vous réclame."
+          }
         },
         {
           "key": "background",
@@ -978,7 +1137,13 @@
           "label": "Background",
           "default": "#05080a",
           "cssVar": "--term-bg",
-          "hint": "The screen behind it all."
+          "hint": "The screen behind it all.",
+          "labels": {
+            "fr": "Fond"
+          },
+          "hints": {
+            "fr": "L’écran derrière tout le reste."
+          }
         }
       ],
       "betterslackApi": 1,

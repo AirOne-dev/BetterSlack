@@ -13,7 +13,7 @@ A tab in Slack's rail, under Home and Activity, or `⌘⇧H`, or `⌘K` → **Hi
 | **Names** | A channel renamed, a sidebar section renamed, somebody changing their display name. Slack says nothing about any of the three. |
 | **People** | Somebody joining or leaving a conversation, and people's statuses as they change. |
 
-The page has a search that runs over everything a row draws — a name finds it whether it was the person, the channel, or the word that changed — filters by family, and five sorts. Each row offers the old text to copy, and takes you to the message where there is still one to land on.
+Each card can be forgotten on its own, beside the button that empties the lot. The page has a search that runs over everything a row draws — a name finds it whether it was the person, the channel, or the word that changed — filters by family, and five sorts. Each row offers the old text to copy, and takes you to the message where there is still one to land on.
 
 ## What it can and cannot see
 

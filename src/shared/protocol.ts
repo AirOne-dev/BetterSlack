@@ -144,7 +144,21 @@ export interface ModAssets {
  * Plugins may declare it too, and it costs them nothing to ignore: they read
  * the same key through `api.settings` as they always did.
  */
-export type ModSettingField =
+/**
+ * The words on a setting, in the reader's language.
+ *
+ * Same shape as `descriptions` and `readmes` on the manifest, and for the same
+ * reason: a mod is required to speak English and French, and its settings are
+ * the half of it a reader meets while changing something. English stays
+ * required and is the fallback -- a setting labelled only in a language the
+ * reader has not got is a control nobody dares touch.
+ */
+export interface Localised {
+  labels?: Record<string, string>;
+  hints?: Record<string, string>;
+}
+
+export type ModSettingField = Localised & (
   | { key: string; type: 'boolean'; label: string; hint?: string; default?: boolean }
   | {
     key: string;
@@ -172,8 +186,9 @@ export type ModSettingField =
     label: string;
     hint?: string;
     default?: string;
-    options: Array<{ value: string; label: string }>;
-  };
+    options: Array<{ value: string; label: string; labels?: Record<string, string> }>;
+  }
+);
 
 /** What a mod from outside this repository looks like before it is installed. */
 export interface RemoteMod {

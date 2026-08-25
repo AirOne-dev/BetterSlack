@@ -267,9 +267,16 @@ export default {
 <p>Settings are declared in the manifest and drawn by the panel — you do not build a form. Add this to <code>mod.json</code>:</p>
 <pre class="api-code" data-lang="json" data-label="json"><code>{
   &quot;settings&quot;: [
-    { &quot;key&quot;: &quot;greeting&quot;, &quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;What to say&quot;, &quot;default&quot;: &quot;Hello&quot; }
+    {
+      &quot;key&quot;: &quot;greeting&quot;,
+      &quot;type&quot;: &quot;text&quot;,
+      &quot;label&quot;: &quot;What to say&quot;,
+      &quot;labels&quot;: { &quot;fr&quot;: &quot;Ce qu’il faut dire&quot; },
+      &quot;default&quot;: &quot;Hello&quot;
+    }
   ]
 }</code></pre>
+<p><code>label</code>, <code>hint</code> and a choice's option labels each take a table of languages beside them -- <code>labels</code>, <code>hints</code> -- exactly as <code>description</code> takes <code>descriptions</code>. English stays required and is the fallback. A test fails a mod whose settings are English only: they are the half of a mod a reader meets while changing something, and a catalogue that asks every mod for two languages and then hands over an English form is not a rule, it is a preference.</p>
 <p>and read it where you need it:</p>
 <pre class="api-code" data-lang="javascript" data-label="js"><code>const greeting = api.settings.get('greeting', 'Hello');
 api.ui.toast(greeting, { variant: 'success' });</code></pre>

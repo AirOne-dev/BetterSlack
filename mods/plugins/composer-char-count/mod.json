@@ -19,14 +19,26 @@
       "default": 3000,
       "min": 200,
       "max": 40000,
-      "step": 100
+      "step": 100,
+      "labels": {
+        "fr": "Alerter au-delà de"
+      },
+      "hints": {
+        "fr": "En caractères. Slack lui-même commence à découper les messages autour de 4000."
+      }
     },
     {
       "key": "alwaysShow",
       "type": "boolean",
       "label": "Always show the count",
       "hint": "Off: it stays out of the way until you are near the warning.",
-      "default": true
+      "default": true,
+      "labels": {
+        "fr": "Toujours afficher le compteur"
+      },
+      "hints": {
+        "fr": "Désactivé : il reste discret jusqu’à ce que vous approchiez du seuil."
+      }
     }
   ],
   "betterslackApi": 1,

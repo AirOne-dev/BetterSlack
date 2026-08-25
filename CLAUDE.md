@@ -1437,6 +1437,13 @@ plugin id in `requires` and the panel offers to switch it on.
   theme is off, so it is never turned on silently.
 - The required plugin must stand alone: it reads Slack's tokens and follows any
   theme, and the theme must not style its markup. Also a test.
+**A setting speaks both languages, like everything else a mod says.** `label`,
+`hint` and a choice's option labels each take a table beside them -- `labels`,
+`hints` -- the same shape `description` / `descriptions` already uses, with
+English required and the fallback. `tests/i18n.test.mjs` fails a mod whose
+settings are English only, which every one of them was: the panel drew a French
+mod's French readme above a form nobody had translated.
+
 **A theme can have settings, and still runs no code.** A field in its `mod.json`
 carries `cssVar` naming a custom property; the runtime writes
 `:root { <cssVar>: <value> }` into a `theme:<id>:vars` layer created after the

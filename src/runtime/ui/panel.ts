@@ -917,12 +917,17 @@ export class Panel {
             ? current
             : (field.default ?? field.options[0]!.value);
           control = selectButton(
-            field.options,
+            // Translated here rather than inside the button: the button is the
+            // panel's own component and knows nothing about a mod's manifest.
+            field.options.map((option) => ({
+              value: option.value,
+              label: localised(option.label, option.labels, language()),
+            })),
             chosen,
             (picked) => write(picked),
             'betterslack-settings__input',
           );
-          control.setAttribute('aria-label', field.label);
+          control.setAttribute('aria-label', localised(field.label, field.labels, language()));
           break;
         }
         default: {
@@ -937,10 +942,21 @@ export class Panel {
         }
       }
 
+      /*
+       * A setting speaks the reader's language too.
+       *
+       * Everything else about a mod does -- its one-liner, its readme, its
+       * screenshot captions -- and the settings are the half a reader meets
+       * while changing something. English stays the fallback, as it is
+       * everywhere else here.
+       */
+      const label = localised(field.label, field.labels, language());
+      const hint = field.hint ? localised(field.hint, field.hints, language()) : null;
+
       box.append(h('div', { class: 'betterslack-settings__row' }, [
         h('div', { class: 'betterslack-settings__meta' }, [
-          h('div', { class: 'betterslack-row__name' }, [field.label]),
-          field.hint ? h('div', { class: 'betterslack-row__desc' }, [field.hint]) : null,
+          h('div', { class: 'betterslack-row__name' }, [label]),
+          hint ? h('div', { class: 'betterslack-row__desc' }, [hint]) : null,
         ].filter(Boolean) as Node[]),
         h('div', { class: 'betterslack-row__actions' }, [control]),
       ]));

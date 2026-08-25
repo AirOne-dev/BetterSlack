@@ -40,17 +40,32 @@
       "options": [
         {
           "value": "1600x1000",
-          "label": "1600 x 1000 — a mod in the catalogue"
+          "label": "1600 x 1000 — a mod in the catalogue",
+          "labels": {
+            "fr": "1600 x 1000 — un mod dans le catalogue"
+          }
         },
         {
           "value": "1800x990",
-          "label": "1800 x 990 — the wide frames on the site"
+          "label": "1800 x 990 — the wide frames on the site",
+          "labels": {
+            "fr": "1800 x 990 — les images larges du site"
+          }
         },
         {
           "value": "1280x800",
-          "label": "1280 x 800 — smaller, for a readme"
+          "label": "1280 x 800 — smaller, for a readme",
+          "labels": {
+            "fr": "1280 x 800 — plus petit, pour un readme"
+          }
         }
-      ]
+      ],
+      "labels": {
+        "fr": "Taille des captures"
+      },
+      "hints": {
+        "fr": "La fenêtre est dessinée à cette taille le temps de la photo, puis remise comme elle était : le fichier n’a pas besoin d’être recadré. La première est celle de toutes les images de mods du catalogue BetterSlack."
+      }
     }
   ]
 }

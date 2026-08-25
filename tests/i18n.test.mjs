@@ -153,6 +153,33 @@ test('every plugin that speaks to the user speaks both languages', async () => {
 });
 
 /**
+ * A mod's settings speak both languages too.
+ *
+ * Everything else about a mod does -- its one-liner, its readme, its screenshot
+ * captions -- and its settings are the half a reader meets while changing
+ * something. They were English only, in every mod, on a French client: a
+ * catalogue that asks each mod for two languages and then hands the reader an
+ * English form is not a rule, it is a preference.
+ */
+test('every setting a mod offers is offered in both languages', async () => {
+  const { listMods } = await import('../scripts/test-mods.mjs');
+
+  for (const mod of listMods()) {
+    const manifest = JSON.parse(readFileSync(path.join(mod.dir, 'mod.json'), 'utf8'));
+    for (const field of manifest.settings ?? []) {
+      assert.ok(field.labels?.fr, `${mod.id}: "${field.key}" has no French label`);
+      if (field.hint) {
+        assert.ok(field.hints?.fr, `${mod.id}: "${field.key}" has a hint with no French`);
+      }
+      for (const option of field.options ?? []) {
+        assert.ok(option.labels?.fr,
+          `${mod.id}: "${field.key}" offers "${option.value}" with no French label`);
+      }
+    }
+  }
+});
+
+/**
  * The panel is held to the rule it holds mods to.
  *
  * Every mod here must ship English and French, and a test fails one whose

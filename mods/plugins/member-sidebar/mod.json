@@ -19,7 +19,13 @@
       "default": 100,
       "min": 10,
       "max": 500,
-      "step": 10
+      "step": 10,
+      "labels": {
+        "fr": "Membres à lister"
+      },
+      "hints": {
+        "fr": "Slack pagine la liste au-delà. Plus haut coûte une requête par personne supplémentaire."
+      }
     },
     {
       "key": "presenceLimit",
@@ -29,7 +35,13 @@
       "default": 50,
       "min": 0,
       "max": 200,
-      "step": 10
+      "step": 10,
+      "labels": {
+        "fr": "Recherches de disponibilité"
+      },
+      "hints": {
+        "fr": "users.getPresence est une requête par personne et se limite autour de cinquante par minute. Au-delà, tout le monde est listé, sans les pastilles."
+      }
     }
   ],
   "betterslackApi": 1,

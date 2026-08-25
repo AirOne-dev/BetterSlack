@@ -20,21 +20,39 @@
       "options": [
         {
           "value": "best",
-          "label": "The largest available"
+          "label": "The largest available",
+          "labels": {
+            "fr": "La plus grande disponible"
+          }
         },
         {
           "value": "image_original",
-          "label": "Original upload"
+          "label": "Original upload",
+          "labels": {
+            "fr": "Fichier d’origine"
+          }
         },
         {
           "value": "image_512",
-          "label": "512 px"
+          "label": "512 px",
+          "labels": {
+            "fr": "512 px"
+          }
         },
         {
           "value": "image_192",
-          "label": "192 px"
+          "label": "192 px",
+          "labels": {
+            "fr": "192 px"
+          }
         }
-      ]
+      ],
+      "labels": {
+        "fr": "Taille à enregistrer"
+      },
+      "hints": {
+        "fr": "Slack en garde plusieurs. « D’origine » est ce qui a été téléversé, ce qui n’est pas toujours la plus grande."
+      }
     }
   ],
   "betterslackApi": 1,

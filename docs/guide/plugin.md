@@ -73,10 +73,23 @@ a form. Add this to `mod.json`:
 ```json
 {
   "settings": [
-    { "key": "greeting", "type": "text", "label": "What to say", "default": "Hello" }
+    {
+      "key": "greeting",
+      "type": "text",
+      "label": "What to say",
+      "labels": { "fr": "Ce qu’il faut dire" },
+      "default": "Hello"
+    }
   ]
 }
 ```
+
+`label`, `hint` and a choice's option labels each take a table of languages
+beside them -- `labels`, `hints` -- exactly as `description` takes
+`descriptions`. English stays required and is the fallback. A test fails a mod
+whose settings are English only: they are the half of a mod a reader meets
+while changing something, and a catalogue that asks every mod for two languages
+and then hands over an English form is not a rule, it is a preference.
 
 and read it where you need it:
 

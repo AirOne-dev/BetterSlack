@@ -71,6 +71,27 @@ function parseSettings(value: unknown, file: string): ModSettingField[] | undefi
     assertString(field.label, 'settings[].label', file);
 
     /*
+     * The same words in other languages, checked rather than trusted.
+     *
+     * A settings label is the half of a mod a reader meets while changing
+     * something, and this catalogue asks every mod for two languages. A table
+     * holding anything but strings would reach the panel and be drawn as
+     * `[object Object]` on a control somebody is about to press.
+     */
+    for (const table of ['labels', 'hints']) {
+      const value = (field as Record<string, unknown>)[table];
+      if (value === undefined) continue;
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        throw new ManifestError(file, `"${key}" has a "${table}" that is not a table of languages`);
+      }
+      for (const [language, text] of Object.entries(value as Record<string, unknown>)) {
+        if (typeof text !== 'string' || !text.trim()) {
+          throw new ManifestError(file, `"${key}": ${table}.${language} must be a non-empty string`);
+        }
+      }
+    }
+
+    /*
      * `cssVar` is checked here rather than trusted, because a theme's settings
      * do nothing else: the value is written straight into a stylesheet, so a
      * name that is not a custom property is a rule the browser drops without a
@@ -89,9 +110,12 @@ function parseSettings(value: unknown, file: string): ModSettingField[] | undefi
         throw new ManifestError(file, `"${key}" is a choice and needs options`);
       }
       for (const option of options) {
-        const o = option as { value?: unknown; label?: unknown };
+        const o = option as { value?: unknown; label?: unknown; labels?: unknown };
         if (typeof o.value !== 'string' || typeof o.label !== 'string') {
           throw new ManifestError(file, `"${key}" has an option with no value/label`);
+        }
+        if (o.labels !== undefined && (typeof o.labels !== 'object' || o.labels === null || Array.isArray(o.labels))) {
+          throw new ManifestError(file, `"${key}": an option's "labels" is not a table of languages`);
         }
       }
     }

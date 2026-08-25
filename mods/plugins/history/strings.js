@@ -44,6 +44,7 @@ export const STRINGS = {
     noMatchHint: 'Try fewer words, or turn a filter back on.',
     countOf: '{shown} of {total}',
 
+    forget: 'Forget this one',
     clear: 'Clear',
     clearTitle: 'Clear the history?',
     clearBody: 'All {count} entries go, and they are not kept anywhere else.',
@@ -94,6 +95,7 @@ export const STRINGS = {
     noMatchHint: 'Essayez moins de mots, ou réactivez un filtre.',
     countOf: '{shown} sur {total}',
 
+    forget: 'Oublier celle-ci',
     clear: 'Effacer',
     clearTitle: 'Effacer l’historique ?',
     clearBody: 'Les {count} entrées disparaissent, et elles ne sont conservées nulle part ailleurs.',

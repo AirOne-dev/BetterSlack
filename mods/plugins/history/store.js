@@ -79,6 +79,21 @@ export function view(log, { query = '', groups = null, sort = 'newest' } = {}) {
   return sortRows(rows, sort);
 }
 
+/**
+ * The log without one card.
+ *
+ * A card is several events, so removing one is removing the run of them that
+ * belong to the same message -- and the ones with no message behind them are
+ * their own card of one, matched by id. Clearing everything is one button and
+ * this is the other: somebody who wants one thing gone should not have to
+ * choose between keeping it and losing the lot.
+ */
+export function without(log, card) {
+  if (!card) return log;
+  const ids = new Set(card.events.map((event) => event.id));
+  return log.filter((entry) => !ids.has(entry.id));
+}
+
 /** What makes two events the same event, whichever half saw it. */
 function fingerprint(event) {
   return [event.kind, event.channelId, event.ts, event.emoji, event.userId, event.after]

@@ -26,7 +26,7 @@
 
 import { createView } from './view.js';
 import { STRINGS } from './strings.js';
-import { add, tally, view } from './store.js';
+import { add, tally, view, without } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, displayNameChanges, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, snapshotOf } from './catch-up.js';
@@ -198,6 +198,19 @@ export default {
       renderText: (text) => renderText(document, text, (name) => emojiFor(name)),
       openConversation: (channelId) => api.slack.openConversation(channelId),
       openMessage: (channelId, ts) => api.slack.openMessage(channelId, ts),
+      forget: async (card) => {
+        log = without(log, card);
+        await api.settings.set('entries', log);
+        // A headstone belongs to an entry: forgetting the entry takes it off
+        // the conversation too, or the line stays there with nothing behind it.
+        for (const [key, node] of headstones) {
+          if (!log.some((entry) => `${entry.channelId}:${entry.ts}` === key)) {
+            node.remove();
+            headstones.delete(key);
+          }
+        }
+        page.refresh();
+      },
       clear: async () => {
         log = [];
         await api.settings.set('entries', log);
