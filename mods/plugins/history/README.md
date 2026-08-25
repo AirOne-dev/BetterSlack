@@ -32,6 +32,8 @@ Telling a real change from Slack redrawing itself is the whole of the work, and 
 - **Which messages are the neighbours comes from their timestamps**, not from the order the document holds them in. The list being virtual means a node can sit on the far side of its own neighbours for a frame while Slack rebuilds the window, and an order believed once is remembered for as long as the channel stays open.
 - **And only after two sweeps**, because Slack re-renders constantly and a message can leave the document and come back in the same second.
 
+**What an app does to its own messages is not kept.** A deploy status moving through its stages, an alert resolving, a bot rewriting the same line six times a minute: every one of those is an edit, and none of them is somebody taking something back. They also arrive far faster than anything a person does, so a log that keeps them is a log with nothing else visible in it. Only the app's *own* changes — a person reacting to an alert is still a person, and the message arriving in the first place was never an event here. **Keep what apps change about their own messages** turns it back on.
+
 **A reaction is named or it is not recorded.** Watching the screen can see a count move and nothing more — Slack says who reacted only in a tooltip it builds when you hover, in the reader's language and with names rather than ids. So a count moving is not written down: it is what sends this to ask `conversations.history`, which does hand over the ids, and the row is written from that answer with the person on it. "Somebody took a reaction back" answers the only question it raises with a shrug, and a history that cannot say who is no use as a history.
 
 The one case that leaves nothing at all is a reaction with a great many people on it, where Slack truncates the list of ids and the count is all that moved. That is a reaction still sitting on the message for anyone who wants to count it, so silence is the better half of the trade.
@@ -60,6 +62,7 @@ The requests it makes are the ones it cannot avoid: one page of history per chan
 
 | | |
 | --- | --- |
+| **Keep what apps change about their own messages** | Off by default: an app rewriting or removing its own message is not somebody taking something back. |
 | **Leave deleted messages on screen** | The struck-through line where the message was. Off means it is still recorded, quietly. |
 | **Watch statuses and who is in a channel** | The only part that makes requests. Off leaves everything else running. |
 | **Entries to keep** | The cap. The log is in the settings file the loader reads at every launch, so it is not allowed to grow without limit. |

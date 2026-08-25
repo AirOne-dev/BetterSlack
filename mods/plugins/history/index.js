@@ -93,6 +93,19 @@ export default {
     const keep = Math.max(50, Number(api.settings.get('keep', 500)) || 500);
     const showDeleted = api.settings.get('showDeleted', true) !== false;
     const watchPeople = api.settings.get('people', true) !== false;
+    /*
+     * What an app does to its own messages.
+     *
+     * A deploy status moving through its stages, an alert resolving, a bot
+     * rewriting the same message six times a minute: every one of those is an
+     * edit, and none of them is somebody taking something back. It is the
+     * loudest thing on Slack's socket and it fills the log with changes nobody
+     * made.
+     *
+     * Only an app's *own* changes. A person reacting to an alert, or the
+     * message arriving in the first place, is not this.
+     */
+    const watchApps = api.settings.get('apps', false) === true;
 
     api.css(api.assets.text('view.css'));
 
@@ -332,6 +345,13 @@ export default {
           // so this is null for plenty of them. An absent author is shown as
           // one rather than guessed from the message above.
           userId: api.slack.userIdFromMessage(api.slack.describeMessage(element)),
+          /*
+           * Which app posted it, from what the socket and the catch-up were
+           * told. The screen cannot answer this on its own: Slack draws an
+           * app's message like anybody else's with a small badge, and a
+           * follow-up carries no badge at all.
+           */
+          botId: messages.appFor(`${channelId}:${ts}`),
           who: senderName(element),
           reactions: readReactions(element),
         });
@@ -687,7 +707,7 @@ export default {
         const list = Array.isArray(answer?.messages) ? answer.messages : [];
         if (list.length === 0) return;
         const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
-        record(catchUp(snapshots.get(channelId) ?? null, list, { channelId, channelName }));
+        record(catchUp(snapshots.get(channelId) ?? null, list, { channelId, channelName }, { apps: watchApps }));
         snapshots.set(channelId, snapshotOf(list));
       } catch {
         // A conversation this token cannot read is not a failure worth saying
@@ -759,21 +779,27 @@ export default {
     // message said before it is edited or deleted in a channel this client
     // never drew.
     events.onMessage((message) => {
-      messages.remember(`${message.channelId}:${message.ts}`, message.text, message.userId);
+      messages.remember(`${message.channelId}:${message.ts}`, message.text, message.userId, message.botId);
     });
 
-    events.onMessageChanged((edit) => record([{
-      kind: 'edited',
-      ...where(edit.channelId, edit.teamId),
-      ts: edit.ts,
-      before: edit.before,
-      after: edit.after,
-      subject: edit.after,
-      userId: edit.userId,
-      subjectUser: edit.userId,
-    }]));
+    events.onMessageChanged((edit) => {
+      if (edit.botId && !watchApps) return;
+      record([{
+        kind: 'edited',
+        ...where(edit.channelId, edit.teamId),
+        ts: edit.ts,
+        before: edit.before,
+        after: edit.after,
+        subject: edit.after,
+        userId: edit.userId,
+        subjectUser: edit.userId,
+      }]);
+    });
 
     events.onMessageDeleted((gone) => {
+      // An app removing its own message is the same non-event as an app
+      // rewriting one, and Slack names the app on the message it deleted.
+      if ((gone.botId ?? messages.appFor(`${gone.channelId}:${gone.ts}`)) && !watchApps) return;
       // Slack sends `previous_message` with a deletion, so the words are its
       // own account of them. What it does not send is what the message said
       // when the client never received the frame that carried it -- an app
@@ -925,6 +951,10 @@ export default {
       const seen = messages.sweep(readMessages());
       const changes = [];
       for (const change of seen) {
+        // An app rewriting or removing its own message, seen from the screen
+        // this time. Same non-event, same rule.
+        if (change.botId && !watchApps
+          && (change.kind === 'edited' || change.kind === 'deleted')) continue;
         if (change.kind === 'reaction-added' || change.kind === 'reaction-removed') {
           if (change.channelId) wantsAsking.add(change.channelId);
           continue;

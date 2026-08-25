@@ -43,6 +43,14 @@ export interface PostedMessage {
   /** The message it replies to, or null for one in the conversation itself. */
   threadTs: string | null;
   subtype: string | null;
+  /**
+   * The app that posted it, where an app did.
+   *
+   * Worth its own field rather than left in `raw`: an app's message is one
+   * nobody typed, and an app rewriting or removing its own -- a deploy status
+   * moving on, an alert resolving -- is the loudest thing on this socket.
+   */
+  botId: string | null;
   /** Slack's frame, untouched, for anything this shape leaves out. */
   raw: SlackEvent;
 }
@@ -55,6 +63,8 @@ export interface EditedMessage {
   userId: string | null;
   before: string;
   after: string;
+  /** The app whose message this is, where an app posted it. */
+  botId: string | null;
   raw: SlackEvent;
 }
 
@@ -65,6 +75,8 @@ export interface DeletedMessage {
   ts: string;
   userId: string | null;
   text: string;
+  /** The app whose message this was, where an app posted it. */
+  botId: string | null;
   raw: SlackEvent;
 }
 
@@ -290,6 +302,7 @@ export function createSlackEvents(bridge: Pick<Bridge, 'request'>): SlackEvents 
         text: str(event.text),
         threadTs: orNull(event.thread_ts),
         subtype,
+        botId: orNull(event.bot_id) ?? orNull(event.app_id),
         raw: event,
       } satisfies PostedMessage;
     }, handler),
@@ -311,6 +324,8 @@ export function createSlackEvents(bridge: Pick<Bridge, 'request'>): SlackEvents 
         userId: orNull(message.user) ?? orNull(previous.user),
         before,
         after,
+        botId: orNull(message.bot_id) ?? orNull(previous.bot_id)
+          ?? orNull(message.app_id) ?? orNull(previous.app_id),
         raw: event,
       } satisfies EditedMessage;
     }, handler),
@@ -327,6 +342,7 @@ export function createSlackEvents(bridge: Pick<Bridge, 'request'>): SlackEvents 
         ts,
         userId: orNull(previous.user),
         text: str(previous.text),
+        botId: orNull(previous.bot_id) ?? orNull(previous.app_id),
         raw: event,
       } satisfies DeletedMessage;
     }, handler),

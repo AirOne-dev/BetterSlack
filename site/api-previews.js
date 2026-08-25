@@ -3532,6 +3532,7 @@
           text: str(event.text),
           threadTs: orNull(event.thread_ts),
           subtype,
+          botId: orNull(event.bot_id) ?? orNull(event.app_id),
           raw: event
         };
       }, handler),
@@ -3551,6 +3552,7 @@
           userId: orNull(message.user) ?? orNull(previous.user),
           before,
           after,
+          botId: orNull(message.bot_id) ?? orNull(previous.bot_id) ?? orNull(message.app_id) ?? orNull(previous.app_id),
           raw: event
         };
       }, handler),
@@ -3566,6 +3568,7 @@
           ts,
           userId: orNull(previous.user),
           text: str(previous.text),
+          botId: orNull(previous.bot_id) ?? orNull(previous.app_id),
           raw: event
         };
       }, handler),

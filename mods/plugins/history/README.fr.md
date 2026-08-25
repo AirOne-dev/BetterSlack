@@ -32,6 +32,8 @@ Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et tro
 - **Qui sont les voisins vient de leurs horodatages**, pas de l'ordre dans lequel le document les tient. La liste étant virtuelle, un nœud peut se retrouver de l'autre côté de ses propres voisins le temps d'une image pendant que Slack reconstruit la fenêtre, et un ordre cru une fois est mémorisé tant que le canal reste ouvert.
 - **Et seulement après deux passages**, parce que Slack re-rend en permanence et qu'un message peut quitter le document et revenir dans la même seconde.
 
+**Ce qu'une application fait à ses propres messages n'est pas conservé.** Un statut de déploiement qui avance, une alerte qui se résout, un bot qui réécrit six fois la même ligne : chacun est une modification, et aucun n'est quelqu'un qui reprend quelque chose. Ils arrivent aussi bien plus vite que tout ce que fait une personne, donc un journal qui les garde est un journal où plus rien d'autre n'est visible. Uniquement les changements de l'application sur ses *propres* messages — une personne qui réagit à une alerte reste une personne, et l'arrivée du message n'a jamais été un événement ici. **Garder ce que les applications changent dans leurs propres messages** le réactive.
+
 **Une réaction est nommée, ou elle n'est pas enregistrée.** Lire l'écran permet de voir un compte bouger et rien de plus — Slack ne dit qui a réagi que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms plutôt que des identifiants. Un compte qui bouge n'est donc pas écrit : c'est ce qui envoie interroger `conversations.history`, qui donne les identifiants, et la ligne est écrite à partir de cette réponse, avec la personne dessus. « Quelqu'un a retiré une réaction » répond par un haussement d'épaules à la seule question que la ligne pose, et un historique incapable de dire qui ne sert à rien comme historique.
 
 Le seul cas qui ne laisse rien est une réaction portée par un très grand nombre de gens, où Slack tronque la liste des identifiants et où seul le compte a bougé. C'est une réaction toujours posée sur le message pour qui veut la compter, donc le silence est la meilleure moitié de l'échange.
@@ -60,6 +62,7 @@ Les requêtes qu'il fait sont celles qu'il ne peut pas éviter : une page d'hist
 
 | | |
 | --- | --- |
+| **Garder ce que les applications changent dans leurs propres messages** | Désactivé par défaut : une application qui réécrit ou supprime son propre message n'est pas quelqu'un qui reprend quelque chose. |
 | **Laisser les messages supprimés à l'écran** | La ligne barrée là où était le message. Désactivé, il est quand même enregistré, en silence. |
 | **Suivre les statuts et qui est dans un canal** | La seule partie qui fait des requêtes. Désactivée, tout le reste continue. |
 | **Entrées conservées** | Le plafond. Le journal vit dans le fichier de réglages que le chargeur lit à chaque démarrage, il n'a donc pas le droit de grossir sans fin. |

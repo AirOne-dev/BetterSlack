@@ -47,6 +47,7 @@ const WIRE_LIMIT = 3000;
  * @property {string} ts
  * @property {string} text
  * @property {string|null} [userId]
+ * @property {string|null} [botId]               the app that posted it, if any
  * @property {string|null} [who]                 the sender's name as drawn
  * @property {Record<string, number>} [reactions] emoji shortcode to count
  */
@@ -96,6 +97,7 @@ export function createMessageWatcher() {
           text: reading.text,
           reactions,
           userId: reading.userId ?? null,
+          botId: reading.botId ?? null,
           who: reading.who ?? null,
           channelId: reading.channelId,
           ts: reading.ts,
@@ -109,12 +111,14 @@ export function createMessageWatcher() {
       // A userId read off an avatar that had not loaded yet is null; take it
       // whenever it turns up rather than only on the first sighting.
       if (!known.userId && reading.userId) known.userId = reading.userId;
+      if (!known.botId && reading.botId) known.botId = reading.botId;
       if (!known.who && reading.who) known.who = reading.who;
 
       const where = {
         channelId: known.channelId,
         ts: known.ts,
         userId: known.userId,
+        botId: known.botId ?? null,
         who: known.who,
       };
 
@@ -233,6 +237,7 @@ export function createMessageWatcher() {
           kind: 'deleted',
           channelId: known.channelId,
           ts: known.ts,
+          botId: known.botId ?? null,
           before: known.text,
           subject: known.text,
           userId: known.userId,
@@ -289,15 +294,24 @@ export function createMessageWatcher() {
      * and capped, because it holds every message in every conversation this
      * client is in and nothing here is worth a slower start tomorrow.
      */
-    remember: (key, text, userId) => {
+    remember: (key, text, userId, botId) => {
       if (!key) return;
       wire.delete(key);
-      wire.set(key, { text: String(text ?? ''), userId: userId ?? null });
+      wire.set(key, { text: String(text ?? ''), userId: userId ?? null, botId: botId ?? null });
       if (wire.size > WIRE_LIMIT) {
         for (const old of [...wire.keys()].slice(0, wire.size - WIRE_LIMIT)) wire.delete(old);
       }
     },
     textFor: (key) => wire.get(key)?.text ?? null,
+    /**
+     * Whether an app posted this message, as far as anything has been told.
+     *
+     * The screen cannot answer it: Slack draws an app's message like anybody
+     * else's with a small badge, and a follow-up has no badge at all. The
+     * socket and `conversations.history` both say it outright, so what they
+     * said is what the screen-reading half asks.
+     */
+    appFor: (key) => wire.get(key)?.botId ?? null,
     /** How many messages are being watched. The page shows it; tests read it. */
     watching: () => seen.size,
     forget: () => { seen.clear(); order.clear(); wire.clear(); },

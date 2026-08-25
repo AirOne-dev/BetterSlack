@@ -337,7 +337,7 @@ window.CATALOGUE = {
       "requires": [],
       "icon": "<svg viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\">\n  <path d=\"M10 3.2a6.8 6.8 0 1 1-6.6 8.4\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/>\n  <path d=\"M3.4 7.6 3.2 4.4M3.4 7.6l3.2-.4\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n  <path d=\"M10 6.8V10l2.3 2.3\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n</svg>",
       "shot": "shots/mods/history.webp",
-      "settings": 5
+      "settings": 6
     },
     {
       "id": "member-sidebar",

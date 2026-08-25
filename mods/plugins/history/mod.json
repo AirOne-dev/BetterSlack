@@ -75,6 +75,19 @@
       }
     },
     {
+      "key": "apps",
+      "type": "boolean",
+      "default": false,
+      "label": "Keep what apps change about their own messages",
+      "labels": {
+        "fr": "Garder ce que les applications changent dans leurs propres messages"
+      },
+      "hint": "A deploy status moving through its stages, an alert resolving, a bot rewriting the same line six times a minute: every one is an edit, and none is somebody taking something back. Off, an app’s own edits and deletions are ignored — a person reacting to one still is not.",
+      "hints": {
+        "fr": "Un statut de déploiement qui avance, une alerte qui se résout, un bot qui réécrit six fois la même ligne : chacun est une modification, et aucun n’est quelqu’un qui reprend quelque chose. Désactivé, les modifications et suppressions faites par une application sur ses propres messages sont ignorées — une personne qui réagit à l’une d’elles, non."
+      }
+    },
+    {
       "key": "showDeleted",
       "type": "boolean",
       "label": "Leave deleted messages on screen",

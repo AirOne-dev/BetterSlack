@@ -1068,3 +1068,78 @@ test('a deleted message is its words with a tag, not a sentence about them', asy
     dom.cleanup();
   }
 });
+
+test('an app rewriting its own message is not somebody taking something back', async () => {
+  /*
+   * The loudest thing on Slack's socket: a deploy status moving through its
+   * stages, an alert resolving, a bot rewriting the same line six times a
+   * minute. Every one is an edit and none of them is news, and they arrive far
+   * faster than anything a person does -- so a log that keeps them is a log
+   * with nothing else visible in it.
+   *
+   * Only an app's own changes. A person reacting to an alert is still a person.
+   */
+  const dom = installDom();
+  const { api, recorded } = createTestApi({ files: FILES, settings: { people: false } });
+  try {
+    await plugin.start(api);
+    recorded.emitSlackEvent({
+      type: 'message', subtype: 'bot_message', channel: 'C1', ts: '1.000100',
+      bot_id: 'B0DEPLOY', username: 'Deploy', text: 'building',
+    });
+    recorded.emitSlackEvent({
+      type: 'message', subtype: 'message_changed', channel: 'C1',
+      previous_message: { ts: '1.000100', bot_id: 'B0DEPLOY', text: 'building' },
+      message: { ts: '1.000100', bot_id: 'B0DEPLOY', text: 'deployed' },
+    });
+    recorded.emitSlackEvent({
+      type: 'message', subtype: 'message_deleted', channel: 'C1', deleted_ts: '1.000100',
+      previous_message: { ts: '1.000100', bot_id: 'B0DEPLOY', text: 'deployed' },
+    });
+    // A person reacting to what an app posted is a person.
+    recorded.emitSlackEvent({
+      type: 'reaction_added', user: 'U1', reaction: 'tada',
+      item: { type: 'message', channel: 'C1', ts: '1.000100' },
+    });
+    // And a person's own message still counts for everything.
+    recorded.emitSlackEvent({
+      type: 'message', channel: 'C1', ts: '2.000100', user: 'U1', text: 'first',
+    });
+    recorded.emitSlackEvent({
+      type: 'message', subtype: 'message_changed', channel: 'C1',
+      previous_message: { ts: '2.000100', user: 'U1', text: 'first' },
+      message: { ts: '2.000100', user: 'U1', text: 'second' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const log = api.settings.get('entries', []);
+    assert.deepEqual(log.map((entry) => entry.kind).sort(), ['edited', 'reaction-added']);
+    assert.equal(log.find((entry) => entry.kind === 'edited').ts, '2.000100',
+      'the person’s message, not the app’s');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('a catch-up skips what an app did to its own messages, and nothing else', () => {
+  const was = snapshotOf([
+    said('3', 'alerting', { bot_id: 'B0ALERT' }),
+    said('2', 'kept'),
+    said('1', 'mine'),
+  ]);
+  const now = [said('3', 'resolved', { bot_id: 'B0ALERT' }), said('1', 'edited')];
+
+  assert.deepEqual(
+    catchUp(was, now, { channelId: 'C1', channelName: null }).map((e) => [e.kind, e.ts]),
+    // Oldest first, which is the order a run of them happened in.
+    [['edited', '1'], ['deleted', '2']],
+    'the app’s edit and nothing about it; the person’s edit and the deletion stay',
+  );
+
+  // And the setting opens it back up.
+  assert.deepEqual(
+    catchUp(was, now, { channelId: 'C1', channelName: null }, { apps: true }).map((e) => e.ts).sort(),
+    ['1', '2', '3'],
+  );
+});

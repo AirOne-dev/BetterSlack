@@ -41,6 +41,9 @@ export function snapshotOf(messages) {
     out[message.ts] = {
       text: String(message.text ?? ''),
       user: message.user ?? null,
+      // Which app posted it, where one did. An app rewriting its own message
+      // -- a deploy status moving on, an alert resolving -- is not news.
+      botId: message.bot_id ?? message.app_id ?? null,
       editedAt: message.edited?.ts ?? null,
       reactions: Object.fromEntries((message.reactions ?? [])
         .filter((reaction) => reaction?.name)
@@ -60,7 +63,8 @@ export function snapshotOf(messages) {
  * @param {object[]} messages what `conversations.history` answers now
  * @param {{ channelId: string, channelName: string|null }} where
  */
-export function catchUp(before, messages, where) {
+export function catchUp(before, messages, where, options = {}) {
+  const { apps = false } = options;
   // Nothing to compare against is not "everything changed": a first visit has
   // to be the baseline or opening a busy channel writes a hundred events for
   // things that happened before this mod existed.
@@ -105,6 +109,9 @@ export function catchUp(before, messages, where) {
 
     if (!is) {
       if (!oldest || ts < oldest) continue;
+      // An app removing its own message -- a status superseded, an alert
+      // resolved -- is not somebody taking something back.
+      if (was.botId && !apps) continue;
       events.push({
         kind: 'deleted',
         channelId: where.channelId,
@@ -113,6 +120,7 @@ export function catchUp(before, messages, where) {
         before: was.text,
         subject: was.text,
         userId: was.user ?? null,
+        botId: was.botId ?? null,
         subjectUser: was.user ?? null,
         ...neighbours(ts),
       });
@@ -123,7 +131,7 @@ export function catchUp(before, messages, where) {
     // what Slack itself records, so either is enough -- a message edited back
     // to what it said before is still an edit, and only the stamp shows it.
     if (was.text !== is.text || (is.editedAt && is.editedAt !== was.editedAt)) {
-      if (was.text !== is.text) {
+      if (was.text !== is.text && (!(is.botId ?? was.botId) || apps)) {
         events.push({
           kind: 'edited',
           channelId: where.channelId,
@@ -133,6 +141,7 @@ export function catchUp(before, messages, where) {
           after: is.text,
           subject: is.text,
           userId: is.user ?? was.user ?? null,
+          botId: is.botId ?? was.botId ?? null,
           subjectUser: is.user ?? was.user ?? null,
         });
       }
