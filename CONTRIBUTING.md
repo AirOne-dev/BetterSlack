@@ -68,6 +68,10 @@ custom ones have no unicode to fall back on, so show the text without them.
 
 - Network calls to anywhere other than a clearly stated, purpose-obvious
   endpoint — and never with message content, tokens or workspace identifiers.
+- Listening to Slack's realtime socket (`api.slack.onEvent`) for anything other
+  than what the mod visibly does with it. It carries every message in every
+  conversation you are in, so a mod that asks for `message` and shows nothing
+  from it is a mod nobody can check by using it.
 - Reading `localStorage`, cookies, or the session token directly, instead of
   going through `api.slack.web`.
 - Obfuscated, minified or generated code. Submit the source a human can read.

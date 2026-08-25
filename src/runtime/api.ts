@@ -4,7 +4,7 @@
 // the plugin is disabled, so toggling a plugin off really does leave the DOM as
 // it was found.
 
-import { SLACK_PREFS, type ModFiles, type ModRecord, type Settings } from '../shared/protocol.js';
+import { SLACK_PREFS, type ModFiles, type ModRecord, type Settings, type SlackEvent } from '../shared/protocol.js';
 import { h, keepMounted, onEach, onShortcut, waitFor, type Cleanup } from './dom.js';
 import { collectCleanups } from './plugins.js';
 import { createHelpers, type Helpers } from './helpers.js';
@@ -300,6 +300,8 @@ export interface PluginApi {
 }
 
 export interface ApiContext {
+  /** Subscribe to Slack's own realtime events. Returns a cleanup. */
+  onSlackEvent(types: string[], handler: (event: SlackEvent) => void): Cleanup;
   version: string;
   /** The mod's folder, as read by the loader. */
   files: ModFiles;
@@ -408,6 +410,28 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
         restart: () => ctx.restartSlack(),
         // Both install observers; tie them to the plugin lifecycle so disabling
         // the plugin really does remove its buttons.
+        /**
+         * Slack's own realtime events, for the conversations you are in.
+         *
+         * Slack keeps a socket per workspace and pushes everything that
+         * happens in every one of them down it -- a message, an edit, a
+         * deletion, a reaction -- whether or not that conversation is open. It
+         * is how the unread badges move without you looking, and it is the
+         * only way for a mod to know about a conversation it is not in front
+         * of without asking Slack for it conversation by conversation.
+         *
+         * **Listening is not reading.** Slack marks a conversation read when
+         * its client sends `conversations.mark`; being told a message exists
+         * sends nothing at all, so a mod can watch every conversation and
+         * leave every unread exactly where it was.
+         *
+         * The types are Slack's own -- `message` (with `subtype`
+         * `message_changed` or `message_deleted`), `reaction_added`,
+         * `reaction_removed` -- and nothing is forwarded until something asks:
+         * the loader does not switch its tap on until the first listener.
+         */
+        onEvent: (types: string[], handler: (event: SlackEvent) => void) =>
+          track(() => ctx.onSlackEvent(types, handler))(),
         addMessageAction: track(slack.addMessageAction.bind(slack)),
         addToolbarButton: track(slack.addToolbarButton.bind(slack)) as SlackApi['addToolbarButton'],
         addProfileButton: track(slack.addProfileButton.bind(slack)),

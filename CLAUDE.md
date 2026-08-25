@@ -1157,6 +1157,40 @@ tests fail below it.
   themes into the others -- stylesheet only, no runtime, no panel, no plugins.
   Without it the huddle preview sits in Slack's default colours in the middle
   of a themed app. `Target.getTargets` is how you see them at all.
+- **Slack's realtime socket is readable, and only from the loader.** Slack keeps
+  one `wss://wss-primary.slack.com` socket **per workspace**, opened in the page
+  (no worker), and pushes everything that happens in every conversation you are
+  a member of down it -- open or not, in the workspace on screen or not.
+  Measured on a live client: a `message` for `C025UJ707` arrived while the
+  window was showing `C0BQ8AG3771` in another workspace entirely. It is how the
+  sidebar's unread badges move without you looking.
+
+  **The page cannot see it**, which is why the earlier attempt at intercepting
+  `fetch`, XHR and `WebSocket` came back empty: Slack's own bundle opens the
+  socket before anything else runs, so patching the constructor catches
+  nothing. `Network.enable` plus `Network.webSocketFrameReceived` on the client
+  session sees the frames whatever the bundle does. Enable it with
+  `maxTotalBufferSize: 1` and friends, or Chromium holds every response body in
+  the client in memory for a `getResponseBody` nobody calls.
+
+  **Reading it marks nothing read.** Slack marks a conversation read when its
+  client sends `conversations.mark`; being told a message exists sends nothing.
+  That is the whole reason `api.slack.onEvent` exists rather than a mod opening
+  conversations to look at them, which would empty every unread badge.
+
+  Three things it is easy to get wrong. **The socket's URL carries the `xoxc`
+  token** as a query parameter, so it may never be logged or forwarded -- only
+  `gateway_server=T…`, which names the workspace, is taken out of it.
+  **`message_changed` is not always an edit**: an unfurl attaching sends one
+  too, so the text has to have actually moved. And **the socket's text is
+  Slack's markup while the screen's is rendered** (`<@U…>` against a name), so
+  the two readings of one message must never be compared with each other --
+  they differ for every message with a mention in it, which reads as an edit by
+  somebody who wrote nothing.
+
+  The filter is the union of what mods asked for, and nothing is forwarded
+  until something asks: `Network.enable` is not even sent before the first
+  listener.
 - **Discovering the API surface beats intercepting it.** Slack answers
   `unknown_method` for what does not exist and an argument error for what does,
   so calling a candidate with no arguments maps the surface without performing
@@ -1297,7 +1331,8 @@ Shape of it:
   rail), `addToolbarButton` (controlStrip / composer /
   channelHeader, with `before` to sit above another button), `addMessageAction`,
   `addProfileButton`, `describeMessage`, `userIdFromMessage`,
-  `currentChannelId`, `composer`, `web`, `selectors`, `renderMrkdwn`.
+  `currentChannelId`, `composer`, `web`, `selectors`, `renderMrkdwn`,
+  `onEvent` (Slack's realtime socket -- see the section above).
 - `api.ui` — `toast`, `modal`, `confirm`, `tooltip`, in shadow roots.
 - `api.i18n` — `strings({ en, fr, ... })` returns `t(key, vars)`; `locale` and
   `language` come from Slack's `<html lang>`, never from `localConfig_v2` (that

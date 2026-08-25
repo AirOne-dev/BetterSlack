@@ -10,6 +10,7 @@ import type { Cleanup } from './dom.js';
 import { h, keepMounted, onEach, waitFor } from './dom.js';
 import { createI18n } from './i18n.js';
 import { renderMrkdwn, type MrkdwnOptions } from './mrkdwn.js';
+import type { SlackEvent } from '../shared/protocol.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
 import { VIEW_CSS } from './ui/styles.js';
 import { PANEL_STRINGS } from './ui/strings.js';
@@ -1063,6 +1064,15 @@ export interface SlackApi {
    * whatever the caller already knows about the workspace is what is drawn.
    */
   renderMrkdwn(text: string, options?: MrkdwnOptions): DocumentFragment;
+
+  /**
+   * Slack's own realtime events, for every conversation you are in.
+   *
+   * See the note on the implementation in `api.ts`: it is filled in there
+   * rather than here, because the subscription is the runtime's and not
+   * Slack's chrome.
+   */
+  onEvent(types: string[], handler: (event: SlackEvent) => void): Cleanup;
   /** The channel currently open, read from the client URL. */
   currentChannelId(): string | null;
   /**
@@ -1293,6 +1303,16 @@ export function createSlackApi(pluginId: string): SlackApi {
     composer,
     describeStatus,
     renderMrkdwn: (text, options) => renderMrkdwn(text, options),
+    /*
+     * Replaced by `createPluginApi`, which has the bridge.
+     *
+     * The socket is the loader's -- the page cannot see it -- so a SlackApi
+     * built on its own has no way to reach the events. Answering with a
+     * cleanup that does nothing rather than throwing: the docs page builds one
+     * of these to draw its previews, and a preview may not be the thing that
+     * decides whether an API member exists.
+     */
+    onEvent: () => () => {},
     statusNode,
     emojiUrl: (name, customEmoji) => {
       const clean = String(name ?? '').replace(/^:|:$/g, '').trim();

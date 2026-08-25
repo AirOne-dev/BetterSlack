@@ -74,6 +74,7 @@ from exactly these numbers and what the mod calls.
 - [`emojiUrl`](api/slack-emojiurl.md) — An image for an emoji name, or `null` when nothing can draw it. The colons are _(since 3.0.0)_
 - [`filesFrom`](api/slack-filesfrom.md) — The files somebody shared, newest first. `limit` caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw. _(since 2.0.1)_
 - [`hideConversation`](api/slack-hideconversation.md) — Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave. _(since 2.0.1)_
+- [`onEvent`](api/slack-onevent.md) — Slack keeps a socket per workspace and pushes everything that happens in every conversation you are in down it — a message, an edit, a deletion, a reaction — whether or not that conversation is open. It is how the unread badges in the sidebar move without you looking at them, and it is the only way for a mod to know about a conversation it is not in front of without asking Slack for it one conversation at a time. _(unreleased)_
 - [`openConversation`](api/slack-openconversation.md) — Move the client to a conversation, without a page load. _(since 2.0.1)_
 - [`openDirectMessage`](api/slack-opendirectmessage.md) — Open the direct message with someone, creating it if there is none. _(since 2.0.1)_
 - [`openMessage`](api/slack-openmessage.md) — Move the client to one message, and highlight it. The same deep link _(since 3.0.0)_

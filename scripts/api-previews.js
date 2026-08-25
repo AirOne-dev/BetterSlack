@@ -684,6 +684,37 @@ const CHROME = {
       return undefined;
     },
   },
+  'slack-onevent': {
+    render: (v) => {
+      /*
+       * The frame Slack sends, since a web page has no socket to listen to.
+       * Its shape is the thing worth showing: what a handler is handed, and
+       * where the words are in it -- `previous_message` on an edit, `item` on
+       * a reaction -- which is what a reader comes to this entry to find out.
+       */
+      const frames = {
+        message: { type: 'message', channel: 'C0BQ8AG3771', ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it', team: 'T025V5WN2' },
+        message_changed: {
+          type: 'message', subtype: 'message_changed', channel: 'C0BQ8AG3771',
+          previous_message: { ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it' },
+          message: { ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it *tomorrow*', edited: { user: 'U04ED8UPV', ts: '1787645702.000000' } },
+        },
+        message_deleted: {
+          type: 'message', subtype: 'message_deleted', channel: 'C0BQ8AG3771',
+          deleted_ts: '1787645635.864779',
+          previous_message: { ts: '1787645635.864779', user: 'U04ED8UPV', text: 'shipping it' },
+        },
+        reaction_added: { type: 'reaction_added', user: 'U02NTAZJXKP', reaction: 'tada', item: { type: 'message', channel: 'C0BQ8AG3771', ts: '1787645635.864779' }, event_ts: '1787645640.000100' },
+        reaction_removed: { type: 'reaction_removed', user: 'U02NTAZJXKP', reaction: 'tada', item: { type: 'message', channel: 'C0BQ8AG3771', ts: '1787645635.864779' }, event_ts: '1787645912.000200' },
+      };
+      const pane = kit.el('pre', { class: 'pg__out' });
+      pane.textContent = JSON.stringify(frames[v.kind] ?? frames.message, null, 2);
+      return kit.el('div', {}, [
+        pane,
+        stubbed('The frames are Slack’s own shape; there is no socket to listen to on a web page.'),
+      ]);
+    },
+  },
   'slack-rendermrkdwn': {
     render: (v) => {
       const line = kit.el('div', { style: 'line-height:1.5; word-break:break-word' });

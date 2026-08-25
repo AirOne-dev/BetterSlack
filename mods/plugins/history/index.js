@@ -527,9 +527,18 @@ export default {
         else if (ts < entry.ts) { if (!older || ts > older.ts) older = { node, ts }; }
       }
       if (newer) return { node: newer.node, after: false };
-      // Recorded as having had something after it, so its place is above a
-      // message this window is not showing. A stored neighbour older than the
-      // message itself is not one: it says nothing about what followed.
+      /*
+       * Nothing newer is drawn, so hanging it under the newest that is only
+       * works if that really was the end of the conversation.
+       *
+       * The screen watcher records `nextTs` as null when there was nothing
+       * after it, which is the deletion this covers. A stored neighbour *older*
+       * than the message itself says nothing about what followed -- it is a
+       * remembered order that was wrong -- and neither does a deletion Slack's
+       * socket reported, which names no neighbours at all. Both are treated as
+       * "unknown, and the bottom is the best guess", which is right unless the
+       * window is scrolled away from the bottom.
+       */
       const hadNext = Boolean(entry.nextTs) && entry.nextTs > entry.ts;
       if (!hadNext && older) return { node: older.node, after: true };
       return null;
@@ -556,7 +565,11 @@ export default {
       if (!showDeleted) return;
       const wanted = new Map();
       for (const entry of log) {
-        if (entry.kind !== 'deleted' || (!entry.nextTs && !entry.previousTs)) continue;
+        // Every deletion, including one Slack's socket reported with no
+        // neighbours at all: where it goes is worked out from the screen. It
+        // still needs to say which conversation it was in, which is what the
+        // line is hung off.
+        if (entry.kind !== 'deleted' || !entry.channelId || !entry.ts) continue;
         const key = `${entry.channelId}:${entry.ts}`;
         if (dismissed.has(key) || wanted.has(key)) continue;
         wanted.set(key, entry);
@@ -670,6 +683,101 @@ export default {
         void catchUpOn(channelId);
       }
     };
+
+    /*
+     * Everything Slack tells this client, for every conversation it is in.
+     *
+     * This is what makes the mod work in a channel you have not opened. The
+     * screen only ever knew what was drawn, and the catch-up only ever knew
+     * the channels you visited; Slack's own socket carries a message, an edit,
+     * a deletion and a reaction for every conversation you are a member of,
+     * open or not, in every workspace you are signed into.
+     *
+     * **Nothing is marked read by any of it.** Slack marks a conversation read
+     * when its client sends `conversations.mark`; being told a message exists
+     * sends nothing. That is the difference between this and the obvious
+     * alternative of opening conversations to look at them, which would empty
+     * every unread badge you have.
+     *
+     * The screen and the catch-up stay. They are what covers the case this
+     * cannot: a conversation you are *not* in, and anything that happened
+     * while Slack was closed.
+     */
+    const fromSocket = (event) => {
+      const channelId = event.channel ?? event.item?.channel ?? null;
+      if (!channelId) return;
+      const ts = event.ts ?? event.item?.ts ?? null;
+
+      if (event.type === 'reaction_added' || event.type === 'reaction_removed') {
+        // The event names the person, which the screen never can. `item.ts` is
+        // the message reacted to; `ts` on the event itself is when it happened.
+        if (!event.item?.ts || !event.user) return;
+        record([{
+          kind: event.type === 'reaction_added' ? 'reaction-added' : 'reaction-removed',
+          channelId,
+          channelName: channelNames.get(channelId) ?? null,
+          ts: event.item.ts,
+          emoji: `:${event.reaction}:`,
+          userId: event.user,
+        }]);
+        return;
+      }
+
+      if (event.type !== 'message') return;
+      if (event.subtype === 'message_changed') {
+        // Slack sends both wordings with an edit, which is the honest source.
+        const before = String(event.previous_message?.text ?? '')
+          || messages.textFor(`${channelId}:${event.message?.ts}`);
+        const after = String(event.message?.text ?? '');
+        // Slack sends a `message_changed` for things that are not edits at
+        // all -- an unfurl arriving is one -- so the text has to have moved,
+        // and there has to be something to compare it against.
+        if (!before || before === after) return;
+        record([{
+          kind: 'edited',
+          channelId,
+          channelName: channelNames.get(channelId) ?? null,
+          ts: event.message?.ts ?? ts,
+          before,
+          after,
+          subject: after,
+          userId: event.message?.user ?? null,
+          subjectUser: event.message?.user ?? null,
+        }]);
+        return;
+      }
+
+      if (event.subtype === 'message_deleted') {
+        const gone = event.deleted_ts ?? event.previous_message?.ts ?? null;
+        const said = String(event.previous_message?.text ?? '')
+          || messages.textFor(`${channelId}:${gone}`);
+        if (!gone || !said) return;
+        record([{
+          kind: 'deleted',
+          channelId,
+          channelName: channelNames.get(channelId) ?? null,
+          ts: gone,
+          before: said,
+          subject: said,
+          userId: event.previous_message?.user ?? null,
+          subjectUser: event.previous_message?.user ?? null,
+        }]);
+        return;
+      }
+
+      // An ordinary message, remembered rather than recorded: it is not an
+      // event anybody wants in a history, and it is the only thing that can
+      // say what a message said before it is edited or deleted in a channel
+      // this client never drew.
+      if (!event.subtype || event.subtype === 'bot_message') {
+        if (ts) messages.remember(`${channelId}:${ts}`, String(event.text ?? ''), event.user ?? null);
+      }
+    };
+
+    api.slack.onEvent(
+      ['message', 'reaction_added', 'reaction_removed'],
+      (event) => { try { fromSocket(event); } catch { /* one bad frame is not a failure */ } },
+    );
 
     /** The channel the last sweep saw, so opening another one triggers a look. */
     let lastChannel = null;

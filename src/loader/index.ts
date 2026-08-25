@@ -45,6 +45,7 @@ import {
   RECEIVER_NAME,
   type Envelope,
   type Event as PushEvent,
+  type SlackEvent,
   type LoaderInfo,
   type ModRecord,
   type ModFiles,
@@ -127,6 +128,16 @@ interface Attachment {
   scriptId?: string;
   /** In-flight repair, so two load events cannot inject twice. */
   healing?: Promise<void>;
+  /**
+   * Which of Slack's realtime event types this renderer asked for.
+   *
+   * Empty until a mod asks, and the tap is not even switched on before then:
+   * `Network.enable` is what makes Chromium report frames at all, so a client
+   * with nothing listening does not pay for the machinery.
+   */
+  watch: Set<string>;
+  /** Whether `Network.enable` has been sent on this session. */
+  tapping?: boolean;
 }
 
 class Loader {
@@ -551,9 +562,11 @@ class Loader {
       console.warn(`[betterslack] could not attach to ${target.targetId}: ${(err as Error).message}`);
       return;
     }
-    const attachment: Attachment = { session };
+    const attachment: Attachment = { session, watch: new Set() };
     this.attachments.set(target.targetId, attachment);
     session.on('__closed', () => this.attachments.delete(target.targetId));
+    this.listenForSlackEvents(attachment);
+
 
     await session.send('Runtime.enable');
     await session.send('Page.enable');
@@ -1204,6 +1217,29 @@ class Loader {
         return { ok: true, detail: manifest.version };
       }
 
+      case 'slack.watch': {
+        const attachment = [...this.attachments.values()].find((a) => a.session === session);
+        if (!attachment) return null;
+        attachment.watch = new Set(request.types.filter((type) => typeof type === 'string'));
+        /*
+         * Switched on the first time somebody asks, and never off again.
+         *
+         * `Network.enable` is what makes Chromium report frames, and the
+         * buffers are set to nothing because the only thing wanted here is the
+         * frame events: left at their defaults, Chromium holds every response
+         * body in this client in memory for a `getResponseBody` nobody calls.
+         */
+        if (attachment.watch.size > 0 && !attachment.tapping) {
+          attachment.tapping = true;
+          await session.send('Network.enable', {
+            maxTotalBufferSize: 1,
+            maxResourceBufferSize: 1,
+            maxPostDataSize: 1,
+          }).catch(() => { attachment.tapping = false; });
+        }
+        return { ok: true, detail: String(attachment.watch.size) };
+      }
+
       case 'app.ready':
         // The renderer got all the way up, so this run is not the one that
         // needs a safe start next time.
@@ -1267,6 +1303,62 @@ class Loader {
     await session
       .evaluate(`window.${RECEIVER_NAME} && window.${RECEIVER_NAME}(${JSON.stringify(json)})`, false)
       .catch(() => undefined);
+  }
+
+  /**
+   * Slack's own realtime events, forwarded to the renderer.
+   *
+   * Slack keeps a socket per workspace and pushes everything that happens in
+   * every conversation you are in down it -- a message, an edit, a deletion, a
+   * reaction -- whether or not that conversation is open. Measured against a
+   * live client: a `message` for a channel in a workspace the window was not
+   * even showing arrived while the client sat on another one. It is how the
+   * unread badges move without you looking.
+   *
+   * **It has to be read here, because the page cannot read it.** Slack's own
+   * bundle opens the socket before anything else runs, so patching `WebSocket`
+   * in the renderer catches nothing -- which is why an earlier attempt at this
+   * from the page came back empty. The debugging protocol reports the frames
+   * whatever the bundle does.
+   *
+   * **And reading is not reading.** Being told about a message is not opening
+   * it: Slack marks a conversation read when its client sends
+   * `conversations.mark`, and nothing here sends anything at all.
+   *
+   * Two things this must never do, both about the same secret: the socket's
+   * URL carries the `xoxc` token as a query parameter, so the URL is never
+   * logged and never leaves this function -- only the workspace id is taken
+   * out of it -- and frames are only forwarded for the types a mod asked for.
+   */
+  private listenForSlackEvents(attachment: Attachment): void {
+    const { session } = attachment;
+    /** Socket id to workspace, so an event says which Slack it belongs to. */
+    const teams = new Map<string, string>();
+
+    session.on('Network.webSocketCreated', (params: { requestId?: string; url?: string }) => {
+      // `gateway_server=T025V5WN2-3` names the workspace, and is the only part
+      // of that URL worth keeping. The rest of it is the token.
+      const team = /[?&]gateway_server=(T[A-Z0-9]+)/.exec(String(params?.url ?? ''))?.[1];
+      if (params?.requestId && team) teams.set(params.requestId, team);
+    });
+
+    session.on('Network.webSocketFrameReceived', (params: {
+      requestId?: string;
+      response?: { opcode?: number; payloadData?: string };
+    }) => {
+      if (attachment.watch.size === 0) return;
+      // Opcode 1 is text. Slack sends JSON; anything else is not for us.
+      if (params?.response?.opcode !== 1) return;
+      let event: SlackEvent;
+      try {
+        event = JSON.parse(String(params.response.payloadData)) as SlackEvent;
+      } catch {
+        return;
+      }
+      if (typeof event?.type !== 'string' || !attachment.watch.has(event.type)) return;
+      const team = params.requestId ? teams.get(params.requestId) : undefined;
+      void this.post(session, { payload: { type: 'slack.event', event: { ...event, teamId: team } } });
+    });
   }
 
   private broadcast(event: PushEvent): void {

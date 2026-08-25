@@ -404,7 +404,16 @@ export type Request =
   /** Fetch one mod's folder from the branch and install it over the old one. */
   | { type: 'mods.update'; id: string }
   /** The renderer saying it got all the way up, which clears the crash marker. */
-  | { type: 'app.ready' };
+  | { type: 'app.ready' }
+  /**
+   * Which of Slack's own realtime events the renderer wants forwarded.
+   *
+   * A filter rather than a firehose, set by the runtime from what the enabled
+   * mods have asked for, and re-sent whenever that changes. Empty means
+   * nothing is forwarded at all, which is the state a client with no mod
+   * listening should be in: the tap costs nothing when nobody is on it.
+   */
+  | { type: 'slack.watch'; types: string[] };
 
 /** Push notifications the loader sends to the renderer unprompted. */
 export type Event =
@@ -423,7 +432,48 @@ export type Event =
    * open the panel and read, and the badge on the launcher could never count
    * them at all.
    */
-  | { type: 'mods.updates'; updates: ModUpdate[] };
+  | { type: 'mods.updates'; updates: ModUpdate[] }
+  /**
+   * One of Slack's own realtime events, as Slack sent it.
+   *
+   * Slack keeps a socket per workspace and pushes everything that happens in
+   * every conversation you are in down it -- a message, an edit, a deletion, a
+   * reaction -- whether or not that conversation is open. It is how the unread
+   * badges in the sidebar move without you looking. Reading it is passive:
+   * being told about a message is not reading it, and nothing here ever sends
+   * `conversations.mark`, so nothing is marked read.
+   *
+   * It arrives here rather than in the page because the page cannot see it.
+   * The socket is opened by Slack's own bundle before anything else runs, so
+   * patching `WebSocket` in the renderer catches nothing -- measured. The
+   * loader reads the frames off the debugging protocol instead, which sees
+   * them whatever the bundle does.
+   *
+   * The socket's URL carries the `xoxc` token, and it is never sent here or
+   * logged anywhere: only the parsed frame travels, and only for the types the
+   * renderer asked for.
+   */
+  | { type: 'slack.event'; event: SlackEvent };
+
+/**
+ * A frame off one of Slack's realtime sockets.
+ *
+ * Slack's own shape, passed through rather than translated: `type` and an
+ * optional `subtype` (`message_changed`, `message_deleted`), a `channel`, and
+ * for a reaction an `item` holding the message it is about. Everything else is
+ * whatever Slack sent, because a translation layer here would be a second
+ * place to keep in step with an API nobody publishes.
+ */
+export interface SlackEvent {
+  type: string;
+  subtype?: string;
+  channel?: string;
+  ts?: string;
+  user?: string;
+  /** The workspace the socket belongs to, which the frame itself may not say. */
+  teamId?: string;
+  [key: string]: unknown;
+}
 
 export interface Envelope {
   /** Correlation id; absent on pushed events. */

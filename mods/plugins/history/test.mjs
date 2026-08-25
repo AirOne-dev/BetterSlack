@@ -867,3 +867,91 @@ test('the last message in a conversation leaves its line at the bottom', async (
     dom.cleanup();
   }
 });
+
+test('a conversation you never opened is recorded, from Slack’s own socket', async () => {
+  /*
+   * The mod's whole limit, lifted. Reading the screen only ever knew what was
+   * drawn, and the catch-up only ever knew the channels you visited -- so
+   * "why is this not in my history" was answered by "you were elsewhere".
+   *
+   * Slack keeps a socket per workspace and pushes a message, an edit, a
+   * deletion and a reaction for every conversation you are in, open or not.
+   * And listening marks nothing read: Slack marks a conversation read when its
+   * client sends `conversations.mark`, and being told a message exists sends
+   * nothing at all.
+   */
+  const dom = installDom();
+  const { api, recorded } = createTestApi({ files: FILES, settings: { people: false } });
+  try {
+    await plugin.start(api);
+    const asked = recorded.slackEvents.flatMap((sub) => sub.types).sort();
+    assert.deepEqual(asked, ['message', 'reaction_added', 'reaction_removed'],
+      'and only those: nothing is forwarded that nobody asked for');
+
+    // A channel in a workspace this window is not even showing.
+    recorded.emitSlackEvent({
+      type: 'message', channel: 'C0FARAWAY', ts: '100.000100', user: 'U1', text: 'the first wording',
+    });
+    recorded.emitSlackEvent({
+      type: 'message',
+      subtype: 'message_changed',
+      channel: 'C0FARAWAY',
+      previous_message: { ts: '100.000100', user: 'U1', text: 'the first wording' },
+      message: { ts: '100.000100', user: 'U1', text: 'the second wording' },
+    });
+    recorded.emitSlackEvent({
+      type: 'reaction_removed', channel: 'C0FARAWAY', user: 'U2',
+      reaction: 'tada', item: { type: 'message', channel: 'C0FARAWAY', ts: '100.000100' },
+    });
+    recorded.emitSlackEvent({
+      type: 'message',
+      subtype: 'message_deleted',
+      channel: 'C0FARAWAY',
+      deleted_ts: '100.000100',
+      previous_message: { ts: '100.000100', user: 'U1', text: 'the second wording' },
+    });
+
+    // The log is written through a debounce, which is what keeps a busy
+    // channel from rewriting the settings file on every frame.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const log = api.settings.get('entries', []);
+    const kinds = log.map((entry) => entry.kind).sort();
+    assert.deepEqual(kinds, ['deleted', 'edited', 'reaction-removed']);
+
+    const edit = log.find((entry) => entry.kind === 'edited');
+    assert.equal(edit.before, 'the first wording', 'both wordings, which Slack sends');
+    assert.equal(edit.after, 'the second wording');
+    assert.equal(edit.channelId, 'C0FARAWAY');
+
+    const took = log.find((entry) => entry.kind === 'reaction-removed');
+    assert.equal(took.userId, 'U2', 'and the socket names who, which the screen never can');
+    assert.equal(took.ts, '100.000100', 'about the message, not about the moment');
+
+    assert.equal(log.find((entry) => entry.kind === 'deleted').before, 'the second wording');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('an unfurl arriving is not an edit', async () => {
+  // Slack sends `message_changed` for things nobody edited -- a link preview
+  // attaching is one -- so the words have to have actually moved.
+  const dom = installDom();
+  const { api, recorded } = createTestApi({ files: FILES, settings: { people: false } });
+  try {
+    await plugin.start(api);
+    recorded.emitSlackEvent({
+      type: 'message',
+      subtype: 'message_changed',
+      channel: 'C0FARAWAY',
+      previous_message: { ts: '100.000100', user: 'U1', text: 'look: https://x.test' },
+      message: { ts: '100.000100', user: 'U1', text: 'look: https://x.test', attachments: [{}] },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    assert.deepEqual(api.settings.get('entries', []), []);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

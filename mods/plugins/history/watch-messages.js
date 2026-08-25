@@ -37,6 +37,8 @@
 
 /** How many sweeps a message must be missing, while surrounded, to be gone. */
 const MISSING_BEFORE_GONE = 2;
+/** How many messages off the socket are held, for the frames with no history. */
+const WIRE_LIMIT = 3000;
 
 /**
  * @typedef {object} Reading
@@ -54,6 +56,8 @@ export function createMessageWatcher() {
   const seen = new Map();
   /** The order Slack drew them in, per channel, so a gap has neighbours. */
   const order = new Map();
+  /** What Slack's socket said, in Slack's markup. See `remember` below. */
+  const wire = new Map();
 
   /**
    * @param {Reading[]} readings everything on screen, in the order it is drawn
@@ -271,9 +275,32 @@ export function createMessageWatcher() {
 
   return {
     sweep,
+    /**
+     * What Slack's socket said a message contains, kept apart from the screen.
+     *
+     * Deliberately its own map. The screen gives a message as it is *drawn* --
+     * a mention is a name, a link is its label -- and the socket gives it as
+     * it was *written*, in Slack's markup. Folded into the same store, the
+     * next sweep would compare one against the other, find them different, and
+     * report an edit by somebody who wrote nothing.
+     *
+     * It is only ever a fallback: Slack sends `previous_message` with an edit
+     * and with a deletion, so this is for the frames that do not. In memory
+     * and capped, because it holds every message in every conversation this
+     * client is in and nothing here is worth a slower start tomorrow.
+     */
+    remember: (key, text, userId) => {
+      if (!key) return;
+      wire.delete(key);
+      wire.set(key, { text: String(text ?? ''), userId: userId ?? null });
+      if (wire.size > WIRE_LIMIT) {
+        for (const old of [...wire.keys()].slice(0, wire.size - WIRE_LIMIT)) wire.delete(old);
+      }
+    },
+    textFor: (key) => wire.get(key)?.text ?? null,
     /** How many messages are being watched. The page shows it; tests read it. */
     watching: () => seen.size,
-    forget: () => { seen.clear(); order.clear(); },
+    forget: () => { seen.clear(); order.clear(); wire.clear(); },
   };
 }
 

@@ -2865,6 +2865,17 @@
       composer,
       describeStatus,
       renderMrkdwn: (text, options) => renderMrkdwn(text, options),
+      /*
+       * Replaced by `createPluginApi`, which has the bridge.
+       *
+       * The socket is the loader's -- the page cannot see it -- so a SlackApi
+       * built on its own has no way to reach the events. Answering with a
+       * cleanup that does nothing rather than throwing: the docs page builds one
+       * of these to draw its previews, and a preview may not be the thing that
+       * decides whether an API member exists.
+       */
+      onEvent: () => () => {
+      },
       statusNode,
       emojiUrl: (name, customEmoji) => {
         const clean = String(name ?? "").replace(/^:|:$/g, "").trim();
@@ -5839,6 +5850,35 @@
         } }));
         focusChrome(frame, '[data-qa="member_profile_pane"]');
         return void 0;
+      }
+    },
+    "slack-onevent": {
+      render: (v) => {
+        const frames = {
+          message: { type: "message", channel: "C0BQ8AG3771", ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it", team: "T025V5WN2" },
+          message_changed: {
+            type: "message",
+            subtype: "message_changed",
+            channel: "C0BQ8AG3771",
+            previous_message: { ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it" },
+            message: { ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it *tomorrow*", edited: { user: "U04ED8UPV", ts: "1787645702.000000" } }
+          },
+          message_deleted: {
+            type: "message",
+            subtype: "message_deleted",
+            channel: "C0BQ8AG3771",
+            deleted_ts: "1787645635.864779",
+            previous_message: { ts: "1787645635.864779", user: "U04ED8UPV", text: "shipping it" }
+          },
+          reaction_added: { type: "reaction_added", user: "U02NTAZJXKP", reaction: "tada", item: { type: "message", channel: "C0BQ8AG3771", ts: "1787645635.864779" }, event_ts: "1787645640.000100" },
+          reaction_removed: { type: "reaction_removed", user: "U02NTAZJXKP", reaction: "tada", item: { type: "message", channel: "C0BQ8AG3771", ts: "1787645635.864779" }, event_ts: "1787645912.000200" }
+        };
+        const pane = kit.el("pre", { class: "pg__out" });
+        pane.textContent = JSON.stringify(frames[v.kind] ?? frames.message, null, 2);
+        return kit.el("div", {}, [
+          pane,
+          stubbed("The frames are Slack\u2019s own shape; there is no socket to listen to on a web page.")
+        ]);
       }
     },
     "slack-rendermrkdwn": {

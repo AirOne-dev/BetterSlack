@@ -14,6 +14,7 @@ import {
 import { createPluginApi } from './api.js';
 import { PluginHost } from './plugins.js';
 import type { Bridge } from './rpc.js';
+import { createSlackEvents, type SlackEvents } from './slack-events.js';
 import { inlineCssImports, StyleManager } from './themes.js';
 import type { Command as PaletteCommand } from './ui/palette.js';
 
@@ -111,6 +112,14 @@ export class ModManager {
   /** Plugins that asked to hear about their own settings changing. */
   private settingsListeners = new Map<string, Set<(values: Record<string, unknown>) => void>>();
   private headObserver?: MutationObserver;
+  /**
+   * Slack's own realtime events, and who is listening.
+   *
+   * Owned here rather than by each plugin api, because the filter sent to the
+   * loader is the union across every mod: one client, one socket, one answer
+   * about what is worth forwarding.
+   */
+  readonly slackEvents: SlackEvents;
 
   constructor(
     private readonly bridge: Bridge,
@@ -121,6 +130,7 @@ export class ModManager {
     this.sources = { ...boot.sources };
     this.update = boot.update;
     this.modUpdates = boot.modUpdates ?? [];
+    this.slackEvents = createSlackEvents(bridge);
     bridge.onEvent((event) => void this.onLoaderEvent(event));
   }
 
@@ -521,6 +531,7 @@ export class ModManager {
     }
     const api = createPluginApi(record, {
       version: this.boot.version,
+      onSlackEvent: (types, handler) => this.slackEvents.on(types, handler),
       files,
       styles: this.styles,
       getSettings: () => this.settings,
@@ -717,6 +728,12 @@ export class ModManager {
   }
 
   private async onLoaderEvent(event: PushEvent): Promise<void> {
+    if (event.type === 'slack.event') {
+      // The hottest path in the bridge: one of these arrives for every message
+      // in every conversation somebody is in. Nothing else happens here.
+      this.slackEvents.deliver(event.event);
+      return;
+    }
     if (event.type === 'update.status') {
       // It arrives after boot, because it went out on the network. Notifying
       // is what puts the badge on the button without anything polling for it.

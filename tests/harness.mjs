@@ -178,6 +178,14 @@ export function createTestApi({
     modChanges: [],
     /** Every `api.files.screenshot(...)`, with what was still visible. */
     screenshots: [],
+    /** Every `api.slack.onEvent(...)`: the types asked for and the handler. */
+    slackEvents: [],
+    /** Hand a frame to whoever asked for its type, the way the loader does. */
+    emitSlackEvent(event) {
+      for (const sub of [...recorded.slackEvents]) {
+        if (sub.types.includes(event.type)) sub.handler(event);
+      }
+    },
   };
   const store = { ...settings };
   let confirmAnswer = true;
@@ -372,6 +380,24 @@ export function createTestApi({
         }
         node.title = [status.text, status.emoji ? `:${status.emoji}:` : ''].filter(Boolean).join(' ');
         return node;
+      },
+
+      /**
+       * Slack's own realtime events.
+       *
+       * Recorded rather than connected: there is no socket in a test, and the
+       * point is what the mod does with a frame. `recorded.emitSlackEvent`
+       * hands one to whoever subscribed, exactly as the loader does.
+       */
+      onEvent: (types, handler) => {
+        const sub = { types: [...types], handler };
+        recorded.slackEvents.push(sub);
+        const off = () => {
+          const at = recorded.slackEvents.indexOf(sub);
+          if (at !== -1) recorded.slackEvents.splice(at, 1);
+        };
+        recorded.disposers.push(off);
+        return off;
       },
 
       // The shipped renderer, not a stub: a mod's test then covers what its
