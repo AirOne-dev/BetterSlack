@@ -69,13 +69,21 @@ export function createView(api, t, deps) {
     ? (people.get(id)?.name ?? fallback ?? id)
     : (fallback ?? t('someone')));
 
-  /** Somebody's text, with its emoji drawn rather than spelled. */
-  const said = (text, extra = '') => {
+  /**
+   * Somebody's message, drawn the way Slack draws it.
+   *
+   * Not as it came off the wire: a mention arrives as `<@U04ED8UPV>`, a link
+   * as `<https://…|https://…>`, an ampersand as `&amp;`, and a log of those is
+   * a log of wire format. The people map is what turns an id into the name the
+   * reader knows.
+   *
+   * Nodes rather than a string: the emoji are `<img>` and the mentions are
+   * their own elements, and building HTML out of somebody's message to get
+   * them there would put their words through an HTML parser.
+   */
+  const said = (text, people, extra = '') => {
     const line = h('div', { class: `bsh-said${extra}`, title: text }, []);
-    // Nodes rather than a string: the emoji are `<img>`, and building HTML out
-    // of somebody's message to get them there would put their words through an
-    // HTML parser.
-    line.append(deps.renderText ? deps.renderText(text) : document.createTextNode(text));
+    line.append(deps.renderText ? deps.renderText(text, people) : document.createTextNode(text));
     return line;
   };
 
@@ -111,8 +119,8 @@ export function createView(api, t, deps) {
     }
 
     if (event.kind === 'edited') {
-      const both = h('div', { class: 'bsh-both' }, [said(event.before, ' bsh-was')]);
-      if (event.after) both.append(said(event.after));
+      const both = h('div', { class: 'bsh-both' }, [said(event.before, people, ' bsh-was')]);
+      if (event.after) both.append(said(event.after, people));
       return h('div', { class: 'bsh-did bsh-did--messages' }, [
         h('span', { class: 'bsh-verb' }, [t('verbEdited', { who: nameOf(people, event.userId, event.who) })]),
         both,
@@ -133,8 +141,8 @@ export function createView(api, t, deps) {
       return h('div', { class: `bsh-did bsh-did--${family}` }, [verb]);
     }
     const both = h('div', { class: 'bsh-both' }, []);
-    if (event.before) both.append(said(event.before, ' bsh-was'));
-    if (event.after) both.append(said(event.after));
+    if (event.before) both.append(said(event.before, people, ' bsh-was'));
+    if (event.after) both.append(said(event.after, people));
     return h('div', { class: `bsh-did bsh-did--${family}` }, [verb, both]);
   };
 
@@ -184,7 +192,7 @@ export function createView(api, t, deps) {
      * wordings, and the newer one is the message.
      */
     const edited = rest.some((event) => event.kind === 'edited');
-    if (card.subject && !edited) body.append(said(card.subject, ' bsh-subject'));
+    if (card.subject && !edited) body.append(said(card.subject, people, ' bsh-subject'));
     for (const event of rest) body.append(happening(event, people));
     for (const reaction of reactions) body.append(happening(reaction, people));
 

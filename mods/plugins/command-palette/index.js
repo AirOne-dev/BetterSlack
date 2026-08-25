@@ -44,13 +44,13 @@ const MIXED_LIMIT = 6;
  * jump as you type.
  */
 const CSS = `
-.betterslack-palette .bsp-emoji {
+.betterslack-palette .betterslack-emoji {
   width: 1.1em;
   height: 1.1em;
   vertical-align: -0.2em;
   object-fit: contain;
 }
-.betterslack-palette .bsp-code {
+.betterslack-palette .betterslack-code {
   font-family: Monaco, Menlo, Consolas, monospace;
   font-size: 0.92em;
   padding: 0 3px;
@@ -58,8 +58,8 @@ const CSS = `
   background: var(--dt_color-base-inv, rgba(255, 255, 255, .08));
   color: var(--dt_color-content-destructive, #e01e5a);
 }
-.betterslack-palette .bsp-link { color: var(--dt_color-content-highlight, #1d9bd1); }
-.betterslack-palette .bsp-mention {
+.betterslack-palette .betterslack-link { color: var(--dt_color-content-highlight, #1d9bd1); }
+.betterslack-palette .betterslack-mention {
   color: var(--dt_color-content-highlight, #1d9bd1);
   background: color-mix(in srgb, var(--dt_color-content-highlight, #1d9bd1) 14%, transparent);
   border-radius: 3px;
@@ -105,6 +105,9 @@ export default {
       emoji: directory.emoji,
       users: directory.authors,
       emojiUrl: (name, map) => api.slack.emojiUrl?.(name, map) ?? null,
+      // Slack's markup is drawn by the runtime, so the palette and History
+      // read a mention, a link and an ampersand the same way.
+      renderMrkdwn: (text, options) => api.slack.renderMrkdwn(text, options),
     });
 
     /** When something was said, as short as it can be and still be useful. */
@@ -137,7 +140,7 @@ export default {
       const url = status?.emoji ? api.slack.emojiUrl?.(status.emoji, directory.emoji) : null;
       if (url) {
         const img = document.createElement('img');
-        img.className = 'bsp-emoji';
+        img.className = 'betterslack-emoji';
         img.src = url;
         img.alt = `:${status.emoji}:`;
         if (status.text) img.title = status.text;

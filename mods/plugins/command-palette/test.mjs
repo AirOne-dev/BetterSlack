@@ -762,9 +762,9 @@ test('a message result keeps its bold, its links, its mentions and its emoji', a
     assert.equal(box.querySelector('b').textContent, 'now');
     // The label, never the address: thirty characters of URL on one line is
     // thirty characters nobody reads.
-    assert.equal(box.querySelector('.bsp-link').textContent, '!719');
+    assert.equal(box.querySelector('.betterslack-link').textContent, '!719');
     // A mention is a person, not `<@U9>` -- and the person is looked up.
-    assert.equal(box.querySelector('.bsp-mention').textContent, '@Person U9');
+    assert.equal(box.querySelector('.betterslack-mention').textContent, '@Person U9');
     // Slack sends the codepoints, so a standard emoji costs no request at all.
     assert.match(box.textContent, /🎉/);
     // A row is a button, so nothing inside it may be a link that swallows the

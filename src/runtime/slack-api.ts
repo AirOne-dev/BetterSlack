@@ -9,6 +9,7 @@
 import type { Cleanup } from './dom.js';
 import { h, keepMounted, onEach, waitFor } from './dom.js';
 import { createI18n } from './i18n.js';
+import { renderMrkdwn, type MrkdwnOptions } from './mrkdwn.js';
 import { attachTooltip, type Placement } from './ui/tooltip.js';
 import { VIEW_CSS } from './ui/styles.js';
 import { PANEL_STRINGS } from './ui/strings.js';
@@ -1045,6 +1046,23 @@ export interface SlackApi {
    * a rendering that failed.
    */
   emojiUrl(name: string, customEmoji?: Map<string, string> | null): string | null;
+
+  /**
+   * Slack's own markup, drawn.
+   *
+   * What Slack's API answers with is not what Slack draws: a mention arrives
+   * as `<@U04ED8UPV>`, a link as `<https://…|https://…>`, an ampersand as
+   * `&amp;`, emphasis as the asterisks somebody typed. Anything showing a
+   * message as it came off the wire shows the wire, and two mods do exactly
+   * that -- the palette lists search results, History keeps what a message
+   * said before it changed.
+   *
+   * Nodes, never a string of markup: this is somebody's message, and building
+   * HTML out of it to get a mention on screen would put their words through an
+   * HTML parser. The ids are turned into names by the callbacks you pass, so
+   * whatever the caller already knows about the workspace is what is drawn.
+   */
+  renderMrkdwn(text: string, options?: MrkdwnOptions): DocumentFragment;
   /** The channel currently open, read from the client URL. */
   currentChannelId(): string | null;
   /**
@@ -1274,6 +1292,7 @@ export function createSlackApi(pluginId: string): SlackApi {
     describeMessage,
     composer,
     describeStatus,
+    renderMrkdwn: (text, options) => renderMrkdwn(text, options),
     statusNode,
     emojiUrl: (name, customEmoji) => {
       const clean = String(name ?? '').replace(/^:|:$/g, '').trim();

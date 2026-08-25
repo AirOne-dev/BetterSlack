@@ -285,7 +285,7 @@
           }
         }
       ],
-      "needsBetterSlack": "3.0.0",
+      "needsBetterSlack": "unreleased",
       "path": "plugins/command-palette"
     },
     {
@@ -777,7 +777,7 @@
           }
         }
       ],
-      "needsBetterSlack": "3.1.0",
+      "needsBetterSlack": "unreleased",
       "path": "plugins/history"
     },
     {

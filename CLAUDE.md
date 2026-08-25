@@ -1297,7 +1297,7 @@ Shape of it:
   rail), `addToolbarButton` (controlStrip / composer /
   channelHeader, with `before` to sit above another button), `addMessageAction`,
   `addProfileButton`, `describeMessage`, `userIdFromMessage`,
-  `currentChannelId`, `composer`, `web`, `selectors`.
+  `currentChannelId`, `composer`, `web`, `selectors`, `renderMrkdwn`.
 - `api.ui` — `toast`, `modal`, `confirm`, `tooltip`, in shadow roots.
 - `api.i18n` — `strings({ en, fr, ... })` returns `t(key, vars)`; `locale` and
   `language` come from Slack's `<html lang>`, never from `localConfig_v2` (that
@@ -1346,6 +1346,14 @@ audit of every plugin, and each one had been written two or three times:
 - `api.helpers.poll(fn, ms)` — an interval that stops while the window is
   hidden. Slack does not render then, so a poll that keeps going spends a rate
   limit shared with the client on answers nobody will see.
+- `api.slack.renderMrkdwn(text, options)` — Slack's own markup, drawn. What the
+  API answers with is not what Slack shows: `<@U04ED8UPV>`, `<url|label>`,
+  `&amp;`, `*bold*`. Nodes rather than a string of HTML, since it is somebody's
+  message. `shortLinks` and `oneLine` are the row's concerns; a message keeps
+  the whole address, because a link pasted alone is usually the point of it.
+  `_italic_` is deliberately not emphasis -- half the handles in a workspace
+  are snake_case, and `deploy_from_main` comes out italic with the underscores
+  eaten.
 
 ## The theme builder
 

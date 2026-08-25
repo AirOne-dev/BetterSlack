@@ -30,7 +30,7 @@ import { add, tally, view, without } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, displayNameChanges, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, snapshotOf } from './catch-up.js';
-import { harvest, merge, namesFor, renderText } from './emoji.js';
+import { harvest, merge, namesFor } from './emoji.js';
 
 const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true" fill="none">
   <path d="M10 3.2a6.8 6.8 0 1 1-6.6 8.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -128,6 +128,29 @@ export default {
       }
       return null;
     };
+    /** Channel ids to names, as the log learns them, so `<#C…>` reads as one. */
+    const channelNames = new Map();
+
+    /**
+     * Somebody's message, as Slack would have drawn it.
+     *
+     * What the API answers with is not what Slack shows: a mention arrives as
+     * `<@U04ED8UPV>`, a link as `<https://…|https://…>`, an ampersand as
+     * `&amp;`. Left alone, a log of messages is a log of wire format. The
+     * renderer is the runtime's, so this reads a message exactly as the
+     * command palette does.
+     *
+     * The full address rather than the host: a row in a list has eighty
+     * characters and a message here has the width of the page, and a link
+     * pasted on its own is usually the point of the message.
+     */
+    const drawText = (text, people) => api.slack.renderMrkdwn(text, {
+      userName: (id) => people?.get(id)?.name ?? null,
+      channelName: (id) => channelNames.get(id) ?? null,
+      emojiUrl: (name) => emojiFor(name),
+      onChannel: (id) => { page.close(); api.slack.openConversation(id); },
+    });
+
     /** Members per channel, so a join is a difference and not a parsed sentence. */
     const roster = new Map();
     /** Statuses per person, the same way, and what each of them is called. */
@@ -156,6 +179,11 @@ export default {
         || entry.userId || entry.who);
     })();
     let openedAt = Number(api.settings.get('openedAt', 0)) || 0;
+    // Every channel the log has already named, so a `<#C…>` in a message read
+    // today is drawn as a name even in a channel this session never opened.
+    for (const entry of log) {
+      if (entry.channelId && entry.channelName) channelNames.set(entry.channelId, entry.channelName);
+    }
 
     const save = api.helpers.debounce(() => { void api.settings.set('entries', log); }, 400);
 
@@ -180,8 +208,20 @@ export default {
        * only about the first left every card whose author had not also reacted
        * headed by a raw `U04F0LX84H0`.
        */
-      const ids = [...new Set(rows.flatMap((entry) => [entry.userId, entry.subjectUser]).filter(Boolean))]
-        .slice(0, 200);
+      /*
+       * And whoever is mentioned inside the words.
+       *
+       * `<@U04ED8UPV>` is a person the row draws just as much as its author
+       * is, and asking only about the two on the entry left every mention in
+       * every message reading as a raw id.
+       */
+      const mentioned = rows.flatMap((entry) => [...String(
+        [entry.subject, entry.before, entry.after].filter(Boolean).join(' '),
+      ).matchAll(/<@([UWB][A-Z0-9]+)(?:\|[^>]*)?>/g)].map((match) => match[1]));
+      const ids = [...new Set([
+        ...rows.flatMap((entry) => [entry.userId, entry.subjectUser]),
+        ...mentioned,
+      ].filter(Boolean))].slice(0, 200);
       if (ids.length === 0 || !api.slack.web.available) return new Map();
       try {
         if (!customEmoji) customEmoji = await api.slack.web.emoji().catch(() => new Map());
@@ -206,8 +246,7 @@ export default {
       tally,
       peopleFor,
       emojiUrl: emojiFor,
-      /** A line of somebody's text, with its emoji drawn. */
-      renderText: (text) => renderText(document, text, (name) => emojiFor(name)),
+      renderText: (text, people) => drawText(text, people),
       openConversation: (channelId) => api.slack.openConversation(channelId),
       openMessage: (channelId, ts) => api.slack.openMessage(channelId, ts),
       forget: async (card) => {
@@ -385,11 +424,22 @@ export default {
     /**
      * The line left where a deleted message was.
      *
-     * Shaped like the message it replaces -- a face, a name, a time -- because
-     * anything less is a struck-through sentence floating in a conversation
-     * with no way to tell whose it was, which is the first thing anybody asks.
-     * It is dimmer and smaller than a real message all the same: it is a note
-     * about something that is gone, not a message pretending to still be there.
+     * **It wears Slack's own message markup.** Not because it is convenient:
+     * a theme styles the client through those class names, so anything drawn
+     * inside a conversation with markup of its own is the one thing on screen
+     * the theme cannot reach -- Discord's rounds every avatar through
+     * `.c-message_kit__avatar img`, and a square face in a column of circles
+     * reads as broken rather than as a mod. The gutter, the avatar and the
+     * sender are Slack's; what is this mod's own is the tag and the struck
+     * text, and those carry classes of their own.
+     *
+     * `data-qa` is deliberately *not* copied. That is what every mod here
+     * matches messages on, this one included, so a headstone wearing it would
+     * be read back as a message -- swept, compared, and eventually reported as
+     * deleted when it came off the screen.
+     *
+     * It is dimmer and smaller than the message it replaces all the same: a
+     * note about something gone, not a message pretending to still be there.
      */
     const buildStone = (entry) => {
       const key = `${entry.channelId}:${entry.ts}`;
@@ -408,25 +458,39 @@ export default {
         headstones.delete(key);
       });
 
-      const avatar = face?.avatar
-        ? api.dom.h('img', { class: 'bsh-stone__avatar', src: face.avatar, alt: '', loading: 'lazy' })
-        : api.dom.h('span', { class: 'bsh-stone__avatar bsh-stone__avatar--none' });
-
-      // The emoji drawn rather than spelled: this is the message's own text,
-      // and `:tada:` where a picture was is the same failure the page had.
-      const text = api.dom.h('span', { class: 'bsh-stone__text' }, []);
-      text.append(renderText(document, entry.before ?? '', emojiFor));
-
-      return api.dom.h('div', { class: 'bsh-stone' }, [
-        avatar,
-        api.dom.h('div', { class: 'bsh-stone__body' }, [
-          api.dom.h('div', { class: 'bsh-stone__head' }, [
-            api.dom.h('span', { class: 'bsh-stone__who' }, [who]),
-            api.dom.h('span', { class: 'bsh-stone__tag' }, [t('deleted')]),
-          ]),
-          text,
+      // Slack's avatar is a button wrapping a sized container wrapping the
+      // image, and a theme's rule reaches for the image inside it.
+      const avatar = api.dom.h('span', { class: 'c-message_kit__avatar c-avatar bsh-stone__avatar' }, [
+        api.dom.h('span', { class: 'c-base_icon__width_only_container' }, [
+          face?.avatar
+            ? api.dom.h('img', {
+              class: 'c-base_icon c-base_icon--image',
+              src: face.avatar,
+              alt: '',
+              loading: 'lazy',
+            })
+            : api.dom.h('span', { class: 'c-base_icon bsh-stone__avatar--none' }),
         ]),
-        close,
+      ]);
+
+      // The message's own text, with its mentions, links and emoji drawn.
+      const text = api.dom.h('span', { class: 'bsh-stone__text' }, []);
+      text.append(drawText(entry.before ?? '', faces));
+
+      return api.dom.h('div', {
+        class: 'bsh-stone c-message_kit__background c-message_kit__message',
+      }, [
+        api.dom.h('div', { class: 'c-message_kit__gutter' }, [
+          api.dom.h('div', { class: 'c-message_kit__gutter__left' }, [avatar]),
+          api.dom.h('div', { class: 'c-message_kit__gutter__right bsh-stone__body' }, [
+            api.dom.h('div', { class: 'bsh-stone__head' }, [
+              api.dom.h('span', { class: 'c-message__sender c-message_kit__sender bsh-stone__who' }, [who]),
+              api.dom.h('span', { class: 'bsh-stone__tag' }, [t('deleted')]),
+            ]),
+            text,
+          ]),
+          close,
+        ]),
       ]);
     };
 
@@ -497,7 +561,11 @@ export default {
         if (dismissed.has(key) || wanted.has(key)) continue;
         wanted.set(key, entry);
       }
-      wantFaces([...wanted.values()].map((entry) => entry.userId));
+      wantFaces([...wanted.values()].flatMap((entry) => [
+        entry.userId,
+        // And whoever the message mentioned, so the line reads as it read.
+        ...[...String(entry.before ?? '').matchAll(/<@([UWB][A-Z0-9]+)(?:\|[^>]*)?>/g)].map((m) => m[1]),
+      ]));
 
       for (const [key, node] of headstones) {
         if (!wanted.has(key)) { node.remove(); headstones.delete(key); }
@@ -528,6 +596,7 @@ export default {
       if (events.length === 0) return;
       const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
       const here = api.slack.currentChannelId();
+      if (here && channelName) channelNames.set(here, channelName);
       log = add(log, events.map((event) => ({
         ...event,
         // The name only where we are certain it is the one on screen; the id is

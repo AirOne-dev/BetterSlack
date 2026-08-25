@@ -26,6 +26,7 @@ import { modal, toast, confirm as slackConfirm } from '../src/runtime/ui/widgets
 import { openMenu } from '../src/runtime/ui/menu.js';
 import { attachTooltip } from '../src/runtime/ui/tooltip.js';
 import { userIdFromAvatarUrl } from '../src/runtime/web-api.js';
+import { renderMrkdwn } from '../src/runtime/mrkdwn.js';
 import { h } from '../src/runtime/dom.js';
 import { SLACK_FIXTURE } from '../tests/slack-fixture.mjs';
 import { SLACK_PREFS } from '../src/shared/protocol.js';
@@ -681,6 +682,24 @@ const CHROME = {
       keep(addProfileButton('demo', { id: 'demo', label: v.label, icon: ICON, onClick: () => {} }));
       focusChrome(frame, '[data-qa="member_profile_pane"]');
       return undefined;
+    },
+  },
+  'slack-rendermrkdwn': {
+    render: (v) => {
+      const line = kit.el('div', { style: 'line-height:1.5; word-break:break-word' });
+      line.append(renderMrkdwn(v.text, {
+        shortLinks: v.shortLinks,
+        oneLine: v.oneLine,
+        // A workspace this page has not got: the two ids in the sample, and
+        // the callbacks answering null for anything else, which is what a mod
+        // that has not resolved somebody yet does too.
+        userName: (id) => ({ U04ED8UPV: 'Ludo' })[id] ?? null,
+        channelName: (id) => ({ C01BQ8AG3: 'tech' })[id] ?? null,
+        emojiUrl: (name) => `https://a.slack-edge.com/production-standard-emoji-assets/16.0/apple-small/${
+          ({ tada: '1f389', rocket: '1f680' })[name] ?? '2753'}@2x.png`,
+        onChannel: () => {},
+      }));
+      return line;
     },
   },
   'slack-avatarurl': {

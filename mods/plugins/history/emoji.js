@@ -20,9 +20,6 @@
 /** Enough for a workspace's habits. Beyond it, the least recently added goes. */
 export const EMOJI_LIMIT = 600;
 
-/** `:name:` and nothing else -- Slack's own shortcodes have no spaces in them. */
-const SHORTCODE = /:([a-z0-9_+'-]+(?:::skin-tone-\d)?):/gi;
-
 /**
  * Every emoji drawn inside an element, as name to image.
  *
@@ -52,44 +49,6 @@ export function merge(table, found, limit = EMOJI_LIMIT) {
   if (names.length <= limit) return next;
   for (const name of names.slice(0, names.length - limit)) delete next[name];
   return next;
-}
-
-/**
- * A line of Slack's text, with its emoji drawn.
- *
- * Returns nodes rather than a string: the pictures are `<img>`, and building
- * HTML out of somebody's message to get them there would be putting their words
- * through an HTML parser, which is the one thing this must never do.
- *
- * A shortcode nothing can draw is left exactly as it was written. It is a word
- * the reader has to skip, which is worse than an emoji and better than a hole
- * where a word used to be -- unlike the reaction rows, where the shortcode *is*
- * the whole content and a picture that cannot be drawn is better left out.
- *
- * @param {Document} doc
- * @param {string} text
- * @param {(name: string) => string|null} lookup
- */
-export function renderText(doc, text, lookup) {
-  const out = doc.createDocumentFragment();
-  const source = String(text ?? '');
-  let at = 0;
-
-  for (const match of source.matchAll(SHORTCODE)) {
-    const url = lookup(match[1]);
-    if (!url) continue;
-    if (match.index > at) out.append(doc.createTextNode(source.slice(at, match.index)));
-    const image = doc.createElement('img');
-    image.className = 'bsh-emoji bsh-emoji--inline';
-    image.src = url;
-    image.alt = match[0];
-    image.title = match[0];
-    out.append(image);
-    at = match.index + match[0].length;
-  }
-
-  if (at < source.length) out.append(doc.createTextNode(source.slice(at)));
-  return out;
 }
 
 /**

@@ -140,6 +140,140 @@
     };
   }
 
+  // src/runtime/mrkdwn.ts
+  var MRKDWN_CLASS = {
+    mention: "betterslack-mention",
+    link: "betterslack-link",
+    code: "betterslack-code",
+    emoji: "betterslack-emoji",
+    quote: "betterslack-quote"
+  };
+  var TOKEN = /<([^>]+)>|:([a-z0-9_+'-]+(?:::skin-tone-\d)?):/gi;
+  var EMPHASIS = /\*(\S(?:[^*]*\S)?)\*|`([^`]+)`|~(\S(?:[^~]*\S)?)~/g;
+  function renderMrkdwn(text, options = {}) {
+    const doc = options.doc ?? document;
+    const out = doc.createDocumentFragment();
+    const budget = { left: options.maxLength ?? Infinity };
+    const source2 = String(text ?? "");
+    let at = 0;
+    TOKEN.lastIndex = 0;
+    let match = TOKEN.exec(source2);
+    while (match && budget.left > 0) {
+      emphasis(source2.slice(at, match.index), out, doc, options, budget);
+      if (match[2]) emoji(match[2], out, doc, options, budget);
+      else bracketed(match[1] ?? "", out, doc, options, budget);
+      at = match.index + match[0].length;
+      match = TOKEN.exec(source2);
+    }
+    if (budget.left > 0) emphasis(source2.slice(at), out, doc, options, budget);
+    return out;
+  }
+  function bracketed(inner, into, doc, options, budget) {
+    const cut = inner.indexOf("|");
+    const target = cut === -1 ? inner : inner.slice(0, cut);
+    const label = cut === -1 ? null : inner.slice(cut + 1);
+    if (target.startsWith("@")) {
+      const id = target.slice(1);
+      write(into, span(doc, MRKDWN_CLASS.mention, `@${label || options.userName?.(id) || id}`), budget);
+      return;
+    }
+    if (target.startsWith("#")) {
+      const id = target.slice(1);
+      const name = `#${label || options.channelName?.(id) || id}`;
+      if (!options.onChannel) {
+        write(into, span(doc, MRKDWN_CLASS.mention, name), budget);
+        return;
+      }
+      const button2 = doc.createElement("button");
+      button2.type = "button";
+      button2.className = `c-button-unstyled ${MRKDWN_CLASS.mention}`;
+      button2.textContent = name;
+      button2.addEventListener("click", () => options.onChannel?.(id));
+      write(into, button2, budget);
+      return;
+    }
+    if (target.startsWith("!")) {
+      const name = label || target.slice(1).split("^")[0] || "here";
+      write(into, span(doc, MRKDWN_CLASS.mention, name.startsWith("@") ? name : `@${name}`), budget);
+      return;
+    }
+    const named = label && label.trim() && label.trim() !== target ? label.trim() : null;
+    const shown = named ?? (options.shortLinks ? hostOf(target) : target);
+    if (!options.onLink) {
+      write(into, span(doc, MRKDWN_CLASS.link, shown), budget);
+      return;
+    }
+    const button = doc.createElement("button");
+    button.type = "button";
+    button.className = `c-button-unstyled ${MRKDWN_CLASS.link}`;
+    button.title = target;
+    button.textContent = shown;
+    button.addEventListener("click", () => options.onLink?.(target));
+    write(into, button, budget);
+  }
+  function emphasis(text, into, doc, options, budget) {
+    const source2 = tidy(unescape(text), options);
+    let at = 0;
+    EMPHASIS.lastIndex = 0;
+    let match = EMPHASIS.exec(source2);
+    while (match && budget.left > 0) {
+      plain(source2.slice(at, match.index), into, doc, budget);
+      const [tag, inner] = match[1] !== void 0 ? ["b", match[1]] : match[2] !== void 0 ? ["code", match[2]] : ["s", match[3] ?? ""];
+      const node = doc.createElement(tag ?? "span");
+      if (tag === "code") node.className = MRKDWN_CLASS.code;
+      node.append(clip(inner ?? "", budget));
+      into.append(node);
+      at = match.index + match[0].length;
+      match = EMPHASIS.exec(source2);
+    }
+    if (budget.left > 0) plain(source2.slice(at), into, doc, budget);
+  }
+  function emoji(name, into, doc, options, budget) {
+    const url = options.emojiUrl?.(name) ?? null;
+    if (!url) {
+      plain(`:${name}:`, into, doc, budget);
+      return;
+    }
+    const image = doc.createElement("img");
+    image.className = MRKDWN_CLASS.emoji;
+    image.src = url;
+    image.alt = `:${name}:`;
+    image.title = `:${name}:`;
+    into.append(image);
+    budget.left -= 2;
+  }
+  function span(doc, className, text) {
+    const node = doc.createElement("span");
+    node.className = className;
+    node.textContent = text;
+    return node;
+  }
+  function write(into, node, budget) {
+    into.append(node);
+    budget.left -= node.textContent?.length ?? 0;
+  }
+  function plain(text, into, doc, budget) {
+    if (!text) return;
+    into.append(doc.createTextNode(clip(text, budget)));
+  }
+  function clip(text, budget) {
+    if (budget.left === Infinity) return text;
+    const kept = text.slice(0, Math.max(0, budget.left));
+    budget.left -= text.length;
+    return kept;
+  }
+  function tidy(text, options) {
+    if (!options.oneLine) return text;
+    return text.replace(/(^|\s)>+(\s|$)/g, " ").replace(/\s+/g, " ");
+  }
+  function unescape(text) {
+    return String(text ?? "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+  }
+  function hostOf(url) {
+    const match = /^https?:\/\/([^/]+)/i.exec(String(url ?? ""));
+    return match?.[1] ? match[1].replace(/^www\./, "") : String(url ?? "");
+  }
+
   // src/runtime/ui/tooltip.ts
   var SHOW_DELAY_MS = 150;
   var EDGE_OVERLAP = 4;
@@ -2316,13 +2450,13 @@
     const profile = who && "profile" in who && who.profile ? who.profile : who;
     if (!profile) return null;
     const text = (profile.status_text ?? "").trim();
-    const emoji = (profile.status_emoji ?? "").replace(/^:|:$/g, "").trim() || null;
-    if (!text && !emoji) return null;
+    const emoji2 = (profile.status_emoji ?? "").replace(/^:|:$/g, "").trim() || null;
+    if (!text && !emoji2) return null;
     const expiration = Number(profile.status_expiration ?? 0);
     return {
       text,
-      emoji,
-      imageUrl: emoji ? imageForEmoji(emoji, profile, customEmoji) : null,
+      emoji: emoji2,
+      imageUrl: emoji2 ? imageForEmoji(emoji2, profile, customEmoji) : null,
       // 0 means "no end", which is not the same as the epoch.
       expiresAt: expiration > 0 ? new Date(expiration * 1e3) : null
     };
@@ -2730,6 +2864,7 @@
       describeMessage,
       composer,
       describeStatus,
+      renderMrkdwn: (text, options) => renderMrkdwn(text, options),
       statusNode,
       emojiUrl: (name, customEmoji) => {
         const clean = String(name ?? "").replace(/^:|:$/g, "").trim();
@@ -3952,22 +4087,22 @@
             await ctx.settings.set(store2, entries).catch(() => void 0);
           });
         };
-        const write = (key, value) => {
+        const write2 = (key, value) => {
           entries = { ...entries, [key]: { at: Date.now(), value } };
           persist();
         };
         return {
           get: (key) => entries[key]?.value,
-          set: write,
+          set: write2,
           swr(key, load, onFresh) {
             const held = entries[key]?.value;
             void Promise.resolve().then(load).then((fresh) => {
               if (fresh === void 0) return;
               if (JSON.stringify(fresh) === JSON.stringify(held)) {
-                write(key, fresh);
+                write2(key, fresh);
                 return;
               }
-              write(key, fresh);
+              write2(key, fresh);
               onFresh(fresh);
             }).catch(() => void 0);
             return held;
@@ -5704,6 +5839,24 @@
         } }));
         focusChrome(frame, '[data-qa="member_profile_pane"]');
         return void 0;
+      }
+    },
+    "slack-rendermrkdwn": {
+      render: (v) => {
+        const line = kit.el("div", { style: "line-height:1.5; word-break:break-word" });
+        line.append(renderMrkdwn(v.text, {
+          shortLinks: v.shortLinks,
+          oneLine: v.oneLine,
+          // A workspace this page has not got: the two ids in the sample, and
+          // the callbacks answering null for anything else, which is what a mod
+          // that has not resolved somebody yet does too.
+          userName: (id) => ({ U04ED8UPV: "Ludo" })[id] ?? null,
+          channelName: (id) => ({ C01BQ8AG3: "tech" })[id] ?? null,
+          emojiUrl: (name) => `https://a.slack-edge.com/production-standard-emoji-assets/16.0/apple-small/${{ tada: "1f389", rocket: "1f680" }[name] ?? "2753"}@2x.png`,
+          onChannel: () => {
+          }
+        }));
+        return line;
       }
     },
     "slack-avatarurl": {

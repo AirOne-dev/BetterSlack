@@ -10,6 +10,7 @@ import { JSDOM } from 'jsdom';
 // The real helpers, so a mod's test covers the helper code it leans on rather
 // than a stand-in that could drift from it.
 import { createHelpers } from '../dist/helpers.mjs';
+import { renderMrkdwn } from '../dist/mrkdwn.mjs';
 import { createI18n } from '../dist/i18n.mjs';
 import { createKit } from '../dist/ui/kit.mjs';
 import { openMenu } from '../dist/ui/menu.mjs';
@@ -372,6 +373,12 @@ export function createTestApi({
         node.title = [status.text, status.emoji ? `:${status.emoji}:` : ''].filter(Boolean).join(' ');
         return node;
       },
+
+      // The shipped renderer, not a stub: a mod's test then covers what its
+      // rows actually draw, and a change to Slack's markup handling is caught
+      // in every mod that shows a message rather than only in the runtime's
+      // own tests.
+      renderMrkdwn: (text, options) => renderMrkdwn(text, { doc: document, ...options }),
 
       // The real rule, not a stub: Slack serves avatars as `<base>-<size>`,
       // and anything else is left alone.

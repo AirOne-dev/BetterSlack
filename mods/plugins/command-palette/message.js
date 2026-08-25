@@ -180,23 +180,23 @@ function drawElement(element, into, ctx, budget) {
   }
   if (element.type === 'user') {
     const name = nameFor(element.user_id, ctx);
-    into.append(styled(doc, 'bsp-mention', `@${name}`));
+    into.append(styled(doc, 'betterslack-mention', `@${name}`));
     budget.left -= name.length + 1;
     return;
   }
   if (element.type === 'channel') {
     const name = ctx.channels?.get(element.channel_id) ?? element.channel_id;
-    into.append(styled(doc, 'bsp-mention', `#${name}`));
+    into.append(styled(doc, 'betterslack-mention', `#${name}`));
     budget.left -= name.length + 1;
     return;
   }
   if (element.type === 'usergroup') {
-    into.append(styled(doc, 'bsp-mention', '@group'));
+    into.append(styled(doc, 'betterslack-mention', '@group'));
     budget.left -= 6;
     return;
   }
   if (element.type === 'broadcast') {
-    into.append(styled(doc, 'bsp-mention', `@${element.range ?? 'here'}`));
+    into.append(styled(doc, 'betterslack-mention', `@${element.range ?? 'here'}`));
     budget.left -= 6;
     return;
   }
@@ -204,7 +204,7 @@ function drawElement(element, into, ctx, budget) {
     // The label if it has one, and the host if it does not -- a bare address on
     // one line is thirty characters of nothing anybody reads.
     const label = element.text?.trim() || hostOf(element.url);
-    into.append(wrap(doc, element.style, styled(doc, 'bsp-link', label)));
+    into.append(wrap(doc, element.style, styled(doc, 'betterslack-link', label)));
     budget.left -= label.length;
     return;
   }
@@ -220,79 +220,29 @@ function drawElement(element, into, ctx, budget) {
   for (const child of element.elements ?? []) drawElement(child, into, ctx, budget);
 }
 
-/** Slack's markup, drawn rather than stripped. */
-function drawMrkdwn(text, into, ctx, budget) {
-  const source = String(text ?? '');
-  // The four bracketed forms and an emoji shortcode, in one pass: anything
-  // between them is ordinary text and gets the emphasis pass below.
-  const pattern = /<([^>]+)>|:([a-z0-9_+'-]+):/gi;
-  let at = 0;
-  let match = pattern.exec(source);
-  while (match && budget.left > 0) {
-    drawEmphasis(source.slice(at, match.index), into, ctx, budget);
-    if (match[2]) drawEmoji(match[2], null, into, ctx, budget);
-    else drawBracketed(match[1], into, ctx, budget);
-    at = match.index + match[0].length;
-    match = pattern.exec(source);
-  }
-  if (budget.left > 0) drawEmphasis(source.slice(at), into, ctx, budget);
-}
-
-/** `<@U…>`, `<#C…|name>`, `<!here>` and `<url|label>`, which share a shape. */
-function drawBracketed(inner, into, ctx, budget) {
-  const doc = ctx.doc;
-  const [target, label] = inner.split('|');
-  if (target.startsWith('@')) {
-    const name = label || nameFor(target.slice(1), ctx);
-    into.append(styled(doc, 'bsp-mention', `@${name}`));
-    budget.left -= name.length + 1;
-    return;
-  }
-  if (target.startsWith('#')) {
-    const name = label || ctx.channels?.get(target.slice(1)) || target.slice(1);
-    into.append(styled(doc, 'bsp-mention', `#${name}`));
-    budget.left -= name.length + 1;
-    return;
-  }
-  if (target.startsWith('!')) {
-    const name = label || target.slice(1);
-    into.append(styled(doc, 'bsp-mention', `@${name}`));
-    budget.left -= name.length + 1;
-    return;
-  }
-  const shown = label?.trim() || hostOf(target);
-  into.append(styled(doc, 'bsp-link', shown));
-  budget.left -= shown.length;
-}
-
-/*
- * Bold, code and strike -- and deliberately not italic.
+/**
+ * Slack's markup, drawn rather than stripped.
  *
- * Slack's italic marker is `_`, and half the handles and branch names in a
- * workspace are snake_case: `deploy_from_main` would come out as one italic
- * run with the underscores eaten, which is worse than an underscore on screen.
+ * The runtime's renderer, not the palette's: History shows the same mentions,
+ * links and escaped ampersands, and two copies of that would have come apart
+ * the first time one of them was fixed. What stays here is what a *row* wants
+ * on top of it -- one line, since a row is a glance, and a budget, so a
+ * message the length of a document does not build ten thousand nodes for a
+ * line eighty characters wide.
  */
-const EMPHASIS = /\*(\S(?:[^*]*\S)?)\*|`([^`]+)`|~(\S(?:[^~]*\S)?)~/g;
-
-function drawEmphasis(text, into, ctx, budget) {
-  const source = tidy(unescape_(text));
-  const doc = ctx.doc;
-  let at = 0;
-  EMPHASIS.lastIndex = 0;
-  let match = EMPHASIS.exec(source);
-  while (match && budget.left > 0) {
-    append(into, source.slice(at, match.index), budget);
-    const [tag, inner] = match[1] !== undefined
-      ? ['b', match[1]]
-      : (match[2] !== undefined ? ['code', match[2]] : ['s', match[3]]);
-    const node = doc.createElement(tag);
-    if (tag === 'code') node.className = 'bsp-code';
-    node.append(clip(inner, budget));
-    into.append(node);
-    at = match.index + match[0].length;
-    match = EMPHASIS.exec(source);
-  }
-  if (budget.left > 0) append(into, source.slice(at), budget);
+function drawMrkdwn(text, into, ctx, budget) {
+  if (budget.left <= 0) return;
+  const source = String(text ?? '');
+  into.append(ctx.renderMrkdwn(source, {
+    doc: ctx.doc,
+    oneLine: true,
+    shortLinks: true,
+    maxLength: budget.left,
+    userName: (id) => nameFor(id, ctx),
+    channelName: (id) => ctx.channels?.get(id) ?? null,
+    emojiUrl: (name) => ctx.emojiUrl?.(name, ctx.emoji) ?? null,
+  }));
+  budget.left -= source.length;
 }
 
 function drawEmoji(name, unicode, into, ctx, budget) {
@@ -306,7 +256,7 @@ function drawEmoji(name, unicode, into, ctx, budget) {
   const url = ctx.emojiUrl?.(name, ctx.emoji) ?? null;
   if (!url) return;
   const img = doc.createElement('img');
-  img.className = 'bsp-emoji';
+  img.className = 'betterslack-emoji';
   img.src = url;
   img.alt = `:${name}:`;
   into.append(img);
@@ -340,9 +290,6 @@ function tidy(text) {
     .replace(/\s+/g, ' ');
 }
 
-function unescape_(text) {
-  return String(text ?? '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-}
 
 function styled(doc, className, text) {
   const node = doc.createElement('span');
@@ -357,7 +304,7 @@ function wrap(doc, style, node) {
   for (const [key, tag] of Object.entries(STYLE_TAG)) {
     if (!style?.[key]) continue;
     const element = doc.createElement(tag);
-    if (tag === 'code') element.className = 'bsp-code';
+    if (tag === 'code') element.className = 'betterslack-code';
     element.append(out);
     out = element;
   }

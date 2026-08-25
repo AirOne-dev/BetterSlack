@@ -110,6 +110,7 @@ const runtimeModules = {
     `${root}/src/runtime/ui/mark.ts`,
     `${root}/src/runtime/ui/splash.ts`,
     `${root}/src/runtime/slack-api.ts`,
+    `${root}/src/runtime/mrkdwn.ts`,
   ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },

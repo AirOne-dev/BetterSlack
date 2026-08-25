@@ -12,7 +12,7 @@ import { add, foldReactions, group, GROUPS, sortRows, tally, view, without } fro
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, reactionDiff, snapshotOf } from './catch-up.js';
-import { harvest, merge, namesFor, renderText } from './emoji.js';
+import { harvest, merge, namesFor } from './emoji.js';
 
 /** The mod's own folder, so `api.assets.text` finds the stylesheet it ships. */
 const FILES = readModFiles(path.dirname(fileURLToPath(import.meta.url)));
@@ -352,30 +352,33 @@ test('a skin tone is tried whole, then without', () => {
   assert.deepEqual(namesFor(''), []);
 });
 
-test('a message keeps its words and gains its pictures', () => {
+test('a message is drawn as Slack draws it, not as it came off the wire', () => {
+  /*
+   * The renderer is the runtime's -- the command palette draws its rows with
+   * the same one -- so what this covers is that a card actually goes through
+   * it: a mention as `<@U…>`, a link as `<url|label>` and an escaped ampersand
+   * are what `conversations.history` sends, and a log of those is a log of
+   * wire format.
+   */
   const dom = installDom();
+  const { api } = createTestApi({ files: FILES });
   try {
-    const known = (name) => (name === 'slightly_smiling_face' ? 'https://e/1f642.png' : null);
     const out = document.createElement('div');
-    out.append(renderText(document, 'merci :slightly_smiling_face: et :inconnu: aussi', known));
+    out.append(api.slack.renderMrkdwn(
+      'joyeux anniversaire à <@U04ED8UPV> dans <#C01|tech> &amp; :tada: <https://x.test/a|le lien>',
+      {
+        userName: (id) => (id === 'U04ED8UPV' ? 'Ludo' : null),
+        emojiUrl: () => 'https://e/1f389.png',
+      },
+    ));
 
-    assert.equal(out.querySelectorAll('img').length, 1);
-    assert.equal(out.querySelector('img').src, 'https://e/1f642.png');
+    assert.match(out.textContent, /@Ludo/, 'the mention is a name');
+    assert.match(out.textContent, /#tech/, 'and the channel is its name');
+    assert.match(out.textContent, /&/, 'and the ampersand is an ampersand');
+    assert.match(out.textContent, /le lien/, 'and the link is its label');
+    assert.equal(out.querySelectorAll('img').length, 1, 'and the emoji is a picture');
     // Words are text nodes, never parsed as markup: they are somebody's message.
-    assert.equal(out.textContent, 'merci  et :inconnu: aussi');
-    assert.match(out.innerHTML, /merci/, 'and a shortcode nothing can draw is left as written');
-  } finally {
-    dom.cleanup();
-  }
-});
-
-test('a message that is only an emoji is not left empty', () => {
-  const dom = installDom();
-  try {
-    const out = document.createElement('div');
-    out.append(renderText(document, ':tada:', () => 'https://e/1f389.png'));
-    assert.equal(out.querySelectorAll('img').length, 1);
-    assert.equal(out.childNodes.length, 1);
+    assert.doesNotMatch(out.innerHTML, /&lt;@U04ED8UPV&gt;/);
   } finally {
     dom.cleanup();
   }
@@ -788,8 +791,24 @@ test('a deleted message leaves a line with the face and the name on it', async (
 
     const redrawn = document.querySelector('.bsh-stone');
     assert.match(redrawn.querySelector('.bsh-stone__who').textContent, /Ludo/);
-    assert.ok(redrawn.querySelector('img.bsh-stone__avatar'), 'and a face beside it');
     assert.match(redrawn.querySelector('.bsh-stone__text').textContent, /the one that went/);
+
+    /*
+     * And it wears Slack's own message markup, because that is what a theme
+     * styles the client through: Discord's rounds every avatar via
+     * `.c-message_kit__avatar img`, and a square face in a column of circles
+     * reads as broken rather than as a mod.
+     */
+    assert.ok(redrawn.querySelector('.c-message_kit__gutter'), 'Slack’s gutter');
+    assert.ok(redrawn.querySelector('.c-message_kit__avatar img'), 'the avatar a theme reaches for');
+    assert.ok(redrawn.querySelector('.c-message__sender'), 'and Slack’s sender');
+    /*
+     * But not its `data-qa`. That is what every mod here matches messages on,
+     * this one included, so a headstone wearing it would be read back as a
+     * message -- swept, compared, and reported as deleted when it came off.
+     */
+    assert.equal(redrawn.getAttribute('data-qa'), null);
+    assert.equal(redrawn.querySelector('[data-qa]'), null);
 
     /*
      * And nothing this mod drew inside Slack's own markup outlives it. The
