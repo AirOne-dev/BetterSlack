@@ -30,6 +30,7 @@ import { add, tally, view } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, displayNameChanges, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, snapshotOf } from './catch-up.js';
+import { harvest, merge, namesFor, renderText } from './emoji.js';
 
 const ICON = `<svg viewBox="0 0 20 20" aria-hidden="true" fill="none">
   <path d="M10 3.2a6.8 6.8 0 1 1-6.6 8.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -93,6 +94,28 @@ export default {
      * without letting the loader's settings file grow without limit.
      */
     const snapshots = api.helpers.cache('snapshots', { keys: CATCH_UP_CHANNELS });
+
+    /*
+     * The name-to-picture table, built out of Slack's own screen.
+     *
+     * A shortcode cannot be drawn from its name -- Slack serves a standard
+     * emoji by codepoint -- so the pairs are collected from whatever the client
+     * has drawn and kept. An emoji seen once in Slack is one this can draw for
+     * ever after.
+     */
+    let emojiTable = api.settings.get('emoji', {});
+    if (!emojiTable || typeof emojiTable !== 'object') emojiTable = {};
+    const saveEmoji = api.helpers.debounce(() => { void api.settings.set('emoji', emojiTable); }, 2000);
+    const emojiFor = (shortcode) => {
+      for (const name of namesFor(shortcode)) {
+        if (emojiTable[name]) return emojiTable[name];
+        try {
+          const found = api.slack.emojiUrl(name, customEmoji ?? undefined);
+          if (found) return found;
+        } catch { /* a name nothing knows is not an error */ }
+      }
+      return null;
+    };
     /** Members per channel, so a join is a difference and not a parsed sentence. */
     const roster = new Map();
     /** Statuses per person, the same way, and what each of them is called. */
@@ -161,17 +184,9 @@ export default {
       view,
       tally,
       peopleFor,
-      /*
-       * The picture for a shortcode, for entries recorded before the picture
-       * was kept beside the name. `:raised_hands::skin-tone-2:` is two names
-       * run together, and only the first is an emoji anything can draw -- the
-       * tone is lost, which is a better row than the raw shortcode was.
-       */
-      emojiUrl: (shortcode) => {
-        const base = String(shortcode ?? '').replace(/^:|:$/g, '').split('::')[0];
-        if (!base) return null;
-        try { return api.slack.emojiUrl(base, customEmoji ?? undefined); } catch { return null; }
-      },
+      emojiUrl: emojiFor,
+      /** A line of somebody's text, with its emoji drawn. */
+      renderText: (text) => renderText(document, text, (name) => emojiFor(name)),
       openConversation: (channelId) => api.slack.openConversation(channelId),
       openMessage: (channelId, ts) => api.slack.openMessage(channelId, ts),
       clear: async () => {
@@ -220,7 +235,7 @@ export default {
           key: `${channelId}:${ts}`,
           channelId,
           ts,
-          text: (body.textContent ?? '').trim(),
+          text: textOf(body),
           // Slack draws no avatar on a follow-up message from the same person,
           // so this is null for plenty of them. An absent author is shown as
           // one rather than guessed from the message above.
@@ -230,6 +245,26 @@ export default {
         });
       }
       return out;
+    };
+
+    /**
+     * What a message says, with its emoji written down rather than dropped.
+     *
+     * `textContent` loses every emoji: Slack draws them as `<img>`, and an
+     * image has no text. So the body is walked and each one contributes its
+     * shortcode -- which is what `conversations.history` sends too, so the two
+     * halves of this mod describe a message the same way.
+     */
+    const textOf = (body) => {
+      const parts = [];
+      const walk = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) { parts.push(node.nodeValue ?? ''); return; }
+        const name = node.getAttribute?.('data-stringify-emoji');
+        if (name) { parts.push(`:${String(name).replace(/^:|:$/g, '')}:`); return; }
+        for (const child of node.childNodes) walk(child);
+      };
+      walk(body);
+      return parts.join('').trim();
     };
 
     /**
@@ -406,6 +441,13 @@ export default {
       }
 
       if (document.documentElement.classList.contains(DEMO_ON)) return;
+      const drawn = harvest(document);
+      if (Object.keys(drawn).length) {
+        const next = merge(emojiTable, drawn);
+        if (Object.keys(next).length !== Object.keys(emojiTable).length) saveEmoji();
+        emojiTable = next;
+      }
+
       record([...messages.sweep(readMessages()), ...names.sweep(readNames())]);
       placeStones();
 

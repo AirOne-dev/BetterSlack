@@ -29,7 +29,9 @@ Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et tro
 
 **Il ne prétend pas savoir qui a réagi.** Slack ne le dit que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms plutôt que des identifiants. L'émoji et le compte sont ce qui peut être su honnêtement, donc c'est ce qui est enregistré.
 
-**L'émoji est l'image que Slack a dessinée, pas son nom.** Une réaction avec un ton de peau, ce sont deux shortcodes accolés, et un émoji personnalisé est un nom que seul un espace de travail connaît : l'image est donc conservée à côté du compte. Quand aucune ne peut être dessinée — une entrée d'avant ce changement, un émoji que l'espace a retiré — rien n'est dessiné et le nom passe dans l'infobulle de la ligne, parce qu'un shortcode au milieu d'une ligne se lit comme un rendu raté, pas comme un émoji.
+**Les émoji sont dessinés, pas épelés.** Un shortcode ne se transforme pas en image à partir de son nom : Slack sert un émoji standard par point de code, donc `slightly_smiling_face` ne construit aucune URL, et `emoji.list` ne répond qu'avec les émoji personnalisés de l'espace de travail. L'écran de Slack est la table que personne ne publie — chaque émoji qu'il dessine est une image portant son nom — donc les paires sont collectées à mesure que vous utilisez Slack, et conservées. Un émoji vu une fois est un émoji que ceci sait dessiner pour toujours, dans le texte d'un message comme sur une réaction.
+
+La table se remplit d'elle-même : un émoji jamais vu dans ce client s'affiche en shortcode la première fois, et en lui-même ensuite. Sur une ligne de réaction, où l'émoji est tout le contenu, celui qui ne peut pas être dessiné est omis plutôt qu'épelé, et le nom passe dans l'infobulle.
 
 **Une arrivée est une différence entre deux listes de membres**, pas un avis analysé dans une phrase. Slack affiche bien « X a rejoint », puis le replie et finit par ne plus le montrer — et la formulation dépend de la langue du lecteur.
 

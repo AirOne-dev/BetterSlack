@@ -82,9 +82,17 @@ export function createView(api, t, deps) {
     if (entry.kind === 'joined' || entry.kind === 'left') {
       return [h('div', { class: 'bsh-line bsh-dim' }, [t(entry.kind === 'joined' ? 'joinedBody' : 'leftBody')])];
     }
+    const said = (text, extra) => {
+      const line = h('div', { class: `bsh-line${extra}`, title: text }, []);
+      // Nodes rather than a string: the emoji are `<img>`, and building HTML
+      // out of somebody's message to get them there would put their words
+      // through an HTML parser.
+      line.append(deps.renderText ? deps.renderText(text) : document.createTextNode(text));
+      return line;
+    };
     const lines = [];
-    if (entry.before) lines.push(h('div', { class: 'bsh-line bsh-was', title: entry.before }, [entry.before]));
-    if (entry.after) lines.push(h('div', { class: 'bsh-line', title: entry.after }, [entry.after]));
+    if (entry.before) lines.push(said(entry.before, ' bsh-was'));
+    if (entry.after) lines.push(said(entry.after, ''));
     else if (entry.kind === 'deleted') lines.push(h('div', { class: 'bsh-line bsh-dim' }, [t('deletedBody')]));
     return lines;
   };

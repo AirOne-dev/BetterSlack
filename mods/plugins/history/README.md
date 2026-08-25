@@ -29,7 +29,9 @@ Telling a real change from Slack redrawing itself is the whole of the work, and 
 
 **It does not claim to know who reacted.** Slack says that only in a tooltip it builds when you hover, in the reader's language and with names rather than ids. The emoji and the count are what can be known honestly, so that is what is recorded.
 
-**The emoji is the picture Slack drew, not its name.** A reaction with a skin tone is two shortcodes run together and a custom emoji is a name only one workspace knows, so the image is kept beside the count. Where none can be drawn — an entry recorded before that, an emoji the workspace has dropped — nothing is drawn and the name is in the row's tooltip, because a shortcode in the middle of a row reads as a rendering that failed rather than as an emoji.
+**Emoji are drawn, not spelled.** A shortcode cannot be turned into a picture from its name: Slack serves a standard emoji by codepoint, so `slightly_smiling_face` builds no URL, and `emoji.list` answers with the workspace's custom ones only. Slack's own screen is the table nobody publishes — every emoji it draws is an image carrying its name — so the pairs are collected as you use Slack and kept. An emoji you have seen once is one this can draw for ever after, in a message's text and on a reaction alike.
+
+The table fills itself, so an emoji you have never seen in this client shows as its shortcode the first time and as itself from then on. On a reaction row, where the emoji is the whole content, one that cannot be drawn is left out rather than spelled, and the name goes in the row's tooltip.
 
 **A join is a difference between two member lists**, not a notice parsed out of a sentence. Slack does draw "X joined", then folds it away and eventually stops showing it — and the wording depends on the reader's language.
 

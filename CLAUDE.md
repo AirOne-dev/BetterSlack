@@ -1181,6 +1181,15 @@ tests fail below it.
   `emoji.list` with `include_categories: true` also answers with nine
   categories of standard **names**, which is a list of what exists and still not
   a way to draw any of it.
+
+  **So the table is harvested rather than fetched.** `data-stringify-emoji` is
+  on every emoji Slack draws, standard ones included, beside the `src` it drew
+  it with -- so collecting the pairs off the screen and keeping them builds the
+  name-to-image table nobody publishes, and it fills itself as the client is
+  used. An emoji seen once is one a mod can draw for ever after. History does
+  this, capped and persisted; without it a log of messages is a log of
+  `:slightly_smiling_face:`, and `textContent` on a message body drops every
+  emoji outright, because an image has no text.
 - **`users.info` takes a comma-separated `users` list** and answers with a
   `users` array. Undocumented, but it is what Slack's own client sends, and it
   turns one request per member into one request. `users.getPresence` has no such

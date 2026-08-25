@@ -12,6 +12,7 @@ import { add, GROUPS, sortRows, tally, view } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, reactionDiff, snapshotOf } from './catch-up.js';
+import { harvest, merge, namesFor, renderText } from './emoji.js';
 
 /** The mod's own folder, so `api.assets.text` finds the stylesheet it ships. */
 const FILES = readModFiles(path.dirname(fileURLToPath(import.meta.url)));
@@ -304,6 +305,69 @@ test('the same event seen by both halves is written once', () => {
   // from before it happened and finds it again.
   assert.equal(add(log, [{ ...seen }], 100, 2000).length, 1);
   assert.equal(add(log, [{ ...seen, ts: '2' }], 100, 2000).length, 2, 'a different message is a different event');
+});
+
+/* -- emoji ----------------------------------------------------------------- */
+
+test('the name-to-picture table is harvested from what Slack drew', () => {
+  /*
+   * A shortcode cannot be drawn from its name: Slack serves a standard emoji by
+   * codepoint, and `emoji.list` answers with the workspace's custom ones only.
+   * Its own DOM is the table nobody publishes.
+   */
+  const dom = installDom();
+  try {
+    const host = document.createElement('div');
+    host.innerHTML = '<img data-stringify-emoji=":tada:" src="https://e/1f389.png">'
+      + '<span data-stringify-emoji="rocket"><img src="https://e/1f680.png"></span>'
+      + '<img data-stringify-emoji="broken">';
+    assert.deepEqual(harvest(host), { tada: 'https://e/1f389.png', rocket: 'https://e/1f680.png' },
+      'colons trimmed, a nested image found, one with no source left out');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('the table keeps what you use and drops what you met once', () => {
+  const full = merge({}, { a: '1', b: '2', c: '3' }, 3);
+  // Seeing `a` again moves it to the end, so the cap takes `b` rather than it.
+  const again = merge(full, { a: '1', d: '4' }, 3);
+  assert.deepEqual(Object.keys(again), ['c', 'a', 'd']);
+});
+
+test('a skin tone is tried whole, then without', () => {
+  assert.deepEqual(namesFor(':raised_hands::skin-tone-2:'), ['raised_hands::skin-tone-2', 'raised_hands']);
+  assert.deepEqual(namesFor('tada'), ['tada']);
+  assert.deepEqual(namesFor(''), []);
+});
+
+test('a message keeps its words and gains its pictures', () => {
+  const dom = installDom();
+  try {
+    const known = (name) => (name === 'slightly_smiling_face' ? 'https://e/1f642.png' : null);
+    const out = document.createElement('div');
+    out.append(renderText(document, 'merci :slightly_smiling_face: et :inconnu: aussi', known));
+
+    assert.equal(out.querySelectorAll('img').length, 1);
+    assert.equal(out.querySelector('img').src, 'https://e/1f642.png');
+    // Words are text nodes, never parsed as markup: they are somebody's message.
+    assert.equal(out.textContent, 'merci  et :inconnu: aussi');
+    assert.match(out.innerHTML, /merci/, 'and a shortcode nothing can draw is left as written');
+  } finally {
+    dom.cleanup();
+  }
+});
+
+test('a message that is only an emoji is not left empty', () => {
+  const dom = installDom();
+  try {
+    const out = document.createElement('div');
+    out.append(renderText(document, ':tada:', () => 'https://e/1f389.png'));
+    assert.equal(out.querySelectorAll('img').length, 1);
+    assert.equal(out.childNodes.length, 1);
+  } finally {
+    dom.cleanup();
+  }
 });
 
 /* -- the log and the page ------------------------------------------------- */
