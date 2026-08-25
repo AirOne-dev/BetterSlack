@@ -183,8 +183,17 @@ export default {
        * Slack answers about the reactions on a message now, never about who
        * was on one yesterday. So they go on the way in.
        */
-      return stored.filter((entry) => (entry?.kind !== 'reaction-added' && entry?.kind !== 'reaction-removed')
-        || entry.userId || entry.who);
+      return stored.filter((entry) => {
+        /*
+         * Sidebar sections used to be told apart by where they sat in the
+         * list, so every reorder -- and every workspace switch, where they are
+         * different sections entirely -- was written down as a rename. Not one
+         * of the stored ones can be told from a real rename, so the class goes.
+         */
+        if (entry?.kind === 'section-renamed') return false;
+        if (entry?.kind !== 'reaction-added' && entry?.kind !== 'reaction-removed') return true;
+        return Boolean(entry.userId || entry.who);
+      });
     })();
     let openedAt = Number(api.settings.get('openedAt', 0)) || 0;
     // Every channel the log has already named, so a `<#C…>` in a message read
@@ -387,11 +396,28 @@ export default {
       const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim();
       if (channelId && channelName) out.push({ scope: 'channel', key: channelId, name: channelName });
 
-      // Sections are named by the person who made them, and the heading is the
-      // only place that name is written down.
-      const sections = document.querySelectorAll(`${SIDEBAR} .p-channel_sidebar__section_heading`);
-      for (const [index, heading] of [...sections].entries()) {
-        out.push({ scope: 'section', key: String(index), name: heading.textContent?.trim() ?? '' });
+      /*
+       * Sections are named by the person who made them, and the heading is the
+       * only place that name is written down.
+       *
+       * Keyed by Slack's own id for the section, never by where it sits in the
+       * list. Measured on a live sidebar: every heading carries
+       * `data-qa-channel-sidebar-section-heading` -- `L05HHTHH4H4` for one you
+       * made, `channels`, `direct_messages`, `slack_connect`, `recent_apps`
+       * for Slack's own. Keyed by position instead, anything that reorders the
+       * list reads as a rename: dragging a section, collapsing one, and above
+       * all switching workspace, where the sections are different sections
+       * entirely and every index lands on somebody else's heading.
+       *
+       * The team goes in the key as well, so a workspace with more sections
+       * than the one you left cannot be read as the same ones renamed.
+       */
+      const team = api.slack.currentTeamId() ?? '?';
+      for (const heading of document.querySelectorAll(`${SIDEBAR} .p-channel_sidebar__section_heading`)) {
+        const id = heading.getAttribute('data-qa-channel-sidebar-section-heading');
+        // No id is no identity, and a guess at one is what this is fixing.
+        if (!id) continue;
+        out.push({ scope: 'section', key: `${team}:${id}`, name: heading.textContent?.trim() ?? '' });
       }
 
       return out;

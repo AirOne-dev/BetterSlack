@@ -127,12 +127,6 @@ export function createView(api, t, deps) {
       ]);
     }
 
-    if (event.kind === 'deleted') {
-      return h('div', { class: 'bsh-did bsh-did--messages' }, [
-        h('span', { class: 'bsh-verb bsh-verb--gone' }, [t('verbDeleted')]),
-      ]);
-    }
-
     // Everything with no message behind it: a rename, a status, an arrival.
     const verb = h('span', { class: 'bsh-verb' }, [
       t(`verb_${event.kind}`, { who: nameOf(people, event.userId, event.who) }),
@@ -169,16 +163,35 @@ export function createView(api, t, deps) {
     const { reactions, rest } = foldReactions(card.events);
     const family = FAMILY[card.events[0]?.kind] ?? 'messages';
     const author = card.subjectUser ? people.get(card.subjectUser) : null;
+    /*
+     * Whose card it is, or nobody's.
+     *
+     * A rename or a section heading has no person behind it, and heading those
+     * with "Someone" is the app inventing an actor for something that has
+     * none -- which reads as a name it failed to resolve. They get no face and
+     * no name at all, and start at the time.
+     */
     const who = author?.name || card.subjectWho || card.events[0]?.who
-      || nameOf(people, card.subjectUser, null) || t('someone');
+      || (card.subjectUser ? nameOf(people, card.subjectUser, null) : null);
 
     const face = author?.avatar
       ? h('img', { class: 'bsh-avatar', src: author.avatar, alt: '', loading: 'lazy' })
       : h('span', { class: `bsh-avatar bsh-avatar--none bsh-avatar--${family}` });
 
-    const head = h('div', { class: 'bsh-card__head' }, [h('span', { class: 'bsh-who' }, [who])]);
+    const head = h('div', { class: 'bsh-card__head' }, []);
+    if (who) head.append(h('span', { class: 'bsh-who' }, [who]));
     if (author?.status) head.append(api.slack.statusNode(author.status, author.profile, { showText: false }));
     head.append(h('span', { class: 'bsh-time' }, [time(card.at)]));
+    /*
+     * Deleted is a tag on the message, not a sentence under it.
+     *
+     * It said "Deleted -- this is what it said" above the words it was talking
+     * about, which is a caption for something already on screen. The
+     * conversation itself marks a deleted message with a tag and the text
+     * struck through, and this is the same thing in a list.
+     */
+    const gone = card.events.some((event) => event.kind === 'deleted');
+    if (gone) head.append(h('span', { class: 'bsh-tag bsh-tag--gone' }, [t('deleted')]));
     const link = channelLink(card);
     if (link) head.append(h('span', { class: 'bsh-dim' }, ['·']), link);
 
@@ -192,12 +205,17 @@ export function createView(api, t, deps) {
      * wordings, and the newer one is the message.
      */
     const edited = rest.some((event) => event.kind === 'edited');
-    if (card.subject && !edited) body.append(said(card.subject, people, ' bsh-subject'));
-    for (const event of rest) body.append(happening(event, people));
+    const words = card.subject ?? card.events.find((event) => event.before)?.before ?? null;
+    if (words && !edited) body.append(said(words, people, gone ? ' bsh-subject bsh-said--gone' : ' bsh-subject'));
+    // The deletion itself draws nothing: the tag above says it, and the words
+    // it was about are the line under it.
+    for (const event of rest) {
+      if (event.kind === 'deleted') continue;
+      body.append(happening(event, people));
+    }
     for (const reaction of reactions) body.append(happening(reaction, people));
 
     const actions = h('div', { class: 'bsh-card__actions' });
-    const gone = card.events.some((event) => event.kind === 'deleted');
     if (card.ts && card.channelId && !gone) {
       actions.append(api.helpers.iconButton({
         label: t('jump'),

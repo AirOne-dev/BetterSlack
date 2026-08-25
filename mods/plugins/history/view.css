@@ -215,6 +215,21 @@
   border-left: 2px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .5));
   color: var(--dt_color-content-pry, #d1d2d3);
 }
+
+/*
+ * A deleted message, marked the way the conversation marks one: a tag beside
+ * the time and the words struck through. It was a sentence saying "this is
+ * what it said" printed above the words it was talking about.
+ */
+.bsh-said--gone { text-decoration: line-through; opacity: .8; }
+.bsh-tag {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.bsh-tag--gone { color: var(--dt_color-content-imp, #c01343); }
 .bsh-was { text-decoration: line-through; color: var(--dt_color-content-sec, #ababad); }
 
 /* One thing that happened: a mark down the left, then the sentence. */

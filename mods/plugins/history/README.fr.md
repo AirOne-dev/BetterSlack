@@ -10,7 +10,7 @@ Un onglet dans le rail de Slack, sous Accueil et Activité, ou `⌘⇧H`, ou `�
 | --- | --- |
 | **Messages** | Un message réécrit, avec les deux formulations. Un message supprimé, avec ce qu'il disait — et le message laissé là où il était, barré, avec le nom et le visage de celui à qui il était, au lieu du trou qui se referme dessus. L'endroit est recalculé à partir des horodatages de ce qui est à l'écran à chaque affichage, donc la ligne tombe au bon endroit même quand la conversation a avancé. |
 | **Réactions** | Une réaction ajoutée ou retirée, avec l'émoji et la personne qui l'a faite. |
-| **Noms** | Un canal renommé, une section de sidebar renommée, quelqu'un qui change de nom d'affichage. Slack ne dit rien des trois. |
+| **Noms** | Un canal renommé, une section de sidebar renommée, quelqu'un qui change de nom d'affichage. Slack ne dit rien des trois. Une section est reconnue par l'identifiant que Slack lui donne, donc réordonner la sidebar — ou changer d'espace de travail — n'est pas un renommage. |
 | **Personnes** | Quelqu'un qui rejoint ou quitte une conversation, et les statuts au fil de leurs changements. |
 
 Chaque carte peut être oubliée séparément, à côté du bouton qui vide tout. La page a une recherche qui porte sur tout ce qu'une ligne affiche — un nom se retrouve qu'il ait été la personne, le canal ou le mot changé —, des filtres par famille et cinq tris. Chaque ligne propose de copier l'ancien texte, et d'aller au message quand il en reste un.

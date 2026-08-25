@@ -10,7 +10,7 @@ A tab in Slack's rail, under Home and Activity, or `⌘⇧H`, or `⌘K` → **Hi
 | --- | --- |
 | **Messages** | A message rewritten, with both wordings. A message deleted, with what it said — and the message left where it was, struck through, with whose it was beside it, instead of the gap closing over it. Where it was is worked out from the timestamps of what is on screen each time it is drawn, so it lands in the right place even when the conversation has moved on. |
 | **Reactions** | A reaction added or taken back, with the emoji and the person who did it. |
-| **Names** | A channel renamed, a sidebar section renamed, somebody changing their display name. Slack says nothing about any of the three. |
+| **Names** | A channel renamed, a sidebar section renamed, somebody changing their display name. Slack says nothing about any of the three. A section is told apart by Slack's own id for it, so reordering the sidebar — or switching workspace — is not a rename. |
 | **People** | Somebody joining or leaving a conversation, and people's statuses as they change. |
 
 Each card can be forgotten on its own, beside the button that empties the lot. The page has a search that runs over everything a row draws — a name finds it whether it was the person, the channel, or the word that changed — filters by family, and five sorts. Each row offers the old text to copy, and takes you to the message where there is still one to land on.

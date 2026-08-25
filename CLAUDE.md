@@ -1055,7 +1055,15 @@ tests fail below it.
   `.c-message__sender_button` and treat the result as a label; a display name
   that is *compared* has to come from `users.info`.
 - **The sidebar's section headings are `.p-channel_sidebar__section_heading`**,
-  and they hold whatever the person who made the section typed.
+  and they hold whatever the person who made the section typed. Each carries
+  Slack's own id for the section in
+  `data-qa-channel-sidebar-section-heading` -- an `L…` for one somebody made,
+  and `channels`, `direct_messages`, `slack_connect` or `recent_apps` for
+  Slack's own -- so **never tell two sections apart by where they sit in the
+  list**. Keyed by position, every reorder reads as a rename: dragging a
+  section, collapsing one, and above all switching workspace, where they are
+  different sections entirely and every index lands on somebody else's
+  heading.
 - **`.p-resizer` is Slack's drag handle, and it can be borrowed.** Measured on
   the channel sidebar's: 8px wide, `position: absolute`, `cursor: col-resize`,
   `z-index: 1000`, transparent, `role="none"` and no tab stop, positioned by

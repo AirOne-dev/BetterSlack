@@ -999,3 +999,72 @@ test('what belongs to a workspace is dropped when the workspace changes', async 
     dom.cleanup();
   }
 });
+
+test('a sidebar section is told apart by Slack’s id for it, never by its place', async () => {
+  /*
+   * Keyed by position, anything that reorders the list reads as a rename --
+   * dragging a section, collapsing one, and above all switching workspace,
+   * where the sections are different sections entirely and every index lands
+   * on somebody else's heading. Measured on a live sidebar: every heading
+   * carries `data-qa-channel-sidebar-section-heading`, an `L…` for one you
+   * made and `channels` / `direct_messages` / `recent_apps` for Slack's own.
+   */
+  const watcher = createNameWatcher();
+  const sections = (...pairs) => pairs.map(([key, name]) => ({ scope: 'section', key, name }));
+
+  const first = sections(['T1:channels', 'Canaux'], ['T1:L05', 'Tech'], ['T1:direct_messages', 'Messages directs']);
+  watcher.sweep(first);
+  watcher.sweep(first);
+
+  // The same sections, drawn in another order: nothing was renamed.
+  assert.deepEqual(watcher.sweep(sections(
+    ['T1:direct_messages', 'Messages directs'], ['T1:channels', 'Canaux'], ['T1:L05', 'Tech'],
+  )), []);
+
+  // And another workspace's sections are not these ones under new names.
+  assert.deepEqual(watcher.sweep(sections(['T2:channels', 'Channels'], ['T2:L99', 'Design'])), []);
+
+  // What a rename actually is: the same section, called something else.
+  const renamed = sections(['T1:L05', 'Tech'], ['T1:channels', 'Canaux'], ['T1:direct_messages', 'Messages directs']);
+  watcher.sweep(renamed);
+  const [change, ...rest] = watcher.sweep(sections(
+    ['T1:L05', 'Engineering'], ['T1:channels', 'Canaux'], ['T1:direct_messages', 'Messages directs'],
+  ));
+  assert.equal(rest.length, 0);
+  assert.equal(change.kind, 'section-renamed');
+  assert.equal(change.before, 'Tech');
+  assert.equal(change.after, 'Engineering');
+});
+
+test('a deleted message is its words with a tag, not a sentence about them', async () => {
+  // "Deleted — this is what it said", printed above the words it was talking
+  // about, is a caption for something already on screen. The conversation
+  // marks one with a tag and a line through it; so does this.
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [{
+        id: '1', kind: 'deleted', at: 10, channelId: 'C1', ts: '9',
+        before: 'the words that went', subject: 'the words that went', userId: 'U1', subjectUser: 'U1',
+      }],
+    },
+  });
+  try {
+    await plugin.start(api);
+    recorded.commands.find((command) => command.id === 'open').run();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const card = document.querySelector('.bsh-card');
+    assert.ok(card, 'the card is drawn');
+    assert.match(card.querySelector('.bsh-tag--gone').textContent, /supprim|deleted/i);
+    assert.ok(card.querySelector('.bsh-said--gone'), 'and the words carry the line through');
+    assert.match(card.textContent, /the words that went/);
+    assert.doesNotMatch(card.textContent, /voici ce qu|this is what it said/i);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
