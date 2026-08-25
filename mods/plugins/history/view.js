@@ -97,9 +97,18 @@ export function createView(api, t, deps) {
       : h('span', { class: 'bsh-emoji bsh-emoji--unknown', 'aria-hidden': 'true' }, ['·']);
   };
 
-  /** One thing that happened, as the sentence a person reads. */
-  const happening = (event, people) => {
+  /**
+   * One thing that happened, as the sentence a person reads.
+   *
+   * `when` is passed only where the card holds more than one moment. A card is
+   * headed by the time of its newest event, so a message edited twice put both
+   * edits under the second one's time and the older one silently claimed it --
+   * which is the wrong answer to the only question an edit raises. With one
+   * event there is nothing to tell apart and the heading already says it.
+   */
+  const happening = (event, people, when = null) => {
     const family = FAMILY[event.kind] ?? 'messages';
+    const stamp = () => (when ? [h('span', { class: 'bsh-did__when bsh-dim' }, [when])] : []);
 
     if (event.kind === 'reaction-added' || event.kind === 'reaction-removed') {
       // Alphabetical, and `localeCompare` rather than `<`: a code-point
@@ -110,6 +119,7 @@ export function createView(api, t, deps) {
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b));
       return h('div', { class: `bsh-did bsh-did--${family}`, title: event.emoji ?? '' }, [
+        ...stamp(),
         emojiNode(event),
         h('span', { class: 'bsh-verb' }, [t(event.kind === 'reaction-added' ? 'verbReacted' : 'verbUnreacted')]),
         // Named where Slack named them, and silent where it did not: on screen
@@ -122,6 +132,7 @@ export function createView(api, t, deps) {
       const both = h('div', { class: 'bsh-both' }, [said(event.before, people, ' bsh-was')]);
       if (event.after) both.append(said(event.after, people));
       return h('div', { class: 'bsh-did bsh-did--messages' }, [
+        ...stamp(),
         h('span', { class: 'bsh-verb' }, [t('verbEdited', { who: nameOf(people, event.userId, event.who) })]),
         both,
       ]);
@@ -132,12 +143,12 @@ export function createView(api, t, deps) {
       t(`verb_${event.kind}`, { who: nameOf(people, event.userId, event.who) }),
     ]);
     if (!event.before && !event.after) {
-      return h('div', { class: `bsh-did bsh-did--${family}` }, [verb]);
+      return h('div', { class: `bsh-did bsh-did--${family}` }, [...stamp(), verb]);
     }
     const both = h('div', { class: 'bsh-both' }, []);
     if (event.before) both.append(said(event.before, people, ' bsh-was'));
     if (event.after) both.append(said(event.after, people));
-    return h('div', { class: `bsh-did bsh-did--${family}` }, [verb, both]);
+    return h('div', { class: `bsh-did bsh-did--${family}` }, [...stamp(), verb, both]);
   };
 
   /**
@@ -209,11 +220,20 @@ export function createView(api, t, deps) {
     if (words && !edited) body.append(said(words, people, gone ? ' bsh-subject bsh-said--gone' : ' bsh-subject'));
     // The deletion itself draws nothing: the tag above says it, and the words
     // it was about are the line under it.
+    /*
+     * Its own time on each line, where the card holds more than one moment.
+     *
+     * The head carries the newest, so a message edited twice hours apart put
+     * both edits under the second one's time -- and "when did it say that"
+     * is the only question an edit raises.
+     */
+    const moments = new Set([...rest, ...reactions].map((event) => event.at));
+    const stampFor = (event) => (moments.size > 1 ? time(event.at) : null);
     for (const event of rest) {
       if (event.kind === 'deleted') continue;
-      body.append(happening(event, people));
+      body.append(happening(event, people, stampFor(event)));
     }
-    for (const reaction of reactions) body.append(happening(reaction, people));
+    for (const reaction of reactions) body.append(happening(reaction, people, stampFor(reaction)));
 
     const actions = h('div', { class: 'bsh-card__actions' });
     if (card.ts && card.channelId && !gone) {

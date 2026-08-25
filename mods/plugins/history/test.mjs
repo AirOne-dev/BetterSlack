@@ -1225,3 +1225,85 @@ test('closing is a state, and only lasts as long as the stylesheet says', async 
     dom.cleanup();
   }
 });
+
+test('a card holding two moments gives each line its own time', async () => {
+  /*
+   * A card is headed by the time of its newest event, so a message edited
+   * twice hours apart put both edits under the second one's time and the older
+   * one silently claimed it -- which is the wrong answer to the only question
+   * an edit raises.
+   */
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [
+        { id: '1', kind: 'edited', at: 1786386800000, channelId: 'C1', ts: '9', before: 'first', after: 'second' },
+        { id: '2', kind: 'edited', at: 1786393000000, channelId: 'C1', ts: '9', before: 'second', after: 'third' },
+        { id: '3', kind: 'edited', at: 1786386800000, channelId: 'C1', ts: '4', before: 'a', after: 'b' },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    recorded.commands.find((command) => command.id === 'open').run();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const cards = [...document.querySelectorAll('.bsh-card')];
+    const twice = cards.find((card) => card.textContent.includes('first'));
+    const once = cards.find((card) => card.textContent.includes('a') && !card.textContent.includes('first'));
+
+    const stamps = [...twice.querySelectorAll('.bsh-did__when')].map((n) => n.textContent);
+    assert.equal(stamps.length, 2, 'one per edit');
+    assert.notEqual(stamps[0], stamps[1], 'and they are the times they happened');
+
+    assert.equal(once.querySelector('.bsh-did__when'), null,
+      'a card with one moment says it once, in the head');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('an open fold is rebuilt when the message is edited again under it', async () => {
+  const dom = installDom();
+  const message = document.querySelector('[data-qa="message_container"]');
+  const label = document.createElement('span');
+  label.className = 'c-message__edited_label';
+  label.textContent = '(edited)';
+  message.querySelector('[data-qa="message-text"]').after(label);
+
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [
+        { id: '1', kind: 'edited', at: 10, channelId: 'C0BFQCYBRAB', ts: '1786386808.130969', before: 'first', after: 'second' },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual([...document.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent),
+      ['first']);
+
+    // Edited again while it is open: what is unfolded has just changed.
+    recorded.emitSlackEvent({
+      type: 'message',
+      subtype: 'message_changed',
+      channel: 'C0BFQCYBRAB',
+      previous_message: { ts: '1786386808.130969', user: 'U1', text: 'second' },
+      message: { ts: '1786386808.130969', user: 'U1', text: 'third' },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual([...document.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent),
+      ['first', 'second'], 'without anybody having to close it and open it again');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});

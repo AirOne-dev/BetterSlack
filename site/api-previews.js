@@ -4416,6 +4416,15 @@
     };
     return Object.assign(dispose, {
       refresh,
+      rebuild: () => {
+        for (const [key, panel] of panels) {
+          const inner = panel.querySelector(`.${DISCLOSURE_CLASS.inner}`);
+          const trigger = [...document.querySelectorAll(options.trigger)].find((element) => options.keyFor(element) === key);
+          if (!inner || !trigger) continue;
+          const content = options.content(trigger, key);
+          inner.replaceChildren(...content ? [content] : []);
+        }
+      },
       isOpen: (key) => open.has(key),
       close: (key) => {
         open.delete(key);

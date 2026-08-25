@@ -18,7 +18,7 @@ You get a caret, a keyboard control and a wrapper. What you avoid is the four th
 - **Which one is open has to survive both**, so identity is a key you derive from what the element is about, never the node.
 - **None of it may be driven from an observer.** The message list is what Slack re-renders most, and an observer that reacts to that by putting a node back into it is the shape that has frozen this renderer twice. You call `refresh()` from your own sweep.
 
-`keyFor` returning null is how a trigger says it has nothing to show, and that trigger is left exactly as Slack drew it.
+`keyFor` returning null is how a trigger says it has nothing to show, and that trigger is left exactly as Slack drew it. `rebuild()` builds the content of every open panel again, for when what it shows has changed under somebody looking at it — `refresh()` deliberately leaves a panel that is still on screen alone, since rebuilding one on every sweep would restart its animation.
 
 **Nothing here animates.** The classes are stable so that Motion can: installing a mod called Motion is the statement of intent about animation, and a component that moves whether or not you asked takes that decision away.
 

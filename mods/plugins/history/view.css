@@ -233,6 +233,19 @@
 .bsh-was { text-decoration: line-through; color: var(--dt_color-content-sec, #ababad); }
 
 /* One thing that happened: a mark down the left, then the sentence. */
+/*
+ * A line's own time, where the card holds more than one moment. The head
+ * carries the newest, so without this a message edited twice hours apart put
+ * both edits under the second one's time.
+ */
+.bsh-did__when {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  align-self: baseline;
+}
+
 .bsh-did {
   display: flex;
   align-items: baseline;

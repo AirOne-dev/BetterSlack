@@ -1394,6 +1394,10 @@ Shape of it:
   180°. A keyframe rather than a transition, since the panel is built already
   open and a transition needs a frame between insertion and the change.
 
+  `refresh()` leaves a panel that is still on screen alone, or rebuilding it on
+  every sweep would restart its animation; `rebuild()` is the separate ask for
+  when the content changed under somebody looking at it.
+
   **Closing is a state, not a removal.** Taking the panel out leaves nothing on
   screen to animate, so it wears a closing class and goes once whatever the
   stylesheet put on it has finished -- and how long that is is read off the

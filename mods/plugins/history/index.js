@@ -601,6 +601,15 @@ export default {
 
     // ------------------------------------------------------------- the sweeps
 
+    /*
+     * Whatever has to be redrawn when the log gains something.
+     *
+     * Late-bound on purpose: `record` is reachable from a socket event, and
+     * the things it has to tell are declared further down. A `const` named
+     * here would be in its dead zone for anything arriving early enough.
+     */
+    let onLogChanged = () => {};
+
     const record = (events) => {
       if (events.length === 0) return;
       const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
@@ -615,6 +624,7 @@ export default {
       })), keep, Date.now());
       save();
       page.refresh();
+      onLogChanged();
     };
 
     /**
@@ -964,6 +974,10 @@ export default {
     /** The channel the last sweep saw, so opening another one triggers a look. */
     let lastChannel = null;
 
+    // A message edited a second time while its earlier wordings are unfolded:
+    // what is open under it has just changed.
+    onLogChanged = () => wordings.rebuild();
+
     api.helpers.poll(() => {
       const here = api.slack.currentChannelId();
       if (here && here !== lastChannel) {
@@ -1074,6 +1088,31 @@ export default {
         && (badgeKinds === null || badgeKinds.includes(entry.kind)));
       return since.length || null;
     });
+
+    // PROBE
+    setTimeout(() => {
+      const byMessage = {};
+      for (const e of log.filter((x) => x.kind === 'edited')) {
+        const key = `${e.channelId}:${e.ts}`;
+        (byMessage[key] ??= []).push({
+          at: e.at,
+          atText: new Date(e.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          id: e.id,
+          before: String(e.before).slice(0, 24),
+          after: String(e.after).slice(0, 24),
+        });
+      }
+      const shown = {};
+      for (const key of Object.keys(byMessage)) {
+        const at = key.lastIndexOf(':');
+        shown[key] = wordingsOf(key.slice(0, at), key.slice(at + 1)).map((w) => ({
+          at: w.at,
+          atText: new Date(w.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          text: String(w.text).slice(0, 24),
+        }));
+      }
+      console.warn('betterslack probe ' + JSON.stringify({ stored: byMessage, shown }));
+    }, 8000);
 
     api.helpers.hotkey(api.settings.get('shortcut', 'mod+shift+h'), () => {
       if (page.isOpen()) page.close();

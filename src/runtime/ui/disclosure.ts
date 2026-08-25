@@ -107,6 +107,15 @@ export interface DisclosureOptions {
 export interface DisclosureHandle extends Cleanup {
   /** Dress whatever is on screen now, and put back any panel that was torn out. */
   refresh(): void;
+  /**
+   * Build the content of every open panel again.
+   *
+   * For when what it shows has changed under somebody looking at it -- a
+   * message edited a second time while its earlier wordings are unfolded.
+   * `refresh` deliberately leaves a panel that is still on screen alone, since
+   * rebuilding one on every sweep would restart its animation.
+   */
+  rebuild(): void;
   isOpen(key: string): boolean;
   close(key: string): void;
   /** Close every one of them, without touching what the caller remembers. */
@@ -288,6 +297,18 @@ export function createDisclosure(options: DisclosureOptions): DisclosureHandle {
 
   return Object.assign(dispose, {
     refresh,
+    rebuild: () => {
+      for (const [key, panel] of panels) {
+        const inner = panel.querySelector(`.${DISCLOSURE_CLASS.inner}`);
+        const trigger = [...document.querySelectorAll(options.trigger)]
+          .find((element) => options.keyFor(element) === key);
+        if (!inner || !trigger) continue;
+        const content = options.content(trigger, key);
+        // Nothing to show any more is a panel with nothing in it; the sweep
+        // takes it away on its next pass, when `keyFor` answers null.
+        inner.replaceChildren(...(content ? [content] : []));
+      }
+    },
     isOpen: (key: string) => open.has(key),
     close: (key: string) => { open.delete(key); fold(key); refresh(); },
     closeAll: () => { for (const key of [...open]) { open.delete(key); fold(key); } refresh(); },
