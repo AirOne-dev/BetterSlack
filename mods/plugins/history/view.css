@@ -377,15 +377,42 @@ button.betterslack-mention:hover { text-decoration: underline; }
 .bsh-stone__close:hover { color: var(--dt_color-content-pry, #d1d2d3); }
 
 /*
- * Every wording a message has had, in a dialog opened from the message itself.
+ * Every wording a message has had, unfolded under the message itself.
  *
- * Slack writes "(edited)" and shows the current one; what it replaced is gone.
- * A page you have to go and open is the wrong place to answer "what did that
- * say before", because the question is asked while looking at the message.
+ * Slack already marks an edited message and already puts the mark where the
+ * question is asked -- it just does not answer it. So its own "(edited)" is
+ * the control, and what it opens goes under the words rather than over them:
+ * a dialog would cover the conversation the wording belongs to.
  */
-.bsh-wordings { display: flex; flex-direction: column; gap: 2px; }
-.bsh-wording { padding: 8px 0; }
-.bsh-wording__when { font-size: 12px; margin-bottom: 2px; }
+.bsh-edited {
+  cursor: pointer;
+  border-bottom: 1px dotted currentColor;
+}
+.bsh-edited:hover { color: var(--dt_color-content-highlight, #1d9bd1); }
+/* A caret rather than an icon: it is three characters wide inside Slack's own
+   label, and which way it points is the whole state. */
+.bsh-edited::after {
+  content: '⌄';
+  display: inline-block;
+  margin-left: 2px;
+  transition: transform 120ms ease;
+}
+.bsh-edited[aria-expanded="true"]::after { transform: rotate(180deg) translateY(2px); }
+
+.bsh-fold {
+  margin: 6px 0 2px;
+  padding: 6px 0 6px 10px;
+  border-left: 2px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+}
+.bsh-fold__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-bottom: 4px;
+}
+.bsh-wordings { display: flex; flex-direction: column; gap: 6px; }
+.bsh-wording__when { font-size: 12px; }
 .bsh-wording__text {
   font-size: 15px;
   line-height: 1.46668;
@@ -396,4 +423,3 @@ button.betterslack-mention:hover { text-decoration: underline; }
 /* The wording on screen right now, at full strength: everything above it is
    what it replaced, and the difference has to be visible at a glance. */
 .bsh-wording--now .bsh-wording__text { color: var(--dt_color-content-pry, #d1d2d3); }
-.bsh-wording__rule { height: 1px; background: var(--dt_color-otl-sec, rgba(94, 93, 96, .35)); }

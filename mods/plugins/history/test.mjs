@@ -930,56 +930,6 @@ test('a catch-up skips what an app did to its own messages, and nothing else', (
   );
 });
 
-test('a message with earlier wordings offers them, and one without offers nothing', async () => {
-  /*
-   * Slack writes "(edited)" and shows the current wording; what it replaced is
-   * gone. The question "what did that say before" is asked while looking at
-   * the message, so the answer belongs there rather than on a page you have to
-   * go and open.
-   *
-   * The button is only on messages that have something to show: the toolbar is
-   * four items wide and Slack's own are all live.
-   */
-  const dom = installDom();
-  const { api, recorded } = createTestApi({
-    files: FILES,
-    settings: {
-      people: false,
-      entries: [
-        { id: '1', kind: 'edited', at: 20, channelId: 'C1', ts: '9', before: 'second', after: 'third' },
-        { id: '2', kind: 'edited', at: 10, channelId: 'C1', ts: '9', before: 'first', after: 'second' },
-        { id: '3', kind: 'deleted', at: 30, channelId: 'C1', ts: '4', before: 'gone' },
-      ],
-    },
-  });
-  try {
-    await plugin.start(api);
-    const action = recorded.messageActions.find((entry) => entry.id === 'wordings');
-    assert.ok(action, 'the action is registered');
-
-    assert.equal(action.when({ channelId: 'C1', ts: '9' }), true);
-    assert.equal(action.when({ channelId: 'C1', ts: '4' }), false, 'a deletion is not an edit');
-    assert.equal(action.when({ channelId: 'C1', ts: '1' }), false, 'and a message nobody touched');
-    assert.equal(action.when({ channelId: 'C2', ts: '9' }), false, 'the same ts in another channel');
-
-    await action.onClick({ channelId: 'C1', ts: '9' });
-    const modal = recorded.modals.at(-1);
-    assert.ok(modal, 'a dialog opened');
-    const wordings = [...modal.body.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent);
-    /*
-     * A chain, not a list of changes. Two edits share a wording -- the second
-     * one's `before` is the first one's `after` -- and printing it twice reads
-     * as an edit that changed nothing.
-     */
-    assert.deepEqual(wordings, ['first', 'second', 'third']);
-    assert.ok(modal.body.querySelector('.bsh-wording--now .bsh-wording__text').textContent === 'third',
-      'and the one on screen now is marked');
-  } finally {
-    for (const dispose of recorded.disposers) dispose();
-    dom.cleanup();
-  }
-});
-
 test('a message that is on screen was never deleted, and the entry saying so goes', async () => {
   /*
    * Whatever wrote such an entry was wrong, and one thing did: working a
@@ -1014,6 +964,92 @@ test('a message that is on screen was never deleted, and the entry saying so goe
     const log = api.settings.get('entries', []);
     assert.deepEqual(log.map((entry) => entry.id), ['2'],
       'and the entry goes, since the page was saying the same untrue thing');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('Slack’s own “(edited)” is the way in, and only where there is something to show', async () => {
+  /*
+   * Slack already marks an edited message and already puts the mark exactly
+   * where the question is asked -- it just does not answer it. So the label
+   * becomes the control rather than a fourth button beside three of Slack's
+   * own, and what it opens unfolds under the message: a dialog would cover the
+   * conversation the wording belongs to.
+   *
+   * Slack marks every edit, including ones made before this mod existed, so a
+   * label with nothing behind it is left exactly as Slack drew it.
+   */
+  const dom = installDom();
+  const message = document.querySelector('[data-qa="message_container"]');
+  const label = document.createElement('span');
+  label.className = 'c-message__edited_label';
+  label.textContent = '(edited)';
+  message.querySelector('[data-qa="message-text"]').after(label);
+
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [
+        { id: '1', kind: 'edited', at: 20, channelId: 'C0BFQCYBRAB', ts: '1786386808.130969', before: 'second', after: 'third' },
+        { id: '2', kind: 'edited', at: 10, channelId: 'C0BFQCYBRAB', ts: '1786386808.130969', before: 'first', after: 'second' },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    assert.ok(label.classList.contains('bsh-edited'), 'the label became a control');
+    assert.equal(label.getAttribute('aria-expanded'), 'false');
+    assert.equal(document.querySelector('.bsh-fold'), null, 'and nothing is unfolded yet');
+
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const fold = document.querySelector('.bsh-fold');
+    assert.ok(fold, 'it unfolded');
+    assert.ok(message.contains(fold), 'under the message, not over it');
+    /*
+     * A chain, not a list of changes. Two edits of one message share a wording
+     * -- the second one's `before` is the first one's `after` -- and printing
+     * it twice would read as an edit that changed nothing.
+     */
+    assert.deepEqual([...fold.querySelectorAll('.bsh-wording__text')].map((n) => n.textContent),
+      ['first', 'second', 'third']);
+    assert.equal(fold.querySelector('.bsh-wording--now .bsh-wording__text').textContent, 'third');
+
+    label.click();
+    assert.equal(document.querySelector('.bsh-fold'), null, 'and folds away again');
+
+    // Nothing of ours is left on Slack's own label when the mod stops.
+    label.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await plugin.stop();
+    assert.equal(document.querySelector('.bsh-fold'), null);
+    assert.equal(label.className, 'c-message__edited_label');
+    assert.equal(label.getAttribute('role'), null);
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('a label Slack drew for an edit this never saw is left alone', async () => {
+  const dom = installDom();
+  const message = document.querySelector('[data-qa="message_container"]');
+  const label = document.createElement('span');
+  label.className = 'c-message__edited_label';
+  label.textContent = '(edited)';
+  message.querySelector('[data-qa="message-text"]').after(label);
+
+  const { api, recorded } = createTestApi({ files: FILES, settings: { people: false } });
+  try {
+    await plugin.start(api);
+    assert.equal(label.className, 'c-message__edited_label', 'exactly as Slack drew it');
+    label.click();
+    assert.equal(document.querySelector('.bsh-fold'), null);
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();

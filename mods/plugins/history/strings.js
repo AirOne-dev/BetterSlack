@@ -32,10 +32,9 @@ export const STRINGS = {
     'verb_status-changed': '{who} changed their status',
 
     wordings: 'Earlier wordings',
-    wordingsHint: 'What this message said before it was edited',
+    wordingsHint: 'See what this said before',
     wordingFirst: 'as written',
     wordingNow: 'now',
-    close: 'Close',
 
     openChannel: 'Go to {channel}',
     jump: 'Go to it',
@@ -88,10 +87,9 @@ export const STRINGS = {
     'verb_status-changed': '{who} a changé de statut',
 
     wordings: 'Versions précédentes',
-    wordingsHint: 'Ce que ce message disait avant d’être modifié',
+    wordingsHint: 'Voir ce que ceci disait avant',
     wordingFirst: 'à l’écriture',
     wordingNow: 'actuel',
-    close: 'Fermer',
 
     openChannel: 'Aller dans {channel}',
     jump: 'Y aller',

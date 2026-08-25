@@ -1038,6 +1038,13 @@ tests fail below it.
   with the column rather than with the mod being switched on.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
+- **Slack's own "(edited)" is `.c-message__edited_label`**, a visible span
+  inside `.p-rich_text_section` holding the parenthesised word in the reader's
+  language. It is the mark on the message and the place the question is asked,
+  so a mod with something to say about an edit belongs *there* rather than in
+  the hover toolbar. There is a second, hidden one carrying the whole sentence
+  for screen readers, keyed `data-qa="aria-labelledby-…-edited_state"`, which
+  is not the one to decorate.
 - **Editing a message takes it out of the document.** Slack replaces the
   message with an editor while you type, so anything inferring a deletion from
   "the message left the window" writes down your own edit as your own deletion

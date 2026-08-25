@@ -852,6 +852,143 @@ export default {
       page.refresh();
     });
 
+    /*
+     * Every wording a message has had, in the conversation itself.
+     *
+     * Slack writes "(edited)" and shows you the current wording; what it
+     * replaced is gone. The log has it, and a page you have to go and open is
+     * the wrong place to answer "what did that say before" -- the question is
+     * asked while looking at the message.
+     *
+     * A chain rather than a list of changes: an edit is a pair, so the
+     * wordings are the first `before` followed by every `after`. Two edits of
+     * one message share a wording, and printing that twice would read as an
+     * edit that changed nothing.
+     */
+    const wordingsOf = (channelId, ts) => {
+      const edits = log
+        .filter((entry) => entry.kind === 'edited' && entry.channelId === channelId && entry.ts === ts)
+        .sort((a, b) => a.at - b.at);
+      if (edits.length === 0) return [];
+      return [
+        { text: edits[0].before, at: null },
+        ...edits.map((edit) => ({ text: edit.after, at: edit.at })),
+      ];
+    };
+
+    /**
+     * Slack's own "(edited)", turned into the way in.
+     *
+     * Slack already marks an edited message and already puts the mark exactly
+     * where the question is asked -- it just does not answer it. So the label
+     * becomes the control rather than a button being added beside three of
+     * Slack's own, and what it opens unfolds under the message instead of over
+     * it: a dialog would cover the conversation the wording belongs to.
+     *
+     * Only where there is something to show. Slack marks every edit, including
+     * ones made before this mod was installed, and a control that opens an
+     * empty panel is worse than a label that never looked like one.
+     *
+     * Decorated from the poll rather than from an observer. This is the list
+     * Slack re-renders most, and an observer that reacts to Slack's own
+     * re-render by putting a node back into that list is the shape that has
+     * frozen this renderer before. Slack replacing the label is what undoes
+     * the decoration, and the next sweep is what puts it back.
+     */
+    const EDITED_LABEL = '.c-message__edited_label';
+    /** Which messages have their wordings unfolded, so a re-render keeps them. */
+    const unfolded = new Set();
+    /** The panels on screen, keyed the way everything here is keyed. */
+    const panels = new Map();
+
+    const wordingsNode = (wordings, people) => {
+      const list = api.dom.h('div', { class: 'bsh-wordings' });
+      for (const [index, wording] of wordings.entries()) {
+        const last = index === wordings.length - 1;
+        const line = api.dom.h('div', { class: `bsh-wording${last ? ' bsh-wording--now' : ''}` }, [
+          api.dom.h('div', { class: 'bsh-wording__when bsh-dim' }, [
+            wording.at ? time(wording.at) : t('wordingFirst'),
+            ...(last ? [' · ', t('wordingNow')] : []),
+          ]),
+        ]);
+        const words = api.dom.h('div', { class: 'bsh-wording__text' }, []);
+        words.append(drawText(wording.text, people));
+        line.append(words);
+        list.append(line);
+      }
+      return list;
+    };
+
+    const foldAway = (key) => {
+      panels.get(key)?.remove();
+      panels.delete(key);
+    };
+
+    const unfold = async (message, channelId, ts) => {
+      const key = `${channelId}:${ts}`;
+      const wordings = wordingsOf(channelId, ts);
+      if (wordings.length < 2) return;
+      foldAway(key);
+      const panel = api.dom.h('div', { class: 'bsh-fold' }, [
+        api.dom.h('div', { class: 'bsh-fold__title bsh-dim' }, [t('wordings')]),
+      ]);
+      // Drawn with what is known, so it opens on the click rather than after a
+      // request. The names arrive a moment later and replace it.
+      panel.append(wordingsNode(wordings, faces));
+      // Under the words, inside the message, which is where "what did this say
+      // before" belongs -- and where Slack's own thread and reaction rows go.
+      const body = message.querySelector('[data-qa="message-text"]')
+        ?? message.querySelector('.p-rich_text_section');
+      if (!body) return;
+      body.after(panel);
+      panels.set(key, panel);
+
+      const people = await peopleFor(log.filter((entry) => entry.channelId === channelId && entry.ts === ts));
+      if (panels.get(key) !== panel || !panel.isConnected) return;
+      panel.replaceChildren(
+        api.dom.h('div', { class: 'bsh-fold__title bsh-dim' }, [t('wordings')]),
+        wordingsNode(wordings, people.size ? people : faces),
+      );
+    };
+
+    const markEdits = () => {
+      const wanted = new Set();
+      for (const label of document.querySelectorAll(EDITED_LABEL)) {
+        const message = label.closest(MESSAGE);
+        const channelId = message?.getAttribute('data-msg-channel-id');
+        const ts = message?.getAttribute('data-msg-ts');
+        if (!channelId || !ts || wordingsOf(channelId, ts).length < 2) continue;
+        const key = `${channelId}:${ts}`;
+        wanted.add(key);
+
+        if (!label.hasAttribute('data-betterslack-wordings')) {
+          label.setAttribute('data-betterslack-wordings', '');
+          label.classList.add('bsh-edited');
+          label.setAttribute('role', 'button');
+          label.setAttribute('tabindex', '0');
+          label.setAttribute('title', t('wordingsHint'));
+          const toggle = () => {
+            if (unfolded.has(key)) { unfolded.delete(key); foldAway(key); }
+            else { unfolded.add(key); void unfold(message, channelId, ts); }
+            label.setAttribute('aria-expanded', String(unfolded.has(key)));
+          };
+          label.addEventListener('click', toggle);
+          label.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            toggle();
+          });
+        }
+        label.setAttribute('aria-expanded', String(unfolded.has(key)));
+        // Slack re-renders and takes the panel with it; put it back where it
+        // was rather than making somebody click twice.
+        if (unfolded.has(key) && !panels.get(key)?.isConnected) void unfold(message, channelId, ts);
+      }
+      // A message that scrolled away takes its panel with it, and keeps its
+      // place in `unfolded` so coming back to it opens it again.
+      for (const key of [...panels.keys()]) if (!wanted.has(key)) foldAway(key);
+    };
+
     /** The channel the last sweep saw, so opening another one triggers a look. */
     let lastChannel = null;
 
@@ -880,6 +1017,7 @@ export default {
        */
       record(names.sweep(readNames()));
       placeStones();
+      markEdits();
 
       for (const element of document.querySelectorAll(MESSAGE)) {
         const id = api.slack.userIdFromMessage(api.slack.describeMessage(element));
@@ -965,72 +1103,6 @@ export default {
       return since.length || null;
     });
 
-    /*
-     * Every wording a message has had, in the conversation itself.
-     *
-     * Slack writes "(edited)" and shows you the current wording; what it
-     * replaced is gone. The log has it, and a page you have to go and open is
-     * the wrong place to answer "what did that say before" -- the question is
-     * asked while looking at the message.
-     *
-     * A chain rather than a list of changes: an edit is a pair, so the
-     * wordings are the first `before` followed by every `after`. Two edits of
-     * one message share a wording, and printing that twice would read as an
-     * edit that changed nothing.
-     */
-    const wordingsOf = (channelId, ts) => {
-      const edits = log
-        .filter((entry) => entry.kind === 'edited' && entry.channelId === channelId && entry.ts === ts)
-        .sort((a, b) => a.at - b.at);
-      if (edits.length === 0) return [];
-      return [
-        { text: edits[0].before, at: null },
-        ...edits.map((edit) => ({ text: edit.after, at: edit.at })),
-      ];
-    };
-
-    api.slack.addMessageAction({
-      id: 'wordings',
-      label: t('wordings'),
-      description: t('wordingsHint'),
-      icon: `<svg viewBox="0 0 20 20" aria-hidden="true" fill="none">
-        <path d="M10 3.2a6.8 6.8 0 1 1-6.6 8.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        <path d="M3.4 7.6 3.2 4.4M3.4 7.6l3.2-.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M10 6.8V10l2.3 2.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`,
-      // Only where there is something to show. A button on every message that
-      // does nothing for nearly all of them is worse than no button: the
-      // toolbar is four items wide and Slack's own are all live.
-      when: (message) => wordingsOf(message.channelId, message.ts).length > 1,
-      onClick: async (message) => {
-        const wordings = wordingsOf(message.channelId, message.ts);
-        if (wordings.length < 2) return;
-        const people = await peopleFor(
-          log.filter((entry) => entry.channelId === message.channelId && entry.ts === message.ts),
-        );
-        const list = api.dom.h('div', { class: 'bsh-wordings' });
-        for (const [index, wording] of wordings.entries()) {
-          const last = index === wordings.length - 1;
-          const line = api.dom.h('div', { class: `bsh-wording${last ? ' bsh-wording--now' : ''}` }, [
-            api.dom.h('div', { class: 'bsh-wording__when bsh-dim' }, [
-              wording.at ? time(wording.at) : t('wordingFirst'),
-              ...(last ? [' · ', t('wordingNow')] : []),
-            ]),
-          ]);
-          const words = api.dom.h('div', { class: 'bsh-wording__text' }, []);
-          words.append(drawText(wording.text, people));
-          line.append(words);
-          list.append(line);
-          if (!last) list.append(api.dom.h('div', { class: 'bsh-wording__rule' }));
-        }
-        api.ui.modal({
-          title: t('wordings'),
-          content: list,
-          actions: [{ label: t('close'), variant: 'primary' }],
-        });
-      },
-    });
-
     api.helpers.hotkey(api.settings.get('shortcut', 'mod+shift+h'), () => {
       if (page.isOpen()) page.close();
       else open();
@@ -1046,6 +1118,15 @@ export default {
 
     sweepUp = () => {
       for (const [key, node] of headstones) { node.remove(); headstones.delete(key); }
+      for (const [key, node] of panels) { node.remove(); panels.delete(key); }
+      for (const label of document.querySelectorAll(EDITED_LABEL)) {
+        // Slack's own label, put back as Slack's own.
+        label.removeAttribute('data-betterslack-wordings');
+        label.removeAttribute('aria-expanded');
+        label.removeAttribute('role');
+        label.removeAttribute('tabindex');
+        label.classList.remove('bsh-edited');
+      }
     };
   },
 
