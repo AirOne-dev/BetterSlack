@@ -286,15 +286,26 @@ test('Slack says who reacted here, so the log says it too', () => {
   assert.equal(change.userId, 'U2', 'and names the person who took it back');
 });
 
-test('a count that moves with nobody named is still recorded', () => {
-  // Slack truncates `users` on a reaction with a great many of them.
-  const [change, ...rest] = reactionDiff(
+test('a reaction nobody can be named for is not written down', () => {
+  /*
+   * Slack truncates `users` on a reaction with a great many of them, so the
+   * ids can stay identical while the count moves. "Someone took a reaction
+   * back" answers the only question it raises with a shrug, so it is not a
+   * row -- and this is the rule the whole mod now follows, which is why the
+   * screen-reading half hands its sightings here instead of recording them.
+   */
+  assert.deepEqual(reactionDiff(
     { tada: { count: 40, users: ['U1'] } },
     { tada: { count: 41, users: ['U1'] } },
+  ), []);
+
+  // And every event this does produce carries the person it belongs to.
+  const events = reactionDiff(
+    { tada: { count: 1, users: ['U1'] } },
+    { tada: { count: 2, users: ['U2', 'U3'] } },
   );
-  assert.equal(rest.length, 0);
-  assert.equal(change.kind, 'reaction-added');
-  assert.equal(change.userId, undefined, 'nobody to attribute it to, and it does not invent one');
+  assert.equal(events.length, 3, 'one left, two arrived');
+  assert.ok(events.every((event) => event.userId), 'and each one names somebody');
 });
 
 test('the same event seen by both halves is written once', () => {
@@ -465,7 +476,7 @@ test('a rename and a status never share a card', () => {
 
 test('the search reaches the message a reaction was about', () => {
   const log = add([], [
-    { kind: 'reaction-added', channelId: 'C1', ts: '9', emoji: ':tada:', subject: 'la grande poubelle' },
+    { kind: 'reaction-added', channelId: 'C1', ts: '9', emoji: ':tada:', userId: 'U1', subject: 'la grande poubelle' },
   ], 100, 1000);
   assert.equal(view(log, { query: 'poubelle' }).length, 1);
 });
@@ -622,7 +633,7 @@ test('the badge counts what somebody took back, not everything that moved', asyn
       entries: [
         { id: '1', kind: 'edited', at: 10 },
         { id: '2', kind: 'deleted', at: 11 },
-        { id: '3', kind: 'reaction-removed', at: 12 },
+        { id: '3', kind: 'reaction-removed', at: 12, userId: 'U1' },
         { id: '4', kind: 'joined', at: 13 },
         { id: '5', kind: 'section-renamed', at: 14 },
         { id: '6', kind: 'status-changed', at: 15 },
@@ -674,6 +685,68 @@ test('nothing is recorded while Demo Mode is rewriting the screen', async () => 
   } finally {
     for (const dispose of recorded.disposers) dispose();
     document.documentElement.classList.remove('betterslack-demo-on');
+    dom.cleanup();
+  }
+});
+
+test('a deleted message leaves a line with the face and the name on it', async () => {
+  /*
+   * A struck-through sentence and nothing else is a sentence floating in a
+   * conversation with no way to tell whose it was, which is the first thing
+   * anybody asks. The author is known -- off the avatar when the screen caught
+   * it, off `conversations.history` when the catch-up did -- so the line is
+   * shaped like the message it replaces.
+   */
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      entries: [{
+        id: '1',
+        kind: 'deleted',
+        at: 10,
+        channelId: 'C0BFQCYBRAB',
+        ts: '1786386800.000000',
+        nextTs: '1786386808.130969',
+        before: 'the one that went :tada:',
+        userId: 'U0EXAMPLE2',
+      }],
+    },
+    web: {
+      users: async () => new Map([['U0EXAMPLE2', {
+        id: 'U0EXAMPLE2',
+        profile: { display_name: 'Ludo', image_72: 'https://ca.slack-edge.com/T-U-abc.png' },
+      }]]),
+    },
+  });
+  try {
+    await plugin.start(api);
+    const stone = document.querySelector('.bsh-stone');
+    assert.ok(stone, 'the line is where the message was');
+    assert.equal(stone.nextElementSibling?.getAttribute('data-msg-ts'), '1786386808.130969',
+      'in front of the message that followed it');
+
+    // The name arrives with the answer to `users.info`, so it is not there on
+    // the first frame and must not stay missing after it.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const redrawn = document.querySelector('.bsh-stone');
+    assert.match(redrawn.querySelector('.bsh-stone__who').textContent, /Ludo/);
+    assert.ok(redrawn.querySelector('img.bsh-stone__avatar'), 'and a face beside it');
+    assert.match(redrawn.querySelector('.bsh-stone__text').textContent, /the one that went/);
+
+    /*
+     * And nothing this mod drew inside Slack's own markup outlives it. The
+     * runtime's cleanup takes back the stylesheet, the poll and the tab, so a
+     * headstone left behind would sit in the conversation as an unstyled
+     * sentence with nothing able to remove it -- which is what a hot reload or
+     * switching the mod off does every time.
+     */
+    await plugin.stop();
+    assert.equal(document.querySelector('.bsh-stone'), null, 'the line goes with the mod');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
   }
 });

@@ -137,10 +137,12 @@ export function catchUp(before, messages, where) {
 /**
  * Reactions, as who arrived and who left.
  *
- * The count alone would do, but Slack hands over the ids, and a reaction taken
- * back is the one thing in this mod people actually want a name for. One event
- * per person rather than one per emoji: "three people un-reacted" is a number,
- * and the point is which three.
+ * This is the only place a reaction can be attributed, and that is why the
+ * screen-reading half hands its reaction sightings over to this one rather
+ * than recording them: Slack draws a count and names nobody, so a row built
+ * from the screen could only ever say "somebody". One event per person rather
+ * than one per emoji -- "three people un-reacted" is a number, and the point is
+ * which three.
  */
 export function reactionDiff(before, after) {
   const events = [];
@@ -163,21 +165,16 @@ export function reactionDiff(before, after) {
     }
 
     /*
-     * A count that moved with nobody named.
+     * A count that moved with nobody named is not written down.
      *
      * Slack truncates `users` on a reaction with a great many of them, so the
-     * ids can stay identical while the count changes. The event is still
-     * worth recording; it simply has nobody to attribute it to, which is the
-     * same thing the screen-reading half of this mod always says.
+     * ids can stay identical while the count changes. There is nobody to
+     * attribute that to, and a line reading "reaction taken back by someone"
+     * answers the only question it raises with a shrug -- it tells you
+     * something was taken back and leaves you unable to do anything with it.
+     * Silence is the better half of that trade: the reaction is still on the
+     * message for anyone who wants to count it.
      */
-    if (gone.length === 0 && came.length === 0 && wasCount !== isCount) {
-      events.push({
-        kind: isCount > wasCount ? 'reaction-added' : 'reaction-removed',
-        emoji: `:${name}:`,
-        before: String(wasCount),
-        after: String(isCount),
-      });
-    }
   }
   return events;
 }

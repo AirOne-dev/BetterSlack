@@ -278,15 +278,38 @@
  * before. A timer cannot loop.
  */
 .bsh-stone {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  /*
+   * 28 + 8 puts the text at 56px from the left, which is where Slack's own
+   * message text starts -- so the line reads as part of the conversation
+   * rather than as something laid over it.
+   */
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   gap: 8px;
+  align-items: start;
   margin: 2px 0;
-  padding: 4px 20px 4px 56px;
+  padding: 4px 20px 4px 20px;
   font-size: 15px;
   line-height: 1.46668;
   color: var(--dt_color-content-sec, #ababad);
   border-left: 3px solid var(--dt_color-content-imp, #c01343);
+}
+.bsh-stone__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  /* Dimmer than the message it replaces: the person is still there, the
+     message is not, and a face at full strength reads as a live message. */
+  opacity: .75;
+}
+.bsh-stone__avatar--none { background: var(--dt_color-background-sec, #35373b); display: block; }
+.bsh-stone__body { min-width: 0; }
+.bsh-stone__head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.bsh-stone__who {
+  font-weight: 900;
+  color: var(--dt_color-content-pry, #d1d2d3);
+  overflow-wrap: anywhere;
 }
 .bsh-stone__tag {
   flex: 0 0 auto;
@@ -295,11 +318,10 @@
   text-transform: uppercase;
   letter-spacing: .4px;
   color: var(--dt_color-content-imp, #c01343);
-  padding-top: 3px;
 }
-.bsh-stone__text { flex: 1 1 auto; min-width: 0; text-decoration: line-through; word-break: break-word; }
+.bsh-stone__text { display: block; text-decoration: line-through; word-break: break-word; }
+.bsh-stone__text .bsh-emoji--inline { vertical-align: -3px; }
 .bsh-stone__close {
-  flex: 0 0 auto;
   background: none;
   border: 0;
   padding: 0 2px;

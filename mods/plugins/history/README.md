@@ -8,8 +8,8 @@ A tab in Slack's rail, under Home and Activity, or `⌘⇧H`, or `⌘K` → **Hi
 
 | | |
 | --- | --- |
-| **Messages** | A message rewritten, with both wordings. A message deleted, with what it said — and the message left where it was, struck through, instead of the gap closing over it. |
-| **Reactions** | A reaction added or taken back, with the emoji and the count before and after. |
+| **Messages** | A message rewritten, with both wordings. A message deleted, with what it said — and the message left where it was, struck through, with whose it was beside it, instead of the gap closing over it. |
+| **Reactions** | A reaction added or taken back, with the emoji and the person who did it. |
 | **Names** | A channel renamed, a sidebar section renamed, somebody changing their display name. Slack says nothing about any of the three. |
 | **People** | Somebody joining or leaving a conversation, and people's statuses as they change. |
 
@@ -19,7 +19,7 @@ Each card can be forgotten on its own, beside the button that empties the lot. T
 
 **It reads the screen, and it asks Slack once per channel you open.** The screen is what catches a change as it happens, second by second. Opening a channel also asks `conversations.history` for its last sixty messages and compares them with what the channel looked like when you left it — so an edit, a deletion or a reaction taken back while you were somewhere else is caught the moment you come back. The first visit to a channel is the baseline and never an event, and a message older than that page is outside the window rather than deleted.
 
-That second half is also the only place **who** took a reaction back can be known: Slack hands over the ids there, while on screen it says so only in a tooltip built on hover, in the reader's language, with names rather than ids.
+That second half is also the only place **who** reacted can be known: Slack hands over the ids there, while on screen it says so only in a tooltip built on hover, in the reader's language, with names rather than ids.
 
 Telling a real change from Slack redrawing itself is the whole of the work, and three rules do it:
 
@@ -27,7 +27,9 @@ Telling a real change from Slack redrawing itself is the whole of the work, and 
 - **A deletion is a gap with both neighbours still on screen.** Slack's message list is virtual: thirteen messages out of thousands are in the document, and scrolling drops some at one end. That is a gap with a missing neighbour; a deletion is a gap with both.
 - **And only after two sweeps**, because Slack re-renders constantly and a message can leave the document and come back in the same second.
 
-**It does not claim to know who reacted.** Slack says that only in a tooltip it builds when you hover, in the reader's language and with names rather than ids. The emoji and the count are what can be known honestly, so that is what is recorded.
+**A reaction is named or it is not recorded.** Watching the screen can see a count move and nothing more — Slack says who reacted only in a tooltip it builds when you hover, in the reader's language and with names rather than ids. So a count moving is not written down: it is what sends this to ask `conversations.history`, which does hand over the ids, and the row is written from that answer with the person on it. "Somebody took a reaction back" answers the only question it raises with a shrug, and a history that cannot say who is no use as a history.
+
+The one case that leaves nothing at all is a reaction with a great many people on it, where Slack truncates the list of ids and the count is all that moved. That is a reaction still sitting on the message for anyone who wants to count it, so silence is the better half of the trade.
 
 **Emoji are drawn, not spelled.** A shortcode cannot be turned into a picture from its name: Slack serves a standard emoji by codepoint, so `slightly_smiling_face` builds no URL, and `emoji.list` answers with the workspace's custom ones only. Slack's own screen is the table nobody publishes — every emoji it draws is an image carrying its name — so the pairs are collected as you use Slack and kept. An emoji you have seen once is one this can draw for ever after, in a message's text and on a reaction alike.
 

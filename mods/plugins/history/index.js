@@ -64,11 +64,23 @@ const SWEEP_MS = 1500;
 const CATCH_UP_LIMIT = 60;
 /** Channels whose last state is remembered. Each one is a page of text. */
 const CATCH_UP_CHANNELS = 8;
+/** The floor between two "who reacted" questions about the same channel. */
+const ASK_MS = 8000;
 
 /** People change their status in minutes, not seconds, and every ask is a request. */
 const PEOPLE_MS = 5 * 60 * 1000;
 /** How many of the people you have seen are asked about. */
 const PEOPLE_LIMIT = 60;
+
+/**
+ * What `stop()` has to undo.
+ *
+ * The headstones are the only thing this mod leaves inside Slack's own markup,
+ * and the runtime's cleanup does not know about them: it takes back the
+ * stylesheet, the poll and the tab, so a headstone left behind would sit in the
+ * conversation as an unstyled sentence with nothing able to remove it.
+ */
+let sweepUp = null;
 
 export default {
   /**
@@ -131,7 +143,17 @@ export default {
 
     let log = (() => {
       const stored = api.settings.get('entries', []);
-      return Array.isArray(stored) ? stored : [];
+      if (!Array.isArray(stored)) return [];
+      /*
+       * Rows written before a reaction could be attributed.
+       *
+       * An emoji, a count and "somebody" -- which is what reading the screen
+       * can know and is not worth a line. They cannot be repaired either:
+       * Slack answers about the reactions on a message now, never about who
+       * was on one yesterday. So they go on the way in.
+       */
+      return stored.filter((entry) => (entry?.kind !== 'reaction-added' && entry?.kind !== 'reaction-removed')
+        || entry.userId || entry.who);
     })();
     let openedAt = Number(api.settings.get('openedAt', 0)) || 0;
 
@@ -166,17 +188,7 @@ export default {
         const users = await api.slack.web.users(ids);
         return new Map([...users].map(([id, user]) => [id, {
           name: displayName(user) ?? id,
-          /*
-           * `avatarUrl` rewrites the `<base>-<size>` shape a message's avatar
-           * has, and answers null for anything else -- a profile's `image_72`
-           * ends in `.png`, so it comes back null and every row drew a coloured
-           * square instead of a face. It is already the URL, so it is used as
-           * it is where the rewrite declines.
-           */
-          avatar: (() => {
-            const url = user?.profile?.image_72 ?? user?.profile?.image_48 ?? null;
-            return api.slack.avatarUrl(url, 72) ?? url;
-          })(),
+          avatar: avatarOf(api, user),
           status: api.slack.describeStatus(user, customEmoji),
           profile: user?.profile ?? null,
         }]));
@@ -338,8 +350,52 @@ export default {
 
     // ----------------------------------------------------------- the headstone
 
+    /**
+     * Faces and names for the headstones, fetched once and kept.
+     *
+     * A deletion caught by the screen knows the author's id off the avatar and
+     * usually their name; one caught by the catch-up knows only the id, since
+     * `conversations.history` sends `user` and nothing else. Either way the
+     * line has to look like the message it replaces, so the answer is the same
+     * batched, per-workspace-cached `users.info` the page uses.
+     *
+     * A name that never arrives leaves the id, never a blank: the point of the
+     * line is whose words are gone.
+     */
+    const faces = new Map();
+    let fetchingFaces = false;
+    const wantFaces = (ids) => {
+      const missing = [...new Set(ids)].filter((id) => id && !faces.has(id));
+      if (missing.length === 0 || fetchingFaces || !api.slack.web.available) return;
+      fetchingFaces = true;
+      void api.slack.web.users(missing)
+        .then((users) => {
+          for (const id of missing) {
+            const user = users.get(id);
+            faces.set(id, user ? { name: displayName(user) ?? id, avatar: avatarOf(api, user) } : null);
+          }
+          // Drawn already, with what was known then. Draw them again now that
+          // there is a face, rather than leaving the first answer on screen.
+          placeStones(true);
+        })
+        .catch(() => { for (const id of missing) faces.set(id, null); })
+        .finally(() => { fetchingFaces = false; });
+    };
+
+    /**
+     * The line left where a deleted message was.
+     *
+     * Shaped like the message it replaces -- a face, a name, a time -- because
+     * anything less is a struck-through sentence floating in a conversation
+     * with no way to tell whose it was, which is the first thing anybody asks.
+     * It is dimmer and smaller than a real message all the same: it is a note
+     * about something that is gone, not a message pretending to still be there.
+     */
     const buildStone = (entry) => {
       const key = `${entry.channelId}:${entry.ts}`;
+      const face = faces.get(entry.userId ?? '') ?? null;
+      const who = face?.name ?? entry.who ?? entry.userId ?? t('someone');
+
       const close = api.dom.h('button', {
         class: 'bsh-stone__close',
         type: 'button',
@@ -351,9 +407,25 @@ export default {
         headstones.get(key)?.remove();
         headstones.delete(key);
       });
+
+      const avatar = face?.avatar
+        ? api.dom.h('img', { class: 'bsh-stone__avatar', src: face.avatar, alt: '', loading: 'lazy' })
+        : api.dom.h('span', { class: 'bsh-stone__avatar bsh-stone__avatar--none' });
+
+      // The emoji drawn rather than spelled: this is the message's own text,
+      // and `:tada:` where a picture was is the same failure the page had.
+      const text = api.dom.h('span', { class: 'bsh-stone__text' }, []);
+      text.append(renderText(document, entry.before ?? '', emojiFor));
+
       return api.dom.h('div', { class: 'bsh-stone' }, [
-        api.dom.h('span', { class: 'bsh-stone__tag' }, [t('deleted')]),
-        api.dom.h('span', { class: 'bsh-stone__text' }, [entry.before]),
+        avatar,
+        api.dom.h('div', { class: 'bsh-stone__body' }, [
+          api.dom.h('div', { class: 'bsh-stone__head' }, [
+            api.dom.h('span', { class: 'bsh-stone__who' }, [who]),
+            api.dom.h('span', { class: 'bsh-stone__tag' }, [t('deleted')]),
+          ]),
+          text,
+        ]),
         close,
       ]);
     };
@@ -367,7 +439,17 @@ export default {
      * or changed channel -- the headstone comes off rather than drifting to the
      * end of whatever list is on screen.
      */
-    const placeStones = () => {
+    const placeStones = (redraw = false) => {
+      /*
+       * A headstone in the document that this instance did not put there is
+       * one from a previous life of the plugin -- switched off and on, or hot
+       * reloaded while Slack kept running -- and nothing else will ever remove
+       * it. Two lines where one message was is worse than none.
+       */
+      const mine = new Set(headstones.values());
+      for (const node of document.querySelectorAll('.bsh-stone')) {
+        if (!mine.has(node)) node.remove();
+      }
       if (!showDeleted) return;
       const wanted = new Map();
       for (const entry of log) {
@@ -376,6 +458,7 @@ export default {
         if (dismissed.has(key) || wanted.has(key)) continue;
         wanted.set(key, entry);
       }
+      wantFaces([...wanted.values()].map((entry) => entry.userId));
 
       for (const [key, node] of headstones) {
         if (!wanted.has(key)) { node.remove(); headstones.delete(key); }
@@ -390,7 +473,7 @@ export default {
           if (existing) { existing.remove(); headstones.delete(key); }
           continue;
         }
-        if (existing?.isConnected && existing.nextElementSibling === anchor) continue;
+        if (!redraw && existing?.isConnected && existing.nextElementSibling === anchor) continue;
         existing?.remove();
         const node = buildStone(entry);
         anchor.before(node);
@@ -430,9 +513,12 @@ export default {
      * happened before this mod existed.
      */
     let catchingUp = false;
+    /** Channels asked for while one was already in flight, so none is dropped. */
+    const queued = new Set();
     const catchUpOn = async (channelId) => {
-      if (catchingUp || !channelId || !api.slack.web.available) return;
+      if (!channelId || !api.slack.web.available) return;
       if (document.documentElement.classList.contains(DEMO_ON)) return;
+      if (catchingUp) { queued.add(channelId); return; }
       catchingUp = true;
       try {
         const answer = await api.slack.web.call('conversations.history', {
@@ -449,6 +535,29 @@ export default {
         // anything about: it simply has no history to compare.
       } finally {
         catchingUp = false;
+        const [next] = queued;
+        if (next) { queued.delete(next); void catchUpOn(next); }
+      }
+    };
+
+    /**
+     * Channels where a reaction moved and nobody has been named yet.
+     *
+     * Asked at a floor rather than on the sweep that noticed: a busy channel
+     * would otherwise be a request every second and a half, against a rate
+     * limit shared with Slack's own client. Nothing is lost by waiting -- the
+     * snapshot only moves when the answer arrives, so a second reaction landing
+     * in the meantime is in the same diff.
+     */
+    const wantsAsking = new Set();
+    const askedAt = new Map();
+    const askWhoReacted = () => {
+      const now = Date.now();
+      for (const channelId of [...wantsAsking]) {
+        if (now - (askedAt.get(channelId) ?? 0) < ASK_MS) continue;
+        wantsAsking.delete(channelId);
+        askedAt.set(channelId, now);
+        void catchUpOn(channelId);
       }
     };
 
@@ -470,7 +579,31 @@ export default {
         emojiTable = next;
       }
 
-      record([...messages.sweep(readMessages()), ...names.sweep(readNames())]);
+      /*
+       * A reaction seen on screen is a question, not an answer.
+       *
+       * Slack draws a count and names nobody -- who reacted is in a tooltip it
+       * builds on hover, in the reader's language, with names rather than ids.
+       * So a row written from the screen could only ever say "somebody", which
+       * is the one thing a history is no use for: knowing something was taken
+       * back and not by whom is worse than not knowing at all.
+       *
+       * `conversations.history` does name them, so a count moving is what
+       * sends this to ask. The answer is diffed against the snapshot from the
+       * last look and recorded there, with the person on it. Nothing is
+       * written from the sighting itself.
+       */
+      const seen = messages.sweep(readMessages());
+      const changes = [];
+      for (const change of seen) {
+        if (change.kind === 'reaction-added' || change.kind === 'reaction-removed') {
+          if (change.channelId) wantsAsking.add(change.channelId);
+          continue;
+        }
+        changes.push(change);
+      }
+      record([...changes, ...names.sweep(readNames())]);
+      askWhoReacted();
       placeStones();
 
       for (const element of document.querySelectorAll(MESSAGE)) {
@@ -569,6 +702,15 @@ export default {
       icon: '🕘',
       run: () => open(),
     });
+
+    sweepUp = () => {
+      for (const [key, node] of headstones) { node.remove(); headstones.delete(key); }
+    };
+  },
+
+  stop() {
+    sweepUp?.();
+    sweepUp = null;
   },
 };
 
@@ -589,6 +731,19 @@ function senderName(element) {
   const half = text.length / 2;
   if (text.length % 2 === 0 && text.slice(0, half) === text.slice(half)) return text.slice(0, half);
   return text;
+}
+
+/**
+ * Somebody's face, at the size a row draws it.
+ *
+ * `avatarUrl` rewrites the `<base>-<size>` shape a message's avatar has and
+ * answers null for anything else -- a profile's `image_72` ends in `.png`, so
+ * it comes back null and every row drew a coloured square instead of a face.
+ * It is already a URL, so it is used as it is where the rewrite declines.
+ */
+function avatarOf(api, user) {
+  const url = user?.profile?.image_72 ?? user?.profile?.image_48 ?? null;
+  return api.slack.avatarUrl(url, 72) ?? url;
 }
 
 /** The name a person would recognise, in the order Slack's own client prefers. */

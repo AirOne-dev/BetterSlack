@@ -8,8 +8,8 @@ Un onglet dans le rail de Slack, sous Accueil et Activité, ou `⌘⇧H`, ou `�
 
 | | |
 | --- | --- |
-| **Messages** | Un message réécrit, avec les deux formulations. Un message supprimé, avec ce qu'il disait — et le message laissé là où il était, barré, au lieu du trou qui se referme dessus. |
-| **Réactions** | Une réaction ajoutée ou retirée, avec l'émoji et le compte avant et après. |
+| **Messages** | Un message réécrit, avec les deux formulations. Un message supprimé, avec ce qu'il disait — et le message laissé là où il était, barré, avec le nom et le visage de celui à qui il était, au lieu du trou qui se referme dessus. |
+| **Réactions** | Une réaction ajoutée ou retirée, avec l'émoji et la personne qui l'a faite. |
 | **Noms** | Un canal renommé, une section de sidebar renommée, quelqu'un qui change de nom d'affichage. Slack ne dit rien des trois. |
 | **Personnes** | Quelqu'un qui rejoint ou quitte une conversation, et les statuts au fil de leurs changements. |
 
@@ -19,7 +19,7 @@ Chaque carte peut être oubliée séparément, à côté du bouton qui vide tout
 
 **Il lit l'écran, et il interroge Slack une fois par canal ouvert.** L'écran attrape un changement au moment où il se produit, seconde par seconde. Ouvrir un canal demande en plus à `conversations.history` ses soixante derniers messages et les compare à ce que le canal était quand vous l'avez quitté — une modification, une suppression ou une réaction retirée pendant que vous étiez ailleurs est donc rattrapée dès votre retour. La première visite d'un canal sert de référence et ne produit jamais d'événement, et un message plus ancien que cette page est hors de la fenêtre, pas supprimé.
 
-C'est aussi le seul endroit où **qui** a retiré une réaction peut être su : Slack y donne les identifiants, alors qu'à l'écran il ne le dit que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms.
+C'est aussi le seul endroit où **qui** a réagi peut être su : Slack y donne les identifiants, alors qu'à l'écran il ne le dit que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms.
 
 Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et trois règles s'en chargent :
 
@@ -27,7 +27,9 @@ Distinguer un vrai changement d'un re-rendu de Slack est tout le travail, et tro
 - **Une suppression est un trou dont les deux voisins sont encore là.** La liste de Slack est virtuelle : treize messages sur des milliers sont dans le document, et défiler en retire à une extrémité. Ça, c'est un trou avec un voisin manquant ; une suppression, c'est un trou avec les deux.
 - **Et seulement après deux passages**, parce que Slack re-rend en permanence et qu'un message peut quitter le document et revenir dans la même seconde.
 
-**Il ne prétend pas savoir qui a réagi.** Slack ne le dit que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms plutôt que des identifiants. L'émoji et le compte sont ce qui peut être su honnêtement, donc c'est ce qui est enregistré.
+**Une réaction est nommée, ou elle n'est pas enregistrée.** Lire l'écran permet de voir un compte bouger et rien de plus — Slack ne dit qui a réagi que dans une infobulle construite au survol, dans la langue du lecteur et avec des noms plutôt que des identifiants. Un compte qui bouge n'est donc pas écrit : c'est ce qui envoie interroger `conversations.history`, qui donne les identifiants, et la ligne est écrite à partir de cette réponse, avec la personne dessus. « Quelqu'un a retiré une réaction » répond par un haussement d'épaules à la seule question que la ligne pose, et un historique incapable de dire qui ne sert à rien comme historique.
+
+Le seul cas qui ne laisse rien est une réaction portée par un très grand nombre de gens, où Slack tronque la liste des identifiants et où seul le compte a bougé. C'est une réaction toujours posée sur le message pour qui veut la compter, donc le silence est la meilleure moitié de l'échange.
 
 **Les émoji sont dessinés, pas épelés.** Un shortcode ne se transforme pas en image à partir de son nom : Slack sert un émoji standard par point de code, donc `slightly_smiling_face` ne construit aucune URL, et `emoji.list` ne répond qu'avec les émoji personnalisés de l'espace de travail. L'écran de Slack est la table que personne ne publie — chaque émoji qu'il dessine est une image portant son nom — donc les paires sont collectées à mesure que vous utilisez Slack, et conservées. Un émoji vu une fois est un émoji que ceci sait dessiner pour toujours, dans le texte d'un message comme sur une réaction.
 

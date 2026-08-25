@@ -1027,7 +1027,10 @@ tests fail below it.
   `[data-qa="reaction_bar"]`. **Who reacted is not in the DOM**: Slack builds
   that as a tooltip when you hover, in the reader's language and with names
   rather than ids, so a mod can know the emoji and the count honestly and
-  nothing else.
+  nothing else. A count moving on screen is therefore a **trigger to ask
+  `conversations.history`**, which does name them, and never a row of its own:
+  "somebody took a reaction back" is a line whose only question is who, and it
+  answers that question with a shrug.
 - **`[data-qa="message_sender"]` holds the name twice on some messages** --
   measured as `Ada LovelaceAda Lovelace :`, and once on others -- because Slack
   draws a second copy for screen readers. Anything comparing it across renders
