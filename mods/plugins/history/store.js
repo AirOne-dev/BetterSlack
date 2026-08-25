@@ -90,8 +90,85 @@ function fingerprint(event) {
 export function searchable(entry) {
   return [
     entry.kind, entry.who, entry.channelName, entry.channelId,
-    entry.before, entry.after, entry.emoji,
+    entry.before, entry.after, entry.emoji, entry.subject, entry.subjectWho,
   ].filter(Boolean).join(' ').toLowerCase();
+}
+
+/**
+ * Events, gathered under the thing they happened to.
+ *
+ * A flat feed is the shape the watchers produce and the wrong shape to read.
+ * One message picking up ten reactions was ten rows, each repeating the time,
+ * the channel and a count nobody can use -- and not one of them said which
+ * message. Nobody thinks "there were ten events"; they think "this message got
+ * reactions", which is one thing with a list under it.
+ *
+ * Anything anchored to a message groups by that message. Everything else -- a
+ * rename, a status, somebody joining -- is its own group of one, because it has
+ * no subject to gather under and pretending otherwise would file unrelated
+ * things together.
+ */
+export function group(rows) {
+  const groups = [];
+  const byKey = new Map();
+
+  for (const entry of rows) {
+    const key = entry.channelId && entry.ts ? `${entry.channelId}:${entry.ts}` : null;
+    const existing = key ? byKey.get(key) : null;
+    if (existing) {
+      existing.events.push(entry);
+      existing.at = Math.max(existing.at, entry.at);
+      // The best description of the message anything has seen. A later event
+      // knows the newer wording, and a deletion knows what it said last.
+      existing.subject ??= entry.subject ?? null;
+      existing.subjectUser ??= entry.subjectUser ?? entry.userId ?? null;
+      existing.subjectWho ??= entry.subjectWho ?? null;
+      continue;
+    }
+    const made = {
+      key: key ?? entry.id,
+      channelId: entry.channelId ?? null,
+      channelName: entry.channelName ?? null,
+      ts: entry.ts ?? null,
+      at: entry.at,
+      subject: entry.subject ?? null,
+      subjectUser: entry.subjectUser ?? entry.userId ?? null,
+      subjectWho: entry.subjectWho ?? null,
+      events: [entry],
+    };
+    groups.push(made);
+    if (key) byKey.set(key, made);
+  }
+  return groups;
+}
+
+/**
+ * The reactions in a group, folded into one line each.
+ *
+ * "Claude reacted, Amine reacted, Frédéric reacted" is three rows saying one
+ * thing. The emoji and the direction are what differ; the people are the list.
+ */
+export function foldReactions(events) {
+  const folded = new Map();
+  const rest = [];
+
+  for (const event of events) {
+    if (event.kind !== 'reaction-added' && event.kind !== 'reaction-removed') { rest.push(event); continue; }
+    const key = `${event.kind}:${event.emoji}`;
+    const held = folded.get(key) ?? {
+      kind: event.kind, emoji: event.emoji, emojiUrl: event.emojiUrl ?? null, people: [], at: event.at,
+    };
+    held.emojiUrl ??= event.emojiUrl ?? null;
+    held.at = Math.max(held.at, event.at);
+    // The id *and* the name, because either may be the only one there is: the
+    // API answers with ids, the screen sometimes knows a name and no id, and a
+    // line showing `U0P3` where a name was already available is a line that
+    // threw away what it had.
+    if (event.userId || event.who) held.people.push({ id: event.userId ?? null, who: event.who ?? null });
+    folded.set(key, held);
+  }
+
+  return { reactions: [...folded.values()], rest };
 }
 
 /**

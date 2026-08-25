@@ -97,7 +97,24 @@ export function createMessageWatcher() {
 
       if (known.armed) {
         for (const change of reactionChanges(known.reactions, reactions)) {
-          changes.push({ ...where, ...change });
+          /*
+           * Two different people, and they were the same field.
+           *
+           * `userId` is who did the thing; `subjectUser` is who wrote the
+           * message it was done to. On screen Slack never says who reacted, so
+           * the first is empty here and the row says so -- while the message's
+           * own author was being reported as the reactor, which is somebody
+           * being told they un-reacted to themselves.
+           */
+          changes.push({
+            ...where,
+            ...change,
+            userId: null,
+            who: null,
+            subject: known.text,
+            subjectUser: known.userId,
+            subjectWho: known.who,
+          });
         }
       }
       known.reactions = reactions;
@@ -113,7 +130,7 @@ export function createMessageWatcher() {
         continue;
       }
 
-      changes.push({ ...where, kind: 'edited', before: known.text, after: reading.text });
+      changes.push({ ...where, kind: 'edited', before: known.text, after: reading.text, subject: reading.text });
       known.text = reading.text;
     }
 
@@ -170,6 +187,7 @@ export function createMessageWatcher() {
           channelId: known.channelId,
           ts: known.ts,
           before: known.text,
+          subject: known.text,
           userId: known.userId,
           who: known.who,
           // The two it sat between, so a headstone can be put back exactly

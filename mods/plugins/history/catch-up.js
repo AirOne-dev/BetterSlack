@@ -90,7 +90,9 @@ export function catchUp(before, messages, where) {
         channelName: where.channelName,
         ts,
         before: was.text,
+        subject: was.text,
         userId: was.user ?? null,
+        subjectUser: was.user ?? null,
       });
       continue;
     }
@@ -107,13 +109,24 @@ export function catchUp(before, messages, where) {
           ts,
           before: was.text,
           after: is.text,
+          subject: is.text,
           userId: is.user ?? was.user ?? null,
+          subjectUser: is.user ?? was.user ?? null,
         });
       }
     }
 
     for (const event of reactionDiff(was.reactions ?? {}, is.reactions ?? {})) {
-      events.push({ ...event, channelId: where.channelId, channelName: where.channelName, ts });
+      // `userId` is the person who reacted, which Slack names here. The message
+      // they reacted to has an author of its own, and the two are not the same.
+      events.push({
+        ...event,
+        channelId: where.channelId,
+        channelName: where.channelName,
+        ts,
+        subject: is.text,
+        subjectUser: is.user ?? null,
+      });
     }
   }
 

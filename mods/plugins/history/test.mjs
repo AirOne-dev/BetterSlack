@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertPluginShape, createTestApi, installDom, readModFiles } from '../../../tests/harness.mjs';
 import plugin from './index.js';
-import { add, GROUPS, sortRows, tally, view } from './store.js';
+import { add, foldReactions, group, GROUPS, sortRows, tally, view } from './store.js';
 import { createMessageWatcher, reactionChanges } from './watch-messages.js';
 import { createNameWatcher, rosterChanges, statusChanges } from './watch-names.js';
 import { catchUp, reactionDiff, snapshotOf } from './catch-up.js';
@@ -423,6 +423,53 @@ test('the tally counts every family, for the chips', () => {
   assert.deepEqual(tally(log), { all: 3, messages: 1, reactions: 0, names: 1, people: 1 });
 });
 
+test('ten reactions on one message are one card, not ten rows', () => {
+  /*
+   * The shape that made the view unreadable: a message picking up reactions was
+   * a row per person, each repeating the time, the channel and a count, and
+   * none of them saying which message.
+   */
+  const log = add([], [
+    { kind: 'reaction-added', channelId: 'C1', ts: '9', emoji: ':tada:', userId: 'U1', subject: 'ship it', subjectUser: 'U9' },
+    { kind: 'reaction-added', channelId: 'C1', ts: '9', emoji: ':tada:', userId: 'U2', subject: 'ship it', subjectUser: 'U9' },
+    { kind: 'reaction-removed', channelId: 'C1', ts: '9', emoji: ':eyes:', userId: 'U3', subject: 'ship it', subjectUser: 'U9' },
+    { kind: 'channel-renamed', before: 'a', after: 'b' },
+  ], 100, 1000);
+
+  const cards = group(log);
+  assert.equal(cards.length, 2, 'one card for the message, one for the rename');
+
+  const message = cards.find((card) => card.ts === '9');
+  assert.equal(message.events.length, 3);
+  assert.equal(message.subject, 'ship it', 'and the card knows which message it is about');
+  assert.equal(message.subjectUser, 'U9', 'whose author is not whoever reacted');
+
+  const { reactions, rest } = foldReactions(message.events);
+  assert.equal(rest.length, 0);
+  assert.equal(reactions.length, 2, 'one line per emoji and direction');
+  assert.deepEqual(
+    reactions.find((r) => r.kind === 'reaction-added').people.map((p) => p.id).sort(),
+    ['U1', 'U2'],
+    'with the people listed rather than repeated');
+});
+
+test('a rename and a status never share a card', () => {
+  // Neither has a message behind it, so gathering them together would file
+  // unrelated things under one heading.
+  const log = add([], [
+    { kind: 'status-changed', userId: 'U1', after: 'away' },
+    { kind: 'status-changed', userId: 'U2', after: 'lunch' },
+  ], 100, 1000);
+  assert.equal(group(log).length, 2);
+});
+
+test('the search reaches the message a reaction was about', () => {
+  const log = add([], [
+    { kind: 'reaction-added', channelId: 'C1', ts: '9', emoji: ':tada:', subject: 'la grande poubelle' },
+  ], 100, 1000);
+  assert.equal(view(log, { query: 'poubelle' }).length, 1);
+});
+
 /* -- the client ----------------------------------------------------------- */
 
 test('takes a tab in Slack’s rail, beside Slack’s own', async () => {
@@ -527,7 +574,10 @@ test('the sort menu hands api.ui.menu an onSelect, which is what it reads', asyn
     document.querySelector('.bsh-sort').click();
     const menu = recorded.menus.at(-1);
     assert.ok(menu, 'a menu opened');
-    assert.equal(menu.items.length, 5, 'one entry per sort');
+    // Three, not five. Grouping by message made "by kind" and "by who" answer a
+    // question the cards no longer ask -- a card is several kinds and several
+    // people at once.
+    assert.equal(menu.items.length, 3, 'one entry per sort');
     // `onClick` here parses, renders, and silently does nothing: the runtime's
     // menu calls `onSelect`. That was a real bug, and this is why it stays.
     for (const item of menu.items) {

@@ -147,17 +147,23 @@
 }
 
 /* Slack's own message row: a 36px face, then everything else. */
-.bsh-row {
+/*
+ * A card is a message, and everything that happened to it is under it.
+ *
+ * Slack's own metrics: a 36px face in a 44px gutter, the name at 15px and
+ * everything about it at 13px, so a card sits in the same rhythm as the
+ * conversation it came from.
+ */
+.bsh-card {
   display: grid;
   grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: start;
-  gap: 8px 10px;
-  padding: 6px 16px 6px 20px;
-  font-size: 15px;
-  line-height: 1.46668;
+  gap: 4px 10px;
+  padding: 10px 16px 12px 20px;
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .14));
 }
-.bsh-row:hover { background: var(--dt_color-base-sec, rgba(255, 255, 255, .04)); }
-.bsh-row:hover .bsh-row__actions { opacity: 1; }
+.bsh-card:hover { background: var(--dt_color-base-sec, rgba(255, 255, 255, .03)); }
+.bsh-card:hover .bsh-card__actions { opacity: 1; }
 
 .bsh-avatar {
   width: 36px;
@@ -166,65 +172,87 @@
   object-fit: cover;
   background: var(--dt_color-base-sec, rgba(255, 255, 255, .08));
 }
-/* Nobody to draw -- a section renamed, a follow-up message with no avatar --
-   so the family's colour stands in rather than an empty square. */
+/* Nobody to draw -- a section renamed, a message with no avatar -- so the
+   family's colour stands in rather than an empty square. */
 .bsh-avatar--none { display: block; }
 .bsh-avatar--messages { background: var(--dt_color-content-hgl-1, #1d9bd1); }
 .bsh-avatar--reactions { background: var(--dt_color-content-wrn, #d5a020); }
 .bsh-avatar--names { background: var(--dt_color-content-suc, #2bac76); }
 .bsh-avatar--people { background: var(--dt_color-content-imp, #c01343); }
 
-.bsh-time { font-size: 12px; color: var(--dt_color-content-sec, #ababad); white-space: nowrap; }
-
-.bsh-row__body { min-width: 0; }
-.bsh-row__meta {
+.bsh-card__body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.bsh-card__head {
   display: flex;
   align-items: baseline;
   gap: 6px;
   flex-wrap: wrap;
   font-size: 13px;
-  line-height: 22px;
+  line-height: 20px;
   color: var(--dt_color-content-sec, #ababad);
 }
 .bsh-who { font-weight: 900; font-size: 15px; color: var(--dt_color-content-pry, #d1d2d3); }
-.bsh-where { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
-.bsh-where--link { cursor: pointer; color: var(--dt_color-content-hgl-1, #1d9bd1); }
+.bsh-time { font-size: 12px; white-space: nowrap; }
+.bsh-where { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.bsh-where--link { cursor: pointer; color: var(--dt_color-content-hgl-1, #1d9bd1); font-size: 13px; }
 .bsh-where--link:hover { text-decoration: underline; }
-.bsh-kind {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .4px;
-}
-.bsh-kind--messages { color: var(--dt_color-content-hgl-1, #1d9bd1); }
-.bsh-kind--reactions { color: var(--dt_color-content-wrn, #d5a020); }
-.bsh-kind--names { color: var(--dt_color-content-suc, #2bac76); }
-.bsh-kind--people { color: var(--dt_color-content-imp, #c01343); }
 
-.bsh-line {
+/*
+ * The message the card is about, drawn as the quotation it is: one rule down
+ * the side, so it reads as somebody's words rather than as another of the
+ * lines describing what happened to them.
+ */
+.bsh-said {
   font-size: 15px;
+  line-height: 1.46668;
   word-break: break-word;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
+.bsh-subject {
+  padding-left: 10px;
+  border-left: 2px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .5));
+  color: var(--dt_color-content-pry, #d1d2d3);
+}
 .bsh-was { text-decoration: line-through; color: var(--dt_color-content-sec, #ababad); }
-/* The emoji at the size Slack draws one in a message. */
-.bsh-emoji { width: 22px; height: 22px; margin-right: 6px; vertical-align: -5px; }
-span.bsh-emoji { width: auto; height: auto; }
-/* One inside a sentence sits on the line rather than beside it. */
-.bsh-emoji--inline { width: 20px; height: 20px; margin: 0 1px; vertical-align: -4px; }
+
+/* One thing that happened: a mark down the left, then the sentence. */
+.bsh-did {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 2px solid transparent;
+  font-size: 13px;
+  color: var(--dt_color-content-sec, #ababad);
+}
+.bsh-did--messages { border-left-color: var(--dt_color-content-hgl-1, #1d9bd1); }
+.bsh-did--reactions { border-left-color: var(--dt_color-content-wrn, #d5a020); }
+.bsh-did--names { border-left-color: var(--dt_color-content-suc, #2bac76); }
+.bsh-did--people { border-left-color: var(--dt_color-content-imp, #c01343); }
+
+.bsh-verb { white-space: nowrap; }
+.bsh-verb--gone { color: var(--dt_color-content-imp, #c01343); font-weight: 700; }
+.bsh-people { color: var(--dt_color-content-pry, #d1d2d3); min-width: 0; word-break: break-word; }
+.bsh-both { flex: 1 1 100%; display: flex; flex-direction: column; gap: 2px; }
 
 /* Slack keeps a row's actions out of the way until the pointer is on it. */
-.bsh-row__actions {
+.bsh-card__actions {
   display: flex;
   align-items: center;
   gap: 2px;
   opacity: 0;
   transition: opacity var(--sm-motion-quick, 80ms) var(--sm-motion-ease, ease);
 }
-.bsh-row__actions:focus-within { opacity: 1; }
+.bsh-card__actions:focus-within { opacity: 1; }
+
+/* The emoji at the size Slack draws one in a message. */
+.bsh-emoji { width: 22px; height: 22px; flex: 0 0 auto; vertical-align: -5px; }
+.bsh-emoji--unknown { width: auto; height: auto; opacity: .5; }
+/* One inside a sentence sits on the line rather than beside it. */
+.bsh-emoji--inline { width: 20px; height: 20px; margin: 0 1px; vertical-align: -4px; }
 
 /* A sentence across 1600px is a sentence nobody finishes. */
 .bsh-empty { max-width: 56ch; margin: 0 auto; padding: 96px 24px; text-align: center; }
@@ -236,6 +264,8 @@ span.bsh-emoji { width: auto; height: auto; }
   font-size: 12px;
   border-top: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .18));
 }
+
+.bsh-tab[hidden] { display: none; }
 
 /* -- the headstone, in the conversation ----------------------------------- */
 

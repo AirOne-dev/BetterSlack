@@ -150,7 +150,16 @@ export default {
      * that looks like a message wants what a message shows.
      */
     const peopleFor = async (rows) => {
-      const ids = [...new Set(rows.map((entry) => entry.userId).filter(Boolean))].slice(0, 200);
+      /*
+       * Both people, not one.
+       *
+       * `userId` is who did the thing and `subjectUser` is who wrote the
+       * message it was done to, and a card is headed by the second. Asking
+       * only about the first left every card whose author had not also reacted
+       * headed by a raw `U04F0LX84H0`.
+       */
+      const ids = [...new Set(rows.flatMap((entry) => [entry.userId, entry.subjectUser]).filter(Boolean))]
+        .slice(0, 200);
       if (ids.length === 0 || !api.slack.web.available) return new Map();
       try {
         if (!customEmoji) customEmoji = await api.slack.web.emoji().catch(() => new Map());

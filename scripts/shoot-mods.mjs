@@ -134,7 +134,7 @@ const SHOTS = [
   { id: 'channel-notes', open: 'button:channel-notes-notes', expect: '.betterslack-widget_dialog' },
   // The log is seeded first: a page of its own with nothing on it is a picture
   // of an empty state, which is not what the catalogue is for.
-  { id: 'history', stage: 'history', open: 'view:history-log', expect: '.bsh-row' },
+  { id: 'history', stage: 'history', open: 'view:history-log', expect: '.bsh-card' },
   // No text is typed into the composer: it is the user's real draft, in a real
   // workspace, and a screenshot run has no business writing to it. Whatever is
   // in there is what the counter counts.
@@ -248,23 +248,48 @@ const openFor = (what) => {
     return `(() => {
       const words = window.__betterslackRedactionModule.VOCABULARY;
       const pick = (n) => words[n % words.length];
+      /*
+       * Shaped the way the view reads it: several things happening to one
+       * message, so the picture shows a card rather than a row.
+       */
       const entries = [];
-      for (let i = 0; i < 7; i += 1) {
-        const kind = ['edited', 'deleted', 'reaction-removed', 'channel-renamed', 'joined'][i % 5];
+      const say = (i) => pick(i * 11 + 3) + ' ' + pick(i * 13 + 4) + ' ' + pick(i * 17 + 5);
+      const message = (i) => ({
+        channelName: pick(i * 7 + 2),
+        channelId: 'C0SEED' + i,
+        ts: '1780000000.00000' + i,
+        subject: say(i),
+        subjectUser: 'U0SEED' + i,
+        subjectWho: pick(i * 3) + ' ' + pick(i * 5 + 1),
+      });
+      const at = (n) => Date.now() - n * 7 * 60 * 1000;
+
+      /*
+       * The pictures the seeded reactions need.
+       *
+       * The table is normally harvested off Slack's own screen, and a scratch
+       * home has met none of these -- so the frame would draw the placeholder
+       * where an emoji belongs. These are Slack's own standard-emoji URLs, by
+       * codepoint, which is how it serves every one of them.
+       */
+      const emojiBase = 'https://a.slack-edge.com/production-standard-emoji-assets/16.0/apple-medium/';
+      const emoji = { tada: emojiBase + '1f389@2x.png', heart: emojiBase + '2764-fe0f@2x.png',
+                      eyes: emojiBase + '1f440@2x.png' };
+      const emojiFor = (shortcode) => emoji[String(shortcode).replace(/^:|:$/g, '')] ?? null;
+
+      // One message, several people reacting: the shape a feed made unreadable.
+      for (const [n, shortcode] of [':tada:', ':tada:', ':heart:', ':eyes:'].entries()) {
         entries.push({
-          id: 'seed-' + i,
-          kind,
-          at: Date.now() - i * 11 * 60 * 1000,
-          who: pick(i * 3) + ' ' + pick(i * 5 + 1),
-          channelName: pick(i * 7 + 2),
-          channelId: 'C0SEED' + i,
-          ts: '1780000000.00000' + i,
-          before: pick(i * 11 + 3) + ' ' + pick(i * 13 + 4) + ' ' + pick(i * 17 + 5),
-          after: kind === 'edited' ? pick(i * 19 + 6) + ' ' + pick(i * 23 + 7) : undefined,
-          emoji: kind === 'reaction-removed' ? ':eyes:' : undefined,
-          count: kind === 'reaction-removed' ? 1 : undefined,
+          id: 'seed-r' + n, kind: n === 3 ? 'reaction-removed' : 'reaction-added',
+          at: at(n), ...message(0), emoji: shortcode, emojiUrl: emojiFor(shortcode),
+          who: pick(n * 29 + 8) + ' ' + pick(n * 31 + 9),
         });
       }
+      entries.push({ id: 'seed-e', kind: 'edited', at: at(5), ...message(1),
+        before: say(9), after: say(2) });
+      entries.push({ id: 'seed-d', kind: 'deleted', at: at(9), ...message(2), before: say(4) });
+      entries.push({ id: 'seed-n', kind: 'channel-renamed', at: at(13),
+        channelId: 'C0SEED3', channelName: pick(21), before: pick(5), after: pick(21) });
       const m = window.__betterslack.manager;
       /*
        * And waited for, because switching a mod back on is not instant and the
@@ -281,7 +306,8 @@ const openFor = (what) => {
         };
         look();
       });
-      return m.setModSetting('history', 'entries', entries)
+      return m.setModSetting('history', 'emoji', emoji)
+        .then(() => m.setModSetting('history', 'entries', entries))
         .then(() => m.setEnabled('history', false))
         .then(() => m.setEnabled('history', true))
         .then(tab);

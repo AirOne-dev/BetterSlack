@@ -1,22 +1,35 @@
 /**
- * The view: everything that has happened, laid out.
+ * The view: everything that has happened, gathered under the thing it happened
+ * to.
  *
  * Where it goes, how it gets a tab in Slack's rail, which tab is lit and what
- * closes it are all `api.slack.addView`, because none of that is about
- * history: it is Slack's chrome, and the runtime is where Slack's chrome is
- * known. This file builds the contents and nothing else.
+ * closes it are all `api.slack.addView`, because none of that is about history:
+ * it is Slack's chrome, and the runtime is where Slack's chrome is known. This
+ * file builds the contents and nothing else.
  *
- * Everything it draws is painted from Slack's own tokens rather than borrowed
- * from Slack's own class names: `--dt_color-*` follows every theme, while a
- * class like `p-view_header__text` is compiler output that churns between
- * builds. The one exception is the field and the buttons, where Slack's classes
- * are stable BEM and worth borrowing outright.
+ * **A card, not a feed.** The watchers produce events, and a list of events is
+ * the wrong shape to read: one message picking up ten reactions was ten rows,
+ * each repeating the time, the channel and a count nobody can use, and not one
+ * of them said which message. Nobody thinks "there were ten events" -- they
+ * think "this message got reactions", which is one thing with a list under it.
+ * So a card is a message: who wrote it, what it says, and underneath, what
+ * happened to it. Anything with no message behind it -- a rename, a status,
+ * somebody joining -- is a card of one line, because it has no subject to
+ * gather under.
+ *
+ * Everything is painted from Slack's own tokens rather than borrowed from its
+ * class names: `--dt_color-*` follows every theme, while a class like
+ * `p-view_header__text` is compiler output that churns between builds. The
+ * field and the buttons are the exception, where Slack's classes are stable BEM
+ * and worth borrowing outright.
  */
 
-const SORTS = ['newest', 'oldest', 'kind', 'who', 'where'];
+import { foldReactions, group } from './store.js';
+
+const SORTS = ['newest', 'oldest', 'where'];
 const GROUP_KEYS = ['messages', 'reactions', 'names', 'people'];
 
-/** Which family a kind belongs to, for the colour of its dot. */
+/** Which family a kind belongs to, for the colour of its mark. */
 const FAMILY = {
   edited: 'messages', deleted: 'messages',
   'reaction-added': 'reactions', 'reaction-removed': 'reactions',
@@ -35,12 +48,10 @@ export function createView(api, t, deps) {
   const time = (at) => new Date(at).toLocaleTimeString(api.i18n.locale, { hour: '2-digit', minute: '2-digit' });
 
   /**
-   * The day a run of entries belongs to, as Slack labels one.
+   * The day a run of cards belongs to, as Slack labels one.
    *
-   * Slack breaks its own message list with a date divider rather than putting a
-   * date on every line, and a list of a hundred rows each stamped with the same
-   * day reads as a spreadsheet. Today and yesterday are named, because that is
-   * what people say.
+   * Slack breaks its own list with a date divider rather than stamping every
+   * line, and a hundred rows each carrying the same day reads as a spreadsheet.
    */
   const dayOf = (at) => {
     const day = new Date(at);
@@ -54,123 +65,154 @@ export function createView(api, t, deps) {
     return new Date(stamp).toLocaleDateString(api.i18n.locale, { weekday: 'long', day: 'numeric', month: 'long' });
   };
 
-  /** One event, as the sentence a person reads. */
-  const change = (entry) => {
-    if (entry.kind === 'reaction-added' || entry.kind === 'reaction-removed') {
-      /*
-       * The picture, and never the shortcode.
-       *
-       * `:raised_hands::skin-tone-2:` is two names run together, and a custom
-       * emoji is a name only one workspace knows, so what is kept is the URL
-       * Slack had already drawn. An entry from before that was kept falls back
-       * to resolving the name -- which works for a custom emoji and for one
-       * that is on screen, and not otherwise, because Slack serves a standard
-       * emoji by codepoint and a name builds no URL.
-       *
-       * When nothing can draw it, nothing is drawn: the same rule
-       * `api.slack.statusNode` follows, because `:raised_hands::skin-tone-2:`
-       * in the middle of a row does not read as an emoji, it reads as a
-       * rendering that failed. The name stays in the row's tooltip, so a
-       * picture nobody could draw is still findable.
-       */
-      const src = entry.emojiUrl ?? deps.emojiUrl?.(entry.emoji) ?? null;
-      const line = h('div', { class: 'bsh-line', title: entry.emoji ?? '' }, []);
-      if (src) line.append(h('img', { class: 'bsh-emoji', src, alt: entry.emoji ?? '' }));
-      line.append(h('span', { class: 'bsh-dim' }, [t('reactionCount', { before: entry.before, after: entry.after })]));
-      return [line];
-    }
-    if (entry.kind === 'joined' || entry.kind === 'left') {
-      return [h('div', { class: 'bsh-line bsh-dim' }, [t(entry.kind === 'joined' ? 'joinedBody' : 'leftBody')])];
-    }
-    const said = (text, extra) => {
-      const line = h('div', { class: `bsh-line${extra}`, title: text }, []);
-      // Nodes rather than a string: the emoji are `<img>`, and building HTML
-      // out of somebody's message to get them there would put their words
-      // through an HTML parser.
-      line.append(deps.renderText ? deps.renderText(text) : document.createTextNode(text));
-      return line;
-    };
-    const lines = [];
-    if (entry.before) lines.push(said(entry.before, ' bsh-was'));
-    if (entry.after) lines.push(said(entry.after, ''));
-    else if (entry.kind === 'deleted') lines.push(h('div', { class: 'bsh-line bsh-dim' }, [t('deletedBody')]));
-    return lines;
+  const nameOf = (people, id, fallback) => (id
+    ? (people.get(id)?.name ?? fallback ?? id)
+    : (fallback ?? t('someone')));
+
+  /** Somebody's text, with its emoji drawn rather than spelled. */
+  const said = (text, extra = '') => {
+    const line = h('div', { class: `bsh-said${extra}`, title: text }, []);
+    // Nodes rather than a string: the emoji are `<img>`, and building HTML out
+    // of somebody's message to get them there would put their words through an
+    // HTML parser.
+    line.append(deps.renderText ? deps.renderText(text) : document.createTextNode(text));
+    return line;
   };
 
-  const row = (entry, people) => {
-    const person = entry.userId ? people.get(entry.userId) : null;
-    const who = person?.name || entry.who || entry.userId || t('someone');
-    const where = entry.channelName ?? entry.channelId ?? null;
+  const emojiNode = (event) => {
+    const src = event.emojiUrl ?? deps.emojiUrl?.(event.emoji) ?? null;
+    // Where nothing can draw it the emoji is left out rather than spelled: on
+    // this line it is the whole content, and a shortcode there reads as a
+    // rendering that failed. The name stays in the line's title.
+    return src
+      ? h('img', { class: 'bsh-emoji', src, alt: event.emoji ?? '' })
+      : h('span', { class: 'bsh-emoji bsh-emoji--unknown', 'aria-hidden': 'true' }, ['·']);
+  };
 
-    const actions = h('div', { class: 'bsh-row__actions' });
-    // Only where there is still something to land on: a button that opens a
-    // message somebody deleted is a button that does nothing.
-    if (entry.ts && entry.channelId && entry.kind !== 'deleted') {
-      const jump = api.helpers.iconButton({
-        label: t('jump'),
-        icon: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M7.3 4.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L11.6 10 7.3 5.7a1 1 0 0 1 0-1.4Z"/></svg>',
-        onClick: () => { close(); deps.openMessage(entry.channelId, entry.ts); },
-      });
-      actions.append(jump);
-    }
-    if (entry.before) {
-      const copy = api.helpers.iconButton({
-        label: t('copy'),
-        icon: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M7 2.75A2.25 2.25 0 0 0 4.75 5v8A2.25 2.25 0 0 0 7 15.25h6A2.25 2.25 0 0 0 15.25 13V5A2.25 2.25 0 0 0 13 2.75H7Zm-.75 2.25A.75.75 0 0 1 7 4.25h6a.75.75 0 0 1 .75.75v8a.75.75 0 0 1-.75.75H7a.75.75 0 0 1-.75-.75V5Z"/><path fill="currentColor" d="M3.25 7.5a.75.75 0 0 0-1.5 0V15A3.25 3.25 0 0 0 5 18.25h6.5a.75.75 0 0 0 0-1.5H5A1.75 1.75 0 0 1 3.25 15V7.5Z"/></svg>',
-        onClick: () => void api.helpers.copy(entry.before, t('copied')),
-      });
-      actions.append(copy);
-    }
+  /** One thing that happened, as the sentence a person reads. */
+  const happening = (event, people) => {
+    const family = FAMILY[event.kind] ?? 'messages';
 
-    // Laid out the way Slack lays out a message: the face on the left, the
-    // name and the time on one line, what was said under them.
-    const meta = h('div', { class: 'bsh-row__meta' }, [h('span', { class: 'bsh-who' }, [who])]);
-    // The same status node Slack's own sidebar draws, with its tooltip: the
-    // emoji, the sentence, and when it runs out.
-    if (person?.status) {
-      meta.append(api.slack.statusNode(person.status, person.profile, { showText: false }));
-    }
-    meta.append(
-      h('span', { class: 'bsh-time' }, [time(entry.at)]),
-      h('span', { class: `bsh-kind bsh-kind--${FAMILY[entry.kind] ?? 'messages'}` }, [t(entry.kind)]),
-    );
-    if (where) {
-      meta.append(h('span', { class: 'bsh-dim' }, ['·']), channelLink(entry, where));
+    if (event.kind === 'reaction-added' || event.kind === 'reaction-removed') {
+      // Alphabetical, and `localeCompare` rather than `<`: a code-point
+      // compare files every accented name after Z, which reads as a list that
+      // is nearly sorted and therefore as one that is broken.
+      const names = event.people
+        .map((person) => nameOf(people, person.id, person.who))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+      return h('div', { class: `bsh-did bsh-did--${family}`, title: event.emoji ?? '' }, [
+        emojiNode(event),
+        h('span', { class: 'bsh-verb' }, [t(event.kind === 'reaction-added' ? 'verbReacted' : 'verbUnreacted')]),
+        // Named where Slack named them, and silent where it did not: on screen
+        // it says who only in a hover tooltip, in the reader's language.
+        h('span', { class: 'bsh-people' }, [names.length ? names.join(', ') : t('someone')]),
+      ]);
     }
 
-    const avatar = person?.avatar
-      ? h('img', { class: 'bsh-avatar', src: person.avatar, alt: '', loading: 'lazy' })
-      : h('span', { class: `bsh-avatar bsh-avatar--none bsh-avatar--${FAMILY[entry.kind] ?? 'messages'}` });
+    if (event.kind === 'edited') {
+      const both = h('div', { class: 'bsh-both' }, [said(event.before, ' bsh-was')]);
+      if (event.after) both.append(said(event.after));
+      return h('div', { class: 'bsh-did bsh-did--messages' }, [
+        h('span', { class: 'bsh-verb' }, [t('verbEdited', { who: nameOf(people, event.userId, event.who) })]),
+        both,
+      ]);
+    }
 
-    return h('div', { class: 'bsh-row' }, [
-      avatar,
-      h('div', { class: 'bsh-row__body' }, [meta, ...change(entry)]),
-      actions,
+    if (event.kind === 'deleted') {
+      return h('div', { class: 'bsh-did bsh-did--messages' }, [
+        h('span', { class: 'bsh-verb bsh-verb--gone' }, [t('verbDeleted')]),
+      ]);
+    }
+
+    // Everything with no message behind it: a rename, a status, an arrival.
+    const verb = h('span', { class: 'bsh-verb' }, [
+      t(`verb_${event.kind}`, { who: nameOf(people, event.userId, event.who) }),
     ]);
+    if (!event.before && !event.after) {
+      return h('div', { class: `bsh-did bsh-did--${family}` }, [verb]);
+    }
+    const both = h('div', { class: 'bsh-both' }, []);
+    if (event.before) both.append(said(event.before, ' bsh-was'));
+    if (event.after) both.append(said(event.after));
+    return h('div', { class: `bsh-did bsh-did--${family}` }, [verb, both]);
   };
 
   /**
    * The channel, as a way back to it.
    *
    * A name that looks like a link and is not is worse than plain text, so where
-   * there is no id to open there is no button either -- a section rename and a
-   * status change belong to nobody's channel.
+   * there is no id to open there is no button either.
    */
-  const channelLink = (entry, where) => {
-    if (!entry.channelId) return h('span', { class: 'bsh-where' }, [where]);
+  const channelLink = (card) => {
+    const where = card.channelName ?? card.channelId;
+    if (!where) return null;
+    if (!card.channelId) return h('span', { class: 'bsh-where' }, [where]);
     const link = h('button', {
       class: 'c-button-unstyled bsh-where bsh-where--link',
       type: 'button',
       title: t('openChannel', { channel: where }),
     }, [where]);
-    link.addEventListener('click', () => { close(); deps.openConversation(entry.channelId); });
+    link.addEventListener('click', () => { close(); deps.openConversation(card.channelId); });
     return link;
+  };
+
+  const cardNode = (card, people) => {
+    const { reactions, rest } = foldReactions(card.events);
+    const family = FAMILY[card.events[0]?.kind] ?? 'messages';
+    const author = card.subjectUser ? people.get(card.subjectUser) : null;
+    const who = author?.name || card.subjectWho || card.events[0]?.who
+      || nameOf(people, card.subjectUser, null) || t('someone');
+
+    const face = author?.avatar
+      ? h('img', { class: 'bsh-avatar', src: author.avatar, alt: '', loading: 'lazy' })
+      : h('span', { class: `bsh-avatar bsh-avatar--none bsh-avatar--${family}` });
+
+    const head = h('div', { class: 'bsh-card__head' }, [h('span', { class: 'bsh-who' }, [who])]);
+    if (author?.status) head.append(api.slack.statusNode(author.status, author.profile, { showText: false }));
+    head.append(h('span', { class: 'bsh-time' }, [time(card.at)]));
+    const link = channelLink(card);
+    if (link) head.append(h('span', { class: 'bsh-dim' }, ['·']), link);
+
+    const body = h('div', { class: 'bsh-card__body' }, [head]);
+    /*
+     * The message itself, once, above everything that happened to it.
+     *
+     * Not repeated on every line, and not missing entirely, which is what a
+     * reaction row used to be: an emoji and a count, with no way to tell which
+     * message they belonged to. An edit is the exception -- it shows both
+     * wordings, and the newer one is the message.
+     */
+    const edited = rest.some((event) => event.kind === 'edited');
+    if (card.subject && !edited) body.append(said(card.subject, ' bsh-subject'));
+    for (const event of rest) body.append(happening(event, people));
+    for (const reaction of reactions) body.append(happening(reaction, people));
+
+    const actions = h('div', { class: 'bsh-card__actions' });
+    const gone = card.events.some((event) => event.kind === 'deleted');
+    if (card.ts && card.channelId && !gone) {
+      actions.append(api.helpers.iconButton({
+        label: t('jump'),
+        icon: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M7.3 4.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L11.6 10 7.3 5.7a1 1 0 0 1 0-1.4Z"/></svg>',
+        onClick: () => { close(); deps.openMessage(card.channelId, card.ts); },
+      }));
+    }
+    const copyable = card.subject ?? card.events.find((event) => event.before)?.before ?? null;
+    if (copyable) {
+      actions.append(api.helpers.iconButton({
+        label: t('copy'),
+        icon: '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M7 2.75A2.25 2.25 0 0 0 4.75 5v8A2.25 2.25 0 0 0 7 15.25h6A2.25 2.25 0 0 0 15.25 13V5A2.25 2.25 0 0 0 13 2.75H7Zm-.75 2.25A.75.75 0 0 1 7 4.25h6a.75.75 0 0 1 .75.75v8a.75.75 0 0 1-.75.75H7a.75.75 0 0 1-.75-.75V5Z"/><path fill="currentColor" d="M3.25 7.5a.75.75 0 0 0-1.5 0V15A3.25 3.25 0 0 0 5 18.25h6.5a.75.75 0 0 0 0-1.5H5A1.75 1.75 0 0 1 3.25 15V7.5Z"/></svg>',
+        onClick: () => void api.helpers.copy(copyable, t('copied')),
+      }));
+    }
+
+    return h('div', { class: `bsh-card bsh-card--${family}` }, [face, body, actions]);
   };
 
   const draw = async () => {
     if (!panel) return;
     const log = deps.getLog();
-    const rows = deps.view(log, { query, groups, sort });
+    const rows = deps.view(log, { query, sort, groups });
     const counts = deps.tally(log);
 
     const list = panel.querySelector('.bsh-list');
@@ -183,10 +225,14 @@ export function createView(api, t, deps) {
       chip.setAttribute('aria-selected', String(on));
       const badge = chip.querySelector('.bsh-tab__count');
       if (badge) badge.textContent = String(counts[key] ?? 0);
+      // A filter that can only ever return nothing is a filter in the way.
+      chip.toggleAttribute('hidden', key !== 'all' && (counts[key] ?? 0) === 0 && !groups.includes(key));
     }
-    if (count) count.textContent = t('countOf', { shown: rows.length, total: log.length });
 
-    if (rows.length === 0) {
+    const cards = group(rows);
+    if (count) count.textContent = t('countOf', { shown: cards.length, total: counts.all });
+
+    if (cards.length === 0) {
       list.replaceChildren(h('div', { class: 'bsh-empty' }, [
         h('p', { class: 'bsh-empty__title' }, [log.length === 0 ? t('empty') : t('noMatch')]),
         h('p', { class: 'bsh-dim' }, [log.length === 0 ? t('emptyHint') : t('noMatchHint')]),
@@ -201,17 +247,17 @@ export function createView(api, t, deps) {
 
     const nodes = [];
     let day = null;
-    for (const entry of rows) {
-      // Only where the order still means days: sorted by who or by what, a
-      // date divider every other line is noise rather than structure.
+    for (const card of cards) {
+      // Only where the order still means days: sorted by channel, a date
+      // divider every other card is noise rather than structure.
       if (sort === 'newest' || sort === 'oldest') {
-        const stamp = dayOf(entry.at);
+        const stamp = dayOf(card.at);
         if (stamp !== day) {
           day = stamp;
           nodes.push(h('div', { class: 'bsh-day' }, [h('span', { class: 'bsh-day__label' }, [dayLabel(stamp)])]));
         }
       }
-      nodes.push(row(entry, people));
+      nodes.push(cardNode(card, people));
     }
     list.replaceChildren(...nodes);
   };
@@ -286,15 +332,13 @@ export function createView(api, t, deps) {
     });
 
     const node = h('div', { class: 'bsh-view' }, [
-      // The header Slack puts on every view: a title on the left, what acts on
-      // the whole view on the right, and a hairline under it.
+      // The header Slack puts on every view: the title on the left, what acts
+      // on the whole view on the right, and a hairline under it.
       h('header', { class: 'bsh-header' }, [
         h('div', { class: 'bsh-header__titles' }, [
           h('h1', { class: 'bsh-header__title' }, [t('title')]),
           h('p', { class: 'bsh-header__hint bsh-dim' }, [t('subtitle')]),
         ]),
-        // No close button: this is a view, and you leave a view by going
-        // somewhere else, exactly as you leave Activité.
         h('div', { class: 'bsh-header__actions' }, [clear]),
       ]),
       h('div', { class: 'bsh-bar' }, [tabs, h('div', { class: 'bsh-bar__right' }, [search, sortButton])]),
