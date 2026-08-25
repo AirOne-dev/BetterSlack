@@ -551,6 +551,35 @@ export default {
         if (!wanted.has(key)) { node.remove(); headstones.delete(key); }
       }
 
+      /*
+       * A message that is on screen was never deleted.
+       *
+       * Whatever wrote that entry was wrong -- and one of them was: working a
+       * deletion out from the screen turned every edit into a deletion, since
+       * Slack takes the message out of the document while you type. The line
+       * it draws then sits beside the message it claims is gone, with the same
+       * words in it, which reads as the message having been posted twice.
+       *
+       * Provably wrong is worth more than not drawn: the entry is on the page
+       * as well, saying the same untrue thing. So it goes, rather than being
+       * quietly skipped here and left there.
+       */
+      const wrong = [...wanted.values()].filter((entry) => document.querySelector(
+        `${MESSAGE}[data-msg-channel-id="${CSS.escape(entry.channelId)}"][data-msg-ts="${CSS.escape(entry.ts)}"]`,
+      ));
+      if (wrong.length > 0) {
+        const bad = new Set(wrong.map((entry) => entry.id));
+        log = log.filter((entry) => !bad.has(entry.id));
+        for (const entry of wrong) {
+          const key = `${entry.channelId}:${entry.ts}`;
+          wanted.delete(key);
+          headstones.get(key)?.remove();
+          headstones.delete(key);
+        }
+        save();
+        page.refresh();
+      }
+
       for (const [key, entry] of wanted) {
         const anchor = anchorFor(entry);
         const existing = headstones.get(key);
@@ -617,6 +646,23 @@ export default {
         });
         const list = Array.isArray(answer?.messages) ? answer.messages : [];
         if (list.length === 0) return;
+
+        /*
+         * The same check, for the whole page rather than for what is drawn.
+         *
+         * A message this answer still carries was never deleted, whatever the
+         * log says -- and this reaches the ones you would have to scroll to,
+         * which the screen never shows.
+         */
+        const alive = new Set(list.map((message) => message?.ts).filter(Boolean));
+        const wrong = log.filter((entry) => entry.kind === 'deleted'
+          && entry.channelId === channelId && alive.has(entry.ts));
+        if (wrong.length > 0) {
+          const bad = new Set(wrong.map((entry) => entry.id));
+          log = log.filter((entry) => !bad.has(entry.id));
+          save();
+          page.refresh();
+        }
         const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
         record(catchUp(snapshots.get(channelId) ?? null, list, { channelId, channelName }, { apps: watchApps }));
         snapshots.set(channelId, snapshotOf(list));

@@ -979,3 +979,43 @@ test('a message with earlier wordings offers them, and one without offers nothin
     dom.cleanup();
   }
 });
+
+test('a message that is on screen was never deleted, and the entry saying so goes', async () => {
+  /*
+   * Whatever wrote such an entry was wrong, and one thing did: working a
+   * deletion out from the screen turned every edit into a deletion, because
+   * Slack takes the message out of the document while you type. The line it
+   * drew then sat beside the message it claimed was gone, with the same words
+   * in it, which reads as the message having been posted twice.
+   *
+   * Provably wrong is worth more than not drawn: the entry is on the page as
+   * well, saying the same untrue thing.
+   */
+  const dom = installDom();
+  const { api, recorded } = createTestApi({
+    files: FILES,
+    settings: {
+      people: false,
+      entries: [
+        {
+          id: '1', kind: 'deleted', at: 10,
+          channelId: 'C0BFQCYBRAB', ts: '1786386808.130969',
+          before: 'still very much here', userId: 'U0EXAMPLE2',
+        },
+        { id: '2', kind: 'edited', at: 11, channelId: 'C0BFQCYBRAB', ts: '7', before: 'a', after: 'b' },
+      ],
+    },
+  });
+  try {
+    await plugin.start(api);
+    assert.equal(document.querySelector('.bsh-stone'), null, 'no line beside a message that is there');
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const log = api.settings.get('entries', []);
+    assert.deepEqual(log.map((entry) => entry.id), ['2'],
+      'and the entry goes, since the page was saying the same untrue thing');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
