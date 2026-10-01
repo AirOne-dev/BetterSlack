@@ -66,6 +66,14 @@ const plist = `<?xml version="1.0" encoding="UTF-8"?>
   <key>NSDesktopFolderUsageDescription</key><string>BetterSlack saves files you ask a mod to download.</string>
   <key>NSDocumentsFolderUsageDescription</key><string>BetterSlack saves files you ask a mod to download.</string>
   <key>NSDownloadsFolderUsageDescription</key><string>BetterSlack saves files you ask a mod to download.</string>
+  <!-- Slack runs as this app's child, so macOS asks *this* bundle about the
+       microphone and the camera when a huddle starts or rings -- not Slack's.
+       Without these keys the request does not prompt: macOS kills Slack on the
+       spot ("attempted to access privacy-sensitive data without a usage
+       description"), which is every call crashing the app. -->
+  <key>NSMicrophoneUsageDescription</key><string>Slack, started by BetterSlack, uses the microphone for calls and huddles.</string>
+  <key>NSCameraUsageDescription</key><string>Slack, started by BetterSlack, uses the camera for calls and huddles.</string>
+  <key>NSAudioCaptureUsageDescription</key><string>Slack, started by BetterSlack, shares your computer's sound when you share your screen in a huddle.</string>
 </dict>
 </plist>
 `;

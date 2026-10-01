@@ -252,6 +252,17 @@ execs `Contents/Resources/launch.sh`. Two things follow:
   bundle by its contents, so installing again asks again. That is fine for a
   user who installs once and invisible to anyone iterating on the launcher --
   which is how a working app turned into a silent one mid-session, twice.
+- **Slack's microphone and camera are asked of this bundle, not of Slack.**
+  Slack is the app's child, so TCC attributes its requests to the responsible
+  process -- `dev.airone.betterslack` -- and Slack's own grants and usage
+  strings do not count. A bundle without `NSMicrophoneUsageDescription` gets no
+  prompt: macOS kills Slack outright the moment a huddle is started or rings,
+  logged by Slack itself as "attempted to access privacy-sensitive data without
+  a usage description" and nowhere on screen. So the plist carries the
+  microphone, camera and audio-capture strings, and the first call asks for
+  BetterSlack's permission -- again after each build, for the reason above.
+  `pnpm start` from a terminal is not affected: there the terminal is
+  responsible, and it has its own.
 
 The app lives in `/Applications`, which is `root:admin` and group-writable, so
 an administrator needs no password; the elevation is attempted **only after** an
