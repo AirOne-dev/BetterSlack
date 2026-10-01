@@ -2041,7 +2041,7 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
     <p class="eyebrow">api.data</p>
     <h1><code>list</code></h1>
     <p class="api-sig api-sig--big">(): Promise&lt;Array&lt;{ name: string; bytes: number; modified: number }&gt;&gt;</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.4.0</p>
   </header>
   <div class="panel__body">
     <p>Every file this mod has kept, by name, with its size and when it was last written. Only this mod's: another mod's folder is not reachable from here.</p>
@@ -2057,7 +2057,7 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
     <p class="eyebrow">api.data</p>
     <h1><code>read</code></h1>
     <p class="api-sig api-sig--big">(name: string): Promise&lt;Blob | null&gt;</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.4.0</p>
   </header>
   <div class="panel__body">
     <p>A file this mod kept, as a Blob typed from its extension, or null when there is none by that name. Typed, so an <code>&lt;audio&gt;</code> or an <code>&lt;img&gt;</code> can use it straight away through an object URL.</p>
@@ -2072,7 +2072,7 @@ if (blob) new Audio(URL.createObjectURL(blob)).play();</code></pre>
     <p class="eyebrow">api.data</p>
     <h1><code>remove</code></h1>
     <p class="api-sig api-sig--big">(name: string): Promise&lt;boolean&gt;</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.4.0</p>
   </header>
   <div class="panel__body">
     <p>Delete a file this mod kept. Answers true if there was one to delete, so asking twice is harmless.</p>
@@ -2088,7 +2088,7 @@ if (blob) new Audio(URL.createObjectURL(blob)).play();</code></pre>
     <p class="eyebrow">api.data</p>
     <h1><code>write</code></h1>
     <p class="api-sig api-sig--big">(name: string, content: Blob | ArrayBuffer | Uint8Array | string): Promise&lt;{ name: string; bytes: number; modified: number }&gt;</p>
-    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+    <p class="api-since">Since BetterSlack 3.4.0</p>
   </header>
   <div class="panel__body">
     <p>Keep a file of this mod's own, on disk, across restarts and updates: a sound somebody picked, a picture, an export. It goes under <code>~/.betterslack/data/&lt;mod id&gt;/</code>, which no other mod can name; the name is reduced to a safe basename, at most 8 MB a file and 64 MB a mod. A file of the same name is replaced. Nothing is deleted when the mod is switched off or removed.</p>

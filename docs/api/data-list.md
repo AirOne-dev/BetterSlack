@@ -3,7 +3,7 @@ name: list
 group: data
 title: api.data
 signature: (): Promise<Array<{ name: string; bytes: number; modified: number }>>
-since: unreleased
+since: 3.4.0
 preview: data-list
 ---
 

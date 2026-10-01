@@ -3,7 +3,7 @@ name: read
 group: data
 title: api.data
 signature: (name: string): Promise<Blob | null>
-since: unreleased
+since: 3.4.0
 preview: data-read
 control: name | text | my-ding.mp3 | name
 ---

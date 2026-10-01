@@ -4,6 +4,18 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.4.0 — 2026-10-01
+
+### Added
+
+- **plugins:** Custom Sounds, your own files in every sound list
+- **api:** api.data, a folder of files per mod
+
+### Fixed
+
+- **demo-mode:** redesigned link previews and Preferences' lists are swept
+- **api:** a menu too long for either side scrolls, and follows a resize
+
 ## 3.3.0 — 2026-10-01
 
 ### Added

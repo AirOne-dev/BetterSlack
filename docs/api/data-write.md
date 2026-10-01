@@ -3,7 +3,7 @@ name: write
 group: data
 title: api.data
 signature: (name: string, content: Blob | ArrayBuffer | Uint8Array | string): Promise<{ name: string; bytes: number; modified: number }>
-since: unreleased
+since: 3.4.0
 preview: data-write
 control: name | text | my-ding.mp3 | name
 control: bytes | number | 48320 | size in bytes

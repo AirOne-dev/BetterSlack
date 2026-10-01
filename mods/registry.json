@@ -423,7 +423,7 @@
           }
         }
       ],
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.4.0",
       "path": "plugins/custom-sounds"
     },
     {

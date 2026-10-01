@@ -3,7 +3,7 @@ name: remove
 group: data
 title: api.data
 signature: (name: string): Promise<boolean>
-since: unreleased
+since: 3.4.0
 preview: data-remove
 control: name | text | my-ding.mp3 | name
 ---
