@@ -1642,6 +1642,16 @@ a theme that is off, and beat the next one, since they are written after every
 theme's stylesheet. Changing one repaints rather than re-applies: the stylesheet
 has not changed, only the handful of properties on top of it.
 
+**A `choice` setting can switch a whole palette, through a style query.**
+`@container style(--xp-scheme: olive) { body { ... } }` applies wherever the
+parent carries the value, and the runtime writes it on `:root`. Measured in
+Slack 4.51: Windows XP's three schemes and its Aero switch repaint the client
+in place. The trap is where a token is *resolved*: a custom property holding
+`var(--xp-x)` takes the value on the element that declares it, so tokens
+declared only on `:root` keep the default palette whatever `body` says. Declare
+them on `body` as well -- Slack's `.sk-client-theme--*` class is on `<body>`,
+which is why existing themes' selector already half-covers it.
+
 - **A theme never gets its own way to run code.** Behaviour belongs in a plugin,
   which already has an API, a lifecycle and a consent step; a second, weaker
   model beside it would be another surface to keep in step and another dialog to

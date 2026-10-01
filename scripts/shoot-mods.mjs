@@ -36,7 +36,7 @@ const CHROME = new Set([
   // The tab rail's own labels, which Slack writes and nobody chose.
   'accueil', 'activité', 'activite', 'fichiers', 'directs', 'brouillons',
   'canaux', 'connexions', 'groupes', 'externes', 'outils', 'modèles', 'modeles',
-  'plus', 'later', 'accueil', 'récents', 'recents',
+  'plus', 'later', 'accueil', 'récents', 'recents', 'agents',
   // Tabs above a conversation, and the day dividers and reply bars inside it.
   'marque-pages', 'épingles', 'epingles', 'canevas', 'dossier', 'aujourd',
   'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche',
@@ -79,6 +79,15 @@ const SHOTS = [
   { id: 'cocoa' },
   { id: 'terminal' },
   { id: 'focus-rings' },
+  // Two frames: the client, and a window -- the dialogs are half of what
+  // the theme re-shapes, and the client alone shows none of them.
+  {
+    id: 'windows-xp',
+    frames: [
+      {},
+      { name: 'panel', open: 'panel', expect: '#betterslack-panel' },
+    ],
+  },
   // Plugins.
   // The switch starts off, so the frame has to press it -- which is also the
   // only picture in the set where the mod and the recipe do the same thing.

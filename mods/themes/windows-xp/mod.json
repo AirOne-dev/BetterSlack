@@ -1,0 +1,146 @@
+{
+  "id": "windows-xp",
+  "name": "Windows XP",
+  "type": "theme",
+  "version": "1.0.0",
+  "author": "AirOne-dev",
+  "description": "Slack in Luna: the blue title bar, the taskbar as the rail with a green start button, Explorer's task pane as the sidebar, putty dialogs, push buttons with the orange ring, yellow balloons and XP's scroll bars. Blue, Olive Green and Silver, plus an Aero glass switch.",
+  "descriptions": {
+    "fr": "Slack en Luna : la barre de titre bleue, la barre des tâches en guise de rail avec un bouton Démarrer vert, le volet de tâches de l'explorateur comme barre latérale, des boîtes de dialogue mastic, des boutons à l'anneau orange, des bulles jaunes et les barres de défilement d'XP. Bleu, Vert olive et Argent, plus un interrupteur verre Aero."
+  },
+  "entry": "theme.css",
+  "icon": "icon.svg",
+  "settings": [
+    {
+      "key": "scheme",
+      "type": "choice",
+      "label": "Colour scheme",
+      "labels": {
+        "fr": "Jeu de couleurs"
+      },
+      "hint": "The three Luna schemes XP shipped with.",
+      "hints": {
+        "fr": "Les trois jeux de couleurs Luna livrés avec XP."
+      },
+      "default": "blue",
+      "cssVar": "--xp-scheme",
+      "options": [
+        {
+          "value": "blue",
+          "label": "Blue (default)",
+          "labels": {
+            "fr": "Bleu (par défaut)"
+          }
+        },
+        {
+          "value": "olive",
+          "label": "Olive Green",
+          "labels": {
+            "fr": "Vert olive"
+          }
+        },
+        {
+          "value": "silver",
+          "label": "Silver",
+          "labels": {
+            "fr": "Argent"
+          }
+        }
+      ]
+    },
+    {
+      "key": "glass",
+      "type": "choice",
+      "label": "Aero glass",
+      "labels": {
+        "fr": "Verre Aero"
+      },
+      "hint": "Vista's translucent glass over a drawn Bliss. Not XP, but what everyone remembers next to it.",
+      "hints": {
+        "fr": "Le verre translucide de Vista sur un Bliss dessiné. Pas XP, mais ce dont tout le monde se souvient à côté."
+      },
+      "default": "off",
+      "cssVar": "--xp-glass",
+      "options": [
+        {
+          "value": "off",
+          "label": "Off (pure Luna)",
+          "labels": {
+            "fr": "Désactivé (Luna pur)"
+          }
+        },
+        {
+          "value": "on",
+          "label": "On",
+          "labels": {
+            "fr": "Activé"
+          }
+        }
+      ]
+    },
+    {
+      "key": "textSize",
+      "type": "choice",
+      "label": "Message text",
+      "labels": {
+        "fr": "Texte des messages"
+      },
+      "hint": "XP set everything in Tahoma 8 point, which is 11px. Faithful, and small.",
+      "hints": {
+        "fr": "XP écrivait tout en Tahoma 8 points, soit 11 px. Fidèle, et petit."
+      },
+      "default": "13px",
+      "cssVar": "--xp-text-size",
+      "options": [
+        {
+          "value": "11px",
+          "label": "11px, as XP had it",
+          "labels": {
+            "fr": "11 px, comme sous XP"
+          }
+        },
+        {
+          "value": "13px",
+          "label": "13px",
+          "labels": {
+            "fr": "13 px"
+          }
+        },
+        {
+          "value": "15px",
+          "label": "15px, Slack's size",
+          "labels": {
+            "fr": "15 px, la taille de Slack"
+          }
+        }
+      ]
+    }
+  ],
+  "betterslackApi": 1,
+  "slackVersion": "4.51",
+  "tags": [
+    "light",
+    "retro",
+    "colourful"
+  ],
+  "readme": "README.md",
+  "readmes": {
+    "fr": "README.fr.md"
+  },
+  "screenshots": [
+    {
+      "file": "screenshot.webp",
+      "captions": {
+        "en": "Slack in Luna Blue: the title bar, the taskbar rail with its start button, and Explorer's task pane as the sidebar.",
+        "fr": "Slack en Luna bleu : la barre de titre, le rail en barre des tâches avec son bouton Démarrer, et le volet de tâches de l'explorateur en guise de barre latérale."
+      }
+    },
+    {
+      "file": "screenshot-panel.webp",
+      "captions": {
+        "en": "A window: BetterSlack's panel with the blue caption, the red close button and XP's controls.",
+        "fr": "Une fenêtre : le panneau BetterSlack avec sa barre de titre bleue, la croix rouge et les contrôles d'XP."
+      }
+    }
+  ]
+}

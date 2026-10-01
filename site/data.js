@@ -165,6 +165,30 @@ window.CATALOGUE = {
         "#35e07f",
         "#ffb638"
       ]
+    },
+    {
+      "id": "windows-xp",
+      "name": "Windows XP",
+      "description": "Slack in Luna: the blue title bar, the taskbar as the rail with a green start button, Explorer's task pane as the sidebar, putty dialogs, push buttons with the orange ring, yellow balloons and XP's scroll bars. Blue, Olive Green and Silver, plus an Aero glass switch.",
+      "descriptions": {
+        "fr": "Slack en Luna : la barre de titre bleue, la barre des tâches en guise de rail avec un bouton Démarrer vert, le volet de tâches de l'explorateur comme barre latérale, des boîtes de dialogue mastic, des boutons à l'anneau orange, des bulles jaunes et les barres de défilement d'XP. Bleu, Vert olive et Argent, plus un interrupteur verre Aero."
+      },
+      "version": "1.0.0",
+      "tags": [
+        "light",
+        "retro",
+        "colourful"
+      ],
+      "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><defs><linearGradient id=\"t\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#3593ff\"/><stop offset=\".3\" stop-color=\"#0054e3\"/><stop offset=\"1\" stop-color=\"#003092\"/></linearGradient><linearGradient id=\"c\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#f0a694\"/><stop offset=\"1\" stop-color=\"#cc3e1b\"/></linearGradient></defs><rect x=\"1.5\" y=\"3\" width=\"21\" height=\"18\" rx=\"2.5\" fill=\"#0831d9\"/><rect x=\"1.5\" y=\"3\" width=\"21\" height=\"6\" rx=\"2.5\" fill=\"url(#t)\"/><rect x=\"3\" y=\"9\" width=\"18\" height=\"10.5\" fill=\"#ece9d8\"/><rect x=\"17.2\" y=\"4.3\" width=\"3.6\" height=\"3.4\" rx=\".8\" fill=\"url(#c)\" stroke=\"#fff\" stroke-width=\".5\"/><path d=\"M18.3 5.3l1.4 1.4m0-1.4l-1.4 1.4\" stroke=\"#fff\" stroke-width=\".7\"/><rect x=\"5\" y=\"11\" width=\"9\" height=\"1.4\" fill=\"#316ac5\"/><rect x=\"5\" y=\"13.8\" width=\"11\" height=\"1.2\" fill=\"#aca899\"/><rect x=\"5\" y=\"16.2\" width=\"7\" height=\"1.2\" fill=\"#aca899\"/></svg>",
+      "shot": "shots/mods/windows-xp.webp",
+      "palette": [
+        "#c4c8d4",
+        "#ffffff",
+        "#f1efe2",
+        "#000000",
+        "#2b3f8f"
+      ]
     }
   ],
   "plugins": [

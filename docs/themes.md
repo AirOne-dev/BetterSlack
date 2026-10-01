@@ -327,6 +327,36 @@ and says nothing. So a `colour` setting also writes `<cssVar>-rgb`:
 `mods/themes/terminal` is the worked example: three colours, twenty-five derived
 tints and the whole legacy family following all three.
 
+## Letting somebody pick a whole palette
+
+A `choice` setting writes its value the same way, and a stylesheet can branch on
+it with a **style query**: every element is a style container for its children,
+so a rule inside `@container style(--x: value)` applies wherever the parent
+carries that value -- which, for a property the runtime writes on `:root`, is
+everywhere below `<html>`. Measured in Slack 4.51: switching the setting
+repaints the client in place, no reload.
+
+```css
+@container style(--xp-scheme: olive) {
+  body, .sk-client-theme--light, .sk-client-theme--dark {
+    --xp-highlight: #93a070;
+  }
+}
+```
+
+**Declare your tokens on `body` too, not only on `:root`.** A custom property
+holding `var(--xp-highlight)` is resolved where it is *declared*: a token
+declared only on `:root` reads `:root`'s palette, and the query above changes
+`body`'s, so Slack would keep the default scheme whatever was picked. Slack puts
+its own `.sk-client-theme--*` class on `<body>`, so that selector already covers
+it -- but say `body` anyway, or a Slack release that moves the class takes your
+schemes with it.
+
+`mods/themes/windows-xp` is the worked example: three Luna schemes and an Aero
+switch, one stylesheet. Every colour lives in the palette at the top, and its
+test refuses a colour written anywhere below it -- the only way three schemes
+stay three schemes.
+
 ## When CSS is not enough
 
 A theme is CSS and nothing else. CSS reaches everything about how Slack *looks*
@@ -369,3 +399,4 @@ ties the two together and makes both worse.
 | [`cocoa`](../mods/themes/cocoa/theme.css) | a light theme, so every family had to be covered |
 | [`focus-rings`](../mods/themes/focus-rings/theme.css) | no tokens at all — pure `:focus-visible` semantics |
 | [`terminal`](../mods/themes/terminal/theme.css) | a full takeover with `*` selectors |
+| [`windows-xp`](../mods/themes/windows-xp/theme.css) | a light theme re-shaping Slack's chrome (title bar, task pane, dialogs), three schemes picked by a setting through style queries |

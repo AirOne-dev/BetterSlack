@@ -1,0 +1,1458 @@
+/*
+ * Windows XP — Slack in Luna.
+ *
+ * Every value below comes from somewhere that can be checked, not from memory
+ * of what XP looked like:
+ *
+ *   - the system colours are the registry defaults of the three Luna schemes
+ *     (ButtonFace #ECE9D8, Hilight #316AC5, InfoWindow #FFFFE1, GrayText
+ *     #ACA899, ActiveTitle #0054E3 ...), which Microsoft's own WPF Luna theme
+ *     (MIT, dotnet/wpf, Themes/XAML/*.xaml) repeats for Blue, Homestead and
+ *     Metallic;
+ *   - buttons, scrollbars, tabs, check boxes and group boxes are WPF's Luna
+ *     chrome and XP.css (MIT, botoxparty/XP.css), read stop by stop;
+ *   - the title bar and the taskbar are the multi-stop gradients of the winXP
+ *     reconstruction (MIT, ShizukuIchi/winXP), which follow the bitmaps in
+ *     Luna.msstyles more closely than a three-stop approximation can;
+ *   - type sizes and the welcome screen are Microsoft's 2001 "Windows XP
+ *     Visual Guidelines".
+ *
+ * Nothing of Microsoft's is shipped. Bliss, the icons, the flag and the
+ * msstyles bitmaps are copyrighted, so the wallpaper is drawn in gradients and
+ * every glyph is a small SVG written here; Tahoma and Trebuchet MS are named,
+ * never bundled -- both are installed on macOS and Windows, and Wine's
+ * metric-compatible Tahoma stands in on Linux.
+ *
+ * How the file is laid out, because the order is load-bearing:
+ *
+ *   1. THE PALETTE -- every colour, gradient and glyph, as a --xp-* variable,
+ *      for Luna Blue. Nothing below it writes a colour out by hand; the
+ *      theme's test refuses one.
+ *   2. THE OTHER SCHEMES -- Olive Green and Silver, which only re-declare
+ *      variables. They are chosen by the theme's "Colour scheme" setting.
+ *   3. THE TOKENS -- Slack's four families pointed at the palette, so
+ *      everything that reads a token (Slack, the Mods panel, every plugin)
+ *      turns Luna without being named here.
+ *   4. THE STYLESHEET -- the shapes tokens cannot give: title bars, task
+ *      panes, push buttons, scrollbars, balloons.
+ */
+
+/* ===================================================================== */
+/* 1. THE PALETTE — Luna Blue                                             */
+/* ===================================================================== */
+
+:root,
+body,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  /* The theme's settings. The runtime writes these after this stylesheet,
+     so these are only the defaults. */
+  --xp-scheme: blue;
+  --xp-glass: off;
+  --xp-text-size: 13px;
+
+  /* System colours (GetSysColor, Luna Blue). */
+  --xp-window: #ffffff;
+  --xp-window-text: #000000;
+  --xp-face: #ece9d8;
+  --xp-face-light: #f1efe2;
+  --xp-face-shadow: #aca899;
+  --xp-face-dark: #716f64;
+  --xp-gray-text: #aca899;
+  --xp-text-dim: #716f64;
+  --xp-highlight: #316ac5;
+  --xp-highlight-text: #ffffff;
+  --xp-hot: #428eff;
+  --xp-info: #ffffe1;
+  --xp-info-text: #000000;
+  --xp-frame-line: #000000;
+  --xp-link: #0b4fb4;
+  --xp-hover-row: #eef3fb;
+  --xp-pressed-row: #d6dff7;
+
+  /* Edges: inputs, push buttons, group boxes, tabs. */
+  --xp-input-border: #7f9db9;
+  --xp-button-border: #003c74;
+  --xp-group-border: #d0d0bf;
+  --xp-group-title: #0046d5;
+  --xp-tab-border: #919b9c;
+  --xp-separator: #d0d0bf;
+  --xp-disabled-face: #f5f4ea;
+  --xp-disabled-border: #c9c7ba;
+  --xp-disabled-text: #a1a192;
+
+  /* The window frame and its title bar. */
+  --xp-frame: #0831d9;
+  --xp-frame-inactive: #6582f5;
+  --xp-title-text: #ffffff;
+  --xp-title-shadow: #0f1089;
+  --xp-title: linear-gradient(180deg,
+    #0058ee 0%, #3593ff 4%, #288eff 6%, #127dff 8%, #036ffc 10%, #0262ee 14%,
+    #0057e5 20%, #0054e3 24%, #0055eb 56%, #005bf5 66%, #026afe 76%,
+    #0062ef 86%, #0052d6 92%, #0040ab 94%, #003092 100%);
+  --xp-title-inactive: linear-gradient(180deg,
+    #7697e7 0%, #7e9ee3 3%, #94afe8 6%, #97b4e9 8%, #82a5e4 14%, #7c9fe2 17%,
+    #7996de 25%, #7b99e1 56%, #82a9e9 81%, #80a5e7 89%, #7b96e1 94%,
+    #7a93df 97%, #abbae3 100%);
+  --xp-title-inactive-text: #d8e4f8;
+
+  /* Caption buttons: blue for minimise/maximise, red for close. */
+  --xp-caption: radial-gradient(circle at 90% 90%, #0054e9 0%, #2263d5 55%, #4479e4 70%, #a3bbec 90%, #ffffff 100%);
+  --xp-caption-hover: radial-gradient(circle at 90% 90%, #134bbf 0%, #2f72fb 55%, #4985ff 70%, #9cbdff 90%, #ffffff 100%);
+  --xp-caption-ring: #4646ff;
+  --xp-close: radial-gradient(circle at 90% 90%, #cc4600 0%, #dc6527 55%, #cd7546 70%, #ffccb2 90%, #ffffff 100%);
+  --xp-close-hover: radial-gradient(circle at 90% 90%, #c93c2b 0%, #ec4f3d 55%, #ff6b5a 70%, #ffb2a9 90%, #ffffff 100%);
+  --xp-close-ring: #da4600;
+  --xp-caption-edge: #ffffff;
+
+  /* The taskbar, laid on its side to become the rail. */
+  --xp-rail: linear-gradient(90deg,
+    #1f2f86 0%, #3165c4 3%, #3682e5 6%, #4490e6 10%, #3883e5 12%, #2b71e0 15%,
+    #2663da 18%, #235bd6 20%, #2258d5 23%, #2157d6 38%, #245ddb 54%,
+    #2562df 86%, #245fdc 89%, #2158d4 92%, #1d4ec0 95%, #1941a5 98%);
+  --xp-rail-text: #ffffff;
+  --xp-rail-text-shadow: rgba(0, 0, 0, 0.45);
+  --xp-task-button: #3c81f3;
+  --xp-task-button-hover: #53a3ff;
+  --xp-task-button-active: #1e52b7;
+  --xp-task-button-active-hover: #3576f3;
+
+  /* The start button, which the BetterSlack launcher becomes. */
+  --xp-start: linear-gradient(180deg,
+    #79c779 0%, #5edb5e 8%, #3ab83a 30%, #31a431 50%, #2c9a2c 70%, #2a7f2a 92%, #1d6b1d 100%);
+  --xp-start-edge: #1b5e1b;
+
+  /* Explorer's task pane: the channel sidebar. */
+  --xp-pane: linear-gradient(180deg, #7ba2e7 0%, #6375d6 100%);
+  --xp-pane-solid: #7ba2e7;
+  --xp-taskbox-head: linear-gradient(90deg, #ffffff 0%, #ffffff 30%, #c6d3f7 100%);
+  --xp-taskbox-body: #d6dff7;
+  --xp-taskbox-edge: #ffffff;
+  --xp-taskbox-title: #215dc6;
+  --xp-taskbox-title-hover: #428eff;
+  --xp-taskbox-text: #0c2a7e;
+  --xp-special-head: linear-gradient(90deg, #0049b5 0%, #295dce 100%);
+  --xp-special-text: #ffffff;
+
+  /* Toolbars, the rebar under a title bar, and the status bar. */
+  --xp-toolbar: linear-gradient(180deg, #faf9f5 0%, #f2f0e8 45%, #ebe7e0 85%, #dcd8c9 100%);
+  --xp-toolbar-edge: #c0c0a8;
+  --xp-toolbar-hover: linear-gradient(180deg, #ffffff 0%, #f6f5ef 50%, #ece9d8 100%);
+  --xp-toolbar-hover-edge: #ccc7ba;
+  --xp-toolbar-pressed: linear-gradient(180deg, #e2e2da 0%, #e6e6e0 100%);
+  --xp-toolbar-pressed-edge: #9d9a8b;
+
+  /* Push buttons. */
+  --xp-button: linear-gradient(180deg, #ffffff 0%, #f6f6f3 40%, #ecebe5 86%, #d8d0c4 100%);
+  --xp-button-pressed: linear-gradient(180deg, #cdcac3 0%, #e3e3db 8%, #e5e5de 94%, #f2f2f1 100%);
+  --xp-button-hover-ring: inset -1px 1px #fff0cf, inset 1px 2px #fdd889, inset -2px 2px #fbc761, inset 2px -2px #e5a01a;
+  --xp-button-default-ring: inset -1px 1px #cee7ff, inset 1px 2px #98b8ea, inset -2px 2px #bcd4f6, inset 1px -1px #89ade4, inset 2px -2px #89ade4;
+  --xp-go: linear-gradient(180deg, #8fe791 0%, #4cda50 30%, #2ed330 50%, #22a122 85%, #1a8a1a 100%);
+  --xp-go-edge: #267c08;
+  --xp-danger: linear-gradient(180deg, #f0a694 0%, #e8775d 40%, #e35c3a 70%, #cc3e1b 92%, #a62b0d 100%);
+  --xp-danger-edge: #8a2008;
+
+  /* Property-sheet tabs: the orange cap on the one under the pointer. */
+  --xp-tab: linear-gradient(180deg, #ffffff 0%, #fafaf9 26%, #f0f0ea 95%, #ecebe5 100%);
+  --xp-tab-cap: #e68b2c;
+  --xp-tab-cap-light: #ffc73c;
+  --xp-tab-panel: linear-gradient(180deg, #fcfcfe 0%, #f4f3ee 100%);
+
+  /* Scroll bars. */
+  --xp-scroll-track: linear-gradient(90deg, #eeede5 0%, #eeede5 5%, #f3f1ec 6%, #fefefe 94%, #eeede5 95%, #eeede5 100%);
+  --xp-scroll-track-y: linear-gradient(180deg, #eeede5 0%, #eeede5 5%, #f3f1ec 6%, #fefefe 94%, #eeede5 95%, #eeede5 100%);
+  --xp-scroll-thumb: linear-gradient(90deg, #c9d8fc 0%, #c2d3fc 65%, #b6cdfb 100%);
+  --xp-scroll-thumb-y: linear-gradient(180deg, #c9d8fc 0%, #c2d3fc 65%, #b6cdfb 100%);
+  --xp-scroll-thumb-hover: linear-gradient(90deg, #dae9ff 0%, #d4e6ff 65%, #cae0ff 100%);
+  --xp-scroll-thumb-edge: #b4c8f6;
+  --xp-scroll-button: linear-gradient(180deg, #e1eafe 0%, #c3d3fd 30%, #c3d3fd 60%, #bbcdf9 100%);
+  --xp-scroll-button-hover: linear-gradient(180deg, #fdffff 0%, #e2f3fd 25%, #b9dafb 100%);
+  --xp-scroll-button-edge: #b4c8f6;
+
+  /* Balloons and tooltips. */
+  --xp-balloon-shadow: drop-shadow(2px 2px 1px rgba(0, 0, 0, 0.4));
+  --xp-menu-shadow: 2px 2px 3px rgba(0, 0, 0, 0.45);
+  --xp-window-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+
+  /* Status colours. */
+  --xp-green: #22a122;
+  --xp-orange: #e68b2c;
+  --xp-red: #e3412a;
+  --xp-red-text: #c4170c;
+  --xp-warn-text: #a65d00;
+  --xp-success-text: #267c08;
+  --xp-badge: linear-gradient(180deg, #ff8f74 0%, #e3412a 45%, #c42a14 100%);
+  --xp-badge-text: #ffffff;
+
+  /* The command prompt, for code blocks. */
+  --xp-console: #000000;
+  --xp-console-text: #c0c0c0;
+  --xp-console-edge: #808080;
+
+  /* Start-menu pieces, worn by the command palette. */
+  --xp-start-head: linear-gradient(180deg,
+    #1868ce 0%, #0e60cb 12%, #0e60cb 20%, #1164cf 32%, #1667cf 33%, #1b6cd3 47%,
+    #1e70d9 54%, #2476dc 60%, #297ae0 65%, #3482e3 77%, #3786e5 79%,
+    #428ee9 90%, #4791eb 100%);
+  --xp-start-foot: linear-gradient(180deg,
+    #4282d6 0%, #3b85e0 3%, #418ae3 5%, #418ae3 17%, #3c87e2 21%, #3786e4 26%,
+    #3482e3 29%, #2e7ee1 39%, #2374df 49%, #2072db 57%, #196edb 62%,
+    #176bd8 72%, #1468d5 75%, #1165d2 83%, #0f61cb 88%);
+  --xp-start-orange: linear-gradient(90deg, transparent 0%, #da884a 50%, transparent 100%);
+  --xp-start-frame: #4282d6;
+
+  /* The welcome screen, worn by BetterSlack's start screen. */
+  --xp-welcome: linear-gradient(180deg,
+    #00309c 0%, #00309c 11%, #8caae6 11.4%, #8caae6 11.7%, #5a7edc 11.8%,
+    #6f8fe3 50%, #5a7edc 88.2%, #ff9933 88.3%, #ff9933 88.7%, #00309c 88.8%, #00309c 100%);
+
+  /* Bliss, drawn rather than shipped: sky, two clouds, the hill. */
+  --xp-bliss:
+    radial-gradient(ellipse 26% 7% at 24% 20%, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(ellipse 18% 5% at 33% 25%, rgba(245, 244, 247, 0.75), transparent 70%),
+    radial-gradient(ellipse 22% 6% at 72% 14%, rgba(235, 238, 250, 0.8), transparent 70%),
+    radial-gradient(ellipse 120% 52% at 38% 112%, #8bb52b 0%, #83a827 30%, #779d11 45%, #66861f 58%, #4c6b0e 66%, transparent 66.5%),
+    radial-gradient(ellipse 80% 40% at 100% 108%, #72962a 0%, #4c6b0e 55%, #334806 64%, transparent 64.5%),
+    linear-gradient(180deg, #2462ea 0%, #2a69ec 12%, #3170f1 24%, #3e79f1 34%, #5d93f8 46%, #7ba3e8 56%, #a0c3f5 64%, #bbd3f7 70%, #d1ddee 74%, #8bb52b 74.2%, #334806 100%);
+
+  /* Aero, for the "glass" setting: Windows 7's default Sky colourisation. */
+  --xp-aero: rgba(116, 184, 252, 0.42);
+  --xp-aero-gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.12) 50%, transparent 51%);
+  --xp-aero-edge: rgba(255, 255, 255, 0.5);
+  --xp-aero-text: #000000;
+  --xp-aero-glow: 0 0 10px #ffffff, 0 0 10px #ffffff;
+  --xp-aero-pane: rgba(214, 223, 247, 0.55);
+
+  /* Glyphs. SVG, written here, in the palette's own colours. */
+  --xp-glyph-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 13 13'%3E%3Cpath d='M3 6.5l2.2 2.2L10 3.9' fill='none' stroke='%2321a121' stroke-width='2.1'/%3E%3C/svg%3E");
+  --xp-glyph-radio: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 13 13'%3E%3Ccircle cx='6.5' cy='6.5' r='2.6' fill='%2338b935' stroke='%23139210' stroke-width='.8'/%3E%3C/svg%3E");
+  --xp-glyph-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%234d6185' stroke-width='2'/%3E%3C/svg%3E");
+  --xp-glyph-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 5l3.5-3.5L8 5' fill='none' stroke='%234d6185' stroke-width='2'/%3E%3C/svg%3E");
+  --xp-glyph-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='9' viewBox='0 0 6 9'%3E%3Cpath d='M5 1L1.5 4.5 5 8' fill='none' stroke='%234d6185' stroke-width='2'/%3E%3C/svg%3E");
+  --xp-glyph-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='9' viewBox='0 0 6 9'%3E%3Cpath d='M1 1l3.5 3.5L1 8' fill='none' stroke='%234d6185' stroke-width='2'/%3E%3C/svg%3E");
+  --xp-glyph-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='8' viewBox='0 0 7 8'%3E%3Cpath d='M0 .5h6M0 2.5h6M0 4.5h6M0 6.5h6' stroke='%23eef4fe'/%3E%3Cpath d='M1 1.5h6M1 3.5h6M1 5.5h6M1 7.5h6' stroke='%238cb0f8'/%3E%3C/svg%3E");
+  --xp-glyph-grip-x: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='7' viewBox='0 0 8 7'%3E%3Cpath d='M.5 0v6M2.5 0v6M4.5 0v6M6.5 0v6' stroke='%23eef4fe'/%3E%3Cpath d='M1.5 1v6M3.5 1v6M5.5 1v6M7.5 1v6' stroke='%238cb0f8'/%3E%3C/svg%3E");
+  --xp-glyph-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='8' fill='%23ffffff' stroke='%23b8c7ef'/%3E%3Cpath d='M5.5 6.5L9 10l3.5-3.5M5.5 9.5L9 13l3.5-3.5' fill='none' stroke='%23215dc6' stroke-width='1.6'/%3E%3C/svg%3E");
+}
+
+/* ===================================================================== */
+/* 2. THE OTHER SCHEMES                                                   */
+/* ===================================================================== */
+
+/*
+ * Chosen by the "Colour scheme" setting, which writes --xp-scheme on :root.
+ *
+ * A style query rather than three stylesheets: every element is a style
+ * container for its children, so `body` sees the value its parent carries and
+ * re-declares the palette. The tokens in section 3 are declared on `body` as
+ * well as on :root for exactly this reason -- a custom property holding
+ * var(--xp-...) is resolved where it is declared, so a token declared only on
+ * :root would keep Luna Blue whatever body says.
+ *
+ * Only the colours that differ are here. The start button stays green in all
+ * three, as it did.
+ */
+@container style(--xp-scheme: olive) {
+  body,
+  .sk-client-theme--light,
+  .sk-client-theme--dark {
+    --xp-highlight: #93a070;
+    --xp-hot: #a6b880;
+    --xp-link: #546a1e;
+    --xp-hover-row: #f2f4e8;
+    --xp-pressed-row: #e0e7b8;
+    --xp-input-border: #a4b97f;
+    --xp-button-border: #376206;
+    --xp-group-title: #546a1e;
+    --xp-frame: #8ba169;
+    --xp-frame-inactive: #c2c9a4;
+    --xp-title-shadow: #4f5e30;
+    --xp-title: linear-gradient(180deg,
+      #c4d19e 0%, #b9c890 5%, #a8ba7c 10%, #9cb070 18%, #92a86b 30%,
+      #8ba169 55%, #86995f 75%, #7e9558 88%, #6b7a4d 96%, #5a6b3a 100%);
+    --xp-title-inactive: linear-gradient(180deg, #e3e6cd 0%, #d4d6ba 40%, #cbcfae 90%, #bdc19c 100%);
+    --xp-title-inactive-text: #ffffff;
+    --xp-caption: radial-gradient(circle at 90% 90%, #6a8a2c 0%, #84a64a 55%, #9fbb6c 70%, #d6e3b6 90%, #ffffff 100%);
+    --xp-caption-hover: radial-gradient(circle at 90% 90%, #7a9a3c 0%, #97b95c 55%, #b2cd80 70%, #e4eecb 90%, #ffffff 100%);
+    --xp-caption-ring: #5a7a1c;
+    --xp-rail: linear-gradient(90deg,
+      #5a6b3a 0%, #94a770 6%, #93a66e 12%, #8ea36a 25%, #889c63 50%,
+      #82955c 80%, #7e8f58 92%, #5a6b3a 100%);
+    --xp-task-button: #9cb07a;
+    --xp-task-button-hover: #b0c48c;
+    --xp-task-button-active: #6e8046;
+    --xp-task-button-active-hover: #869a5c;
+    --xp-pane: linear-gradient(180deg, #ccd9ad 0%, #a5bd84 100%);
+    --xp-pane-solid: #ccd9ad;
+    --xp-taskbox-head: linear-gradient(90deg, #ffffff 0%, #ffffff 30%, #e0e7b8 100%);
+    --xp-taskbox-body: #f6f6ec;
+    --xp-taskbox-title: #56661a;
+    --xp-taskbox-title-hover: #869a42;
+    --xp-taskbox-text: #3e4a12;
+    --xp-special-head: linear-gradient(90deg, #77894b 0%, #9cb070 100%);
+    --xp-button: linear-gradient(180deg, #ffffff 0%, #f8f6ec 40%, #f3eedb 90%, #e2dcc4 100%);
+    --xp-button-default-ring: inset -1px 1px #c2d18f, inset 1px 2px #b1cb80, inset -2px 2px #b1cb80, inset 1px -1px #90c154, inset 2px -2px #a8a766;
+    --xp-button-hover-ring: inset -1px 1px #fcc595, inset 1px 2px #edbd96, inset -2px 2px #e3914f, inset 2px -2px #cf7225;
+    --xp-tab-cap: #cf7225;
+    --xp-tab-cap-light: #e39658;
+    --xp-scroll-thumb: linear-gradient(90deg, #cad7a7 0%, #cbd9a9 65%, #c3d096 100%);
+    --xp-scroll-thumb-y: linear-gradient(180deg, #cad7a7 0%, #cbd9a9 65%, #c3d096 100%);
+    --xp-scroll-thumb-hover: linear-gradient(90deg, #d8e3ba 0%, #d9e5bc 65%, #d0dca8 100%);
+    --xp-scroll-thumb-edge: #b4c08e;
+    --xp-scroll-button: linear-gradient(180deg, #d9e2c1 0%, #bccb98 40%, #a2b38d 100%);
+    --xp-scroll-button-hover: linear-gradient(180deg, #ecf2dc 0%, #cfdcae 40%, #b4c49c 100%);
+    --xp-scroll-button-edge: #b4c08e;
+    --xp-start-head: linear-gradient(180deg, #8ba169 0%, #96aa6a 30%, #9fb377 60%, #a9bc84 100%);
+    --xp-start-foot: linear-gradient(180deg, #a9bc84 0%, #96aa6a 40%, #849a5c 100%);
+    --xp-start-frame: #8ba169;
+    --xp-welcome: linear-gradient(180deg,
+      #4f5e30 0%, #4f5e30 11%, #c4d19e 11.4%, #c4d19e 11.7%, #8ba169 11.8%,
+      #9db57a 50%, #8ba169 88.2%, #ff9933 88.3%, #ff9933 88.7%, #4f5e30 88.8%, #4f5e30 100%);
+    --xp-glyph-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='8' fill='%23ffffff' stroke='%23c6cfa6'/%3E%3Cpath d='M5.5 6.5L9 10l3.5-3.5M5.5 9.5L9 13l3.5-3.5' fill='none' stroke='%2356661a' stroke-width='1.6'/%3E%3C/svg%3E");
+    --xp-glyph-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='8' viewBox='0 0 7 8'%3E%3Cpath d='M0 .5h6M0 2.5h6M0 4.5h6M0 6.5h6' stroke='%23f2f5e8'/%3E%3Cpath d='M1 1.5h6M1 3.5h6M1 5.5h6M1 7.5h6' stroke='%23a3b37a'/%3E%3C/svg%3E");
+    --xp-glyph-grip-x: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='7' viewBox='0 0 8 7'%3E%3Cpath d='M.5 0v6M2.5 0v6M4.5 0v6M6.5 0v6' stroke='%23f2f5e8'/%3E%3Cpath d='M1.5 1v6M3.5 1v6M5.5 1v6M7.5 1v6' stroke='%23a3b37a'/%3E%3C/svg%3E");
+  }
+}
+
+@container style(--xp-scheme: silver) {
+  body,
+  .sk-client-theme--light,
+  .sk-client-theme--dark {
+    --xp-face: #e0dfe3;
+    --xp-face-shadow: #9d9da1;
+    --xp-highlight: #b2b4bf;
+    --xp-highlight-text: #000000;
+    --xp-hot: #7e8199;
+    --xp-link: #2b3f8f;
+    --xp-hover-row: #f0f0f4;
+    --xp-pressed-row: #e3e3ea;
+    --xp-input-border: #a5acb2;
+    --xp-group-border: #bfb8bf;
+    --xp-group-title: #3f3d3d;
+    --xp-frame: #b3b2c5;
+    --xp-frame-inactive: #d4d4de;
+    --xp-title-text: #0e1010;
+    --xp-title-shadow: rgba(255, 255, 255, 0.6);
+    --xp-title: linear-gradient(180deg,
+      #ffffff 0%, #f7f7fa 8%, #ebebf1 20%, #e3e3ea 34%, #d9d9e2 55%,
+      #d4d4de 68%, #c9c9d6 82%, #b8b7cb 94%, #a8a7bf 100%);
+    --xp-title-inactive: linear-gradient(180deg, #ffffff 0%, #f4f4f7 40%, #ebebef 90%, #dcdce4 100%);
+    --xp-title-inactive-text: #a2a1a1;
+    --xp-caption: linear-gradient(180deg, #ffffff 0%, #ececf2 45%, #d4d4de 80%, #bdbccc 100%);
+    --xp-caption-hover: linear-gradient(180deg, #ffffff 0%, #f6f6fa 45%, #e3e3ec 80%, #cfcedc 100%);
+    --xp-caption-ring: #8e8da5;
+    --xp-caption-edge: #8e8da5;
+    --xp-rail: linear-gradient(90deg,
+      #8e8da5 0%, #e8e8f0 6%, #e1e1ea 15%, #d9d9e5 35%, #cecedc 60%,
+      #c4c3d4 80%, #a6a5be 94%, #8e8da5 100%);
+    --xp-rail-text: #0e1010;
+    --xp-rail-text-shadow: rgba(255, 255, 255, 0.7);
+    --xp-task-button: #dcdce6;
+    --xp-task-button-hover: #ececf3;
+    --xp-task-button-active: #a8a7bf;
+    --xp-task-button-active-hover: #b8b7cb;
+    --xp-pane: linear-gradient(180deg, #c4c8d4 0%, #b1b3c8 100%);
+    --xp-pane-solid: #c4c8d4;
+    --xp-taskbox-head: linear-gradient(90deg, #ffffff 0%, #ffffff 30%, #d6d7e0 100%);
+    --xp-taskbox-body: #f0f1f5;
+    --xp-taskbox-title: #3f3d3d;
+    --xp-taskbox-title-hover: #7e7c9a;
+    --xp-taskbox-text: #26252e;
+    --xp-special-head: linear-gradient(90deg, #77778f 0%, #a8a7bf 100%);
+    --xp-button: linear-gradient(180deg, #ffffff 0%, #f1f2f7 25%, #e3e5f0 50%, #c6c5d7 100%);
+    --xp-button-pressed: linear-gradient(180deg, #b3b2c5 0%, #dadbe5 60%, #ffffff 80%);
+    --xp-scroll-thumb: linear-gradient(90deg, #ffffff 0%, #e9e9ee 25%, #e9e9ee 40%, #dbdbe6 60%, #c7c8d6 90%);
+    --xp-scroll-thumb-y: linear-gradient(180deg, #ffffff 0%, #e9e9ee 25%, #e9e9ee 40%, #dbdbe6 60%, #c7c8d6 90%);
+    --xp-scroll-thumb-hover: linear-gradient(90deg, #ffffff 0%, #f1f1f5 30%, #e6e6ee 60%, #d6d7e2 100%);
+    --xp-scroll-thumb-edge: #a5acb2;
+    --xp-scroll-button: linear-gradient(180deg, #ffffff 0%, #ececf2 40%, #d4d4de 100%);
+    --xp-scroll-button-hover: linear-gradient(180deg, #ffffff 0%, #f6f6fa 40%, #e3e3ec 100%);
+    --xp-scroll-button-edge: #a5acb2;
+    --xp-start-head: linear-gradient(180deg, #a8a7bf 0%, #c4c3d4 40%, #d9d9e5 100%);
+    --xp-start-foot: linear-gradient(180deg, #d9d9e5 0%, #c4c3d4 50%, #a8a7bf 100%);
+    --xp-start-frame: #a8a7bf;
+    --xp-welcome: linear-gradient(180deg,
+      #5d5c74 0%, #5d5c74 11%, #e8e8f0 11.4%, #e8e8f0 11.7%, #a8a7bf 11.8%,
+      #bdbcd0 50%, #a8a7bf 88.2%, #ff9933 88.3%, #ff9933 88.7%, #5d5c74 88.8%, #5d5c74 100%);
+    --xp-glyph-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' fill='none' stroke='%23444450' stroke-width='2'/%3E%3C/svg%3E");
+    --xp-glyph-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6' viewBox='0 0 9 6'%3E%3Cpath d='M1 5l3.5-3.5L8 5' fill='none' stroke='%23444450' stroke-width='2'/%3E%3C/svg%3E");
+    --xp-glyph-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='9' viewBox='0 0 6 9'%3E%3Cpath d='M5 1L1.5 4.5 5 8' fill='none' stroke='%23444450' stroke-width='2'/%3E%3C/svg%3E");
+    --xp-glyph-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='9' viewBox='0 0 6 9'%3E%3Cpath d='M1 1l3.5 3.5L1 8' fill='none' stroke='%23444450' stroke-width='2'/%3E%3C/svg%3E");
+    --xp-glyph-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='8' fill='%23ffffff' stroke='%23b1b3c8'/%3E%3Cpath d='M5.5 6.5L9 10l3.5-3.5M5.5 9.5L9 13l3.5-3.5' fill='none' stroke='%233f3d3d' stroke-width='1.6'/%3E%3C/svg%3E");
+    --xp-glyph-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='8' viewBox='0 0 7 8'%3E%3Cpath d='M0 .5h6M0 2.5h6M0 4.5h6M0 6.5h6' stroke='%23ffffff'/%3E%3Cpath d='M1 1.5h6M1 3.5h6M1 5.5h6M1 7.5h6' stroke='%23a5acb2'/%3E%3C/svg%3E");
+    --xp-glyph-grip-x: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='7' viewBox='0 0 8 7'%3E%3Cpath d='M.5 0v6M2.5 0v6M4.5 0v6M6.5 0v6' stroke='%23ffffff'/%3E%3Cpath d='M1.5 1v6M3.5 1v6M5.5 1v6M7.5 1v6' stroke='%23a5acb2'/%3E%3C/svg%3E");
+  }
+}
+
+/* ===================================================================== */
+/* 3. THE TOKENS                                                          */
+/* ===================================================================== */
+/*
+ * The legacy triplet families cannot hold a var() of a hex -- they want bare
+ * `r, g, b` -- so they are derived the one way CSS allows: from the palette's
+ * own -rgb companions below, which sit beside the colours they mirror.
+ */
+:root,
+body,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  /* Content and controls. */
+  --dt_color-base-pry: var(--xp-window);
+  --dt_color-base-sec: var(--xp-face-light);
+  --dt_color-base-ter: var(--xp-face);
+  --dt_color-base-modal: color-mix(in srgb, var(--xp-window-text) 30%, transparent);
+
+  --dt_color-base-pry-hover: var(--xp-hover-row);
+  --dt_color-base-pry-pressed: var(--xp-pressed-row);
+  --dt_color-base-sec-hover: var(--xp-face);
+  --dt_color-base-sec-pressed: var(--xp-pressed-row);
+  --dt_color-base-ter-hover: var(--xp-face-light);
+  --dt_color-base-ter-pressed: var(--xp-pressed-row);
+
+  --dt_color-content-pry: var(--xp-window-text);
+  --dt_color-content-sec: var(--xp-text-dim);
+  --dt_color-content-ter: var(--xp-gray-text);
+
+  --dt_color-otl-pry: var(--xp-input-border);
+  --dt_color-otl-sec: var(--xp-group-border);
+  --dt_color-otl-ter: var(--xp-separator);
+
+  --dt_color-content-hgl-1: var(--xp-link);
+  --dt_color-content-hgl-2: var(--xp-green);
+  --dt_color-content-hgl-3: var(--xp-orange);
+  --dt_color-content-imp: var(--xp-red);
+
+  --dt_color-base-hgl-1: var(--xp-pressed-row);
+  --dt_color-base-hgl-2: color-mix(in srgb, var(--xp-green) 14%, transparent);
+  --dt_color-base-hgl-3: var(--xp-info);
+  --dt_color-base-imp: color-mix(in srgb, var(--xp-red) 12%, transparent);
+
+  /* Inverted surfaces are where Slack puts its tooltips: XP's are yellow. */
+  --dt_color-base-inv-pry: var(--xp-info);
+  --dt_color-content-inv-pry: var(--xp-info-text);
+  --dt_color-content-inv-sec: var(--xp-text-dim);
+
+  /*
+   * Read by BetterSlack and its plugins, set by no other theme. Left alone,
+   * each falls back to a colour that is nobody's idea of XP.
+   */
+  --dt_color-content-highlight: var(--xp-link);
+  --dt_color-content-link: var(--xp-link);
+  --dt_color-content-destructive: var(--xp-red-text);
+  --dt_color-content-wrn: var(--xp-warn-text);
+  --dt_color-content-warn: var(--xp-warn-text);
+  --dt_color-content-suc: var(--xp-success-text);
+  --dt_color-background-sec: var(--xp-face);
+  --dt_color-base-inv: var(--xp-console);
+
+  /* Chrome. These need !important: Slack sets them more specifically. */
+  --dt_color-theme-base-pry: var(--xp-window) !important;
+  --dt_color-theme-base-sec: var(--xp-face-light) !important;
+  --dt_color-theme-base-hgl-1: var(--xp-highlight) !important;
+  --dt_color-theme-base-inv-pry: var(--xp-pane-solid) !important;
+  --dt_color-theme-base-inv-sec: var(--xp-pane-solid) !important;
+  --dt_color-theme-content-pry: var(--xp-window-text) !important;
+  --dt_color-theme-content-sec: var(--xp-text-dim) !important;
+  --dt_color-theme-content-ter: var(--xp-gray-text) !important;
+  --dt_color-theme-content-inv-pry: var(--xp-taskbox-text) !important;
+  --dt_color-theme-content-inv-sec: var(--xp-taskbox-title) !important;
+  --dt_color-theme-content-inv-ter: var(--xp-text-dim) !important;
+  --dt_color-theme-otl-inv-pry: var(--xp-taskbox-edge) !important;
+  --dt_color-theme-surf-pry: var(--xp-highlight) !important;
+  --dt_color-theme-surf-sec: var(--xp-hover-row) !important;
+  --dt_color-theme-surf-ter: var(--xp-window) !important;
+  --dt_color-theme-surf-inv-pry: var(--xp-highlight) !important;
+  --dt_color-theme-surf-inv-sec: var(--xp-taskbox-body) !important;
+  --dt_color-theme-surf-inv-ter: var(--xp-pressed-row) !important;
+
+  /* Legacy triplets, from the -rgb companions. */
+  --sk_primary_background: var(--xp-window-rgb) !important;
+  --sk_primary_foreground: var(--xp-window-text-rgb) !important;
+  --sk_inverted_background: var(--xp-info-rgb) !important;
+  --sk_inverted_foreground: var(--xp-info-text-rgb) !important;
+  --sk_foreground_max: var(--xp-window-text-rgb) !important;
+  --sk_foreground_high: var(--xp-window-text-rgb) !important;
+  --sk_foreground_mid: var(--xp-text-dim-rgb) !important;
+  --sk_foreground_low: var(--xp-gray-text-rgb) !important;
+  --sk_foreground_min: var(--xp-separator-rgb) !important;
+  --sk_foreground_max_solid: var(--xp-window-text-rgb) !important;
+  --sk_foreground_high_solid: var(--xp-text-dim-rgb) !important;
+  --sk_foreground_mid_solid: var(--xp-gray-text-rgb) !important;
+  --sk_foreground_low_solid: var(--xp-separator-rgb) !important;
+  --sk_foreground_min_solid: var(--xp-face-light-rgb) !important;
+  --sk_highlight: var(--xp-highlight-rgb) !important;
+  --sk_highlight_hover: var(--xp-hot-rgb) !important;
+  --sk_highlight_accent: var(--xp-highlight-rgb) !important;
+}
+
+/* The triplets the block above reads, kept beside the palette's colours. */
+:root,
+body,
+.sk-client-theme--light,
+.sk-client-theme--dark {
+  --xp-window-rgb: 255, 255, 255;
+  --xp-window-text-rgb: 0, 0, 0;
+  --xp-info-rgb: 255, 255, 225;
+  --xp-info-text-rgb: 0, 0, 0;
+  --xp-text-dim-rgb: 113, 111, 100;
+  --xp-gray-text-rgb: 172, 168, 153;
+  --xp-separator-rgb: 208, 208, 191;
+  --xp-face-light-rgb: 241, 239, 226;
+  --xp-highlight-rgb: 49, 106, 197;
+  --xp-hot-rgb: 66, 142, 255;
+}
+@container style(--xp-scheme: olive) {
+  body, .sk-client-theme--light, .sk-client-theme--dark {
+    --xp-highlight-rgb: 147, 160, 112;
+    --xp-hot-rgb: 166, 184, 128;
+  }
+}
+@container style(--xp-scheme: silver) {
+  body, .sk-client-theme--light, .sk-client-theme--dark {
+    --xp-highlight-rgb: 178, 180, 191;
+    --xp-hot-rgb: 126, 129, 153;
+  }
+}
+
+/* ===================================================================== */
+/* 4. THE STYLESHEET                                                      */
+/* ===================================================================== */
+/* ---- From here on, no colour is written by hand: only var(--xp-*). ---- */
+
+/* ---- The desktop ---------------------------------------------------- */
+
+html,
+body {
+  background: var(--xp-face) !important;
+}
+.p-theme_background {
+  background: var(--xp-face) !important;
+}
+
+/* ---- Type ------------------------------------------------------------ */
+
+/*
+ * Tahoma everywhere -- XP's system font -- except where Slack draws an emoji
+ * or a block of code, which keep their own. The :not() list is what keeps a
+ * code block monospaced: a plain `*` with !important would win over any rule
+ * written for `pre` afterwards.
+ */
+*:not(.c-emoji, .c-emoji *, pre, pre *, code, code *, .c-mrkdwn__pre, .c-mrkdwn__pre *, .c-mrkdwn__code, .sm-code, .sm-code *, kbd) {
+  font-family: Tahoma, "Wine Tahoma", Verdana, "Segoe UI", sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
+[data-qa="message-text"],
+.p-rich_text_section,
+.c-message_kit__blocks {
+  font-size: var(--xp-text-size) !important;
+  line-height: 1.45 !important;
+  color: var(--xp-window-text);
+}
+
+.c-message__sender_button,
+.c-message_kit__sender {
+  font-size: var(--xp-text-size) !important;
+  font-weight: 700 !important;
+  color: var(--xp-window-text) !important;
+}
+
+.c-timestamp__label {
+  font-size: 11px !important;
+  color: var(--xp-text-dim) !important;
+}
+
+::selection {
+  background: var(--xp-highlight);
+  color: var(--xp-highlight-text);
+}
+
+/* ---- The title bar: Slack's top bar ------------------------------------ */
+
+/*
+ * The strip across the top of the window, where the macOS traffic lights
+ * sit, is Slack's title bar -- so it wears Luna's. Trebuchet MS bold is what
+ * XP set every caption in.
+ */
+.p-ia4_top_nav {
+  background: var(--xp-title) !important;
+  border-bottom: 1px solid var(--xp-frame) !important;
+  color: var(--xp-title-text) !important;
+  text-shadow: 1px 1px var(--xp-title-shadow);
+}
+.p-ia4_top_nav .c-button-unstyled.c-icon_button,
+.p-ia4_top_nav .c-icon_button {
+  color: var(--xp-title-text) !important;
+}
+
+/* The search box in it: a Luna text box. */
+.p-ia4_top_nav [data-qa="top_nav_search"],
+.p-ia4_top_nav [role="search"] button,
+.p-top_nav__search {
+  background: var(--xp-window) !important;
+  border: 1px solid var(--xp-input-border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--xp-window-text) !important;
+  text-shadow: none !important;
+}
+.p-ia4_top_nav [data-qa="top_nav_search"] *,
+.p-top_nav__search * {
+  color: var(--xp-text-dim) !important;
+}
+
+/* ---- The rail: XP's taskbar, standing up -------------------------------- */
+
+.p-tab_rail,
+.p-team_sidebar,
+.p-workspace_switcher_prototype {
+  background: var(--xp-rail) !important;
+  border: none !important;
+}
+
+.p-tab_rail__button {
+  border-radius: 3px !important;
+}
+.p-tab_rail__button__icon {
+  background: var(--xp-task-button) !important;
+  color: var(--xp-rail-text) !important;
+  border-radius: 3px !important;
+  box-shadow: inset -1px 0 color-mix(in srgb, var(--xp-window-text) 30%, transparent),
+              inset 1px 1px 1px color-mix(in srgb, var(--xp-window) 25%, transparent) !important;
+}
+.p-tab_rail__button:hover .p-tab_rail__button__icon {
+  background: var(--xp-task-button-hover) !important;
+}
+/* The tab you are on is the taskbar button that is pressed in. */
+.p-tab_rail__button--active .p-tab_rail__button__icon {
+  background: var(--xp-task-button-active) !important;
+  box-shadow: inset 0 0 1px 1px color-mix(in srgb, var(--xp-window-text) 20%, transparent),
+              inset 1px 0 1px color-mix(in srgb, var(--xp-window-text) 70%, transparent) !important;
+}
+.p-tab_rail__button--active:hover .p-tab_rail__button__icon {
+  background: var(--xp-task-button-active-hover) !important;
+}
+.p-tab_rail__button__label {
+  color: var(--xp-rail-text) !important;
+  text-shadow: 1px 1px 1px var(--xp-rail-text-shadow);
+  font-size: 10px !important;
+}
+
+.p-tab_rail [data-qa="team-icon"],
+.p-tab_rail [data-qa="account_switcher_team_icon"],
+.c-team_icon.p-team_sidebar__image {
+  border-radius: 3px !important;
+  box-shadow: 0 0 0 1px var(--xp-caption-edge), 1px 1px 3px var(--xp-rail-text-shadow) !important;
+}
+
+/* The buttons at the foot of the rail sit on the taskbar like tray icons. */
+.p-control_strip__circle_button {
+  background: transparent !important;
+  color: var(--xp-rail-text) !important;
+  border-radius: 3px !important;
+}
+.p-control_strip__circle_button:hover,
+.p-control_strip__circle_button:focus-visible {
+  background: var(--xp-task-button-hover) !important;
+}
+
+/*
+ * The BetterSlack button is the start button: green, in the bottom-left
+ * corner, and it opens the menu that runs everything else. Its own mark
+ * keeps its colours -- a flag of four, on green, which is the point.
+ */
+#betterslack-control-button {
+  background: var(--xp-start) !important;
+  border-radius: 4px 14px 14px 4px !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--xp-window) 35%, transparent),
+              inset -2px 0 2px var(--xp-start-edge),
+              1px 1px 3px var(--xp-rail-text-shadow) !important;
+  opacity: 1 !important;
+}
+#betterslack-control-button:hover {
+  filter: brightness(1.07);
+}
+#betterslack-control-button:active {
+  filter: brightness(0.85);
+}
+
+/* ---- The workspace: an XP window body ---------------------------------- */
+
+.p-client_container,
+.p-client_workspace,
+.p-client_workspace__layout,
+.p-workspace__primary_view,
+.p-view_contents,
+.p-message_pane {
+  background: var(--xp-window) !important;
+}
+.p-client_workspace,
+.p-client_workspace__layout,
+.p-client_workspace__tabpanel {
+  border-radius: 0 !important;
+}
+
+/* ---- The channel sidebar: Explorer's task pane -------------------------- */
+
+.p-channel_sidebar {
+  background: var(--xp-pane) !important;
+}
+.p-channel_sidebar__list,
+.p-channel_sidebar__static_list,
+.p-channel_sidebar .c-virtual_list__scroll_container {
+  background: transparent !important;
+}
+
+/* The workspace's name: the "special" task box, dark blue. */
+.p-ia4_sidebar_header,
+.p-ia4_home_header {
+  background: var(--xp-special-head) !important;
+  border: none !important;
+  box-shadow: inset 0 -1px color-mix(in srgb, var(--xp-window-text) 25%, transparent) !important;
+}
+.p-ia4_sidebar_header__title,
+.p-ia4_sidebar_header *,
+.p-ia4_home_header * {
+  color: var(--xp-special-text) !important;
+}
+.p-ia4_sidebar_header__title {
+  font-weight: 700 !important;
+  text-shadow: 1px 1px color-mix(in srgb, var(--xp-window-text) 35%, transparent);
+}
+
+/*
+ * Each section is a task box: a header in a white-to-blue sweep with a bold
+ * blue title and the round chevron on its right, over a pale body with a
+ * white edge. Horizontal margins only -- Slack positions every row absolutely,
+ * so a vertical margin would push rows into each other.
+ */
+.p-channel_sidebar__section_heading {
+  margin: 0 10px !important;
+  background: var(--xp-glyph-chevron) no-repeat right 6px center / 18px 18px, var(--xp-taskbox-head) !important;
+  border-radius: 3px 3px 0 0 !important;
+}
+.p-channel_sidebar__section_heading_label,
+.p-channel_sidebar__section_heading *:not(svg, svg *) {
+  color: var(--xp-taskbox-title) !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+}
+.p-channel_sidebar__section_heading:hover .p-channel_sidebar__section_heading_label {
+  color: var(--xp-taskbox-title-hover) !important;
+}
+.p-channel_sidebar__section_heading svg {
+  color: var(--xp-taskbox-title) !important;
+}
+
+.p-channel_sidebar__channel,
+.p-channel_sidebar__link {
+  margin: 0 10px !important;
+  background: var(--xp-taskbox-body) !important;
+  border-left: 1px solid var(--xp-taskbox-edge) !important;
+  border-right: 1px solid var(--xp-taskbox-edge) !important;
+  border-radius: 0 !important;
+}
+.p-channel_sidebar__name,
+.p-channel_sidebar__channel *:not(svg, svg *, .c-mention_badge, .c-mention_badge *),
+.p-channel_sidebar__link *:not(svg, svg *) {
+  color: var(--xp-taskbox-title) !important;
+}
+.p-channel_sidebar__channel svg,
+.p-channel_sidebar__link svg {
+  color: var(--xp-taskbox-title) !important;
+}
+.p-channel_sidebar__channel:hover .p-channel_sidebar__name,
+.p-channel_sidebar__link:hover * {
+  color: var(--xp-taskbox-title-hover) !important;
+  text-decoration: underline;
+}
+.p-channel_sidebar__channel--unread .p-channel_sidebar__name {
+  color: var(--xp-taskbox-text) !important;
+  font-weight: 700 !important;
+}
+
+/* The open conversation: a selected list item, white on Luna blue. */
+.p-channel_sidebar__channel--selected,
+.p-channel_sidebar__link--selected {
+  background: var(--xp-highlight) !important;
+}
+.p-channel_sidebar__channel--selected *:not(.c-mention_badge, .c-mention_badge *),
+.p-channel_sidebar__link--selected * {
+  color: var(--xp-highlight-text) !important;
+  text-decoration: none !important;
+}
+
+/* ---- The channel header: Explorer's toolbar ------------------------------ */
+
+.p-view_header {
+  background: var(--xp-toolbar) !important;
+  border-bottom: 1px solid var(--xp-toolbar-edge) !important;
+  box-shadow: inset 0 1px var(--xp-window) !important;
+}
+.p-view_header__channel_title,
+.p-view_header__text {
+  color: var(--xp-window-text) !important;
+  font-weight: 700 !important;
+}
+
+/* Tabs under it -- Messages, Files, Canvas -- are property-sheet tabs. */
+.p-view_header .c-tabs__tab {
+  background: var(--xp-tab) !important;
+  border: 1px solid var(--xp-tab-border) !important;
+  border-bottom: none !important;
+  border-radius: 3px 3px 0 0 !important;
+  color: var(--xp-window-text) !important;
+  margin-right: 2px !important;
+}
+.p-view_header .c-tabs__tab:hover,
+.p-view_header .c-tabs__tab--active {
+  border-top-color: var(--xp-tab-cap) !important;
+  box-shadow: inset 0 2px var(--xp-tab-cap-light) !important;
+}
+.p-view_header .c-tabs__tab--active {
+  background: var(--xp-window) !important;
+}
+
+/* ---- Messages ------------------------------------------------------------ */
+
+.c-message_kit__background:hover {
+  background: var(--xp-hover-row) !important;
+}
+
+/* The day divider: an Explorer group heading. */
+.c-message_list__day_divider__line {
+  border-color: var(--xp-input-border) !important;
+}
+.c-message_list__day_divider__label,
+.c-message_list__day_divider__label__pill {
+  background: var(--xp-window) !important;
+  border: 1px solid var(--xp-group-border) !important;
+  border-radius: 3px !important;
+  color: var(--xp-taskbox-title) !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+/* Avatars: user pictures, the way the start menu framed them. */
+.c-avatar,
+.c-base_icon__width_only_container,
+.c-avatar img,
+.c-base_icon--image,
+.c-message_kit__avatar img {
+  border-radius: 3px !important;
+}
+.c-message_kit__avatar .c-base_icon,
+.c-message_kit__avatar img {
+  box-shadow: 0 0 0 1px var(--xp-face-shadow) !important;
+}
+
+/* Unfurls and attachments: group boxes. */
+.c-message_attachment {
+  background: var(--xp-window) !important;
+  border: 1px solid var(--xp-group-border) !important;
+  border-radius: 4px !important;
+}
+.c-message_attachment__title,
+.c-message_attachment__title_link {
+  color: var(--xp-group-title) !important;
+  font-weight: 700 !important;
+}
+
+/* Mentions: a task-pane link chip. Mentions of you: a balloon's yellow. */
+.c-member_slug--link,
+.c-mrkdwn__mention,
+.c-mrkdwn__user_group--mention,
+.c-mrkdwn__broadcast--mention {
+  background: var(--xp-pressed-row) !important;
+  color: var(--xp-link) !important;
+  border-radius: 2px !important;
+}
+.c-member_slug--mention,
+.c-mrkdwn__broadcast--mention {
+  background: var(--xp-info) !important;
+  color: var(--xp-info-text) !important;
+  box-shadow: 0 0 0 1px var(--xp-orange) !important;
+}
+
+.c-link,
+.c-message_kit__blocks a:not(.c-member_slug) {
+  color: var(--xp-link) !important;
+}
+.c-link:hover {
+  color: var(--xp-hot) !important;
+}
+
+/* Quotes: a blue rule, the selection colour. */
+.c-mrkdwn__quote::before,
+blockquote::before {
+  background: var(--xp-highlight) !important;
+}
+
+/* Code blocks: the command prompt. */
+.c-mrkdwn__pre {
+  background: var(--xp-console) !important;
+  color: var(--xp-console-text) !important;
+  border: 2px solid var(--xp-console-edge) !important;
+  border-radius: 0 !important;
+  font-family: "Lucida Console", Consolas, "Courier New", monospace !important;
+}
+.c-mrkdwn__code {
+  background: var(--xp-face-light) !important;
+  color: var(--xp-window-text) !important;
+  border: 1px solid var(--xp-group-border) !important;
+  border-radius: 0 !important;
+  font-family: "Lucida Console", Consolas, "Courier New", monospace !important;
+}
+
+/* Reactions: small toolbar buttons; yours is the pressed one. */
+.c-reaction {
+  background: var(--xp-button) !important;
+  border: 1px solid var(--xp-face-shadow) !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+}
+.c-reaction:hover {
+  box-shadow: var(--xp-button-hover-ring) !important;
+}
+.c-reaction.c-reaction--reacted {
+  background: var(--xp-pressed-row) !important;
+  border-color: var(--xp-highlight) !important;
+}
+.c-reaction__count {
+  color: var(--xp-window-text) !important;
+}
+
+/* The hover toolbar on a message: an Explorer toolbar, floating. */
+.c-message_actions__group {
+  background: var(--xp-toolbar) !important;
+  border: 1px solid var(--xp-toolbar-edge) !important;
+  border-radius: 3px !important;
+  box-shadow: var(--xp-menu-shadow) !important;
+}
+
+/* Unread badges: red, glossy, round. */
+.c-mention_badge,
+.c-badge,
+.p-channel_sidebar__badge {
+  background: var(--xp-badge) !important;
+  color: var(--xp-badge-text) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 0 1px var(--xp-window) !important;
+}
+
+/* ---- The composer: a text box with a Go button -------------------------- */
+
+.c-wysiwyg_container {
+  background: var(--xp-window) !important;
+  border: 1px solid var(--xp-input-border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.c-wysiwyg_container:focus-within {
+  border-color: var(--xp-highlight) !important;
+}
+.ql-placeholder,
+.c-texty_input__placeholder {
+  color: var(--xp-gray-text) !important;
+}
+.c-wysiwyg_container__footer,
+.c-wysiwyg_container__formatting {
+  background: var(--xp-face-light) !important;
+}
+
+.c-wysiwyg_container__button--send:not(.c-wysiwyg_container__button--disabled),
+[data-qa="texty_send_button"]:not([aria-disabled="true"]):not(:disabled) {
+  background: var(--xp-go) !important;
+  border: 1px solid var(--xp-go-edge) !important;
+  border-radius: 3px !important;
+  color: var(--xp-highlight-text) !important;
+}
+
+/* ---- Buttons ------------------------------------------------------------- */
+
+/*
+ * Push buttons: the 1px #003C74 edge with its corners eased, the white-to-
+ * putty fill, an orange ring under the pointer and a blue one on the default.
+ * Slack's primary button is green with white type; XP's default button is
+ * an ordinary push button wearing the blue ring, so that is what it becomes.
+ */
+.c-button {
+  background: var(--xp-button) !important;
+  border: 1px solid var(--xp-button-border) !important;
+  border-radius: 3px !important;
+  color: var(--xp-window-text) !important;
+  box-shadow: none !important;
+  font-weight: 400 !important;
+  text-shadow: none !important;
+}
+.c-button:hover:not(:disabled):not([aria-disabled="true"]) {
+  box-shadow: var(--xp-button-hover-ring) !important;
+}
+.c-button:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--xp-button-pressed) !important;
+  box-shadow: none !important;
+}
+.c-button--primary {
+  box-shadow: var(--xp-button-default-ring) !important;
+  font-weight: 700 !important;
+}
+.c-button:focus-visible {
+  outline: 1px dotted var(--xp-window-text) !important;
+  outline-offset: -4px !important;
+}
+.c-button--danger {
+  background: var(--xp-danger) !important;
+  border-color: var(--xp-danger-edge) !important;
+  color: var(--xp-highlight-text) !important;
+  text-shadow: 1px 1px color-mix(in srgb, var(--xp-window-text) 35%, transparent) !important;
+}
+.c-button:disabled,
+.c-button[aria-disabled="true"],
+.c-button--disabled {
+  background: var(--xp-disabled-face) !important;
+  border-color: var(--xp-disabled-border) !important;
+  color: var(--xp-disabled-text) !important;
+  box-shadow: none !important;
+}
+
+/* Icon buttons: flat until the pointer finds them, then a raised toolbar
+   button. Not in the title bar or the rail, which have their own. */
+.c-button-unstyled.c-icon_button:hover,
+.p-composer__button:hover {
+  background: var(--xp-toolbar-hover) !important;
+  box-shadow: inset 0 0 0 1px var(--xp-toolbar-hover-edge) !important;
+  border-radius: 3px !important;
+}
+.c-button-unstyled.c-icon_button:active,
+.p-composer__button:active {
+  background: var(--xp-toolbar-pressed) !important;
+  box-shadow: inset 0 0 0 1px var(--xp-toolbar-pressed-edge) !important;
+}
+.p-ia4_top_nav .c-button-unstyled.c-icon_button:hover,
+.p-tab_rail .c-button-unstyled.c-icon_button:hover {
+  background: color-mix(in srgb, var(--xp-window) 22%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--xp-window) 45%, transparent) !important;
+}
+
+/* ---- Inputs -------------------------------------------------------------- */
+
+.c-input_text,
+.c-input_textarea,
+.c-input_select,
+.c-select_input,
+.c-input_text.c-input_text {
+  background-color: var(--xp-window) !important;
+  border: 1px solid var(--xp-input-border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--xp-window-text) !important;
+}
+.c-input_text:focus,
+.c-input_textarea:focus,
+.c-input_text.c-input_text:focus {
+  border-color: var(--xp-highlight) !important;
+  box-shadow: none !important;
+}
+
+/* A drop-down's arrow: the blue combo button XP put on the right. */
+.c-input_select__chevron {
+  width: 17px !important;
+  height: 100% !important;
+  align-self: stretch;
+  background: var(--xp-scroll-button) var(--xp-glyph-down) no-repeat center / 9px 6px !important;
+  border-left: 1px solid var(--xp-scroll-button-edge) !important;
+  color: transparent !important;
+}
+.c-input_select__chevron svg {
+  visibility: hidden;
+}
+
+/*
+ * Check boxes and radio buttons, drawn the XP way: a 13px box with a dark
+ * blue edge and a diagonal sheen, a green tick. Only plain ones: Slack's own
+ * (.c-input_checkbox and friends) draw their tick themselves, so redrawing
+ * the box put two ticks side by side -- measured in Preferences. Those take
+ * their colours from the tokens. BetterSlack's switch keeps its shape too:
+ * it is a switch, and XP had none to borrow.
+ */
+input[type="checkbox"]:not([class*="c-input"], .betterslack-switch > input),
+input[type="radio"]:not([class*="c-input"], .betterslack-switch > input) {
+  appearance: none !important;
+  width: 13px !important;
+  height: 13px !important;
+  min-width: 13px !important;
+  margin: 0 4px 0 0;
+  border: 1px solid var(--xp-button-border) !important;
+  background: linear-gradient(135deg, var(--xp-face) 0%, var(--xp-window) 100%) no-repeat center !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  vertical-align: middle;
+}
+input[type="radio"]:not([class*="c-input"], .betterslack-switch > input) {
+  border-radius: 50% !important;
+}
+input[type="checkbox"]:not([class*="c-input"], .betterslack-switch > input):hover,
+input[type="radio"]:not([class*="c-input"], .betterslack-switch > input):hover {
+  box-shadow: var(--xp-button-hover-ring) !important;
+}
+input[type="checkbox"]:not([class*="c-input"], .betterslack-switch > input):checked {
+  background: var(--xp-glyph-check), linear-gradient(135deg, var(--xp-face) 0%, var(--xp-window) 100%) !important;
+}
+input[type="radio"]:not([class*="c-input"], .betterslack-switch > input):checked {
+  background: var(--xp-glyph-radio), linear-gradient(135deg, var(--xp-face) 0%, var(--xp-window) 100%) !important;
+}
+
+/* Tabs inside a dialog -- About, Members, Settings -- are a property sheet:
+   the orange cap on the one you are on. Not the vertical ones, which are a
+   list, not a sheet. */
+.c-sk-modal .c-tabs__tab_menu:not(.c-tabs__tab_menu--vertical) .c-tabs__tab {
+  background: var(--xp-tab) !important;
+  border: 1px solid var(--xp-tab-border) !important;
+  border-bottom: none !important;
+  border-radius: 3px 3px 0 0 !important;
+  margin-right: 2px !important;
+  padding: 3px 10px !important;
+  box-shadow: none !important;
+}
+.c-sk-modal .c-tabs__tab_menu:not(.c-tabs__tab_menu--vertical) .c-tabs__tab:hover,
+.c-sk-modal .c-tabs__tab_menu:not(.c-tabs__tab_menu--vertical) .c-tabs__tab--active {
+  border-top-color: var(--xp-tab-cap) !important;
+  box-shadow: inset 0 2px var(--xp-tab-cap-light) !important;
+}
+.c-sk-modal .c-tabs__tab_menu:not(.c-tabs__tab_menu--vertical) .c-tabs__tab--active {
+  background: var(--xp-window) !important;
+}
+.c-sk-modal .c-tabs__tab_menu:not(.c-tabs__tab_menu--vertical) .c-tabs__tab::after {
+  display: none !important;
+}
+
+/* ---- Menus --------------------------------------------------------------- */
+
+.c-menu,
+.c-menu__items,
+.c-popover__content {
+  background: var(--xp-window) !important;
+  color: var(--xp-window-text) !important;
+}
+.c-menu {
+  border: 1px solid var(--xp-face-shadow) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--xp-menu-shadow) !important;
+}
+.betterslack-menu_layer .c-menu {
+  background: var(--xp-window) !important;
+}
+.c-menu_item__button {
+  border-radius: 0 !important;
+  color: var(--xp-window-text) !important;
+}
+.c-menu_item__button:hover,
+.c-menu_item__button--highlighted,
+.c-menu_item__button:focus-visible {
+  background: var(--xp-highlight) !important;
+  color: var(--xp-highlight-text) !important;
+}
+.c-menu_item__button:hover *,
+.c-menu_item__button--highlighted *,
+.c-menu_item__button:focus-visible * {
+  color: var(--xp-highlight-text) !important;
+}
+.c-menu_separator__separator,
+.c-menu_separator hr {
+  border-color: var(--xp-face-shadow) !important;
+  background: var(--xp-face-shadow) !important;
+}
+
+/* ---- Tooltips: the yellow balloon ---------------------------------------- */
+
+/*
+ * Every tooltip is XP's notification balloon: pale yellow, a 1px black edge,
+ * corners rounded by 7px, a soft shadow and black Tahoma. Slack draws its
+ * tooltips on the inverted surface, which the tokens above already made
+ * yellow; this is the edge, the corners and the tail.
+ */
+.c-tooltip__tip {
+  background: var(--xp-info) !important;
+  color: var(--xp-info-text) !important;
+  border: 1px solid var(--xp-frame-line) !important;
+  border-radius: 7px !important;
+  filter: var(--xp-balloon-shadow);
+  box-shadow: none !important;
+}
+.c-tooltip__tip *:not(.c-emoji, .c-emoji *, img) {
+  color: var(--xp-info-text) !important;
+}
+.c-tooltip__tip__arrow {
+  background: var(--xp-info) !important;
+  border-color: var(--xp-frame-line) !important;
+  color: var(--xp-info) !important;
+}
+
+/* ---- Windows: dialogs and modals ----------------------------------------- */
+
+/*
+ * A dialog is an XP window: rounded only at the top, framed in the title
+ * bar's blue, with the caption across the top and a putty body under it.
+ * This covers Slack's own dialogs and everything BetterSlack opens with
+ * Slack's dialog classes -- the Mods panel, a mod's modal and confirm.
+ */
+.c-dialog__content,
+.c-sk-modal {
+  background: var(--xp-window) !important;
+  border: 3px solid var(--xp-frame) !important;
+  border-top: none !important;
+  border-radius: 8px 8px 0 0 !important;
+  box-shadow: var(--xp-window-shadow) !important;
+  overflow: hidden;
+}
+.c-dialog__header,
+.c-sk-modal_header,
+.c-sk-modal__header {
+  background: var(--xp-title) !important;
+  color: var(--xp-title-text) !important;
+  border-bottom: 1px solid var(--xp-frame) !important;
+}
+.c-dialog__title,
+.c-sk-modal_title_bar__text,
+.c-sk-modal_header h1,
+.c-sk-modal__header h1 {
+  color: var(--xp-title-text) !important;
+  font-family: "Trebuchet MS", Tahoma, sans-serif !important;
+  font-weight: 700 !important;
+  text-shadow: 1px 1px var(--xp-title-shadow) !important;
+}
+
+/* The close button in a dialog's caption: XP's red X, 21px square. */
+.c-dialog__header .c-icon_button,
+.c-dialog__close,
+.c-sk-modal__close_button,
+.c-sk-modal_header .c-icon_button {
+  background: var(--xp-close) !important;
+  border: 1px solid var(--xp-caption-edge) !important;
+  border-radius: 3px !important;
+  box-shadow: inset 0 -1px 2px 1px var(--xp-close-ring) !important;
+  color: var(--xp-title-text) !important;
+  width: 23px !important;
+  height: 23px !important;
+}
+.c-dialog__header .c-icon_button:hover,
+.c-dialog__close:hover,
+.c-sk-modal__close_button:hover,
+.c-sk-modal_header .c-icon_button:hover {
+  background: var(--xp-close-hover) !important;
+}
+.c-dialog__header .c-icon_button svg,
+.c-dialog__close svg,
+.c-sk-modal__close_button svg {
+  color: var(--xp-title-text) !important;
+  fill: currentColor;
+}
+
+.c-dialog__footer,
+.c-sk-modal_footer,
+.c-sk-modal__footer {
+  background: var(--xp-face) !important;
+  border-top: 1px solid var(--xp-window) !important;
+  box-shadow: inset 0 1px var(--xp-face-shadow) !important;
+}
+
+/* The thread pane: a second window, not the one in front -- the inactive
+   caption. */
+.p-flexpane_header,
+.p-flexpane__header {
+  background: var(--xp-title-inactive) !important;
+  color: var(--xp-title-inactive-text) !important;
+  border-bottom: 1px solid var(--xp-frame-inactive) !important;
+}
+.p-flexpane_header *,
+.p-flexpane__header * {
+  color: var(--xp-title-inactive-text) !important;
+}
+
+/* ---- The command palette: the start menu --------------------------------- */
+
+/*
+ * BetterSlack's palette is the one place a list of everything you can open
+ * is summoned from a corner key, which is what the start menu was. Its own
+ * stylesheet paints it from the tokens; this gives it the frame, the blue
+ * header with the orange rule under it, and the blue foot.
+ */
+.betterslack-palette__box {
+  border: 1px solid var(--xp-start-frame) !important;
+  border-radius: 6px 6px 0 0 !important;
+  box-shadow: 2px 4px 2px color-mix(in srgb, var(--xp-window-text) 50%, transparent) !important;
+  overflow: hidden;
+}
+.betterslack-palette__search {
+  background: var(--xp-start-head) !important;
+  border-bottom: 2px solid transparent !important;
+  border-image: var(--xp-start-orange) 1 !important;
+}
+.betterslack-palette__input {
+  background: var(--xp-window) !important;
+  border: 1px solid var(--xp-input-border) !important;
+  color: var(--xp-window-text) !important;
+}
+.betterslack-palette__search_icon {
+  color: var(--xp-highlight-text) !important;
+}
+.betterslack-palette__footer {
+  background: var(--xp-start-foot) !important;
+  color: var(--xp-highlight-text) !important;
+}
+.betterslack-palette__footer * {
+  color: var(--xp-highlight-text) !important;
+}
+
+/* ---- The start screen: XP's welcome screen ------------------------------- */
+
+/*
+ * BetterSlack covers the client with a screen of its own while mods start,
+ * in a shadow root. A rule on the host still wins over its own :host rule,
+ * and custom properties still inherit through: the band of blue with the
+ * orange line under it, white type on top.
+ */
+#betterslack-splash {
+  background: var(--xp-welcome) !important;
+  --dt_color-base-pry: transparent;
+  --dt_color-content-ter: var(--xp-highlight-text);
+}
+
+/* ---- Scroll bars --------------------------------------------------------- */
+
+/*
+ * XP's 17px scroll bars: arrow buttons at both ends, a blue thumb with four
+ * grip lines, a track that is nearly white. Slack draws most of its own
+ * scroll bars (.c-scrollbar), so both kinds are covered.
+ */
+::-webkit-scrollbar {
+  width: 17px;
+  height: 17px;
+}
+::-webkit-scrollbar-track:vertical {
+  background: var(--xp-scroll-track);
+}
+::-webkit-scrollbar-track:horizontal {
+  background: var(--xp-scroll-track-y);
+}
+::-webkit-scrollbar-thumb {
+  border: 1px solid var(--xp-window);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--xp-scroll-thumb-edge);
+}
+::-webkit-scrollbar-thumb:vertical {
+  background: var(--xp-glyph-grip) no-repeat center / 7px 8px, var(--xp-scroll-thumb);
+}
+::-webkit-scrollbar-thumb:horizontal {
+  background: var(--xp-glyph-grip-x) no-repeat center / 8px 7px, var(--xp-scroll-thumb-y);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: transparent;
+}
+::-webkit-scrollbar-button:single-button {
+  display: block;
+  width: 17px;
+  height: 17px;
+  border: 1px solid var(--xp-window);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--xp-scroll-button-edge);
+}
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background: var(--xp-glyph-up) no-repeat center / 9px 6px, var(--xp-scroll-button);
+}
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  background: var(--xp-glyph-down) no-repeat center / 9px 6px, var(--xp-scroll-button);
+}
+::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  background: var(--xp-glyph-left) no-repeat center / 6px 9px, var(--xp-scroll-button);
+}
+::-webkit-scrollbar-button:single-button:horizontal:increment {
+  background: var(--xp-glyph-right) no-repeat center / 6px 9px, var(--xp-scroll-button);
+}
+::-webkit-scrollbar-button:single-button:hover {
+  filter: brightness(1.06);
+}
+::-webkit-scrollbar-corner {
+  background: var(--xp-face);
+}
+
+.c-scrollbar__bar {
+  background: var(--xp-glyph-grip) no-repeat center / 7px 8px, var(--xp-scroll-thumb) !important;
+  border: 1px solid var(--xp-window) !important;
+  border-radius: 3px !important;
+  box-shadow: inset 0 0 0 1px var(--xp-scroll-thumb-edge) !important;
+  opacity: 1 !important;
+}
+.c-scrollbar__bar:hover {
+  background: var(--xp-glyph-grip) no-repeat center / 7px 8px, var(--xp-scroll-thumb-hover) !important;
+}
+.c-scrollbar__track {
+  background: var(--xp-scroll-track) !important;
+}
+
+/* ---- Focus --------------------------------------------------------------- */
+
+/* XP drew keyboard focus as a dotted rectangle, and so does this. */
+:focus-visible {
+  outline: 1px dotted var(--xp-window-text) !important;
+  outline-offset: -2px !important;
+}
+
+/* ===================================================================== */
+/* AERO: the "glass" setting                                              */
+/* ===================================================================== */
+
+/*
+ * XP never had glass -- that was Vista -- but it is what people remember
+ * next to it, so it is one switch away. Bliss goes behind the client, and
+ * the title bar, the rail and the task pane turn into Windows 7's Sky glass
+ * over it: translucent, blurred, a gloss across the top half, and caption
+ * text in black with a white glow, the way Aero drew it.
+ */
+@container style(--xp-glass: on) {
+  .p-theme_background,
+  .p-client_container,
+  .p-client_workspace,
+  .p-client_workspace__layout {
+    background: transparent !important;
+  }
+  body {
+    background: var(--xp-bliss) !important;
+    background-attachment: fixed !important;
+  }
+  .p-ia4_top_nav,
+  .p-tab_rail,
+  .p-team_sidebar,
+  .p-workspace_switcher_prototype {
+    background: var(--xp-aero-gloss), var(--xp-aero) !important;
+    backdrop-filter: blur(10px) saturate(1.4);
+    border-color: var(--xp-aero-edge) !important;
+  }
+  .p-ia4_top_nav,
+  .p-ia4_top_nav * {
+    color: var(--xp-aero-text) !important;
+    text-shadow: var(--xp-aero-glow) !important;
+  }
+  .p-channel_sidebar {
+    background: var(--xp-aero-pane) !important;
+    backdrop-filter: blur(14px) saturate(1.3);
+  }
+  .c-dialog__header,
+  .c-sk-modal_header,
+  .c-sk-modal__header {
+    background: var(--xp-aero-gloss), var(--xp-aero) !important;
+    backdrop-filter: blur(10px);
+  }
+  .c-dialog__title,
+  .c-sk-modal_header h1,
+  .c-sk-modal__header h1 {
+    color: var(--xp-aero-text) !important;
+    text-shadow: var(--xp-aero-glow) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #betterslack-control-button {
+    transition: none !important;
+  }
+}

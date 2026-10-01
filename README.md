@@ -24,7 +24,7 @@
 
 <p align="center"><em>⌘⇧M, or the sliders button above your avatar.</em></p>
 
-## Seven themes, sixteen plugins, one keystroke
+## Eight themes, sixteen plugins, one keystroke
 
 <table>
   <tr>
@@ -151,7 +151,8 @@ at the end.
 **Themes** — Midnight (a deeper dark), Aurora (frosted glass over a drifting
 gradient), Cocoa (warm light), Terminal (monospace phosphor), Discord Dark and
 Discord Light (Slack rebuilt as Discord, colours sampled from the real client),
-Focus Rings.
+Windows XP (Luna, in Blue, Olive Green or Silver, with an Aero switch), Focus
+Rings.
 
 **Plugins** — Command Palette (⌘K, with `/` `@` `#` to narrow it), Theme Builder,
 Motion (Slack with the frames in between), Code Highlight (twenty-one
