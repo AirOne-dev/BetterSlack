@@ -106,6 +106,13 @@ const TEXT_AREAS = [
   // it -- the whole card goes, never a field or two inside it.
   '.c-message_attachment',
   /*
+   * Slack's redesigned unfurl, which is not a `.c-message_attachment` at all:
+   * its root is `.c-message_attachment_v3` and its parts hang off
+   * `.c-message_attachment__body`. A company's name and pitch went through
+   * both untouched until the audit stopped a run on them.
+   */
+  '.c-message_attachment_v3', '.c-message_attachment__body',
+  /*
    * The rest of an unfurl. Slack draws a link preview's title, its breadcrumb
    * and its body outside the attachment box, in `p-mrkdwn_element` -- found by
    * the audit, with a real person's name in a `<b>` inside one and a document
@@ -123,6 +130,11 @@ const TEXT_AREAS = [
   // a job title and is not part of the profile pane.
   '[data-qa="member_profile_pane"]', '.p-ia_details_popover',
   '[class*="p-new_im_foreword"]', '.c-base_entity__text-contents',
+  // Preferences lists people and channels of its own -- who may reach you
+  // during Do Not Disturb, which channels notify differently -- in Slack's
+  // entity rows rather than in anything above. Found by the audit, with real
+  // names in them, while photographing a sound picker.
+  '.c-base_entity__text', { sel: '.c-channel_entity__name', as: CHANNELS },
   /*
    * What the mods themselves draw out of the workspace -- the fields that hold
    * it, not the containers. Sweeping the whole palette turned its own headings
@@ -228,6 +240,22 @@ export function createRedaction(options = {}) {
    */
   let done = new WeakSet();
   const memo = new Map();
+  /*
+   * What this wrote into each text node, and how many times it has had to.
+   *
+   * `done` alone trusted a node for good once it was written, and Slack does
+   * not always leave one alone: an unfurl's title and body sit in
+   * `c-truncate`, which measures itself after a render and writes the
+   * original text back into the very same node. The audit caught a real
+   * company's name and pitch that way, after the sweep had replaced both. So a
+   * node whose text is no longer ours is swept again -- three times at most,
+   * because a component that insists for ever is how a sweep turns into the
+   * loop that froze Slack, and past that the audit reports it rather than the
+   * sweep chasing it.
+   */
+  let wrote = new WeakMap();
+  let rewrites = new WeakMap();
+  const MAX_REWRITES = 3;
 
   /*
    * How to put it back.
@@ -325,10 +353,18 @@ export function createRedaction(options = {}) {
     for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
     for (const node of nodes) {
       if (!node.nodeValue || !node.nodeValue.trim()) continue;
-      if (done.has(node) || node.parentElement?.closest(keep)) continue;
+      if (node.parentElement?.closest(keep)) continue;
+      if (done.has(node)) {
+        if (node.nodeValue === wrote.get(node)) continue;
+        const count = (rewrites.get(node) ?? 0) + 1;
+        if (count > MAX_REWRITES) continue;
+        rewrites.set(node, count);
+      }
       // `as` is a short list to draw from: a heading stays a heading, a draft
       // stays one line. Without it everything long becomes a paragraph.
-      setText(node, as ? as[(index + hash(node.nodeValue)) % as.length] : invent(node.nodeValue));
+      const value = as ? as[(index + hash(node.nodeValue)) % as.length] : invent(node.nodeValue);
+      setText(node, value);
+      wrote.set(node, value);
       done.add(node);
     }
   };
@@ -557,6 +593,8 @@ export function createRedaction(options = {}) {
       // A fresh screen next time: the WeakSet remembers nodes we have already
       // seen, and after a restore every one of them holds the real thing again.
       done = new WeakSet();
+      wrote = new WeakMap();
+      rewrites = new WeakMap();
       memo.clear();
     },
 

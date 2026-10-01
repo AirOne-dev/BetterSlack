@@ -208,6 +208,37 @@ test('sweeps what the palette got from Slack and spares what it wrote itself', (
  * alone in message bubbles and survived every sweep. A badge count and a year
  * genuinely belong to nobody; an order number is a customer's.
  */
+test('a node Slack writes the original back into is swept again, a bounded number of times', () => {
+  const dom = installDom();
+  try {
+    // An unfurl's title, in Slack's truncating component: it re-measures after
+    // a render and puts its own text back into the same text node.
+    const card = document.createElement('div');
+    card.className = 'c-message_attachment_v3';
+    card.innerHTML = '<span class="c-message_attachment__title"><span>Acme Widgets - Premium Partner</span></span>';
+    document.body.append(card);
+    const node = card.querySelector('span span').firstChild;
+
+    const redaction = createRedaction({ document });
+    redaction.sweep({ first: true });
+    assert.notEqual(node.nodeValue, 'Acme Widgets - Premium Partner');
+
+    node.nodeValue = 'Acme Widgets - Premium Partner';
+    redaction.sweep();
+    assert.notEqual(node.nodeValue, 'Acme Widgets - Premium Partner', 'swept again');
+
+    // A component that never stops is left to the audit, not chased for ever.
+    for (let i = 0; i < 5; i += 1) {
+      node.nodeValue = 'Acme Widgets - Premium Partner';
+      redaction.sweep();
+    }
+    assert.equal(node.nodeValue, 'Acme Widgets - Premium Partner');
+    assert.equal(redaction.locate(['Acme'])[0]?.word, 'Acme', 'and the audit says where');
+  } finally {
+    dom.cleanup();
+  }
+});
+
 test('keeps counts and years, and replaces a number long enough to identify something', () => {
   const dom = installDom();
   try {
