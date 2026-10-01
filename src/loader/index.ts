@@ -12,6 +12,7 @@ import path from 'node:path';
 import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo } from './cdp.js';
 import { Catalog, parseManifest } from './catalog.js';
 import { downloadFile, saveBytes } from './download.js';
+import { listData, readData, removeData, writeData } from './mod-data.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack,
   slackVersion,
 } from './slack.js';
@@ -1088,6 +1089,18 @@ class Loader {
         console.log(`[betterslack] saved ${result.path} (${Math.round(result.bytes / 1024)} kB)`);
         return result;
       }
+
+      case 'data.write': {
+        const entry = await writeData(request.id, request.name, request.base64);
+        console.log(`[betterslack] ${request.id} kept ${entry.name} (${Math.round(entry.bytes / 1024)} kB)`);
+        return entry;
+      }
+      case 'data.read':
+        return readData(request.id, request.name);
+      case 'data.list':
+        return listData(request.id);
+      case 'data.remove':
+        return removeData(request.id, request.name);
 
       case 'app.screenshot': {
         /*

@@ -367,6 +367,15 @@ export type Request =
    * though an <img> loads fine. The loader has no such restriction.
    */
   | { type: 'file.download'; url: string; filename: string }
+  /**
+   * A mod's own files, under ~/.betterslack/data/<id>/. `id` is filled in by
+   * the runtime from the mod making the call, never by the mod, so one mod
+   * cannot reach another's folder. Bytes travel as base64: the bridge is JSON.
+   */
+  | { type: 'data.write'; id: string; name: string; base64: string }
+  | { type: 'data.read'; id: string; name: string }
+  | { type: 'data.list'; id: string }
+  | { type: 'data.remove'; id: string; name: string }
   /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
   /**
    * Photograph the window and put the picture in the download folder.

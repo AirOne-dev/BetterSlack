@@ -101,6 +101,14 @@ api.ui.toast(greeting, { variant: 'success' });
 `api.settings.onChange` fires when the user edits it, so a mod can redraw
 without being switched off and on.
 
+Settings are for preferences. A file -- a sound somebody picked, a picture, an
+export -- goes in `api.data`, the mod's own folder on disk:
+
+```js
+const { name } = await api.data.write(file.name, file);
+const blob = await api.data.read(name);
+```
+
 ## 5. Speak the reader's language
 
 Every shipped plugin has English and French, and a test fails a mod whose

@@ -191,6 +191,30 @@ export interface PluginApi {
   };
 
   /**
+   * Files this mod keeps for itself, on disk, across restarts and updates.
+   *
+   * For what is too big or too binary for `api.settings` -- a sound somebody
+   * picked, a picture, an export. The loader keeps them under
+   * ~/.betterslack/data/<this mod's id>/: one folder per mod, which no other
+   * mod can name, a safe basename for every file, at most 8 MB a file and
+   * 64 MB a mod. Nothing is deleted when the mod is switched off or removed.
+   *
+   * The extension is the file's type: `read` hands back a Blob typed from it,
+   * so `URL.createObjectURL(await api.data.read('ding.mp3'))` plays.
+   */
+  readonly data: {
+    /** Keep a file, replacing one of the same name. Answers with the name it was kept under. */
+    write(name: string, content: Blob | ArrayBuffer | Uint8Array | string):
+      Promise<{ name: string; bytes: number; modified: number }>;
+    /** A kept file, or null if there is none by that name. */
+    read(name: string): Promise<Blob | null>;
+    /** Every kept file, by name. */
+    list(): Promise<Array<{ name: string; bytes: number; modified: number }>>;
+    /** Delete a kept file. True if there was one to delete. */
+    remove(name: string): Promise<boolean>;
+  };
+
+  /**
    * The plugin's own files, as shipped in its folder.
    *
    * A mod is a folder, and everything in it that the runtime can read is here:
@@ -334,6 +358,13 @@ export interface ApiContext {
   openPanel: (tab?: 'themes' | 'plugins' | 'css' | 'about') => void;
   openMod: (id: string) => void;
   download: (url: string, filename: string) => Promise<{ path: string; bytes: number }>;
+  /** The loader's per-mod folder; `id` is always the calling mod's. */
+  data: {
+    write: (id: string, name: string, base64: string) => Promise<{ name: string; bytes: number; modified: number }>;
+    read: (id: string, name: string) => Promise<string | null>;
+    list: (id: string) => Promise<Array<{ name: string; bytes: number; modified: number }>>;
+    remove: (id: string, name: string) => Promise<boolean>;
+  };
   screenshot: (options: { size?: string; filename?: string }) =>
     Promise<{ path: string; bytes: number }>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
@@ -508,6 +539,18 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
       screenshot: (options) => ctx.screenshot(options ?? {}),
     },
 
+    data: {
+      // The id is this mod's, from its record -- never an argument -- so one
+      // mod cannot read or overwrite another's folder.
+      write: async (name, content) => ctx.data.write(record.id, name, await toBase64(content)),
+      read: async (name) => {
+        const base64 = await ctx.data.read(record.id, name);
+        return base64 === null ? null : new Blob([fromBase64(base64)], { type: mimeFor(name) });
+      },
+      list: () => ctx.data.list(record.id),
+      remove: (name) => ctx.data.remove(record.id, name),
+    },
+
     app: {
       mods: () => ctx.listMods(),
       setEnabled: (id, enabled) => ctx.setModEnabled(id, enabled),
@@ -603,4 +646,44 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
   };
 
   return api;
+}
+
+/*
+ * api.data's bytes cross a JSON bridge, so they travel as base64.
+ *
+ * In chunks: String.fromCharCode(...bytes) on a whole file passes every byte
+ * as an argument, and a few hundred kilobytes of sound is past the engine's
+ * argument limit -- a RangeError on the file that mattered.
+ */
+async function toBase64(content: Blob | ArrayBuffer | Uint8Array | string): Promise<string> {
+  let bytes: Uint8Array;
+  if (typeof content === 'string') bytes = new TextEncoder().encode(content);
+  else if (content instanceof Uint8Array) bytes = content;
+  else if (content instanceof ArrayBuffer) bytes = new Uint8Array(content);
+  else bytes = new Uint8Array(await content.arrayBuffer());
+  let binary = '';
+  for (let at = 0; at < bytes.length; at += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function fromBase64(base64: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** The type a kept file is read back as, from its extension. */
+const MIME: Record<string, string> = {
+  mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg',
+  m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', webm: 'audio/webm',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+  json: 'application/json', txt: 'text/plain', css: 'text/css', md: 'text/markdown',
+};
+
+export function mimeFor(name: string): string {
+  const ext = /\.([a-z0-9]+)$/i.exec(name)?.[1]?.toLowerCase() ?? '';
+  return MIME[ext] ?? 'application/octet-stream';
 }

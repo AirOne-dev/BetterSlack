@@ -1243,6 +1243,12 @@ const FIXTURES = (typeof window !== 'undefined' && window.__API_FIXTURES) || {
   plugin: { id: 'channel-notes', files: [], manifest: {}, entry: '' },
 };
 
+/** The api.data folder these pages share, seeded with one sound. */
+const KEPT = new Map([['my-ding.mp3', { bytes: 48320, modified: Date.UTC(2026, 9, 1) }]]);
+const keptName = (name) => String(name).split(/[\\/]/).pop().replace(/[^A-Za-z0-9._-]+/g, '-') || 'file';
+const previewMime = (name) => ({ mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4' })[
+  (/\.([a-z0-9]+)$/i.exec(name)?.[1] ?? '').toLowerCase()] ?? 'application/octet-stream';
+
 /** The line that says an answer is invented rather than fetched. */
 function stubbed(text) {
   return kit.el('p', { class: 'pg__stub' }, [text]);
@@ -1731,6 +1737,59 @@ const IMITATED = {
       const wrap = el('div', 'pg__shotframe', [frame, flash]);
       stage.replaceChildren(wrap, shot, out);
       return undefined;
+    },
+  },
+
+  /*
+   * api.data, against a folder that lives in this page. The calls are the
+   * real shapes; the disk is a Map, which is what the stub note says.
+   */
+  'data-write': {
+    render: (v) => {
+      const out = kit.el('pre', { class: 'pg__out' }, ['']);
+      const button = kit.button('Keep it', { variant: 'primary' });
+      button.addEventListener('click', () => {
+        const name = keptName(v.name);
+        KEPT.set(name, { bytes: Number(v.bytes) || 0, modified: Date.now() });
+        out.textContent = JSON.stringify({ name, bytes: Number(v.bytes) || 0, modified: Date.now() }, null, 2)
+          + `\n\n~/.betterslack/data/custom-sounds/${name}`;
+      });
+      return [source(`await api.data.write('${v.name}', file);`), button, out,
+        stubbed('The folder is a Map in this page; in Slack it is the loader writing to disk.')];
+    },
+  },
+
+  'data-read': {
+    render: (v) => {
+      const kept = KEPT.get(keptName(v.name));
+      return [
+        source(`const blob = await api.data.read('${v.name}');`),
+        kit.el('pre', { class: 'pg__out' }, [kept
+          ? `Blob { size: ${kept.bytes}, type: '${previewMime(v.name)}' }`
+          : 'null  // nothing kept by that name']),
+        stubbed('Keep a file on the write page first, and it is here.'),
+      ];
+    },
+  },
+
+  'data-list': {
+    render: () => [
+      source('await api.data.list();'),
+      kit.el('pre', { class: 'pg__out' }, [JSON.stringify(
+        [...KEPT].map(([name, entry]) => ({ name, bytes: entry.bytes, modified: entry.modified })), null, 2)]),
+      stubbed('Only this mod\u2019s folder, never another\u2019s.'),
+    ],
+  },
+
+  'data-remove': {
+    render: (v) => {
+      const out = kit.el('pre', { class: 'pg__out' }, ['']);
+      const button = kit.button('Delete it', { variant: 'danger' });
+      button.addEventListener('click', () => {
+        out.textContent = String(KEPT.delete(keptName(v.name)));
+      });
+      return [source(`await api.data.remove('${v.name}');`), button, out,
+        stubbed('True the first time, false after: there is nothing left to delete.')];
     },
   },
 

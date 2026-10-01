@@ -80,7 +80,18 @@ export function installDom(html = SLACK_FIXTURE) {
     localStorage: dom.window.localStorage,
     Blob: dom.window.Blob,
     FormData: dom.window.FormData,
+    // Audio, for mods that play or swap sounds. jsdom has the elements but
+    // implements no playback: play() would report "not implemented" and
+    // return nothing, which is not what a browser does. Here it resolves, the
+    // way a browser's does once a sound has started.
+    HTMLMediaElement: dom.window.HTMLMediaElement,
+    HTMLAudioElement: dom.window.HTMLAudioElement,
+    Audio: dom.window.Audio,
+    KeyboardEvent: dom.window.KeyboardEvent,
   };
+  dom.window.HTMLMediaElement.prototype.play = function play() { return Promise.resolve(); };
+  dom.window.HTMLMediaElement.prototype.pause = function pause() {};
+  dom.window.HTMLMediaElement.prototype.load = function load() {};
 
   /*
    * Defined rather than assigned.
@@ -195,6 +206,11 @@ export function createTestApi({
     modChanges: [],
     /** Every `api.files.screenshot(...)`, with what was still visible. */
     screenshots: [],
+    /**
+     * What the mod keeps through `api.data`, by name, as bytes -- the folder
+     * the loader would hold. Seed it to start a test with files already kept.
+     */
+    data: new Map(),
     /** Every type the mod's listeners asked the loader to forward. */
     watching: [],
     /** Whoever asked to hear about the workspace changing. */
@@ -681,6 +697,30 @@ export function createTestApi({
         recorded.screenshots.push({ ...options, htmlClass: document.documentElement.className });
         return { path: `/tmp/${options.filename ?? 'slack.webp'}`, bytes: 4096 };
       },
+    },
+
+    data: {
+      write: async (name, content) => {
+        const bytes = typeof content === 'string'
+          ? new TextEncoder().encode(content)
+          : content instanceof Uint8Array ? content
+            : content instanceof ArrayBuffer ? new Uint8Array(content)
+              : new Uint8Array(await content.arrayBuffer());
+        // The loader's own rule for names, so a test sees what a mod would.
+        const safe = String(name).split(/[\\/]/).pop().replace(/[^A-Za-z0-9._-]+/g, '-')
+          .replace(/\.{2,}/g, '.').replace(/^[.\-]+/, '').slice(0, 120);
+        if (!safe) throw new Error(`"${name}" is not a usable file name`);
+        recorded.data.set(safe, { bytes, modified: Date.now() });
+        return { name: safe, bytes: bytes.byteLength, modified: Date.now() };
+      },
+      read: async (name) => {
+        const entry = recorded.data.get(name);
+        return entry ? new Blob([entry.bytes]) : null;
+      },
+      list: async () => [...recorded.data].map(([name, entry]) => ({
+        name, bytes: entry.bytes.byteLength, modified: entry.modified,
+      })),
+      remove: async (name) => recorded.data.delete(name),
     },
 
     // The mod's own folder. Tests that need it pass `files` to createTestApi;

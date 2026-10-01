@@ -134,6 +134,7 @@ const loaderLib = {
     `${root}/src/loader/mod-updates.ts`,
     `${root}/src/loader/store.ts`,
     `${root}/src/loader/slack-settings.ts`,
+    `${root}/src/loader/mod-data.ts`,
   ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },

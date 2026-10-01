@@ -579,6 +579,13 @@ export class ModManager {
           size,
           filename,
         }),
+      data: {
+        write: (id, name, base64) =>
+          this.bridge.request<{ name: string; bytes: number; modified: number }>({ type: 'data.write', id, name, base64 }),
+        read: (id, name) => this.bridge.request<string | null>({ type: 'data.read', id, name }),
+        list: (id) => this.bridge.request<Array<{ name: string; bytes: number; modified: number }>>({ type: 'data.list', id }),
+        remove: (id, name) => this.bridge.request<boolean>({ type: 'data.remove', id, name }),
+      },
       download: (url, filename) =>
         this.bridge.request<{ path: string; bytes: number }>({
           type: 'file.download',
