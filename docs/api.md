@@ -133,6 +133,13 @@ from exactly these numbers and what the mod calls.
 - [`save`](api/files-save.md) — Fetch a URL and save it to the download folder. The renderer cannot do this for Slack's CDN, which serves without CORS headers. _(since 2.0.1)_
 - [`screenshot`](api/files-screenshot.md) — Photograph the Slack window and put the picture in the download folder. _(since 2.0.1)_
 
+## api.data
+
+- [`list`](api/data-list.md) — Every file this mod has kept, by name, with its size and when it was last written. Only this mod's: another mod's folder is not reachable from here. _(unreleased)_
+- [`read`](api/data-read.md) — A file this mod kept, as a Blob typed from its extension, or null when there is none by that name. Typed, so an `<audio>` or an `<img>` can use it straight away through an object URL. _(unreleased)_
+- [`remove`](api/data-remove.md) — Delete a file this mod kept. Answers true if there was one to delete, so asking twice is harmless. _(unreleased)_
+- [`write`](api/data-write.md) — Keep a file of this mod's own, on disk, across restarts and updates: a sound somebody picked, a picture, an export. It goes under `~/.betterslack/data/<mod id>/`, which no other mod can name; the name is reduced to a safe basename, at most 8 MB a file and 64 MB a mod. A file of the same name is replaced. Nothing is deleted when the mod is switched off or removed. _(unreleased)_
+
 ## api.assets
 
 - [`list`](api/assets-list.md) — Every readable file in the mod's own folder, folder-relative and forward-slashed — the same strings you would import. _(since 2.0.1)_

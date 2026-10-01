@@ -509,6 +509,15 @@ a command. Everything below was found by it rather than by looking:
   preview's title, its breadcrumb and its body in `.p-mrkdwn_element` outside
   the attachment box -- with a real name in a `<b>` inside one, which is how
   this was found.
+- **Slack's redesigned unfurl is not a `.c-message_attachment`.** Its root is
+  `.c-message_attachment_v3`, its parts hang off `.c-message_attachment__body`,
+  and its title and text sit in `c-truncate`, which writes its own text back
+  into the same node after measuring. A node the sweep already wrote is
+  therefore checked against what it wrote and swept again -- three times at
+  most, so a component that insists cannot turn the sweep into a loop.
+- **Preferences has people and channels of its own**: `.c-base_entity__text`
+  for who may reach you during Do Not Disturb, `.c-channel_entity__name` for
+  the channels with their own notification rules.
 - **The palette lists Slack and BetterSlack through one class**, and the badge
   on the right is what tells them apart. Getting it wrong fails both ways: a
   conversation left alone is somebody's name in a public screenshot, and an
@@ -1335,6 +1344,24 @@ tests fail below it.
   therefore has to start from opacity 0; anything that starts at 1 and dips
   paints the new content solid first and flickers. `mods/plugins/motion` is
   where all of this is written down next to the code it decides.
+- **Notification sounds are played in the page and stored in three places.**
+  Slack plays every one with `new Audio(url)` kept per URL and `.play()`,
+  from one table of thirteen fingerprinted files (`b2-5fd58e3.mp3` is
+  "Ding"), so patching `HTMLMediaElement.prototype.play` sees every sound --
+  but only *which file*, never what for. Where the choice is kept differs by
+  list, read out of Slack's bundle and confirmed live: messages and VIP in one
+  store, the two accessibility sounds (sending, receiving) in this computer's
+  client store, huddles under `huddle_invite_sound_v2` with a fourteenth
+  sound of their own. None of it is `users.prefs.get`: a mod writing those
+  prefs through the API changes nothing Slack plays. **Slack's own select is
+  the one interface to all three**: `.c-basic-select[data-qa=<list>]` holding
+  `#<list>_button`; a click opens `[role=listbox]` whose options are
+  `<list>_option_<n>` in the table's order (0 is None, 1 Ding ... 13 Boop, 14
+  the huddles' Boop Plus); a programmatic `.click()` on the button and on an
+  option works even with the select at 1px and opacity 0, and Slack then
+  previews the option and writes it wherever it keeps it. The list is
+  virtualised -- scroll it to reach an option outside the window. Custom
+  Sounds is built on exactly this.
 - **Slack's Preferences is a tabbed dialog whose panel really is remounted.**
   `.p-prefs_dialog__modal` is the ReactModal content, `.p-prefs_dialog__menu` the
   vertical rail, and clicking a section adds a fresh `<section>` into
@@ -1469,6 +1496,14 @@ Shape of it:
   `en` and `fr`, and `tests/i18n.test.mjs` fails a mod whose tables do not cover
   the same keys.
 - `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
+- `api.data` -- files a mod keeps for itself under
+  `~/.betterslack/data/<id>/`, for anything too big or too binary for
+  `api.settings`, which is read whole at every launch and rewritten whole on
+  every change of any mod's settings. The id comes from the runtime, never the
+  mod, so no mod can name another's folder; 8 MB a file, 64 MB a mod, nothing
+  deleted on uninstall. Bytes cross the bridge as base64 in chunks:
+  `String.fromCharCode(...bytes)` on a whole sound is past the engine's
+  argument limit.
 
 **One hover per target.** `api.slack.statusNode` attaches the status tooltip
 itself -- the emoji, the sentence, and when it runs out, which is what Slack's

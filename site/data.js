@@ -294,13 +294,30 @@ window.CATALOGUE = {
       "settings": 0
     },
     {
+      "id": "custom-sounds",
+      "name": "Custom Sounds",
+      "description": "Your own files in every sound list of Preferences → Notifications: messages, VIP, direct messages, huddles, calendar. Add a sound from a file, play, rename or delete it; a deleted sound puts each slot back on the one it had before.",
+      "descriptions": {
+        "fr": "Vos propres fichiers dans chaque liste de sons de Préférences → Notifications : messages, VIP, messages directs, appels d’équipe, calendrier. Ajoutez un son depuis un fichier, écoutez-le, renommez-le ou supprimez-le ; un son supprimé remet chaque emplacement sur celui qu’il avait avant."
+      },
+      "version": "1.0.0",
+      "tags": [
+        "notifications",
+        "sound"
+      ],
+      "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><rect x=\"2\" y=\"2\" width=\"20\" height=\"20\" rx=\"6\" fill=\"#e8912d\"/><path d=\"M15.5 6.2v8.3a2.3 2.3 0 1 1-1.3-2.1V8.6l-4.4 1.1v5.6a2.3 2.3 0 1 1-1.3-2.1V8.7c0-.3.2-.6.5-.7l5.7-1.4c.4-.1.8.2.8.6Z\" fill=\"#fff\"/><path d=\"M18.4 9.3a4 4 0 0 1 0 5.4M17.2 10.6a2.1 2.1 0 0 1 0 2.8\" stroke=\"#fff\" stroke-width=\"1.1\" fill=\"none\" stroke-linecap=\"round\"/></svg>",
+      "shot": "shots/mods/custom-sounds.webp",
+      "settings": 0
+    },
+    {
       "id": "demo-mode",
       "name": "Demo Mode",
       "description": "Puts a switch in the top bar that fills your real Slack with people who do not exist: every name, face, message, channel, file and link on screen is replaced by an invented one, so you can screenshot, screen-share or demo your own client without showing anybody's work. Press it again and the real thing comes back. It starts off, and stays off until you ask.",
       "descriptions": {
         "fr": "Ajoute un interrupteur dans la barre du haut qui remplit votre vrai Slack de gens qui n'existent pas : chaque nom, visage, message, canal, fichier et lien à l'écran est remplacé par un inventé, pour que vous puissiez capturer, partager votre écran ou faire une démo sans montrer le travail de personne. Une seconde pression et le vrai revient. Il démarre éteint, et le reste tant que vous ne demandez rien."
       },
-      "version": "1.3.0",
+      "version": "1.3.1",
       "tags": [
         "privacy",
         "screenshots",

@@ -24,7 +24,7 @@
 
 <p align="center"><em>⌘⇧M, or the sliders button above your avatar.</em></p>
 
-## Eight themes, sixteen plugins, one keystroke
+## Eight themes, seventeen plugins, one keystroke
 
 <table>
   <tr>
@@ -162,7 +162,8 @@ Composer Character Count, Channel Notes, User Inspector, Avatar
 Downloader, DevTools, History (everything Slack changes and never tells you
 about -- edits, deletions, reactions taken back, renames -- on one page you can
 search and sort), Demo Mode (a Slack full of people who do not exist, for when
-you are screenshotting or sharing your screen).
+you are screenshotting or sharing your screen), Custom Sounds (your own files in
+every sound list of Preferences → Notifications).
 
 Each has a page in the panel — what it is for, in your language, with a picture
 and its settings:

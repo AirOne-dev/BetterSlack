@@ -149,6 +149,8 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
       <ul><li><a href="#commands-add">add</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.files</p>
       <ul><li><a href="#files-save">save</a></li><li><a href="#files-screenshot">screenshot</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.data</p>
+      <ul><li><a href="#data-list">list</a></li><li><a href="#data-read">read</a></li><li><a href="#data-remove">remove</a></li><li><a href="#data-write">write</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.assets</p>
       <ul><li><a href="#assets-list">list</a></li><li><a href="#assets-text">text</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.themes</p>
@@ -282,6 +284,9 @@ export default {
 <pre class="api-code" data-lang="javascript" data-label="js"><code>const greeting = api.settings.get('greeting', 'Hello');
 api.ui.toast(greeting, { variant: 'success' });</code></pre>
 <p><code>api.settings.onChange</code> fires when the user edits it, so a mod can redraw without being switched off and on.</p>
+<p>Settings are for preferences. A file -- a sound somebody picked, a picture, an export -- goes in <code>api.data</code>, the mod's own folder on disk:</p>
+<pre class="api-code" data-lang="javascript" data-label="js"><code>const { name } = await api.data.write(file.name, file);
+const blob = await api.data.read(name);</code></pre>
 <h2>5. Speak the reader's language</h2>
 <p>Every shipped plugin has English and French, and a test fails a mod whose tables do not cover the same keys. English is required, and is what an unknown language falls back to.</p>
 <pre class="api-code" data-lang="javascript" data-label="js"><code>const t = api.i18n.strings({
@@ -1678,7 +1683,7 @@ child.document.head.append(style);</code></pre>
   </header>
   <div class="panel__body">
     <p>Slack's overflow menu, against an anchor you give it.</p>
-<p>Borrowed rather than drawn: it wears <code>c-menu</code>, so it follows every theme, including one being edited. One menu is open at a time, Escape and a click outside close it, and it flips above the anchor when there is no room below -- which is always, for a button in the control strip.</p>
+<p>Borrowed rather than drawn: it wears <code>c-menu</code>, so it follows every theme, including one being edited. One menu is open at a time, Escape and a click outside close it, and it flips above the anchor when there is no room below -- which is always, for a button in the control strip. A list too long for either side goes where there is more room and scrolls, and the menu follows its anchor when the window is resized.</p>
     <div class="api-demo" data-demo="ui-menu" data-controls="[{&quot;key&quot;:&quot;items&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Rename, Duplicate, Remove&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.ui.menu(anchor, [
@@ -2029,6 +2034,69 @@ const { path } = await api.files.save(avatarUrl, 'robin-original.jpg');</code></
   size: '1600x1000',
   filename: 'slack.webp',
 });</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-data-list" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.data</p>
+    <h1><code>list</code></h1>
+    <p class="api-sig api-sig--big">(): Promise&lt;Array&lt;{ name: string; bytes: number; modified: number }&gt;&gt;</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>Every file this mod has kept, by name, with its size and when it was last written. Only this mod's: another mod's folder is not reachable from here.</p>
+    <div class="api-demo" data-demo="data-list" data-controls="[]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>for (const { name, bytes } of await api.data.list()) {
+  console.log(name, `${Math.round(bytes / 1024)} kB`);
+}</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-data-read" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.data</p>
+    <h1><code>read</code></h1>
+    <p class="api-sig api-sig--big">(name: string): Promise&lt;Blob | null&gt;</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>A file this mod kept, as a Blob typed from its extension, or null when there is none by that name. Typed, so an <code>&lt;audio&gt;</code> or an <code>&lt;img&gt;</code> can use it straight away through an object URL.</p>
+    <div class="api-demo" data-demo="data-read" data-controls="[{&quot;key&quot;:&quot;name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;my-ding.mp3&quot;,&quot;label&quot;:&quot;name&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>const blob = await api.data.read('my-ding.mp3');
+if (blob) new Audio(URL.createObjectURL(blob)).play();</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-data-remove" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.data</p>
+    <h1><code>remove</code></h1>
+    <p class="api-sig api-sig--big">(name: string): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>Delete a file this mod kept. Answers true if there was one to delete, so asking twice is harmless.</p>
+    <div class="api-demo" data-demo="data-remove" data-controls="[{&quot;key&quot;:&quot;name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;my-ding.mp3&quot;,&quot;label&quot;:&quot;name&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>if (await api.ui.confirm({ title: 'Delete this sound?', message: 'It cannot be brought back.', danger: true })) {
+  await api.data.remove('my-ding.mp3');
+}</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-data-write" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.data</p>
+    <h1><code>write</code></h1>
+    <p class="api-sig api-sig--big">(name: string, content: Blob | ArrayBuffer | Uint8Array | string): Promise&lt;{ name: string; bytes: number; modified: number }&gt;</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>Keep a file of this mod's own, on disk, across restarts and updates: a sound somebody picked, a picture, an export. It goes under <code>~/.betterslack/data/&lt;mod id&gt;/</code>, which no other mod can name; the name is reduced to a safe basename, at most 8 MB a file and 64 MB a mod. A file of the same name is replaced. Nothing is deleted when the mod is switched off or removed.</p>
+    <div class="api-demo" data-demo="data-write" data-controls="[{&quot;key&quot;:&quot;name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;my-ding.mp3&quot;,&quot;label&quot;:&quot;name&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;bytes&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:48320,&quot;label&quot;:&quot;size in bytes&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>// A file the person picked, kept for good.
+const [file] = input.files;
+const { name } = await api.data.write(file.name, file);</code></pre>
   </div>
 </section>
 <section class="panel" id="p-assets-list" hidden>

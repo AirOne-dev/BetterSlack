@@ -42,6 +42,8 @@ const CHROME = new Set([
   'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche',
   'réponse', 'réponses', 'reponse', 'reponses', 'dernière', 'derniere',
   'afficher', 'télécharger', 'telecharger', 'modifié', 'modifie',
+  // Preferences' own copy: "... seront envoyés".
+  'envoyés', 'envoyes',
   'retour', 'ajouter', 'ajouté', 'ajoute', 'épinglé', 'epingle', 'ligne', 'enregistrer', 'chargement', 'envoyer', 'channel',
   /*
    * BetterSlack's own, which reach the audit through the palette: it lists
@@ -188,6 +190,17 @@ const SHOTS = [
       },
     ],
   },
+  /*
+   * A sound list in Preferences, opened, with a sound of the reader's own in
+   * it. The sound is made in the page -- a short tone -- and kept through the
+   * same bridge api.data uses, so the run needs no file of its own.
+   */
+  {
+    id: 'custom-sounds',
+    stage: 'sounds',
+    open: 'prefs-sounds',
+    expect: '.betterslack-custom-sounds__select',
+  },
   // Last, and in this order: opening a profile leaves the client in a
   // conversation with that person, which is a poor backdrop for everything
   // else and has no messages to hover.
@@ -332,6 +345,41 @@ const openFor = (what) => {
       return Boolean(command ?? wanted);
     })()`;
   }
+  if (what === 'sounds') return `(async () => {
+    const rate = 22050, n = rate * 0.3, bytes = new Uint8Array(44 + n * 2), view = new DataView(bytes.buffer);
+    const text = (at, s) => [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
+    text(0, 'RIFF'); view.setUint32(4, 36 + n * 2, true); text(8, 'WAVEfmt '); view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, rate, true);
+    view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+    text(36, 'data'); view.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i += 1) view.setInt16(44 + i * 2, Math.sin(2 * Math.PI * 660 * i / rate) * 6000 * (1 - i / n), true);
+    let binary = ''; for (const b of bytes) binary += String.fromCharCode(b);
+    const m = window.__betterslack.manager;
+    await m.bridge.request({ type: 'data.write', id: 'custom-sounds', name: 'demo.wav', base64: btoa(binary) });
+    await m.setModSetting('custom-sounds', 'sounds', [{ id: 'demo', label: 'Ping', file: 'demo.wav' }]);
+    // Read at start, so the plugin starts again to see it.
+    await m.setEnabled('custom-sounds', false);
+    await m.setEnabled('custom-sounds', true);
+    return 'seeded';
+  })()`;
+  if (what === 'prefs-sounds') return `(async () => {
+    const wait = async (find, ms = 4000) => { for (let t = 0; t < ms; t += 100) { const x = find(); if (x) return x; await new Promise((r) => setTimeout(r, 100)); } return null; };
+    // The workspace menu is opened by the recipe with a real pointer before
+    // this runs: Slack ignores a synthetic click on its header.
+    const item = await wait(() => [...document.querySelectorAll('.c-menu_item__button')].find((x) => /Pr[ée]f[ée]rences|Preferences/.test(x.textContent)));
+    if (!item) return 'no preferences item';
+    item.click();
+    const tab = await wait(() => [...document.querySelectorAll('.p-prefs_dialog__menu .c-tabs__tab')].find((x) => /Notifications/.test(x.textContent)));
+    if (!tab) return 'no notifications tab';
+    tab.click();
+    const ours = await wait(() => document.querySelector('[data-custom-sounds-slot="desktop_sound"]'));
+    if (!ours) return 'no sound list';
+    ours.scrollIntoView({ block: 'start' });
+    // The plugin reads Slack's lists once, as Preferences comes up.
+    await new Promise((r) => setTimeout(r, 1500));
+    ours.click();
+    return Boolean(await wait(() => document.querySelector('.betterslack-menu_layer')));
+  })()`;
   if (what.startsWith('type:')) {
     /*
      * Type into the palette's own box.
@@ -753,7 +801,13 @@ export default async function shootMods({ evaluate, shoot, shootWindow, evaluate
       await evaluate('window.__betterslackRedaction.sweep(), true');
 
       if (frame.open === 'profile') console.log(`[mods] ${name} <- ${await openProfile()}`);
-      else if (frame.open) console.log(`[mods] ${name} <- ${await evaluate(openFor(frame.open))}`);
+      else if (frame.open) {
+        if (frame.open === 'prefs-sounds') {
+          await click('.p-ia4_sidebar_header__title, .p-ia4_sidebar_header button');
+          await sleep(1200);
+        }
+        console.log(`[mods] ${name} <- ${await evaluate(openFor(frame.open))}`);
+      }
       // Long enough for a mod that asks Slack for something -- the member
       // column fetches the channel's people, and a shorter wait photographed
       // one of them.
