@@ -172,6 +172,10 @@ saves a file. `xcode-select --install`, then run the installer again.
 
 ## What each symptom means
 
+- **Slack quits the moment a call starts or rings (macOS).** You are on a
+  BetterSlack older than the fix for it: update from the About tab. Calls
+  then use the microphone and camera permissions you already gave Slack, and
+  nothing new is asked.
 - **Mods stop working.** BetterSlack stopped. Mods live exactly as long as the
   loader does, so quitting it takes them with it.
 - **Your mod is not in the panel.** `id` must equal the folder name. Run

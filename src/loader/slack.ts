@@ -1,10 +1,11 @@
 // Locating, stopping and starting the Slack desktop app.
 
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
-import { existsSync, promises as fsp } from 'node:fs';
+import { accessSync, constants as fsConstants, existsSync, promises as fsp } from 'node:fs';
 import { homedir } from 'node:os';
 import { promisify } from 'node:util';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { sleep } from './cdp.js';
 
 const execFileAsync = promisify(execFile);
@@ -135,6 +136,31 @@ export async function stopSlack(timeoutMs = 8000): Promise<void> {
   await sleep(500);
 }
 
+/**
+ * bin/darwin/disclaim, when this is a Mac and it is there to run.
+ *
+ * Slack started as our child is our responsibility in macOS's eyes, so a huddle
+ * asks BetterSlack for the microphone rather than Slack -- and without a usage
+ * string to show, macOS kills Slack instead of asking. The helper starts Slack
+ * as its own responsible process, with its own grants, by replacing itself
+ * with it: the pid, the exit code and the CDP descriptors are Slack's, so
+ * nothing downstream can tell the difference. See scripts/disclaim.c.
+ *
+ * The loader is bundled into dist/, so the helper is ../bin from here in a
+ * checkout and in an install alike. Absent or not executable -- an install
+ * staged before it existed -- Slack starts the old way.
+ */
+function disclaimHelper(): string | null {
+  if (process.platform !== 'darwin') return null;
+  const helper = fileURLToPath(new URL('../bin/darwin/disclaim', import.meta.url));
+  try {
+    accessSync(helper, fsConstants.X_OK);
+    return helper;
+  } catch {
+    return null;
+  }
+}
+
 export interface LaunchOptions {
   slackPath: string;
   /** Extra switches, e.g. --startup for a tray-only start. */
@@ -149,7 +175,10 @@ export interface LaunchOptions {
  * there is no local endpoint for another process to connect to.
  */
 export function launchSlack({ slackPath, extraArgs = [] }: LaunchOptions): ChildProcess {
-  const child = spawn(slackPath, ['--remote-debugging-pipe', ...extraArgs], {
+  const args = ['--remote-debugging-pipe', ...extraArgs];
+  const disclaim = disclaimHelper();
+  const [command, argv] = disclaim ? [disclaim, [slackPath, ...args]] : [slackPath, args];
+  const child = spawn(command, argv, {
     detached: false,
     // stdin, stdout, stderr, then the two CDP descriptors.
     stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'],
