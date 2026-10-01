@@ -4,6 +4,13 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.2.1 — 2026-10-01
+
+### Fixed
+
+- **loader:** Slack answers for its own microphone on macOS
+- **app:** a call no longer kills Slack on macOS
+
 ## 3.2.0 — 2026-08-25
 
 ### History works everywhere now
