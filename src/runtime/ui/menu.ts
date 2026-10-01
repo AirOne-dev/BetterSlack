@@ -55,6 +55,7 @@ export function openMenu(anchor: HTMLElement, items: MenuItem[], options: MenuOp
 
   const close = () => {
     clearTimeout(arming);
+    (doc.defaultView ?? window).removeEventListener('resize', place);
     doc.removeEventListener('mousedown', onDown as EventListener, true);
     doc.removeEventListener('keydown', onKey as EventListener, true);
     doc.getElementById(LAYER_ID)?.remove();
@@ -99,14 +100,47 @@ export function openMenu(anchor: HTMLElement, items: MenuItem[], options: MenuOp
   doc.body.append(layer);
 
   const view = doc.defaultView ?? window;
-  const rect = anchor.getBoundingClientRect();
-  const { width, height } = layer.getBoundingClientRect();
-  const edge = options.align === 'left' ? rect.left : rect.right - width;
-  const left = Math.max(MARGIN, Math.min(edge, view.innerWidth - width - MARGIN));
-  // Flipped above the anchor when there is no room below, which is where a
-  // control strip at the bottom of the rail always puts it.
-  const top = rect.bottom + height > view.innerHeight ? rect.top - height - 4 : rect.bottom + 4;
-  layer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+  /*
+   * Placed against the anchor, and placed again when the window changes size.
+   * A menu is fixed to the viewport while the anchor lives in a layout that
+   * reflows -- a dialog recentres, a column narrows -- so without this a
+   * resize left the menu where the anchor used to be. Found photographing
+   * one: the screenshot recipe resizes the page, and the menu stayed behind.
+   */
+  const scroller = layer.querySelector<HTMLElement>('.c-menu__items_scroller');
+  function place() {
+    // Measured at full height: a cap from the last placing would understate it.
+    if (scroller) scroller.style.maxHeight = '';
+    const rect = anchor.getBoundingClientRect();
+    const { width, height } = layer.getBoundingClientRect();
+    const edge = options.align === 'left' ? rect.left : rect.right - width;
+    const left = Math.max(MARGIN, Math.min(edge, view.innerWidth - width - MARGIN));
+    /*
+     * Below the anchor if it fits, above if that fits -- which is where a
+     * control strip at the bottom of the rail always puts it -- and otherwise
+     * on whichever side has more room, scrolling. A long list (a select of
+     * fifteen sounds, say) fits on neither side of an anchor in the middle of a
+     * dialog, and placed by the first two rules alone it opened off the bottom
+     * of the window with its last items unreachable.
+     */
+    const below = view.innerHeight - rect.bottom - 4 - MARGIN;
+    const above = rect.top - 4 - MARGIN;
+    let top: number;
+    if (height <= below) top = rect.bottom + 4;
+    else if (height <= above) top = rect.top - height - 4;
+    else {
+      const room = Math.max(below, above);
+      if (scroller) {
+        scroller.style.maxHeight = `${Math.max(120, room)}px`;
+        scroller.style.overflowY = 'auto';
+      }
+      const fitted = Math.min(height, Math.max(120, room));
+      top = below >= above ? rect.bottom + 4 : rect.top - fitted - 4;
+    }
+    layer.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+  }
+  place();
+  view.addEventListener('resize', place);
 
   // Next tick: the click that opened this one is still travelling.
   arming = setTimeout(() => {
