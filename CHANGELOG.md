@@ -4,6 +4,12 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.3.0 — 2026-10-01
+
+### Added
+
+- **themes:** Windows XP, in Luna Blue, Olive Green and Silver
+
 ## 3.2.1 — 2026-10-01
 
 ### Fixed
