@@ -132,6 +132,7 @@ const loaderLib = {
   entryPoints: [
     `${root}/src/loader/download.ts`,
     `${root}/src/loader/net.ts`,
+    `${root}/src/loader/net-credentials.ts`,
     `${root}/src/loader/update.ts`,
     `${root}/src/loader/catalog.ts`,
     `${root}/src/loader/mod-updates.ts`,
