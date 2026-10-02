@@ -4,6 +4,24 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.5.0 — 2026-10-02
+
+### Added
+
+- BetterSlack's icon in the Dock on macOS: the mark on a white plate, on BetterSlack.app and on the Slack it launches. Putting it on Slack needs the App Management permission, which BetterSlack asks for once, with a button to the right pane in System Settings; the About tab offers it again.
+- A theme can bring its own app icon and start screen (`--betterslack-app-icon`, `--betterslack-splash-*`). Switching to one that changes the icon offers to relaunch BetterSlack, since macOS shows a running app's new icon only after a restart.
+- **Windows XP 1.1.0:** its own icon, the mark drawn in Luna, and XP's boot screen while Slack starts.
+
+### Fixed
+
+- **splash:** a theme's start screen is on the very first frame, rather than BetterSlack's own screen first.
+- **custom-sounds:** when another sound setting comes to share a custom sound's base sound, the custom one moves to a free sound, so the two no longer both play your file.
+- **history:** no longer writes edited message text to the log.
+
+### Other
+
+- Dead and duplicated code removed across the loader, the runtime and five mods; the documentation describes the current behaviour only, and stale statements in it are corrected.
+
 ## 3.4.2 — 2026-10-02
 
 ### Added
