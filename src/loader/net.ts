@@ -3,9 +3,14 @@
 // A page cannot read the answer of a server that sends no CORS headers: the
 // request leaves, the server acts on it, and the page is handed nothing it can
 // open. Node has no such rule, so `api.net` has the loader make the request --
-// the same reason `file.download` exists, and kept as narrow, since this too is
-// something a mod does on its own say-so. Everything below is a constraint a
-// reviewer can check:
+// the same reason `file.download` exists, and kept as narrow.
+//
+// The `network` declaration is a contract for the reviewer, not a sandbox.
+// Every plugin runs in the same page and the page can write any mod's
+// settings, so code in the page can point an allowed setting anywhere; what
+// the rules below buy is that a mod written to them talks only where its
+// manifest and its settings say, which a reviewer checks in one line. The
+// rules themselves are enforced:
 //
 //   - only to an address held by one of the settings the manifest names under
 //     `network`, read at request time -- the user typed it, and the panel shows
@@ -60,10 +65,13 @@ export function allowedBases(record: ModRecord, values: Record<string, unknown>)
  *
  * "Under" means past a slash: `/api` covers `/api` and `/api/x`, never
  * `/api-admin`. The URL parser has already folded `..` and its escaped forms
- * away by the time this compares anything.
+ * away by the time this compares anything -- but not an escaped slash, which
+ * a server that decodes before it normalises turns back into one, so
+ * `/api/..%2Fadmin` would reach `/admin` there. A path with one is refused.
  */
 export function within(url: URL, base: URL): boolean {
   if (url.origin !== base.origin) return false;
+  if (/%2f|%5c/i.test(url.pathname)) return false;
   if (url.pathname === base.pathname) return true;
   const folder = base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`;
   return url.pathname.startsWith(folder);
@@ -127,9 +135,9 @@ function parseJson(text: string): unknown {
 /**
  * Make the request, or say why not.
  *
- * `enabled` and `values` come from the settings file at the moment of asking,
- * not from anything the page sent: the page names a mod and an address, and
- * the loader decides whether that mod may reach it.
+ * `enabled` and `values` are the settings file at the moment of asking: a mod
+ * that is switched off reaches nothing, and the address is whatever its
+ * `network` settings hold now.
  */
 export async function netRequest(
   record: ModRecord | undefined,

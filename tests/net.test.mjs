@@ -51,6 +51,10 @@ test('an address is within the base at its path or below a slash, never beside i
   assert.equal(within(new URL('https://hours.example.com/'), base), false);
   assert.equal(within(new URL('https://hours.example.com/api/../admin'), base), false);
   assert.equal(within(new URL('https://hours.example.com/api/%2e%2e/admin'), base), false);
+  // An escaped slash survives the parser; a server that decodes first would
+  // land outside the base.
+  assert.equal(within(new URL('https://hours.example.com/api/..%2Fadmin'), base), false);
+  assert.equal(within(new URL('https://hours.example.com/api/%2e%2e%5cadmin'), base), false);
   assert.equal(within(new URL('https://hours.example.com.evil.example/api/'), base), false);
   assert.equal(within(new URL('https://hours.example.com:8443/api/'), base), false);
 });

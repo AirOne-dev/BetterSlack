@@ -9,8 +9,8 @@ control: base | text | https://hours.example.com/api/ | address in the setting
 control: url | text | https://hours.example.com/api/ | address asked for
 ---
 
-One request to a server that sends no CORS headers, made by the loader, since
-a page can never read such a server's answer. Only to an address held by one of
+One request to a server that sends no CORS headers, made by the loader because a page can never read such a server's answer.
+Only to an address held by one of
 the settings the manifest names under `network` -- typed by the user and shown
 in the panel -- or somewhere under it; over https, with a form body or none, no
 cookies and no redirect followed. The answer is `{ status, json }`, and a

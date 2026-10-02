@@ -141,7 +141,7 @@ among the calls it makes, and an install older than that refuses it.
 
 ## api.net
 
-- [`request`](api/net-request.md) — One request to a server that sends no CORS headers, made by the loader, since _(unreleased)_
+- [`request`](api/net-request.md) — One request to a server that sends no CORS headers, made by the loader because a page can never read such a server's answer. _(unreleased)_
 
 ## api.assets
 

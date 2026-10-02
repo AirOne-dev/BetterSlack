@@ -56,10 +56,14 @@ only to an address held by a setting your manifest names:
 }
 ```
 
-So the address is the user's, typed and shown in the panel, and a reviewer reads
-one line to know where your mod can talk. Say in the pull request what the
-server is and exactly what is sent to it -- and never anything that came from
-Slack.
+The address is the user's: typed in the panel or in a form of your mod's, shown
+on the mod's page, and never chosen by the mod -- a mod writes one of its
+`network` settings only with what the user typed, and review checks it. That is
+what lets a
+reviewer read one line to know where your mod talks; it is a rule for review,
+not a sandbox, since every plugin shares the page. Say in the pull request what
+the server is and exactly what is sent to it -- and never anything that came
+from Slack.
 
 ## Text a user reads
 

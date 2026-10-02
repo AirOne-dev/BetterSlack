@@ -1116,8 +1116,8 @@ class Loader {
       case 'data.remove':
         return removeData(request.id, request.name);
       case 'net.request': {
-        // The settings file decides, not the page: whether the mod is on and
-        // which address its `network` settings hold are read here, now.
+        // Whether the mod is on and which address its `network` settings
+        // hold, read now rather than from what the page sent.
         const settings = await readSettings();
         return netRequest(
           this.catalog.get(request.modId),

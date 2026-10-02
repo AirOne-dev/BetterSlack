@@ -103,6 +103,8 @@ export const PANEL_STRINGS = {
     modUpdateBlocked:
       '{name} {version} needs BetterSlack {needs}, and this is {running}. '
       + 'Update BetterSlack first — taking it now would leave a mod calling things this version does not have.',
+    networkTo: 'Talks to {addresses}, through BetterSlack.',
+    networkUnset: 'Talks to a server of your choosing, once you give its address.',
     slackTooOld:
       'Written against Slack {wanted}, and this is {have}. It may not find what it expects.',
 
@@ -258,6 +260,8 @@ export const PANEL_STRINGS = {
     modUpdateBlocked:
       '{name} {version} nécessite BetterSlack {needs}, et vous avez {running}. '
       + 'Mettez d\'abord BetterSlack à jour — sinon ce mod appellerait des choses que cette version n\'a pas.',
+    networkTo: 'Communique avec {addresses}, via BetterSlack.',
+    networkUnset: 'Communique avec un serveur de votre choix, une fois son adresse indiquée.',
     slackTooOld:
       'Écrit pour Slack {wanted}, et vous avez {have}. Il peut ne pas trouver ce qu\'il attend.',
 

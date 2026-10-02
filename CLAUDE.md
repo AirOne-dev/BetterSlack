@@ -799,9 +799,17 @@ tests fail below it.
   of it: https, a form body or none, no cookies, no header of the mod's, and no
   redirect followed. A 3xx comes back as a status, because following one leaves
   the address the user typed -- and on that same server an address missing its
-  trailing slash answers 301, which a POST would follow as a GET. Who may reach
-  what is read from the settings file at the moment of asking, not from
-  anything the page sends. A failure is `{ error }` rather than a rejection, so
+  trailing slash answers 301, which a POST would follow as a GET. A path with an
+  escaped slash (`%2F`, `%5C`) is refused: the URL parser folds `..` but not
+  those, and a server that decodes before normalising would land outside the
+  base. Whether the mod is on and what its settings hold are read from the
+  settings file at the moment of asking. **The declaration is a review
+  contract, not a sandbox**: every plugin shares the page, and the page can
+  write any mod's settings, so code in it can aim an allowed setting anywhere.
+  What it buys is that a mod written to the rule talks only where its manifest
+  and its user say -- which is why a mod writes a `network` setting only with
+  an address the user typed (Quelio's sign-in form does), a point for review,
+  and why the mod's page in the panel shows where it talks. A failure is `{ error }` rather than a rejection, so
   a mod tells "refused" from "down" from "too slow" without matching on
   English, and nothing about the request is logged, since the form is where a
   password travels. The bridge waits `NET_TIMEOUT_MS` plus five seconds for this

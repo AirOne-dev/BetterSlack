@@ -630,6 +630,24 @@ export class Panel {
       ]));
     }
 
+    /*
+     * Where a mod may make requests through the loader: the addresses its
+     * `network` settings hold, or that it will ask for one. Said on its page
+     * because a third-party mod has had no review to say it for it.
+     */
+    const networkKeys = mod.network?.settings ?? [];
+    if (networkKeys.length > 0) {
+      const values = this.manager.getSettings().modSettings[mod.id] ?? {};
+      const addresses = networkKeys
+        .map((key) => values[key] ?? mod.settings?.find((field) => field.key === key)?.default)
+        .filter((value): value is string => typeof value === 'string' && value.trim() !== '');
+      title.append(h('div', { class: 'betterslack-row__sub' }, [
+        addresses.length > 0
+          ? t('networkTo', { addresses: addresses.join(', ') })
+          : t('networkUnset'),
+      ]));
+    }
+
     const head = h('div', { class: 'betterslack-detail__head' }, [
       this.renderIcon(mod, 'lg'),
       title,
