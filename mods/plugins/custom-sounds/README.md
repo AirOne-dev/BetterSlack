@@ -30,6 +30,8 @@ Whenever it can, the carrier is the sound you had before. So:
 - Slack on another computer, without BetterSlack, keeps playing your previous sound.
 - Switching this plugin off brings that sound straight back.
 
+On a Mac, Slack normally hands notification sounds to macOS, and macOS can only play the sounds that come with Slack. So while a notification uses one of your sounds, the plugin asks Slack to play notification sounds itself, which is Slack's own default. It does this at every start, because Slack switches it back each time it launches. When no notification uses a sound of yours any more, or when the plugin is switched off, the previous setting comes back.
+
 Your choice is written through Slack's own list, the way you would make it yourself. That is why choosing happens in Preferences. If a sound you delete needs Slack's list to fall back and Preferences is closed, the fallback is applied the next time you open it.
 
 Needs BetterSlack 3.4.0 or later: it keeps your files with `api.data`.

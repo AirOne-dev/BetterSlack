@@ -285,6 +285,7 @@ export default {
       setAssignment(team(), slot, null);
       await saveAssignments();
       refreshButtons();
+      await ensurePlayback();
     }
 
     /** Give a slot one of your sounds, through a carrier. */
@@ -314,6 +315,7 @@ export default {
       await saveAssignments();
       preview(await urlFor(id));
       refreshButtons();
+      if (NOTIFYING.includes(slot)) await ensurePlayback();
     }
 
     /**
@@ -347,6 +349,74 @@ export default {
       if (changed) await saveAssignments();
       refreshButtons();
     }
+
+    /* -- who plays a notification's sound ------------------------------ */
+
+    /*
+     * A notification's sound is not always played by the page.
+     *
+     * Slack's desktop app has a setting, `notificationPlayback`. On "web" --
+     * Slack's own default -- the native notification is silent and the page
+     * plays the sound with an <audio>, which is what this plugin swaps. On
+     * "system" the main process puts the sound's name on the native
+     * notification and macOS plays the file from inside Slack.app, which
+     * nothing in the page can reach; it also answers the page's
+     * `shouldPlaySound()` with no, so the page plays nothing at all. And on
+     * macOS 12 and later Slack forces "system" at *every* launch, whatever its
+     * settings file says -- measured: written as "web" before a launch, it came
+     * back "system" in the same second. So every custom notification sound was
+     * quietly Slack's own: the swap worked, and never ran.
+     *
+     * `desktop.app.setPreference` is Slack's own way for the page to change a
+     * desktop setting, live, and it is honoured at once: measured, "system" to
+     * "web" and `shouldPlaySound()` from false to true, no restart. So while a
+     * notification slot carries a custom sound, playback is put on "web" every
+     * time this starts -- Slack will have put it back -- and given back what it
+     * was when nothing needs it, or when this is switched off.
+     */
+    const NOTIFYING = ['desktop_sound', 'priority_desktop_sound', 'huddle_invite_sound'];
+    const PLAYBACK = 'notificationPlayback';
+    const slackApp = window.desktop?.app;
+    const canSetPlayback = typeof slackApp?.setPreference === 'function' && typeof slackApp?.getPreference === 'function';
+
+    const needsWebPlayback = () => Object.values(assignments)
+      .some((forTeam) => NOTIFYING.some((slot) => forTeam?.[slot]));
+
+    const playbackNow = async () => {
+      try {
+        return await slackApp.getPreference(PLAYBACK);
+      } catch {
+        return undefined;
+      }
+    };
+    const setPlayback = async (value) => {
+      try {
+        await slackApp.setPreference({ name: PLAYBACK, value });
+      } catch (err) {
+        api.log.warn('could not change notificationPlayback', err);
+      }
+    };
+
+    async function ensurePlayback() {
+      if (!canSetPlayback) return;
+      const now = await playbackNow();
+      const before = api.settings.get('playbackBefore');
+      if (needsWebPlayback()) {
+        if (now === 'web' || now === undefined) return;
+        if (before === undefined) await api.settings.set('playbackBefore', now);
+        await setPlayback('web');
+        return;
+      }
+      // Nothing needs it any more: give back what Slack had.
+      if (typeof before === 'string' && now === 'web') await setPlayback(before);
+      if (before !== undefined) await api.settings.set('playbackBefore', undefined);
+    }
+
+    // Switched off, the plugin leaves Slack playing its sounds the way it did.
+    disposers.push(() => {
+      const before = api.settings.get('playbackBefore');
+      if (canSetPlayback && typeof before === 'string') void setPlayback(before);
+    });
 
     /* -- adding, deleting ------------------------------------------------ */
 
@@ -446,6 +516,7 @@ export default {
       }
       await saveAssignments();
       await api.settings.set('pending', pending);
+      await ensurePlayback();
       return waiting;
     }
 
@@ -789,6 +860,7 @@ export default {
     const ready = (async () => {
       await checkFiles();
       await Promise.all(sounds.map((sound) => urlFor(sound.id)));
+      await ensurePlayback();
     })().catch((err) => api.log.warn('could not load the sounds', err));
 
     api.onDispose(() => {

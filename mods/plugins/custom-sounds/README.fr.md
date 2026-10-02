@@ -30,6 +30,8 @@ Dès que possible, le porteur est le son que vous aviez avant. Ainsi :
 - Slack, sur un autre ordinateur sans BetterSlack, continue de jouer votre son précédent.
 - Désactiver ce plugin le fait revenir immédiatement.
 
+Sur Mac, Slack confie normalement les sons de notification à macOS, qui ne sait jouer que les sons livrés avec Slack. Tant qu'une notification utilise un de vos sons, le plugin demande donc à Slack de jouer lui-même les sons de notification, ce qui est le réglage par défaut de Slack. Il le fait à chaque démarrage, car Slack revient en arrière à chaque lancement. Quand plus aucune notification n'utilise un de vos sons, ou quand le plugin est désactivé, l'ancien réglage revient.
+
 Votre choix est écrit à travers la liste de Slack elle-même, comme vous le feriez. C'est pourquoi le choix se fait dans les Préférences. Si un son supprimé a besoin de la liste de Slack pour revenir en arrière alors que les Préférences sont fermées, le retour s'applique à leur prochaine ouverture.
 
 Nécessite BetterSlack 3.4.0 ou plus récent : les fichiers sont conservés avec `api.data`.

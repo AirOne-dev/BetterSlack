@@ -302,6 +302,70 @@ test('a file gone from disk is a deletion: its slot is let go', async () => {
   }
 });
 
+/** Slack's desktop bridge, as far as this plugin uses it: one live preference. */
+function slackDesktop(playback) {
+  const state = { notificationPlayback: playback, sets: [] };
+  window.desktop = {
+    app: {
+      getPreference: async (name) => state[name],
+      setPreference: async ({ name, value }) => {
+        state[name] = value;
+        state.sets.push(value);
+      },
+    },
+  };
+  return state;
+}
+
+test('a Mac handing notification sounds to the system is put back on Slack playing them', async () => {
+  const assignments = { [TEAM]: { desktop_sound: { sound: 's1', carrier: 'hummus.mp3', previous: 'hummus.mp3' } } };
+  const h = harness({ settings: { sounds: MINE, assignments }, files: { 's1.mp3': 'x' } });
+  const desktop = slackDesktop('system');
+  try {
+    await plugin.start(h.api);
+    await settled();
+    // On "system", macOS plays Slack's own file and the swap never runs.
+    assert.equal(desktop.notificationPlayback, 'web');
+    assert.equal(h.api.settings.get('playbackBefore'), 'system');
+  } finally {
+    await h.done();
+  }
+  // Switched off, Slack goes back to playing the way it did.
+  assert.equal(desktop.notificationPlayback, 'system');
+});
+
+test('nothing is touched without a custom notification sound', async () => {
+  const assignments = { [TEAM]: { dm_sent_sound: { sound: 's1', carrier: 'hummus.mp3', previous: 'none' } } };
+  const h = harness({ settings: { sounds: MINE, assignments }, files: { 's1.mp3': 'x' } });
+  const desktop = slackDesktop('system');
+  try {
+    await plugin.start(h.api);
+    await settled();
+    // The sent-message sound is the page's own: it never needed the system.
+    assert.deepEqual(desktop.sets, []);
+  } finally {
+    await h.done();
+  }
+});
+
+test('the last custom notification sound gone, playback goes back to what it was', async () => {
+  const assignments = { [TEAM]: { desktop_sound: { sound: 's1', carrier: 'hummus.mp3', previous: 'hummus.mp3' } } };
+  const h = harness({ settings: { sounds: MINE, assignments }, files: { 's1.mp3': 'x' } });
+  const desktop = slackDesktop('system');
+  try {
+    await plugin.start(h.api);
+    await settled();
+    assert.equal(desktop.notificationPlayback, 'web');
+    h.recorded.commands[0].run();
+    [...h.recorded.modals.at(-1).body.querySelectorAll('button')].find((b) => b.textContent === 'Delete').click();
+    await settle();
+    assert.equal(desktop.notificationPlayback, 'system');
+    assert.equal(h.api.settings.get('playbackBefore'), undefined);
+  } finally {
+    await h.done();
+  }
+});
+
 test('every slot has a label in both languages', async () => {
   const { readFileSync } = await import('node:fs');
   const source = readFileSync(new URL('./index.js', import.meta.url), 'utf8');

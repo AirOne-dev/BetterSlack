@@ -1362,6 +1362,23 @@ tests fail below it.
   previews the option and writes it wherever it keeps it. The list is
   virtualised -- scroll it to reach an option outside the window. Custom
   Sounds is built on exactly this.
+- **A notification's sound is not the page's on a modern Mac.** Slack's
+  desktop setting `notificationPlayback` decides: on "web" (Slack's default)
+  the native notification is silent and the page plays the sound; on
+  "system" the main process puts the sound's *name* on the native
+  notification, macOS plays the file from `Slack.app/Contents/Resources`, and
+  `desktop.notice.shouldPlaySound()` tells the page not to play anything. On
+  macOS 12 and later Slack forces "system" in its `initialSettingsPayload` at
+  every launch -- a value written to `root-state.json` beforehand is gone in
+  the same second, measured. What works is `desktop.app.setPreference({ name,
+  value })`, which sends `UPDATE_SETTINGS` to the main process live:
+  measured, "system" to "web" and `shouldPlaySound()` false to true with no
+  restart. `window.desktop` and everything under it are frozen by
+  contextBridge -- assignment, `defineProperty` and replacing `window.desktop`
+  all fail -- so the page cannot wrap `notice.notify`; the setting is the only
+  lever. Slack rebuilds its settings at launch from four layers (slackDefaults,
+  itDefaults, userChoices, itPolicy), which is why `slack-settings.ts` writes
+  userChoices too: the top-level key is only the last merged result.
 - **Slack's Preferences is a tabbed dialog whose panel really is remounted.**
   `.p-prefs_dialog__modal` is the ReactModal content, `.p-prefs_dialog__menu` the
   vertical rail, and clicking a section adds a fresh `<section>` into
