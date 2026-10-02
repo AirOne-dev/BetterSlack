@@ -82,7 +82,7 @@ const STEMS = [null, 'b2', 'animal_stick', 'been_tree', 'complete_quest_requirem
  * numbered `<slot>_option_<n>` in the table's order; choosing one closes the
  * list, changes the button's text and makes Slack preview the sound.
  */
-function slackSelect(slot, selected) {
+function slackSelect(slot, selected, { virtual = false } = {}) {
   const root = document.createElement('div');
   root.className = 'c-basic-select';
   root.dataset.qa = slot;
@@ -91,13 +91,22 @@ function slackSelect(slot, selected) {
   trigger.setAttribute('role', 'combobox');
   trigger.textContent = LABELS[selected];
   root.append(trigger);
-  const state = { selected, writes: [] };
+  const state = { selected, writes: [], opens: 0 };
   trigger.addEventListener('click', () => {
     const open = document.querySelector('[role="listbox"]');
     if (open) return void open.remove();
+    state.opens += 1;
     const list = document.createElement('div');
     list.className = 'c-select_options_list';
     list.setAttribute('role', 'listbox');
+    /*
+     * Virtualised the way Slack's is: six options drawn around the selected
+     * one, and a different six once the list is scrolled -- each 40px a row.
+     */
+    const draw = (first) => {
+      list.replaceChildren(...options.filter((option, index) => !virtual || (index >= first && index < first + 6)));
+    };
+    const options = [];
     LABELS.forEach((label, index) => {
       const option = document.createElement('div');
       option.setAttribute('role', 'option');
@@ -111,8 +120,16 @@ function slackSelect(slot, selected) {
         list.remove();
         if (STEMS[index]) void new Audio(URL_OF(STEMS[index])).play();
       });
-      list.append(option);
+      options.push(option);
     });
+    let top = Math.max(0, state.selected - 5) * 40;
+    Object.defineProperty(list, 'scrollTop', {
+      get: () => top,
+      set: (value) => { top = value; draw(Math.floor(value / 40)); },
+    });
+    Object.defineProperty(list, 'clientHeight', { get: () => 240 });
+    Object.defineProperty(list, 'scrollHeight', { get: () => LABELS.length * 40 });
+    draw(Math.floor(top / 40));
     document.body.append(list);
   });
   document.body.append(root);
@@ -173,6 +190,38 @@ test('Slack\'s select is redrawn as one that lists Slack\'s options, then yours'
     assert.deepEqual(labels.slice(0, 14), LABELS, 'Slack\'s own list, in Slack\'s words');
     assert.ok(labels.includes('Mine'));
     assert.ok(labels.includes('Add a sound…'));
+  } finally {
+    await h.done();
+  }
+});
+
+test('a virtualised list opened at its bottom still offers None', async () => {
+  const h = harness({ settings: { sounds: MINE }, files: { 's1.mp3': 'x' } });
+  try {
+    // Boop is the last option: Slack opens the list there and draws no "None".
+    slackSelect('desktop_sound', 13, { virtual: true });
+    await plugin.start(h.api);
+    await settled();
+    await settle();
+    document.querySelector('[data-custom-sounds-slot="desktop_sound"]').click();
+    await settle();
+    const labels = h.recorded.menus.at(-1).items.map((item) => item.label);
+    assert.deepEqual(labels.slice(0, 14), LABELS);
+  } finally {
+    await h.done();
+  }
+});
+
+test('Preferences coming up opens none of Slack\'s lists', async () => {
+  const h = harness({ settings: { sounds: MINE }, files: { 's1.mp3': 'x' } });
+  try {
+    const one = slackSelect('desktop_sound', 9);
+    const two = slackSelect('dm_sent_sound', 0);
+    await plugin.start(h.api);
+    await settled();
+    await settle();
+    // Opening one focuses it and scrolls the page to it: never unasked.
+    assert.equal(one.opens + two.opens, 0);
   } finally {
     await h.done();
   }

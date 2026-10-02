@@ -189,15 +189,44 @@ export default {
     const button = (slot) => document.getElementById(`${slot}_button`);
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+    /*
+     * Opening Slack's select focuses it, and a focused element is scrolled
+     * into view -- so every hidden list this opened dragged Preferences to
+     * wherever that select sits, in the middle of somebody's own scrolling,
+     * which read as the page hesitating and flickering. Every scrolled
+     * ancestor is put back where it was, after the click and at the end.
+     */
+    function holdScroll(from) {
+      const held = [];
+      for (let el = from?.parentElement; el; el = el.parentElement) {
+        if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) {
+          held.push([el, el.scrollTop, el.scrollLeft]);
+        }
+      }
+      const root = document.scrollingElement;
+      if (root) held.push([root, root.scrollTop, root.scrollLeft]);
+      return () => {
+        for (const [el, top, left] of held) {
+          if (el.scrollTop !== top) el.scrollTop = top;
+          if (el.scrollLeft !== left) el.scrollLeft = left;
+        }
+      };
+    }
+
+    const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
     async function withList(slot, work) {
       const trigger = button(slot);
       if (!trigger) return null;
+      const putBack = holdScroll(trigger);
       document.documentElement.classList.add('betterslack-custom-sounds-busy');
       try {
         trigger.click();
+        putBack();
         let list = null;
         for (let i = 0; i < 20 && !list; i += 1) {
           await sleep(30);
+          putBack();
           list = document.querySelector('.c-select_options_list[role="listbox"], [role="listbox"]');
         }
         if (!list) return null;
@@ -210,27 +239,43 @@ export default {
           if (document.querySelector('[role="listbox"]')) trigger.click();
         }
         await sleep(30);
+        putBack();
+        trigger.blur();
         document.documentElement.classList.remove('betterslack-custom-sounds-busy');
       }
     }
 
-    /** The options of a slot's select: { index, label, selected }. */
+    const optionIndex = (option) => Number(/_option_(\d+)$/.exec(option.getAttribute('data-qa') ?? option.id)?.[1]);
+
+    /**
+     * The options of a slot's select: { index, label, selected }.
+     *
+     * The list is virtualised: it draws the options around the selected one
+     * and nothing else, so a list that opens on Boop Plus has no "None" in it
+     * at all. It is walked top to bottom a page at a time, each step given two
+     * frames to draw, until a pass adds nothing new. Three jumps with 20ms
+     * between them missed the top of a list opened at its bottom.
+     */
     const readOptions = (slot) => withList(slot, async (list) => {
       const seen = new Map();
-      // The list is virtualised: what is rendered is a window of it, so it is
-      // walked top to bottom to see every option once.
-      for (const top of [0, list.scrollHeight / 2, list.scrollHeight]) {
-        list.scrollTop = top;
-        await sleep(20);
+      const collect = () => {
         for (const option of list.querySelectorAll('[role="option"]')) {
-          const index = Number(/_option_(\d+)$/.exec(option.getAttribute('data-qa') ?? option.id)?.[1]);
-          if (Number.isNaN(index)) continue;
+          const index = optionIndex(option);
+          if (Number.isNaN(index) || seen.has(index)) continue;
           seen.set(index, {
             index,
             label: option.textContent.trim(),
             selected: option.getAttribute('aria-selected') === 'true',
           });
         }
+      };
+      collect();
+      const step = Math.max(40, Math.floor(list.clientHeight / 2));
+      for (let top = 0; top <= list.scrollHeight + step; top += step) {
+        list.scrollTop = top;
+        await frame();
+        await frame();
+        collect();
       }
       return [...seen.values()].sort((a, b) => a.index - b.index);
     });
@@ -239,16 +284,18 @@ export default {
     async function selectIndex(slot, index, { quiet = false } = {}) {
       quietUntil = quiet ? Date.now() + 1500 : 0;
       const done = await withList(slot, async (list) => {
-        for (const top of [list.scrollTop, 0, list.scrollHeight / 2, list.scrollHeight]) {
+        const find = () => [...list.querySelectorAll('[role="option"]')].find((option) => optionIndex(option) === index);
+        let option = find();
+        const step = Math.max(40, Math.floor(list.clientHeight / 2));
+        for (let top = 0; !option && top <= list.scrollHeight + step; top += step) {
           list.scrollTop = top;
-          await sleep(20);
-          const option = list.querySelector(`[data-qa="${slot}_option_${index}"], #${slot}_option_${index}`);
-          if (option) {
-            option.click();
-            return true;
-          }
+          await frame();
+          await frame();
+          option = find();
         }
-        return false;
+        if (!option) return false;
+        option.click();
+        return true;
       });
       await sleep(120);
       return Boolean(done);
@@ -324,12 +371,12 @@ export default {
      * chose a sound by other means, and that choice wins.
      */
     async function onPrefsShown() {
-      for (const slot of SLOTS) {
-        if (!button(slot)) continue;
-        const options = await readOptions(slot);
-        if (options?.length) optionsBySlot.set(slot, options);
-        learnLabels(options);
-      }
+      /*
+       * Nothing is opened here. Reading every select as Preferences came up
+       * opened five hidden lists while the page was being scrolled, and each
+       * one pulled the page somewhere. Lists are read when somebody clicks a
+       * picker; until then a select's own text is what it holds.
+       */
       const teamId = team();
       const waiting = pending[teamId] ?? {};
       for (const [slot, value] of Object.entries(waiting)) {
@@ -338,6 +385,11 @@ export default {
       }
       pending = { ...pending, [teamId]: waiting };
       await api.settings.set('pending', pending);
+      // Only with labels to read the selects by, or every slot reads as None.
+      if (!labels.size) {
+        refreshButtons();
+        return;
+      }
       const values = currentValues();
       let changed = false;
       for (const step of reconcile(values, mine(teamId))) {
@@ -652,9 +704,12 @@ export default {
      */
     async function openPicker(slot, anchor) {
       let options = optionsBySlot.get(slot);
-      if (!options) {
+      if (!options || !options.some((option) => option.index === 0)) {
         options = await readOptions(slot);
-        if (options?.length) optionsBySlot.set(slot, options);
+        // Kept only when whole: a list read without its first option is the
+        // virtualised list showing a window of itself, and caching that is how
+        // "None" went missing for good.
+        if (options?.some((option) => option.index === 0)) optionsBySlot.set(slot, options);
         learnLabels(options);
       }
       // What Slack holds now, by its own words on its own button.
