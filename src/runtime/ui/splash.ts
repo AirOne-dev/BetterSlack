@@ -26,6 +26,43 @@ import { PANEL_STRINGS } from './strings.js';
 
 const HOST_ID = 'betterslack-splash';
 
+/** What `splashVarsFrom` reads: the slice of the boot payload that names themes. */
+interface ThemeSource {
+  settings: { enabled: string[] };
+  mods: Array<{ id: string; type: string }>;
+  sources: Record<string, Record<string, string>>;
+}
+
+const SPLASH_VAR = /(--betterslack-splash-[a-z-]+)\s*:\s*((?:"[^"]*"|'[^']*'|[^;"'}])+)/g;
+
+/**
+ * The start screen a switched-on theme declares, read out of its stylesheet
+ * text in the boot payload, as declarations for the splash's own host.
+ *
+ * Read here rather than off the computed style because the theme's stylesheet
+ * reaches the document a beat after the splash does -- at document-start there
+ * is no head to put it in -- and in that beat BetterSlack's own screen was
+ * what showed. The payload already carries every enabled theme's source, so
+ * the first frame can be the theme's. The last theme wins, as its stylesheet
+ * does in the client.
+ */
+export function splashVarsFrom(payload: ThemeSource): string {
+  const found = new Map<string, string>();
+  try {
+    for (const id of payload.settings.enabled) {
+      if (payload.mods.find((mod) => mod.id === id)?.type !== 'theme') continue;
+      for (const [file, text] of Object.entries(payload.sources[id] ?? {})) {
+        if (!file.endsWith('.css')) continue;
+        const css = text.replace(/\/\*[\s\S]*?\*\//g, '');
+        for (const match of css.matchAll(SPLASH_VAR)) found.set(match[1]!, match[2]!.trim());
+      }
+    }
+  } catch {
+    return '';
+  }
+  return [...found].map(([name, value]) => `${name}: ${value};`).join(' ');
+}
+
 /** Long enough for a slow client, short enough that a wedged one still clears. */
 const CEILING_MS = 20_000;
 
@@ -168,7 +205,7 @@ const NOTHING: Splash = { progress: () => undefined, done: () => undefined };
  * Returns immediately. Nothing here is awaited by `boot()`: a splash that could
  * hold up the runtime would be a decoration with the power to stop the app.
  */
-export function showSplash(art?: Promise<string | null>): Splash {
+export function showSplash(art?: Promise<string | null>, themeVars = ''): Splash {
   if (typeof document === 'undefined') return NOTHING;
 
   let host: HTMLElement | null = null;
@@ -188,7 +225,9 @@ export function showSplash(art?: Promise<string | null>): Splash {
       host.setAttribute('aria-hidden', 'true');
       const root = host.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
-      style.textContent = CSS;
+      // The theme's own start screen, on the host itself, so it is the very
+      // first frame rather than the one after the theme's stylesheet lands.
+      style.textContent = themeVars ? `${CSS}\n:host { ${themeVars} }` : CSS;
       const stage = document.createElement('div');
       stage.className = 'stage';
       const mark = document.createElement('div');
@@ -197,6 +236,7 @@ export function showSplash(art?: Promise<string | null>): Splash {
       const themeArt = document.createElement('div');
       themeArt.className = 'theme-art';
       stage.append(mark, themeArt);
+      if (themeVars.includes('--betterslack-splash-art')) stage.classList.add('stage--theme');
       void playArt(stage);
       label = document.createElement('div');
       label.className = 'label';

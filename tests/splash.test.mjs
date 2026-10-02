@@ -245,3 +245,32 @@ test('without a theme picture the stage is BetterSlack\'s own', async () => {
     splash.done();
   });
 });
+
+test('a theme\'s start screen is on the very first frame, read from the boot payload', async () => {
+  const { splashVarsFrom } = await import('../dist/ui/splash.mjs');
+  const xp = read('mods/themes/windows-xp/theme.css');
+  const payload = {
+    settings: { enabled: ['discord-dark', 'windows-xp', 'some-plugin'] },
+    mods: [{ id: 'discord-dark', type: 'theme' }, { id: 'windows-xp', type: 'theme' }, { id: 'some-plugin', type: 'plugin' }],
+    sources: {
+      'discord-dark': { 'theme.css': ':root { --betterslack-splash-background: #111; }' },
+      'windows-xp': { 'theme.css': xp },
+      // A plugin's stylesheet is not a theme's say.
+      'some-plugin': { 'style.css': ':root { --betterslack-splash-background: red; }' },
+    },
+  };
+  const vars = splashVarsFrom(payload);
+  assert.match(vars, /--betterslack-splash-art: url\("data:image\/svg\+xml,[^"]+"\);/);
+  assert.match(vars, /--betterslack-splash-background: #000000;/, 'the last theme wins');
+  assert.equal(splashVarsFrom({ settings: { enabled: [] }, mods: [], sources: {} }), '');
+
+  await withDom('<!doctype html><html><head></head><body></body></html>', async (dom) => {
+    const splash = showSplash(Promise.resolve('AAAA'), vars);
+    const root = hostIn(dom).shadowRoot;
+    assert.ok(root.querySelector('.stage').classList.contains('stage--theme'), 'themed before anything is awaited');
+    assert.ok(root.querySelector('style').textContent.includes(':host { --betterslack-splash'), 'on the host itself');
+    await wait(30);
+    assert.equal(root.querySelector('video'), null, 'and the default animation never goes in');
+    splash.done();
+  });
+});

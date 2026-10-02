@@ -6,7 +6,7 @@
 import { ModManager, type BootPayload } from './manager.js';
 import { Bridge } from './rpc.js';
 import { installLauncher } from './ui/launcher.js';
-import { showSplash } from './ui/splash.js';
+import { showSplash, splashVarsFrom } from './ui/splash.js';
 import { LAUNCHER_CSS, PANEL_CSS } from './ui/styles.js';
 import { Panel } from './ui/panel.js';
 import { offerDockIcon } from './ui/dock-icon.js';
@@ -112,6 +112,7 @@ async function boot(): Promise<void> {
     // Asked for straight away and never waited on: the screen draws the still
     // mark until this answers, and keeps drawing it if it never does.
     bridge.request<string>({ type: 'app.art' }).catch(() => null),
+    splashVarsFrom(payload),
   );
 
   /*

@@ -1930,6 +1930,15 @@ messaging app rather than about how it looks:
   attaches to a client that is already built, so without one the screen appears
   and vanishes inside a frame -- which reads as a flash of something broken.
 
+**A theme's start screen is on its first frame.** A theme declares it with
+`--betterslack-splash-*` properties (see the theme section), and the splash
+does not wait for the theme's stylesheet to reach the document to find them:
+at document-start there is no head to put it in, and for that beat
+BetterSlack's own screen showed before the theme's. `splashVarsFrom` reads the
+declarations out of the enabled themes' source in the boot payload, which
+carries it already, and writes them on the splash's host. Reading the computed
+style stays as the fallback.
+
 It is in a shadow root with its own colours, because at document-start Slack's
 stylesheet has not loaded and its tokens do not exist yet: every colour carries
 a literal fallback and picks the token up by itself when a theme lands a moment
