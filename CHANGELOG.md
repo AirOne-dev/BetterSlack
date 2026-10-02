@@ -4,6 +4,16 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.4.2 — 2026-10-02
+
+### Added
+
+- **sidebar-account:** your face and name open your conversation with yourself
+
+### Fixed
+
+- **runtime:** installing from Browse takes the published version
+
 ## 3.4.1 — 2026-10-02
 
 ### Added
