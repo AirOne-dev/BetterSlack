@@ -4,6 +4,20 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.4.1 — 2026-10-02
+
+### Added
+
+- **panel:** check for updates by hand, from the About tab
+
+### Fixed
+
+- **custom-sounds:** "None" can be chosen on a list that opens at its bottom
+- **custom-sounds:** a picker opens at once, with "None" in it
+- **custom-sounds:** "None" is always offered, and Preferences no longer jumps
+- **custom-sounds:** notification sounds play your file on a Mac
+- **loader:** a Slack preference reaches the layer Slack rebuilds from
+
 ## 3.4.0 — 2026-10-01
 
 ### Added
