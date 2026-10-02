@@ -58,6 +58,178 @@
       "hints": {
         "fr": "Une fenêtre étroite la raccourcit d’elle-même."
       }
+    },
+    {
+      "key": "countFrom",
+      "type": "text",
+      "label": "Counted from",
+      "hint": "Badges before this time count from it. Also the earliest arrival suggested. Must match the server’s start_limit_minutes.",
+      "placeholder": "HH:MM",
+      "default": "08:30",
+      "labels": {
+        "fr": "Décompté à partir de"
+      },
+      "hints": {
+        "fr": "Les badges avant cette heure comptent à partir d’elle. C’est aussi l’arrivée la plus tôt proposée. Doit correspondre au start_limit_minutes du serveur."
+      }
+    },
+    {
+      "key": "countTo",
+      "type": "text",
+      "label": "Counted until, Monday to Thursday",
+      "hint": "Badges after this time count until it, so it is also the latest departure suggested. Must match the server’s end_limit_minutes.",
+      "placeholder": "HH:MM",
+      "default": "18:30",
+      "labels": {
+        "fr": "Décompté jusqu’à, du lundi au jeudi"
+      },
+      "hints": {
+        "fr": "Les badges après cette heure comptent jusqu’à elle : c’est donc aussi le départ le plus tard proposé. Doit correspondre au end_limit_minutes du serveur."
+      }
+    },
+    {
+      "key": "countToFriday",
+      "type": "text",
+      "label": "Counted until, Friday",
+      "hint": "The same on Friday. quelio-api has one end for every day, so a Friday end earlier than it is planned for here but not enforced by Quelio.",
+      "placeholder": "HH:MM",
+      "default": "17:30",
+      "labels": {
+        "fr": "Décompté jusqu’à, le vendredi"
+      },
+      "hints": {
+        "fr": "De même le vendredi. quelio-api n’a qu’une fin pour tous les jours : une fin du vendredi plus tôt est prise en compte ici, mais pas imposée par Quelio."
+      }
+    },
+    {
+      "key": "arriveBy",
+      "type": "text",
+      "label": "Arrive by",
+      "hint": "The latest arrival, as the bar reminds you in the morning.",
+      "placeholder": "HH:MM",
+      "default": "09:00",
+      "labels": {
+        "fr": "Arrivée avant"
+      },
+      "hints": {
+        "fr": "L’arrivée la plus tardive, que la barre rappelle le matin."
+      }
+    },
+    {
+      "key": "leaveFrom",
+      "type": "text",
+      "label": "Leave from",
+      "hint": "Nobody leaves before this, even with the day’s share done: the extra time lightens the following days. An afternoon off has no such floor.",
+      "placeholder": "HH:MM",
+      "default": "16:30",
+      "labels": {
+        "fr": "Départ à partir de"
+      },
+      "hints": {
+        "fr": "Personne ne part avant cette heure, même avec la part du jour faite : le temps en plus allège les jours suivants. Un après-midi de congé n’a pas ce minimum."
+      }
+    },
+    {
+      "key": "breakMinutes",
+      "type": "number",
+      "label": "Paid short break",
+      "hint": "Minutes, for each of the two short breaks, morning and afternoon. They are paid: not taking them gives the time back. Must match the server’s pause_time.",
+      "default": 7,
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "labels": {
+        "fr": "Pause courte payée"
+      },
+      "hints": {
+        "fr": "Minutes, pour chacune des deux pauses courtes, le matin et l’après-midi. Elles sont payées : ne pas les prendre rend ce temps. Doit correspondre au pause_time du serveur."
+      }
+    },
+    {
+      "key": "morningBreakFrom",
+      "type": "text",
+      "label": "Morning break credited from",
+      "hint": "The morning break is credited only once the day has reached this time; leaving just before loses it. Must match the server’s morning_break_threshold.",
+      "placeholder": "HH:MM",
+      "default": "12:00",
+      "labels": {
+        "fr": "Pause du matin créditée à partir de"
+      },
+      "hints": {
+        "fr": "La pause du matin n’est créditée qu’une fois la journée arrivée à cette heure ; partir juste avant la perd. Doit correspondre au morning_break_threshold du serveur."
+      }
+    },
+    {
+      "key": "afternoonBreakFrom",
+      "type": "text",
+      "label": "Afternoon break credited from",
+      "hint": "The same for the afternoon break. Must match the server’s afternoon_break_threshold.",
+      "placeholder": "HH:MM",
+      "default": "16:00",
+      "labels": {
+        "fr": "Pause de l’après-midi créditée à partir de"
+      },
+      "hints": {
+        "fr": "De même pour la pause de l’après-midi. Doit correspondre au afternoon_break_threshold du serveur."
+      }
+    },
+    {
+      "key": "lunchFrom",
+      "type": "text",
+      "label": "Lunch from",
+      "hint": "The earliest lunch, and the start of the window Quelio counts lunch in. Must match the server’s noon_break_start.",
+      "placeholder": "HH:MM",
+      "default": "12:00",
+      "labels": {
+        "fr": "Pause déjeuner à partir de"
+      },
+      "hints": {
+        "fr": "La pause déjeuner la plus tôt, et le début de la plage dans laquelle Quelio la compte. Doit correspondre au noon_break_start du serveur."
+      }
+    },
+    {
+      "key": "lunchStartBy",
+      "type": "text",
+      "label": "Lunch starts by",
+      "hint": "The latest start of lunch. With the afternoon off, the day ends here at the latest.",
+      "placeholder": "HH:MM",
+      "default": "13:00",
+      "labels": {
+        "fr": "Pause déjeuner commencée avant"
+      },
+      "hints": {
+        "fr": "Le début le plus tardif de la pause déjeuner. Avec l’après-midi en congé, la journée finit au plus tard ici."
+      }
+    },
+    {
+      "key": "lunchEndBy",
+      "type": "text",
+      "label": "Lunch window ends",
+      "hint": "Only the part of lunch before this counts toward its minimum, and it is the latest return. Must match the server’s noon_break_end.",
+      "placeholder": "HH:MM",
+      "default": "14:00",
+      "labels": {
+        "fr": "Fin de la plage de pause déjeuner"
+      },
+      "hints": {
+        "fr": "Seule la partie de la pause avant cette heure compte pour son minimum, et c’est l’heure de reprise la plus tardive. Doit correspondre au noon_break_end du serveur."
+      }
+    },
+    {
+      "key": "lunchMinimum",
+      "type": "number",
+      "label": "Lunch counts at least",
+      "hint": "Minutes. A shorter lunch does not let you leave earlier: the difference is deducted, up to the paid breaks. Must match the server’s noon_minimum_break.",
+      "default": 60,
+      "min": 0,
+      "max": 180,
+      "step": 5,
+      "labels": {
+        "fr": "Pause déjeuner comptée au moins"
+      },
+      "hints": {
+        "fr": "Minutes. Une pause plus courte ne permet pas de partir plus tôt : la différence est déduite, dans la limite des pauses payées. Doit correspondre au noon_minimum_break du serveur."
+      }
     }
   ],
   "network": {

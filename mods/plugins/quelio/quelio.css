@@ -34,6 +34,16 @@
 
 /* ------------------------------------------------------------------- the bar */
 
+/*
+ * The warning colour, once: Slack's own highlight token, with one fallback dark
+ * enough to read as text on a light theme, where the bar and the details both
+ * use it.
+ */
+#betterslack-quelio,
+.betterslack-quelio-details {
+  --quelio-warning: var(--dt_color-content-hgl-3, #a66d00);
+}
+
 #betterslack-quelio {
   --quelio-week: color-mix(in srgb, currentColor 78%, transparent);
   --quelio-day: color-mix(in srgb, currentColor 55%, transparent);
@@ -71,8 +81,8 @@
 #betterslack-quelio[data-tone="danger"] { --quelio-week: var(--dt_color-content-imp, #e01e5a); }
 #betterslack-quelio[data-day-tone="success"] { --quelio-day: var(--dt_color-content-hgl-2, #2bac76); }
 #betterslack-quelio[data-day-tone="warning"] {
-  --quelio-day: var(--dt_color-content-hgl-3, #e8912d);
-  --quelio-note: var(--dt_color-content-hgl-3, #e8912d);
+  --quelio-day: var(--quelio-warning);
+  --quelio-note: var(--quelio-warning);
 }
 #betterslack-quelio[data-day-tone="danger"] {
   --quelio-day: var(--dt_color-content-imp, #e01e5a);
@@ -121,7 +131,7 @@
 .betterslack-quelio__percent { flex: 0 0 auto; font-weight: 700; }
 .betterslack-quelio__offline {
   flex: 0 0 auto;
-  color: var(--dt_color-content-hgl-3, #e8912d);
+  color: var(--quelio-warning);
 }
 .betterslack-quelio__offline:empty { display: none; }
 
@@ -218,6 +228,8 @@
   gap: 12px;
   padding: 2px 0;
 }
+/* The day on the left, its value and its two links together on the right. */
+.betterslack-quelio-details__day > .betterslack-quelio-details__key { flex: 1 1 auto; }
 .betterslack-quelio-details__key { color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
 .betterslack-quelio-details__value { margin-left: auto; text-align: right; }
 .betterslack-quelio-details__row--strong .betterslack-quelio-details__value { font-weight: 700; }
@@ -239,7 +251,7 @@
   margin: 0 0 6px;
   font-weight: 700;
 }
-.betterslack-quelio-details__status[data-tone="warning"] { color: var(--dt_color-content-hgl-3, #a66d00); }
+.betterslack-quelio-details__status[data-tone="warning"] { color: var(--quelio-warning); }
 .betterslack-quelio-details__status[data-tone="danger"] { color: var(--dt_color-content-imp, #e01e5a); }
 .betterslack-quelio-details__status[data-tone="success"] { color: var(--dt_color-content-hgl-2, #2bac76); }
 
@@ -248,7 +260,7 @@
   color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
 }
 .betterslack-quelio-details__notice[data-tone="danger"] { color: var(--dt_color-content-imp, #e01e5a); }
-.betterslack-quelio-details__notice[data-tone="warning"] { color: var(--dt_color-content-hgl-3, #a66d00); }
+.betterslack-quelio-details__notice[data-tone="warning"] { color: var(--quelio-warning); }
 .betterslack-quelio-details__notice[data-tone="success"] { color: var(--dt_color-content-hgl-2, #2bac76); }
 
 .betterslack-quelio-details__days {

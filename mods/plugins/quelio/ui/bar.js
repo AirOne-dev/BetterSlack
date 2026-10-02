@@ -143,8 +143,6 @@ export function createBar({ api, t, format, onOpen }) {
       fit();
     },
 
-    fit,
-
     setExpanded(open) {
       button.setAttribute('aria-expanded', open ? 'true' : 'false');
     },

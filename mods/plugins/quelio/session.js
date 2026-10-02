@@ -10,39 +10,45 @@
 //
 // Where each thing is kept, and why there:
 //
-//   api.data      session.json  { server, username, token } -- never a password
-//                 hours.json    this week's days and when they were read, so a
-//                               restart draws at once instead of waiting on Kelio
-//   api.settings  lastUser      the name to put back in the sign-in form
-//                 daysOff       which days of this week were marked as not worked
+//   api.data      session.json   { server, username, token }
+//                 hours.json     this week's days and when they were read, so a
+//                                restart draws at once instead of waiting on Kelio
+//                 throttle.json  when Quelio was last asked, and the failure being
+//                                waited out -- so a reload does not ask again at once
+//   api.settings  lastUser       the name to put back in the sign-in form
+//                 daysOff        which days of this week are off, whole or afternoon
 //
-// The token and the hours are files of this plugin's own rather than settings
-// because settings.json travels: it is copied whole into every BetterSlack
-// backup, embedded in the script that starts every page, and sent to every
-// window whenever any mod changes anything. The data folder does none of
-// that. It is still a plain file on disk -- ~/.betterslack/data/quelio/ -- and
-// nothing here pretends otherwise: it is not encrypted, the token is a
-// credential for quelio-api until it is invalidated there, and anyone who can
-// read the file can use it. Removing the plugin does not delete it; signing
-// out does.
+// The password itself is never stored. The token is not harmless for that:
+// quelio-api builds it from the username, the password encrypted with the
+// server's key, and an unsalted hash of the password, so whoever holds the
+// token holds the password in a recoverable form. It is a file of this
+// plugin's own rather than a setting because settings.json travels: it is
+// copied whole into every BetterSlack backup, embedded in the script that
+// starts every page, and sent to every window whenever any mod changes
+// anything. The data folder does none of that, but it is still a plain,
+// unencrypted file -- ~/.betterslack/data/quelio/ -- to be protected like the
+// password. Signing out deletes it; removing the plugin does not.
 
 import { anchorOffset } from './lib/day.js';
-import { SCHEDULE } from './lib/rules.js';
+import { DEFAULT_RULES, dayRules } from './lib/rules.js';
 import { dayKey, isoWeek, minutesOf, weekdayOf } from './lib/time.js';
 import { normaliseAddress } from './quelio.js';
 
 const MINUTE = 60_000;
 const SESSION_FILE = 'session.json';
 const HOURS_FILE = 'hours.json';
-/** The least time between two refreshes asked for by hand. */
+const THROTTLE_FILE = 'throttle.json';
+/** The least time between two refreshes asked for by hand -- or, after a reload, between any two. */
 export const MANUAL_COOLDOWN = 5 * MINUTE;
+/** How long before the counted day starts the periodic check begins asking. */
+export const WINDOW_LEAD = 30;
 /** The first wait after a failure that may clear up on its own, doubled each time after. */
 export const FIRST_BACKOFF = 15 * MINUTE;
 
 /** Failures that will not clear up by asking again: something in the setup is wrong. */
 const PERMANENT = new Set(['address', 'redirect', 'notFound', 'refused']);
 
-export function createSession({ api, client, clock = () => new Date(), onChange = () => {} }) {
+export function createSession({ api, client, rules = DEFAULT_RULES, clock = () => new Date(), onChange = () => {} }) {
   const address = normaliseAddress(api.settings.get('apiUrl', ''));
   const interval = Math.max(60, Number(api.settings.get('refreshMinutes', 60)) || 60) * MINUTE;
 
@@ -53,6 +59,8 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
     session: null,
     hours: null,
     daysOff: [],
+    /** Days of this week whose afternoon is off. */
+    afternoonsOff: [],
     lastUser: '',
     /** The last refresh that failed: { reason, at, retryAt, count }. */
     failure: null,
@@ -67,8 +75,12 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
   const lastUser = api.settings.get('lastUser', '');
   state.lastUser = typeof lastUser === 'string' ? lastUser : '';
   const off = api.settings.get('daysOff', null);
-  if (off && off.week === thisWeek() && Array.isArray(off.days)) {
-    state.daysOff = off.days.filter((day) => Number.isInteger(day) && day >= 0 && day < 5);
+  const weekdays = (list) => (Array.isArray(list)
+    ? [...new Set(list.filter((day) => Number.isInteger(day) && day >= 0 && day < 5))].sort()
+    : []);
+  if (off && off.week === thisWeek()) {
+    state.daysOff = weekdays(off.days);
+    state.afternoonsOff = weekdays(off.afternoons).filter((day) => !state.daysOff.includes(day));
   }
 
   const save = (key, value) => api.settings.set(key, value).catch((err) => {
@@ -90,18 +102,22 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
     .catch((err) => api.log.warn(`could not keep ${name}`, err?.message ?? ''));
   const removeFile = (name) => Promise.resolve().then(() => api.data.remove(name)).catch(() => false);
 
+  const usable = (hours) => Boolean(hours && hours.week === thisWeek() && hours.days
+    && typeof hours.fetchedAt === 'number');
+
   /** Read what was kept. Called once, before anything is drawn as signed in or out. */
   const load = async () => {
-    const [kept, hours] = await Promise.all([readFile(SESSION_FILE), readFile(HOURS_FILE)]);
+    const [kept, hours, throttle] = await Promise.all([
+      readFile(SESSION_FILE), readFile(HOURS_FILE), readFile(THROTTLE_FILE),
+    ]);
+    readThrottle(throttle);
     // A token belongs to the server that issued it: once the address in the
     // settings moves, it is a token for somewhere else.
     if (kept && typeof kept.token === 'string' && kept.token && typeof kept.username === 'string'
         && address && kept.server === address) {
       state.session = { server: kept.server, username: kept.username, token: kept.token };
     }
-    if (state.session && hours && hours.week === thisWeek() && hours.days && typeof hours.fetchedAt === 'number') {
-      state.hours = hours;
-    }
+    if (state.session && usable(hours)) state.hours = hours;
     state.ready = true;
     onChange();
   };
@@ -113,7 +129,8 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
     const today = dayKey(answeredAt);
     const day = data.days[today];
     const offset = day
-      ? anchorOffset(day.badges, day.paid, minutesOf(startedAt), minutesOf(answeredAt))
+      ? anchorOffset(day.badges, day.paid, minutesOf(startedAt), minutesOf(answeredAt),
+        dayRules(rules, weekdayOf(answeredAt)))
       : 0;
     state.hours = {
       week: isoWeek(answeredAt),
@@ -134,6 +151,8 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
     await Promise.all([
       removeFile(SESSION_FILE),
       removeFile(HOURS_FILE),
+      // When Quelio was last asked stays: it is about Kelio, not about who.
+      saveThrottle(),
       ...(keepUser ? [] : [save('lastUser', '')]),
     ]);
   };
@@ -142,6 +161,41 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
 
   let inFlight = null;
   let lastAttempt = 0;
+  /** The last attempt this instance made itself, to tell it from one read off the disk. */
+  let ownAttempt = 0;
+
+  /*
+   * When Quelio was last asked, and the failure being waited out, outlive the
+   * instance: a change of settings, a hot reload or switching the plugin off
+   * and on starts a new one, and without these it would ask at once -- after a
+   * 429 too. `retryAt` is null for a failure only a person can clear, since
+   * JSON has no Infinity; a failure from another server is not this one's.
+   */
+  function readThrottle(kept) {
+    if (!kept || typeof kept !== 'object') return;
+    if (Number.isFinite(kept.lastAttempt) && kept.lastAttempt > lastAttempt) lastAttempt = kept.lastAttempt;
+    const failure = kept.failure;
+    if (failure && typeof failure.reason === 'string' && kept.server === address && Number.isFinite(failure.at)) {
+      state.failure = {
+        ...failure,
+        retryAt: Number.isFinite(failure.retryAt) ? failure.retryAt : Infinity,
+        count: Number.isInteger(failure.count) && failure.count > 0 ? failure.count : 1,
+      };
+    }
+  }
+  const saveThrottle = () => writeFile(THROTTLE_FILE, {
+    server: address,
+    lastAttempt,
+    failure: state.failure
+      ? { ...state.failure, retryAt: Number.isFinite(state.failure.retryAt) ? state.failure.retryAt : null }
+      : null,
+  });
+  /** Written before the request leaves, so an instance started while it travels knows. */
+  const attempt = async (at) => {
+    lastAttempt = at;
+    ownAttempt = at;
+    await saveThrottle();
+  };
 
   const fail = (reason, extra = {}) => {
     const at = clock().getTime();
@@ -151,6 +205,12 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
     else if (reason === 'rateLimited') retryAt = at + Math.max(60, extra.retryAfter ?? 300) * 1000;
     else retryAt = at + Math.min(interval, FIRST_BACKOFF * 2 ** (count - 1));
     state.failure = { reason, at, retryAt, count, ...extra };
+    void saveThrottle();
+  };
+  const succeed = () => {
+    if (!state.failure) return;
+    state.failure = null;
+    void saveThrottle();
   };
 
   /**
@@ -165,7 +225,8 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
       state.busy = true;
       onChange();
       const startedAt = clock();
-      lastAttempt = startedAt.getTime();
+      await attempt(startedAt.getTime());
+      if (state.session !== session) return false;
       const outcome = await client.refresh(state.address, session);
       // Signed out, or signed in as somebody else, while this was travelling.
       if (state.session !== session) return false;
@@ -175,7 +236,7 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
           void writeFile(SESSION_FILE, state.session);
         }
         keep(outcome.data, startedAt, clock());
-        state.failure = null;
+        succeed();
         state.expired = false;
         return true;
       }
@@ -197,28 +258,43 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
   };
 
   /**
-   * Whether what is held can still change today. Not once it was read after
-   * the latest departure, nor at the weekend once it was read after the week
-   * ended: no badge can arrive, and every question would be a sign-in to Kelio
-   * for an answer already known.
+   * Whether the periodic check should ask now.
+   *
+   * Every request is a sign-in to Kelio, so it asks only while an answer can
+   * have changed: on a working day, from a little before the counted day
+   * starts until it ends, at most once per interval -- and once more after
+   * the end, so the evening shows the departure rather than a day still
+   * running. Never at night, and never at the weekend once this week is held:
+   * no badge can arrive. With nothing held for this week it asks once even
+   * then, so there is something to draw -- except before the window on a
+   * working day, which is about to open anyway.
+   *
+   * Whatever the case, never while a failure is being waited out, and never
+   * within the manual cooldown of the last attempt, which may be one a
+   * previous instance sent and has not heard back from.
    */
-  const settled = () => {
-    const read = new Date(state.hours.fetchedAt);
-    const weekday = weekdayOf(read);
-    if (weekdayOf(clock()) >= 5) return isoWeek(read) === thisWeek() && weekday >= 5;
-    return minutesOf(read) >= SCHEDULE.leaveBy[weekday];
-  };
-
-  /** Whether the periodic check should ask now: stale, and not waiting out a failure. */
   const due = () => {
     if (!state.ready || !state.session || !state.address || inFlight) return false;
-    const now = clock().getTime();
+    const date = clock();
+    const now = date.getTime();
     if (state.failure && now < state.failure.retryAt) return false;
-    if (!state.hours) return true;
-    // A new day is a new set of badges whatever the interval says.
-    if (dayKey(new Date(state.hours.fetchedAt)) !== dayKey(clock())) return true;
-    if (settled()) return false;
-    return now - state.hours.fetchedAt >= interval;
+    if (now - lastAttempt < MANUAL_COOLDOWN) return false;
+    const held = state.hours && state.hours.week === thisWeek() ? state.hours : null;
+    const attemptedToday = lastAttempt > 0 && dayKey(new Date(lastAttempt)) === dayKey(date);
+    const weekday = weekdayOf(date);
+    if (weekday >= 5) return !held && !attemptedToday;
+
+    const day = dayRules(rules, weekday, state.afternoonsOff.includes(weekday));
+    const minute = minutesOf(date);
+    if (minute < day.countFrom - WINDOW_LEAD) return false;
+    const closes = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, day.leaveBy).getTime();
+    if (minute < day.leaveBy) {
+      if (!held || dayKey(new Date(held.fetchedAt)) !== dayKey(date)) return true;
+      // Failures retry on their own schedule, which is shorter than the interval.
+      return now - held.fetchedAt >= interval && (Boolean(state.failure) || now - lastAttempt >= interval);
+    }
+    if (!held) return !attemptedToday;
+    return held.fetchedAt < closes && lastAttempt < closes;
   };
 
   /** How long before a refresh by hand is allowed, in ms; 0 when it is. */
@@ -229,6 +305,11 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
     return Math.max(0, lastAttempt + MANUAL_COOLDOWN - now);
   };
 
+  const saveDaysOff = () => {
+    void save('daysOff', { week: thisWeek(), days: state.daysOff, afternoons: state.afternoonsOff });
+    onChange();
+  };
+
   return {
     state,
     interval,
@@ -237,8 +318,25 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
     manualWait,
     refresh,
 
-    /** The periodic check: costs nothing unless a refresh is due. */
-    tick() {
+    /**
+     * The periodic check: costs nothing unless a refresh is due.
+     *
+     * A request a previous instance sent just before it was replaced is
+     * answered into files this one has already read; for a few minutes after
+     * it, those are read again, so its answer is drawn rather than asked for
+     * a second time.
+     */
+    async tick() {
+      if (inFlight) return;
+      const fetched = state.hours?.fetchedAt ?? 0;
+      if (state.session && lastAttempt !== ownAttempt && lastAttempt > fetched
+          && clock().getTime() - lastAttempt < 2 * MANUAL_COOLDOWN) {
+        const hours = await readFile(HOURS_FILE);
+        if (state.session && usable(hours) && hours.fetchedAt > fetched) {
+          state.hours = hours;
+          onChange();
+        }
+      }
       if (due()) void refresh();
     },
 
@@ -279,13 +377,13 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
       onChange();
       try {
         const startedAt = clock();
-        lastAttempt = startedAt.getTime();
+        await attempt(startedAt.getTime());
         const outcome = await client.signIn(target, name, password);
         if (!outcome.ok) return outcome;
         if (!outcome.data.token) return { ok: false, reason: 'malformed' };
         state.session = { server: target, username: name, token: outcome.data.token };
         state.lastUser = name;
-        state.failure = null;
+        succeed();
         state.expired = false;
         await Promise.all([writeFile(SESSION_FILE, state.session), save('lastUser', name)]);
         keep(outcome.data, startedAt, clock());
@@ -309,8 +407,18 @@ export function createSession({ api, client, clock = () => new Date(), onChange 
       if (set.has(index)) set.delete(index);
       else set.add(index);
       state.daysOff = [...set].sort();
-      void save('daysOff', { week: thisWeek(), days: state.daysOff });
-      onChange();
+      state.afternoonsOff = state.afternoonsOff.filter((day) => !set.has(day));
+      saveDaysOff();
+    },
+
+    /** Mark a day of this week as having its afternoon off, or not. */
+    toggleAfternoonOff(index) {
+      const set = new Set(state.afternoonsOff);
+      if (set.has(index)) set.delete(index);
+      else set.add(index);
+      state.afternoonsOff = [...set].sort();
+      state.daysOff = state.daysOff.filter((day) => !set.has(day));
+      saveDaysOff();
     },
   };
 }

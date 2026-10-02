@@ -48,15 +48,6 @@ export function dayKey(date) {
   return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`;
 }
 
-/** "02-10-2026" -> a local Date at midnight, or null. */
-export function parseDayKey(key) {
-  const match = /^(\d{2})-(\d{2})-(\d{4})$/.exec(String(key ?? ''));
-  if (!match) return null;
-  const date = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
-  // Rejects 31-02-2026, which Date would quietly roll into March.
-  return dayKey(date) === key ? date : null;
-}
-
 /** Local midnight on the Monday of the week holding `date`. */
 export function mondayOf(date) {
   const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());

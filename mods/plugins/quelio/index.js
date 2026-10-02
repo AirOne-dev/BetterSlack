@@ -3,7 +3,7 @@
 //
 // The pieces, in the order they are read:
 //
-//   lib/        the rules and the arithmetic -- pure, no DOM, no network
+//   lib/        the rules (out of the settings) and the arithmetic -- pure, no DOM, no network
 //   quelio.js   the one request quelio-api understands, through `api.net`
 //   session.js  who is signed in, what Quelio last said, when to ask again
 //   view.js     all of that plus the clock, as what is on screen right now
@@ -18,6 +18,7 @@
 // the details, the timers and the commands with it.
 
 import { STRINGS } from './strings.js';
+import { readRules } from './lib/rules.js';
 import { createClient } from './quelio.js';
 import { createSession } from './session.js';
 import { buildView, createFormat } from './view.js';
@@ -38,6 +39,9 @@ export default {
     const t = api.i18n.strings(STRINGS);
     const format = createFormat(t, api.i18n.locale);
     api.css(api.assets.text('quelio.css'));
+    // The company's rules are settings; one that cannot be read is its default.
+    const { rules, invalid } = readRules((key, fallback) => api.settings.get(key, fallback));
+    if (invalid.length) api.log.warn(`settings not usable, defaults used instead: ${invalid.join(', ')}`);
 
     let bar = null;
     let details = null;
@@ -49,7 +53,7 @@ export default {
 
     const paint = () => {
       if (disposed) return;
-      const view = buildView(session.state, new Date());
+      const view = buildView(session.state, new Date(), rules);
       bar?.update(view);
       details?.update(view);
       // Quelio ended the session: say so once, where it happened.
@@ -58,7 +62,7 @@ export default {
       signedIn = now;
     };
 
-    const session = createSession({ api, client: createClient(api), onChange: paint });
+    const session = createSession({ api, client: createClient(api), rules, onChange: paint });
 
     const signIn = () => {
       details?.close();
@@ -76,7 +80,7 @@ export default {
         signIn();
         return;
       }
-      details.toggle(anchor, buildView(session.state, new Date()));
+      details.toggle(anchor, buildView(session.state, new Date(), rules));
     };
 
     bar = createBar({ api, t, format, onOpen: open });
@@ -101,7 +105,7 @@ export default {
     // Switched off while that was being read: nothing more may be started.
     if (disposed) return;
     api.helpers.poll(paint, REPAINT_MS);
-    api.helpers.poll(() => session.tick(), CHECK_MS);
+    api.helpers.poll(() => { void session.tick(); }, CHECK_MS);
 
     api.commands.add({
       id: 'open',

@@ -18,6 +18,7 @@ export const STRINGS = {
     minutes: '{m} min',
     percent: '{value}%',
     range: '{from}–{to}',
+    until: 'until {to}',
     weekTotal: '{done} / {target}',
     weekRemaining: '· {remaining} left',
     barLabel: 'Quelio: {done} of {target} this week. {status}',
@@ -39,6 +40,7 @@ export const STRINGS = {
     status_lunch: 'Lunch · {duration} of {minimum} · back at {time}',
     status_lunchDone: '{minimum} of lunch reached · free to go back',
     status_lunchEndSoon: 'Back before {by}',
+    status_lunchLate: 'Lunch started after {start} · {duration} · back by {by}',
     status_lunchOverrun: 'Lunch running past {by}',
     status_pastLatest: 'Past the latest departure, {time}',
     status_lunchSoon: 'Lunch in {left}',
@@ -69,11 +71,13 @@ export const STRINGS = {
     rowObjective: 'Objective',
     rowRemaining: 'Remaining',
     rowProgress: 'Progress',
+    objectiveHalfOff: '{target}, with an afternoon off',
     objectiveOneOff: '{target}, with one day off',
     objectiveManyOff: '{target}, with {count} days off',
     objectiveAssumed: '{target} (Quelio gave none)',
     insufficientDetail: 'Even leaving as late as allowed every day left, the week ends {shortfall} short.',
     reachedDetail: 'Objective reached. Leaving is allowed from {from}.',
+    reachedDetailNow: 'Objective reached. Leaving is allowed now.',
 
     sectionToday: 'Today',
     rowArrival: 'Arrival',
@@ -84,6 +88,7 @@ export const STRINGS = {
     rowWindow: 'Allowed departure',
     rowDay: "Today's share",
     lunchNotYet: 'Not taken yet',
+    lunchAfternoonOff: 'None: afternoon off',
     lunchOngoing: 'Since {from} · {duration}',
     lunchSpan: '{from}–{to} · {duration}',
     none: '—',
@@ -91,9 +96,13 @@ export const STRINGS = {
     sectionDays: 'Days',
     dayOff: 'Day off',
     dayOngoing: '{paid} so far',
-    markOff: 'Mark day off',
-    unmarkOff: 'Undo',
+    dayHalf: '{value} · afternoon off',
+    markOff: 'Day off',
+    unmarkOff: 'Not off',
     markOffHint: 'Counts this day as a fifth of the week',
+    markHalf: 'Afternoon off',
+    unmarkHalf: 'Whole day',
+    markHalfHint: 'Counts this afternoon as a tenth of the week: no 16:30 floor, only the morning is planned',
 
     signOut: 'Sign out',
     settings: 'Settings',
@@ -108,13 +117,14 @@ export const STRINGS = {
     submitting: 'Signing in…',
     server: 'Server: {host}',
     privacy:
-      'Your password is sent once, to {host}, then forgotten. The session token Quelio answers with ' +
-      "and this week's hours are kept in this plugin's own folder of BetterSlack data, on this " +
-      'computer, unencrypted; your username, in its settings.',
+      'Your password is sent to {host} to sign in, and is not stored. The token Quelio answers with ' +
+      'contains it, encrypted and hashed, so protect it like the password: it is kept, unencrypted, with ' +
+      "this week's hours in ~/.betterslack/data/quelio/ on this computer. Signing out deletes it.",
     privacyNoHost:
-      'Your password is sent once, to the address above, then forgotten. The session token Quelio ' +
-      "answers with and this week's hours are kept in this plugin's own folder of BetterSlack data, " +
-      'on this computer, unencrypted; your username, in its settings.',
+      'Your password is sent to the address above to sign in, and is not stored. The token Quelio ' +
+      'answers with contains it, encrypted and hashed, so protect it like the password: it is kept, ' +
+      "unencrypted, with this week's hours in ~/.betterslack/data/quelio/ on this computer. Signing " +
+      'out deletes it.',
 
     error_credentials: 'Quelio refused this username or password.',
     error_attemptsLeft: '{count} attempts left before Quelio blocks this network for a few minutes.',
@@ -147,6 +157,7 @@ export const STRINGS = {
     minutes: '{m} min',
     percent: '{value} %',
     range: '{from}–{to}',
+    until: 'jusqu’à {to}',
     weekTotal: '{done} / {target}',
     weekRemaining: '· reste {remaining}',
     barLabel: 'Quelio : {done} sur {target} cette semaine. {status}',
@@ -168,6 +179,7 @@ export const STRINGS = {
     status_lunch: 'Pause · {duration} / {minimum} · reprise à {time}',
     status_lunchDone: '{minimum} de pause atteinte · reprise possible',
     status_lunchEndSoon: 'Reprise nécessaire avant {by}',
+    status_lunchLate: 'Pause commencée après {start} · {duration} · reprise avant {by}',
     status_lunchOverrun: 'Pause au-delà de {by}',
     status_pastLatest: 'Heure maximale dépassée, {time}',
     status_lunchSoon: 'Pause déjeuner dans {left}',
@@ -198,12 +210,14 @@ export const STRINGS = {
     rowObjective: 'Objectif',
     rowRemaining: 'Restant',
     rowProgress: 'Progression',
+    objectiveHalfOff: '{target}, avec un après-midi de congé',
     objectiveOneOff: '{target}, avec un jour de congé',
     objectiveManyOff: '{target}, avec {count} jours de congé',
     objectiveAssumed: '{target} (non fourni par Quelio)',
     insufficientDetail:
       'Même en partant à l’heure maximale chaque jour restant, il manquera {shortfall} à la semaine.',
     reachedDetail: 'Objectif atteint. Départ autorisé dès {from}.',
+    reachedDetailNow: 'Objectif atteint. Départ autorisé dès maintenant.',
 
     sectionToday: 'Aujourd’hui',
     rowArrival: 'Arrivée',
@@ -214,6 +228,7 @@ export const STRINGS = {
     rowWindow: 'Départ autorisé',
     rowDay: 'Journée',
     lunchNotYet: 'Pas encore prise',
+    lunchAfternoonOff: 'Aucune : après-midi de congé',
     lunchOngoing: 'Depuis {from} · {duration}',
     lunchSpan: '{from}–{to} · {duration}',
     none: '—',
@@ -221,9 +236,13 @@ export const STRINGS = {
     sectionDays: 'Jours',
     dayOff: 'Congé',
     dayOngoing: '{paid} en cours',
-    markOff: 'Marquer congé',
-    unmarkOff: 'Annuler',
+    dayHalf: '{value} · après-midi de congé',
+    markOff: 'Congé',
+    unmarkOff: 'Pas en congé',
     markOffHint: 'Compte ce jour pour un cinquième de la semaine',
+    markHalf: 'Après-midi',
+    unmarkHalf: 'Journée entière',
+    markHalfHint: 'Compte cet après-midi pour un dixième de la semaine : pas de départ minimum à 16:30, seule la matinée est prévue',
 
     signOut: 'Se déconnecter',
     settings: 'Réglages',
@@ -238,13 +257,15 @@ export const STRINGS = {
     submitting: 'Connexion…',
     server: 'Serveur : {host}',
     privacy:
-      'Le mot de passe est envoyé une seule fois, à {host}, puis oublié. Le jeton de session renvoyé ' +
-      'par Quelio et les heures de la semaine sont gardés dans le dossier de données de ce plugin, sur ' +
-      'cet ordinateur, sans chiffrement ; l’identifiant, dans ses réglages.',
+      'Le mot de passe est envoyé à {host} pour la connexion, et n’est pas enregistré. Le jeton renvoyé ' +
+      'par Quelio le contient, chiffré et haché : il est à protéger comme le mot de passe. Il est gardé, ' +
+      'sans chiffrement, avec les heures de la semaine dans ~/.betterslack/data/quelio/ sur cet ' +
+      'ordinateur. Se déconnecter l’efface.',
     privacyNoHost:
-      'Le mot de passe est envoyé une seule fois, à l’adresse ci-dessus, puis oublié. Le jeton de ' +
-      'session renvoyé par Quelio et les heures de la semaine sont gardés dans le dossier de données ' +
-      'de ce plugin, sur cet ordinateur, sans chiffrement ; l’identifiant, dans ses réglages.',
+      'Le mot de passe est envoyé à l’adresse ci-dessus pour la connexion, et n’est pas enregistré. Le ' +
+      'jeton renvoyé par Quelio le contient, chiffré et haché : il est à protéger comme le mot de ' +
+      'passe. Il est gardé, sans chiffrement, avec les heures de la semaine dans ' +
+      '~/.betterslack/data/quelio/ sur cet ordinateur. Se déconnecter l’efface.',
 
     error_credentials: 'Identifiant ou mot de passe refusé par Quelio.',
     error_attemptsLeft: 'Encore {count} essais avant que Quelio ne bloque ce réseau quelques minutes.',

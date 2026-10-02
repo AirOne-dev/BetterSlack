@@ -350,6 +350,12 @@ const openFor = (what) => {
      * once and asks no server for anything: its cache is fresh, and a fresh
      * cache is not refreshed for an hour.
      *
+     * The session and the hours are the plugin's own files (api.data), not
+     * settings, so they are written where it reads them: through the loader's
+     * data.write, into the scratch home's data/quelio/. Only the address goes
+     * into settings.json, which is where the plugin reads it -- the demo token
+     * never does.
+     *
      * Today's badges follow the real clock -- the client's own, which the
      * plugin reads and nothing here can change -- so the picture shows a day
      * in progress at whatever time it is taken. The week is the plugin's own
@@ -405,9 +411,18 @@ const openFor = (what) => {
         };
         look();
       });
+      // The manager's bridge is what api.data itself goes through; its id is
+      // given here because the page has no plugin instance to speak as.
+      const bridge = m.bridge;
+      if (typeof bridge?.request !== 'function') throw new Error('no bridge to write the Quelio files through');
+      const keep = (name, value) => {
+        let binary = '';
+        for (const byte of new TextEncoder().encode(JSON.stringify(value))) binary += String.fromCharCode(byte);
+        return bridge.request({ type: 'data.write', id: 'quelio', name, base64: btoa(binary) });
+      };
       return m.setModSetting('quelio', 'apiUrl', address)
-        .then(() => m.setModSetting('quelio', 'session', { server: address, username: pick(3), token: 'demo' }))
-        .then(() => m.setModSetting('quelio', 'hours', hours))
+        .then(() => keep('session.json', { server: address, username: pick(3), token: 'demo' }))
+        .then(() => keep('hours.json', hours))
         .then(() => m.setEnabled('quelio', false))
         .then(() => m.setEnabled('quelio', true))
         .then(ready);

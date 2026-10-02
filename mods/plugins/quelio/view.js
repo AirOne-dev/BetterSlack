@@ -6,11 +6,12 @@
 
 import { lunchOf } from './lib/day.js';
 import { planWeek } from './lib/planner.js';
+import { DEFAULT_RULES, dayRules } from './lib/rules.js';
 import { dayStatus, weekTone } from './lib/status.js';
 import { dayKey, formatClock, isoWeek, minutesOf, weekdayOf, workingDaysOf } from './lib/time.js';
 
 /** Which status values are times of day; every other one is a duration. */
-const CLOCKS = new Set(['time', 'by', 'from', 'arrival']);
+const CLOCKS = new Set(['time', 'by', 'from', 'arrival', 'start']);
 
 /** Durations, times and percentages in the reader's language. */
 export function createFormat(t, locale) {
@@ -23,16 +24,21 @@ export function createFormat(t, locale) {
     return t('hoursMinutes', { h, mm: String(m).padStart(2, '0') });
   };
   let weekday;
+  let number;
   try {
     weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric' });
+    number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   } catch {
     weekday = new Intl.DateTimeFormat('en', { weekday: 'short', day: 'numeric' });
+    number = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
   }
   return {
     duration,
     clock: (minutes) => (typeof minutes === 'number' ? formatClock(minutes) : t('none')),
     percent: (fraction) => t('percent', { value: Math.round(Math.max(0, fraction) * 100) }),
     day: (date) => weekday.format(date),
+    /** A count that may be a half: one and a half days off. */
+    number: (value) => number.format(value),
     /** A status, as its sentence. */
     sentence: (status) => {
       const vars = {};
@@ -45,14 +51,15 @@ export function createFormat(t, locale) {
 }
 
 /**
- * Everything on screen, for `state` (the session's) at `date`.
+ * Everything on screen, for `state` (the session's) at `date`, by `rules`
+ * (`readRules(...).rules`, the company's rules out of the settings).
  *
  * `phase` is what the bar is about: `signedOut`, `expired`, `loading` (what
  * was kept is still being read, or signed in with nothing read yet),
  * `unavailable` (signed in, nothing read, and the last attempt failed) or
  * `ready`.
  */
-export function buildView(state, date) {
+export function buildView(state, date, rules = DEFAULT_RULES) {
   const common = {
     username: state.session?.username ?? state.lastUser ?? '',
     address: state.address,
@@ -76,12 +83,15 @@ export function buildView(state, date) {
       badges: Array.isArray(entry?.badges) ? entry.badges : [],
       paid: typeof entry?.paid === 'number' ? entry.paid : null,
       off: state.daysOff.includes(index),
+      half: (state.afternoonsOff ?? []).includes(index),
     };
   });
   const offset = hours.offset?.day === dayKey(date) ? hours.offset.minutes : 0;
-  const week = planWeek({ objective: hours.objective, weekday, now, days, offset });
+  const week = planWeek({ objective: hours.objective, weekday, now, days, offset, rules });
   const badges = weekday < 5 ? days[weekday].badges : [];
-  const status = dayStatus({ week, badges, weekday, now });
+  const status = dayStatus({ week, badges, weekday, now, rules });
+  /** Today's rules, an afternoon off included -- what the details print. */
+  const day = dayRules(rules, Math.min(weekday, 4), Boolean(week.today?.half));
 
   return {
     ...common,
@@ -90,7 +100,8 @@ export function buildView(state, date) {
     now,
     days,
     badges,
-    lunch: lunchOf(badges, now),
+    day,
+    lunch: lunchOf(badges, now, day),
     week,
     status,
     tone: weekTone(week),

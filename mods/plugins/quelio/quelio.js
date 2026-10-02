@@ -53,7 +53,7 @@ const isRecord = (value) => typeof value === 'object' && value !== null && !Arra
  *
  * Quelio returns every week it has ever stored; only Monday to Friday of this
  * one are kept, both because nothing else is drawn and because what is kept
- * is written to the settings file read at every launch. Days are found by
+ * is written to disk, to the plugin's own hours.json, after every answer. Days are found by
  * their date rather than by Quelio's week key, so a key written another way
  * cannot hide one. PHP encodes an empty map as `[]`, which is an answer with
  * no weeks rather than a broken one.

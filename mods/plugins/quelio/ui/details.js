@@ -12,7 +12,6 @@
 // user.
 
 import { hostOf } from '../quelio.js';
-import { SCHEDULE } from '../lib/rules.js';
 
 export const LAYER_ID = 'betterslack-quelio-details';
 
@@ -109,8 +108,10 @@ export function createDetails({ api, t, format, session, onSignOut, onSettings, 
   const weekSection = (view) => {
     const { week } = view;
     let objective = format.duration(week.target);
-    if (week.daysOff === 1) objective = t('objectiveOneOff', { target: objective });
-    else if (week.daysOff > 1) objective = t('objectiveManyOff', { target: objective, count: week.daysOff });
+    const off = week.daysOff + (week.afternoonsOff ?? 0) / 2;
+    if (off === 0.5) objective = t('objectiveHalfOff', { target: objective });
+    else if (off === 1) objective = t('objectiveOneOff', { target: objective });
+    else if (off > 1) objective = t('objectiveManyOff', { target: objective, count: format.number(off) });
     else if (!view.objectiveReported) objective = t('objectiveAssumed', { target: objective });
     const children = [
       meter(week.progress, view.tone),
@@ -122,7 +123,9 @@ export function createDetails({ api, t, format, session, onSignOut, onSettings, 
     if (week.status === 'insufficientCapacity') {
       children.push(notice(t('insufficientDetail', { shortfall: format.duration(week.shortfall) }), 'danger'));
     } else if (week.status === 'reached' && week.today && !week.today.closed) {
-      children.push(notice(t('reachedDetail', { from: format.clock(SCHEDULE.leaveFrom) }), 'success'));
+      children.push(view.day.half
+        ? notice(t('reachedDetailNow'), 'success')
+        : notice(t('reachedDetail', { from: format.clock(view.day.leaveFrom) }), 'success'));
     }
     return section(t('sectionWeek'), children);
   };
@@ -133,11 +136,12 @@ export function createDetails({ api, t, format, session, onSignOut, onSettings, 
       format.sentence(view.status),
     ]);
     if (plan.off) return section(t('sectionToday'), [status]);
-    const { lunch, badges } = view;
+    const { lunch, badges, day } = view;
     let lunchText = t('none');
-    if (lunch?.open) lunchText = t('lunchOngoing', { from: format.clock(lunch.from), duration: format.duration(lunch.duration) });
+    if (!day.takesLunch) lunchText = t('lunchAfternoonOff');
+    else if (lunch?.open) lunchText = t('lunchOngoing', { from: format.clock(lunch.from), duration: format.duration(lunch.duration) });
     else if (lunch) lunchText = t('lunchSpan', { from: format.clock(lunch.from), to: format.clock(lunch.to), duration: format.duration(lunch.duration) });
-    else if (badges.length && badges[0] < SCHEDULE.lunchStartBy) lunchText = t('lunchNotYet');
+    else if (badges.length && badges[0] < day.lunchStartBy) lunchText = t('lunchNotYet');
     const rows = [
       row(t('rowArrival'), badges.length ? format.clock(badges[0]) : t('none')),
       row(t('rowWorked'), format.duration(plan.paid)),
@@ -147,7 +151,9 @@ export function createDetails({ api, t, format, session, onSignOut, onSettings, 
       rows.push(
         row(t('rowLeft'), format.duration(plan.toDo)),
         row(t('rowDeparture'), format.clock(plan.departure), 'betterslack-quelio-details__row--strong'),
-        row(t('rowWindow'), t('range', { from: format.clock(SCHEDULE.leaveFrom), to: format.clock(plan.leaveBy) })),
+        row(t('rowWindow'), day.half
+          ? t('until', { to: format.clock(plan.leaveBy) })
+          : t('range', { from: format.clock(day.leaveFrom), to: format.clock(plan.leaveBy) })),
       );
     }
     rows.push(row(t('rowDay'), format.percent(plan.progress)));
@@ -163,17 +169,24 @@ export function createDetails({ api, t, format, session, onSignOut, onSettings, 
       if (summary.off) value = t('dayOff');
       else if (isToday && day.badges.length % 2 === 1) value = t('dayOngoing', { paid: format.duration(summary.paid) });
       else if (!summary.future && (day.badges.length || summary.paid)) value = format.duration(summary.paid);
+      if (summary.half) value = t('dayHalf', { value });
       const item = h('li', { class: `betterslack-quelio-details__day${isToday ? ' is-today' : ''}` }, [
         h('span', { class: 'betterslack-quelio-details__key' }, [format.day(day.date)]),
         h('span', { class: 'betterslack-quelio-details__value' }, [value]),
       ]);
-      // Only a day nobody worked can be called a day off.
-      if (!day.badges.length && !(day.paid > 0)) {
-        const toggle = button(summary.off ? t('unmarkOff') : t('markOff'), `off-${index}`,
-          () => session.toggleDayOff(index),
-          'c-button-unstyled betterslack-quelio-details__link');
-        toggle.setAttribute('title', t('markOffHint'));
+      const link = (label, action, onClick, hint) => {
+        const toggle = button(label, action, onClick, 'c-button-unstyled betterslack-quelio-details__link');
+        toggle.setAttribute('title', hint);
         item.append(toggle);
+      };
+      // Only a day nobody worked can be called a day off; any day can lose its afternoon.
+      if (!day.badges.length && !(day.paid > 0) && !summary.half) {
+        link(summary.off ? t('unmarkOff') : t('markOff'), `off-${index}`,
+          () => session.toggleDayOff(index), t('markOffHint'));
+      }
+      if (!summary.off) {
+        link(summary.half ? t('unmarkHalf') : t('markHalf'), `half-${index}`,
+          () => session.toggleAfternoonOff(index), t('markHalfHint'));
       }
       list.append(item);
     });
@@ -274,7 +287,6 @@ export function createDetails({ api, t, format, session, onSignOut, onSettings, 
     open,
     close,
     update,
-    isOpen: () => layer !== null,
     toggle(target, view) {
       if (layer && anchor === target) close();
       else open(target, view);

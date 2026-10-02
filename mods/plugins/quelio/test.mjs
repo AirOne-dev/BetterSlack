@@ -8,12 +8,12 @@ import {
 } from '../../../tests/harness.mjs';
 import plugin from './index.js';
 import { STRINGS } from './strings.js';
-import { SCHEDULE } from './lib/rules.js';
+import { DEFAULT_RULES, DEFAULTS, dayRules, readRules } from './lib/rules.js';
 import {
-  dayKey, formatClock, isoWeek, parseClock, parseDayKey, parseDuration, workingDaysOf,
+  dayKey, formatClock, isoWeek, parseClock, parseDuration, workingDaysOf,
 } from './lib/time.js';
 import { anchorOffset, credit, lunchOf, planDay, readBadges, workLeft } from './lib/day.js';
-import { dayRange, planWeek } from './lib/planner.js';
+import { dayMost, planWeek } from './lib/planner.js';
 import { dayStatus } from './lib/status.js';
 import { classify, createClient, normaliseAddress, readAnswer } from './quelio.js';
 import { createSession, MANUAL_COOLDOWN } from './session.js';
@@ -62,7 +62,6 @@ test('reads and writes the times Quelio speaks in', () => {
   assert.equal(parseDuration('07:60'), null);
   assert.equal(formatClock(522), '08:42');
   assert.equal(dayKey(new Date(2026, 9, 2)), '02-10-2026');
-  assert.equal(parseDayKey('31-02-2026'), null, 'no rolling into March');
 });
 
 test('knows which week a day belongs to, at both ends of a year', () => {
@@ -89,8 +88,8 @@ test('counts a day exactly as quelio-api documents it', () => {
 
 test('counts nothing before 08:30, and an open badge only up to now', () => {
   assert.equal(credit(badges('08:00', '12:00')).effective, 210);
-  assert.equal(credit(badges('08:42'), m('10:00')).paid, 78, 'no bonus before 11:00');
-  assert.equal(credit(badges('08:42'), m('11:00')).paid, 138 + 7);
+  assert.equal(credit(badges('08:42'), m('11:00')).paid, 138, 'no morning break credited before 12:00');
+  assert.equal(credit(badges('08:42'), m('12:00')).paid, 198 + 7);
   assert.equal(credit(badges('08:42')).paid, 0, 'a past day ignores a badge left open, as Quelio does');
   assert.deepEqual(readBadges(['12:00', '08:42', 'nope', '08:42']), badges('08:42', '08:42', '12:00'),
     'sorted, garbage dropped, a double tap kept so the pairs stay where Quelio puts them');
@@ -120,7 +119,7 @@ test('a lunch begun before noon is counted from noon, as Quelio counts it', () =
   assert.equal(lunch.credited, 50);
   assert.equal(lunch.minimumMet, false);
   assert.equal(formatClock(lunch.earliestReturn), '13:00');
-  assert.equal(lunch.startedEarly, true);
+  assert.equal(lunch.late, false);
 });
 
 test('plans the rest of a day by the rules: arrive, take the hour, come back on time', () => {
@@ -146,8 +145,8 @@ test('keeps Quelio\'s own count when it differs from the local one', () => {
 /** Every suggestion, whatever the week, inside the hours the company allows. */
 const assertAllowed = (week, weekday) => {
   const { departure } = week.today;
-  assert.ok(departure >= SCHEDULE.leaveFrom, `${formatClock(departure)} is before 16:30`);
-  assert.ok(departure <= SCHEDULE.leaveBy[weekday], `${formatClock(departure)} is after the latest`);
+  assert.ok(departure >= DEFAULT_RULES.leaveFrom, `${formatClock(departure)} is before 16:30`);
+  assert.ok(departure <= DEFAULT_RULES.countTo[weekday], `${formatClock(departure)} is after the latest`);
 };
 
 test('a normal day: 08:45, lunch 12:20 to 13:20, an even share of the week', () => {
@@ -179,18 +178,18 @@ test('a day that cannot hold its share hands the rest to the others', () => {
   // Wednesday, 13 hours done: 25 left over three days is 8h20 each, and
   // Friday cannot hold 8h20 -- it ends at 17:30 -- so Wednesday carries more.
   const week = plan(WEDNESDAY, '08:40', badges('08:35'), [6 * 60 + 30, 6 * 60 + 30]);
-  const friday = dayRange(FRIDAY);
-  assert.ok(friday.most < dayRange(THURSDAY).most, 'Friday ends an hour earlier');
-  assert.ok(friday.most < 25 * 60 / 3);
+  const friday = dayMost(FRIDAY);
+  assert.ok(friday < dayMost(THURSDAY), 'Friday ends an hour earlier');
+  assert.ok(friday < 25 * 60 / 3);
   assert.equal(week.status, 'onTrack');
-  assert.equal(week.today.goal, Math.round((25 * 60 - friday.most) / 2));
+  assert.equal(week.today.goal, Math.round((25 * 60 - friday) / 2));
   assertAllowed(week, WEDNESDAY);
 });
 
 test('thirty-eight hours from Wednesday morning is more than three days hold, and it says so', () => {
   const week = plan(WEDNESDAY, '08:40', badges('08:35'), [0, 0]);
   assert.equal(week.status, 'insufficientCapacity');
-  assert.equal(week.shortfall, 38 * 60 - week.today.high - dayRange(THURSDAY).most - dayRange(FRIDAY).most);
+  assert.equal(week.shortfall, 38 * 60 - week.today.high - dayMost(THURSDAY) - dayMost(FRIDAY));
 });
 
 test('never suggests leaving before 16:30, however little is owed', () => {
@@ -311,6 +310,135 @@ test('the latest departure is called out before it passes', () => {
 
 test('lunch is not owed by somebody who arrived after it had to start', () => {
   assert.equal(status(1, '13:40', badges('13:30'), [456]).key, 'working');
+});
+
+// -- the rules, as settings --------------------------------------------------------
+
+test('the defaults are the company\'s rules', () => {
+  const { rules, invalid } = readRules();
+  assert.deepEqual(invalid, []);
+  assert.deepEqual(rules, DEFAULT_RULES);
+  assert.deepEqual(
+    [rules.countFrom, ...rules.countTo, rules.leaveFrom, rules.arriveBy].map(formatClock),
+    ['08:30', '18:30', '18:30', '18:30', '18:30', '17:30', '16:30', '09:00']);
+  assert.deepEqual([rules.morningBreakFrom, rules.afternoonBreakFrom, rules.lunchFrom, rules.lunchStartBy, rules.lunchEndBy]
+    .map(formatClock), ['12:00', '16:00', '12:00', '13:00', '14:00']);
+  assert.deepEqual([rules.breakMinutes, rules.lunchMinimum], [7, 60]);
+});
+
+test('every rule in the code is a setting in the manifest, with the same default', () => {
+  const manifest = JSON.parse(readFileSync(path.join(FOLDER, 'mod.json'), 'utf8'));
+  for (const [key, value] of Object.entries(DEFAULTS)) {
+    const field = manifest.settings.find((entry) => entry.key === key);
+    assert.ok(field, `${key} is a setting`);
+    assert.equal(field.default, value, `${key} defaults to ${value}`);
+    assert.ok(field.labels?.fr && field.hints?.fr, `${key} speaks French`);
+  }
+});
+
+test('a setting that cannot be read is its default, and nothing throws', () => {
+  const read = (values) => readRules((key, fallback) => (key in values ? values[key] : fallback));
+  const typo = read({ countTo: '18h30', breakMinutes: -3, lunchMinimum: '45', leaveFrom: '16:00' });
+  assert.deepEqual(typo.invalid.sort(), ['breakMinutes', 'countTo']);
+  assert.equal(typo.rules.countTo[0], m('18:30'));
+  assert.equal(typo.rules.breakMinutes, 7);
+  assert.equal(typo.rules.lunchMinimum, 45, 'a number written as text is still the number');
+  assert.equal(typo.rules.leaveFrom, m('16:00'));
+  const backwards = read({ countFrom: '19:00' });
+  assert.deepEqual(backwards.invalid, ['order'], 'a day that ends before it starts is not used');
+  assert.deepEqual(backwards.rules, DEFAULT_RULES);
+  assert.deepEqual(readRules(() => { throw new Error('boom'); }).rules, DEFAULT_RULES);
+  assert.deepEqual(read({ countFrom: null, lunchFrom: { nope: 1 } }).rules.lunchFrom, m('12:00'));
+});
+
+test('another deployment\'s rules change the count and the plan', () => {
+  const { rules } = readRules((key, fallback) => ({
+    countToFriday: '18:30', morningBreakFrom: '11:00', breakMinutes: 10, leaveFrom: '16:00',
+  })[key] ?? fallback);
+  assert.equal(dayMost(FRIDAY, rules), dayMost(MONDAY, rules), 'Friday as long as Monday');
+  assert.equal(credit(badges('08:42'), m('11:00'), dayRules(rules, MONDAY)).paid, 138 + 10);
+  const week = planWeek({ objective: 2280, weekday: THURSDAY, now: m('09:00'), days: weekOf(THURSDAY, badges('08:40'), [540, 540, 540]), rules });
+  assert.equal(formatClock(week.today.departure), '16:00');
+});
+
+test('the morning break is credited only once 12:00 has passed, the afternoon one from 16:00', () => {
+  assert.equal(credit(badges('08:30', '11:59')).paid, 209, 'leaving just before noon loses the 7 minutes');
+  assert.equal(credit(badges('08:30', '12:00')).paid, 210 + 7);
+  assert.equal(credit(badges('08:30', '12:00', '13:00', '15:59')).paid, 210 + 179 + 7);
+  assert.equal(credit(badges('08:30', '12:00', '13:00', '16:00')).paid, 210 + 180 + 14);
+});
+
+test('a lunch shorter than the hour is deducted, up to the breaks; one ending after 14:00 is not', () => {
+  assert.equal(credit(badges('08:30', '12:00', '12:50', '17:00')).deduction, 10);
+  assert.equal(credit(badges('08:30', '12:00', '12:30', '17:00')).deduction, 14, 'never more than the breaks gave');
+  assert.equal(credit(badges('08:30', '12:30', '14:10', '17:00')).deduction, 0, 'back after 14:00: nothing');
+  assert.equal(credit(badges('08:30', '12:00', '13:00', '17:30'), null, dayRules(DEFAULT_RULES, FRIDAY)).effective,
+    210 + 270, 'nothing counted after 17:30 on a Friday');
+});
+
+test('a day that reaches its share before 16:30 lightens the days after it', () => {
+  // Thursday morning, the same week with Wednesday left at 15:00 or at 16:30.
+  const left = (wednesday) => plan(THURSDAY, '09:00', badges('08:40'), [456, 456, wednesday]).today.goal;
+  assert.ok(left(456 + 90) < left(456), 'an hour and a half more on Wednesday is less asked on Thursday');
+  assert.equal(left(456) - left(456 + 90), 45, 'shared over the two days left');
+});
+
+// -- an afternoon off ------------------------------------------------------------------
+
+test('an afternoon off counts for half a day, holds a morning, and has no 16:30 floor', () => {
+  const days = weekOf(WEDNESDAY, badges('08:30'), [456, 456]);
+  days[WEDNESDAY].half = true;
+  const week = planWeek({ objective: 2280, weekday: WEDNESDAY, now: m('09:00'), days });
+  assert.equal(week.afternoonsOff, 1);
+  assert.equal(week.target, 2280 - 228);
+  assert.equal(week.today.half, true);
+  assert.equal(formatClock(week.today.leaveBy), '13:00', 'the morning ends where lunch would have to start');
+  assert.ok(week.today.high <= credit(badges('08:30', '13:00')).paid);
+  assert.ok(week.today.departure < DEFAULT_RULES.leaveFrom, `${formatClock(week.today.departure)}: before 16:30 is allowed`);
+  assert.deepEqual(planDay(badges('08:30'), m('09:00'), m('12:30'), dayRules(DEFAULT_RULES, WEDNESDAY, true)),
+    badges('08:30', '12:30'), 'no lunch planned');
+});
+
+test('on an afternoon off, the morning\'s share reached is free to leave, at noon', () => {
+  // 3h37 a day left over Wednesday morning, Thursday and Friday: 08:30 to noon, break included.
+  const days = weekOf(WEDNESDAY, badges('08:30'), [700, 700]);
+  days[WEDNESDAY].half = true;
+  const week = planWeek({ objective: 2280, weekday: WEDNESDAY, now: m('12:05'), days });
+  const said = dayStatus({ week, badges: badges('08:30'), weekday: WEDNESDAY, now: m('12:05') });
+  assert.equal(said.key, 'canLeave');
+  assert.equal(formatClock(week.today.departure), '12:05');
+  const gone = badges('08:30', '12:10');
+  const after = planWeek({ objective: 2280, weekday: WEDNESDAY, now: m('12:20'), days: weekOf(WEDNESDAY, gone, [700, 700]).map((d, i) => (i === WEDNESDAY ? { ...d, half: true } : d)) });
+  assert.equal(dayStatus({ week: after, badges: gone, weekday: WEDNESDAY, now: m('12:20') }).key, 'dayDone',
+    'the badge out at noon is the end of the day, not a lunch');
+});
+
+test('an afternoon off ahead holds only its morning', () => {
+  const days = weekOf(WEDNESDAY, badges('08:35'), [6 * 60 + 30, 6 * 60 + 30]);
+  days[FRIDAY].half = true;
+  const week = planWeek({ objective: 2280, weekday: WEDNESDAY, now: m('08:40'), days });
+  assert.equal(dayMost(FRIDAY, DEFAULT_RULES, true), credit(badges('08:30', '13:00')).paid);
+  assert.equal(week.target, 2280 - 228);
+});
+
+// -- a lunch started late --------------------------------------------------------------
+
+test('a lunch started after 13:00 says when to be back, and plans the return then', () => {
+  const day = badges('08:42', '13:30');
+  const lunch = lunchOf(day, m('13:40'));
+  assert.equal(lunch.late, true);
+  assert.equal(formatClock(lunch.earliestReturn), '14:00', 'nothing after 14:00 is credited, so no later');
+  const said = status(1, '13:40', day, [456]);
+  assert.equal(said.key, 'lunchLate');
+  assert.equal(said.tone, 'warning');
+  const t = (table) => (key, vars = {}) => table[key].replace(/\{(\w+)\}/g, (_, name) => String(vars[name]));
+  const en = createFormat(t(STRINGS.en), 'en-GB').sentence(said);
+  assert.equal(en, 'Lunch started after 13:00 · 10 min · back by 14:00');
+  assert.ok(!en.includes('14:30'));
+  assert.equal(createFormat(t(STRINGS.fr), 'fr-FR').sentence(said),
+    'Pause commencée après 13:00 · 10 min · reprise avant 14:00');
+  assert.deepEqual(planDay(day, m('13:40'), m('17:00')), badges('08:42', '13:30', '14:00', '17:00'));
+  assert.equal(status(1, '13:50', day, [456]).key, 'lunchEndSoon');
 });
 
 // -- the server ---------------------------------------------------------------------
@@ -605,7 +733,9 @@ test('stops asking once the day is over, and at the weekend', async () => {
   clock.now = at(WEDNESDAY, '21:00');
   assert.equal(session.due(), false, 'nothing can change after the latest departure');
   clock.now = at(THURSDAY, '07:30');
-  assert.equal(session.due(), true, 'a new day is a new set of badges');
+  assert.equal(session.due(), false, 'not before the day can have started');
+  clock.now = at(THURSDAY, '08:00');
+  assert.equal(session.due(), true, 'a new day is a new set of badges, from half an hour before it is counted');
 
   const weekend = await rig({ now: at(5, '10:00') });
   await weekend.session.signIn('robin', PASSWORD);
@@ -616,11 +746,112 @@ test('stops asking once the day is over, and at the weekend', async () => {
 test('a day marked off is kept for this week only', async () => {
   const { session, store } = await rig();
   session.toggleDayOff(FRIDAY);
-  assert.deepEqual(store.daysOff, { week: '2026-W40', days: [FRIDAY] });
+  assert.deepEqual(store.daysOff, { week: '2026-W40', days: [FRIDAY], afternoons: [] });
   session.toggleDayOff(FRIDAY);
   assert.deepEqual(store.daysOff.days, []);
   const later = await rig({ settings: { apiUrl: ADDRESS, daysOff: { week: '2026-W39', days: [FRIDAY] } } });
   assert.deepEqual(later.session.state.daysOff, [], 'last week\'s days off are not this week\'s');
+});
+
+/** Every minute from `from` to `to`, as the plugin's 60-second check does; the requests sent in between. */
+async function runClock(rigged, from, to) {
+  const before = rigged.recorded.requests.length;
+  const sent = [];
+  for (let t = from.getTime(); t < to.getTime(); t += 60_000) {
+    rigged.clock.now = new Date(t);
+    const count = rigged.recorded.requests.length;
+    await rigged.session.tick();
+    await new Promise((resolve) => setImmediate(resolve));
+    if (rigged.recorded.requests.length > count) sent.push(formatClock(rigged.clock.now.getHours() * 60 + rigged.clock.now.getMinutes()));
+  }
+  return { count: rigged.recorded.requests.length - before, sent };
+}
+
+test('asks nothing overnight once the day is settled', async () => {
+  const rigged = await rig({ now: at(1, '17:00') });
+  await rigged.session.signIn('robin', PASSWORD);
+  const evening = await runClock(rigged, at(1, '17:00'), at(1, '19:00'));
+  assert.deepEqual(evening.sent, ['18:00', '18:30'], 'the hour, then once at the end to see the departure');
+  assert.equal((await runClock(rigged, at(1, '19:00'), at(WEDNESDAY, '08:00'))).count, 0);
+  assert.deepEqual((await runClock(rigged, at(WEDNESDAY, '08:00'), at(WEDNESDAY, '08:01'))).sent, ['08:00'],
+    'and again half an hour before the day is counted');
+});
+
+test('asks nothing at the weekend once the week is held', async () => {
+  const rigged = await rig({ now: at(FRIDAY, '16:00') });
+  await rigged.session.signIn('robin', PASSWORD);
+  assert.deepEqual((await runClock(rigged, at(FRIDAY, '16:00'), at(FRIDAY, '19:00'))).sent, ['17:00', '17:30']);
+  assert.equal((await runClock(rigged, at(FRIDAY, '19:00'), at(7, '08:00'))).count, 0,
+    'Friday night to Monday 08:00, a new week included');
+});
+
+test('with nothing held, the weekend asks once', async () => {
+  const rigged = await rig({ kept: { 'session.json': SESSION }, now: at(5, '10:00') });
+  assert.equal((await runClock(rigged, at(5, '10:00'), at(7, '07:00'))).count, 1);
+});
+
+test('a reload remembers a 429 and the last attempt', async () => {
+  const first = await rig({
+    kept: { 'session.json': SESSION },
+    answer: () => ({ status: 429, json: { error: 'Too many login attempts.', retry_after: 240 } }),
+  });
+  await first.session.refresh();
+  assert.equal(first.recorded.requests.length, 1);
+  // The same files, a new instance: a settings change, a hot reload, a toggle.
+  const again = createSession({ api: first.api, client: createClient(first.api, () => first.clock.now), clock: () => first.clock.now });
+  await again.load();
+  assert.equal(again.state.failure?.reason, 'rateLimited');
+  assert.equal(again.due(), false);
+  assert.ok(again.manualWait() > 0);
+  first.clock.now = new Date(first.clock.now.getTime() + MANUAL_COOLDOWN);
+  assert.equal(again.manualWait(), 0);
+  assert.ok(!JSON.stringify(keptFile(first.recorded, 'throttle.json')).includes('tok-1'), 'no token in it');
+});
+
+test('a reload keeps the five minutes between refreshes by hand', async () => {
+  const { api, session, clock } = await rig();
+  await session.signIn('robin', PASSWORD);
+  const again = createSession({ api, client: createClient(api, () => clock.now), clock: () => clock.now });
+  await again.load();
+  assert.ok(again.manualWait() > 0);
+  assert.equal(await again.refreshNow(), false);
+});
+
+test('a request still travelling from the instance a reload replaced is not sent again', async () => {
+  let release;
+  let hold = false;
+  const rigged = await rig({
+    answer: () => (hold
+      ? new Promise((resolve) => { release = () => resolve({ status: 200, json: answerFor(rigged.clock.now) }); })
+      : { status: 200, json: answerFor(rigged.clock.now) }),
+  });
+  await rigged.session.signIn('robin', PASSWORD);
+  rigged.clock.now = new Date(rigged.clock.now.getTime() + 61 * 60_000);
+  hold = true;
+  const travelling = rigged.session.refresh();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(rigged.recorded.requests.length, 2);
+
+  const next = createSession({ api: rigged.api, client: createClient(rigged.api, () => rigged.clock.now), clock: () => rigged.clock.now });
+  await next.load();
+  await next.tick();
+  assert.equal(rigged.recorded.requests.length, 2, 'not asked again while the first is out');
+  release();
+  await travelling;
+  rigged.clock.now = new Date(rigged.clock.now.getTime() + 6 * 60_000);
+  await next.tick();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(rigged.recorded.requests.length, 2, 'and its answer is read off the disk instead');
+  assert.equal(next.state.hours.fetchedAt, keptFile(rigged.recorded, 'hours.json').fetchedAt);
+});
+
+test('an afternoon off is kept for this week, and replaces a day off', async () => {
+  const { session, store } = await rig();
+  session.toggleDayOff(FRIDAY);
+  session.toggleAfternoonOff(FRIDAY);
+  assert.deepEqual(store.daysOff, { week: '2026-W40', days: [], afternoons: [FRIDAY] });
+  const later = await rig({ settings: { apiUrl: ADDRESS, daysOff: store.daysOff } });
+  assert.deepEqual(later.session.state.afternoonsOff, [FRIDAY]);
 });
 
 // -- the words ------------------------------------------------------------------------
@@ -628,7 +859,7 @@ test('a day marked off is kept for this week only', async () => {
 test('every situation has words, in English and in French', () => {
   const keys = [
     'weekend', 'weekendReached', 'dayOff', 'beforeArrival', 'arrivalWindow', 'noBadge', 'dayDone', 'away',
-    'lunch', 'lunchDone', 'lunchEndSoon', 'lunchOverrun', 'pastLatest', 'lunchSoon', 'lunchOpen',
+    'lunch', 'lunchDone', 'lunchEndSoon', 'lunchLate', 'lunchOverrun', 'pastLatest', 'lunchSoon', 'lunchOpen',
     'lunchDeadline', 'lunchMissed', 'lunchBack', 'lunchShort', 'weekReached', 'weekReachedLeave',
     'insufficient', 'canLeave', 'dayReached', 'latestSoon', 'started', 'working',
   ];
@@ -666,8 +897,27 @@ const TOP_NAV = `
     </div>
   </div>`;
 
+/**
+ * The plugin reads the computer's clock, and what it asks depends on the hour:
+ * nothing at night or at the weekend. Its tests run on a Wednesday afternoon
+ * whenever they are run.
+ */
+const RealDate = globalThis.Date;
+function fixClock(fixed) {
+  class FixedDate extends RealDate {
+    constructor(...args) {
+      if (args.length) super(...args);
+      else super(fixed.getTime());
+    }
+    static now() { return fixed.getTime(); }
+  }
+  globalThis.Date = FixedDate;
+  return () => { globalThis.Date = RealDate; };
+}
+
 /** The plugin in a Slack-shaped page, against an imitated quelio-api. */
 async function startPlugin({ settings = { apiUrl: ADDRESS }, kept = {} } = {}) {
+  const unfix = fixClock(at(WEDNESDAY, '14:00'));
   const dom = installDom(TOP_NAV + SLACK_FIXTURE);
   const server = (url, options) => {
     const form = options.form ?? {};
@@ -682,6 +932,7 @@ async function startPlugin({ settings = { apiUrl: ADDRESS }, kept = {} } = {}) {
   const stop = () => {
     for (const dispose of rigged.recorded.disposers.splice(0)) dispose();
     dom.cleanup();
+    unfix();
   };
   return { ...rigged, dom, stop };
 }
@@ -815,6 +1066,33 @@ test('opens its details on a click, and signing out from them asks to sign in ag
     assert.equal(keptFile(recorded, 'session.json'), null);
     assert.equal(bar.dataset.phase, 'signedOut');
     assert.ok(recorded.toasts.length > 0);
+  } finally {
+    stop();
+  }
+});
+
+test('an afternoon can be marked off from the details, on a day already worked', async () => {
+  const { store, stop } = await startPlugin({ kept: { 'session.json': SESSION } });
+  try {
+    await settle();
+    await settle();
+    document.getElementById('betterslack-quelio').click();
+    const details = document.getElementById('betterslack-quelio-details');
+    const monday = details.querySelector('[data-action="half-0"]');
+    assert.ok(monday, 'offered on Monday, which has badges');
+    monday.click();
+    assert.deepEqual(store.daysOff.afternoons, [0]);
+    assert.match(document.getElementById('betterslack-quelio-details').textContent, /après-midi de congé/);
+  } finally {
+    stop();
+  }
+});
+
+test('a rule that cannot be read is said in the log, and the bar still draws', async () => {
+  const { recorded, stop } = await startPlugin({ settings: { apiUrl: ADDRESS, countTo: '18h30' } });
+  try {
+    assert.ok(recorded.logs.some(([level, text]) => level === 'warn' && /countTo/.test(text)));
+    assert.ok(document.getElementById('betterslack-quelio'));
   } finally {
     stop();
   }

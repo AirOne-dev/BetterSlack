@@ -10,12 +10,12 @@
 // The order of the checks is the order of importance: a rule about to be
 // broken outranks progress, and progress outranks a pleasantry.
 
-import { SCHEDULE } from './rules.js';
+import { DEFAULT_RULES, dayRules } from './rules.js';
 import { lunchOf } from './day.js';
 
 /** From when lunch is announced, and how long "lunch soon" lasts. */
 export const LUNCH_SOON = 30;
-/** How long before a deadline -- 13:00 to leave for lunch, 14:00 to be back -- it is called out. */
+/** How long before a deadline -- the latest lunch start, the latest return -- it is called out. */
 export const DEADLINE = 15;
 /** How long before the latest departure it is called out. */
 export const LATEST_SOON = 30;
@@ -25,11 +25,13 @@ export const BACK_FOR = 10;
 /**
  * - `week`: what `planWeek` answered.
  * - `badges`: today's, as minutes. `now`: minutes since midnight.
+ * - `rules`: `readRules(...).rules`; today's are derived from them, with the
+ *   afternoon off when the plan says so.
  *
  * Tones: `normal`, `success`, `warning`, `danger`, and `muted` for a state
  * with nothing to act on.
  */
-export function dayStatus({ week, badges, weekday, now, rules = SCHEDULE }) {
+export function dayStatus({ week, badges, weekday, now, rules: weekRules = DEFAULT_RULES }) {
   const plan = week.today;
   if (!plan) {
     return week.status === 'reached'
@@ -37,6 +39,7 @@ export function dayStatus({ week, badges, weekday, now, rules = SCHEDULE }) {
       : { key: 'weekend', tone: 'muted', vars: { done: week.done, target: week.target } };
   }
   if (plan.off) return { key: 'dayOff', tone: 'muted', vars: {} };
+  const rules = dayRules(weekRules, weekday, plan.half);
 
   if (badges.length === 0) {
     if (now < rules.arriveFrom) return { key: 'beforeArrival', tone: 'muted', vars: { time: rules.arriveFrom } };
@@ -63,9 +66,13 @@ export function dayStatus({ week, badges, weekday, now, rules = SCHEDULE }) {
       left: Math.max(0, lunch.earliestReturn - now),
       by: rules.lunchEndBy,
     };
-    const progress = Math.min(1, lunch.credited / rules.lunchMinimum);
+    const progress = rules.lunchMinimum > 0 ? Math.min(1, lunch.credited / rules.lunchMinimum) : 1;
     if (now >= rules.lunchEndBy) return { key: 'lunchOverrun', tone: 'danger', vars, progress };
     if (now >= rules.lunchEndBy - DEADLINE) return { key: 'lunchEndSoon', tone: 'warning', vars, progress };
+    // Started after the latest start: its hour cannot fit before the window
+    // closes, and nothing after it is credited, so what there is to say is
+    // when to be back -- not an hour after it began.
+    if (lunch.late) return { key: 'lunchLate', tone: 'warning', vars: { ...vars, start: rules.lunchStartBy }, progress };
     if (now >= lunch.earliestReturn) return { key: 'lunchDone', tone: 'success', vars, progress };
     return { key: 'lunch', tone: 'normal', vars, progress };
   }
@@ -73,8 +80,9 @@ export function dayStatus({ week, badges, weekday, now, rules = SCHEDULE }) {
   // Working.
   if (now >= plan.leaveBy) return { key: 'pastLatest', tone: 'danger', vars: { time: plan.leaveBy } };
 
-  // Lunch is owed only by somebody who was here before it had to start.
-  if (!lunch && badges[0] < rules.lunchStartBy) {
+  // Lunch is owed only by somebody who was here before it had to start, and
+  // not on an afternoon off, which ends where lunch would begin.
+  if (!lunch && rules.takesLunch && badges[0] < rules.lunchStartBy) {
     if (now >= rules.lunchFrom - LUNCH_SOON && now < rules.lunchFrom) {
       return { key: 'lunchSoon', tone: 'normal', vars: { left: rules.lunchFrom - now, time: rules.lunchFrom } };
     }
@@ -114,7 +122,7 @@ export function dayStatus({ week, badges, weekday, now, rules = SCHEDULE }) {
   if (now >= plan.leaveBy - LATEST_SOON) {
     return { key: 'latestSoon', tone: 'warning', vars: { ...leave, time: plan.leaveBy } };
   }
-  if (!lunch && now < rules.lunchFrom) {
+  if (!lunch && rules.takesLunch && now < rules.lunchFrom) {
     return { key: 'started', tone: 'normal', vars: { ...leave, arrival: badges[0] }, progress: plan.progress };
   }
   return { key: 'working', tone: 'normal', vars: leave, progress: plan.progress };

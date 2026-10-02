@@ -1964,6 +1964,8 @@
       modUpdateGo: "Update",
       modUpdateWorking: "Downloading\u2026",
       modUpdateBlocked: "{name} {version} needs BetterSlack {needs}, and this is {running}. Update BetterSlack first \u2014 taking it now would leave a mod calling things this version does not have.",
+      networkTo: "Talks to {addresses}, through BetterSlack.",
+      networkUnset: "Talks to a server of your choosing, once you give its address.",
       slackTooOld: "Written against Slack {wanted}, and this is {have}. It may not find what it expects.",
       cssHint: "Applied after every theme, so it always wins. Slack exposes its palette as CSS custom properties (--dt_color-*), which is a steadier target than its class names.",
       cssSave: "Save and apply",
@@ -2091,6 +2093,8 @@
       modUpdateGo: "Mettre \xE0 jour",
       modUpdateWorking: "T\xE9l\xE9chargement\u2026",
       modUpdateBlocked: "{name} {version} n\xE9cessite BetterSlack {needs}, et vous avez {running}. Mettez d'abord BetterSlack \xE0 jour \u2014 sinon ce mod appellerait des choses que cette version n'a pas.",
+      networkTo: "Communique avec {addresses}, via BetterSlack.",
+      networkUnset: "Communique avec un serveur de votre choix, une fois son adresse indiqu\xE9e.",
       slackTooOld: "\xC9crit pour Slack {wanted}, et vous avez {have}. Il peut ne pas trouver ce qu'il attend.",
       cssHint: "Appliqu\xE9 apr\xE8s tous les th\xE8mes, il l\u2019emporte donc toujours. Slack expose sa palette en propri\xE9t\xE9s CSS personnalis\xE9es (--dt_color-*), une cible plus stable que ses noms de classe.",
       cssSave: "Enregistrer et appliquer",
@@ -3873,6 +3877,7 @@
   }
   function within(url, base) {
     if (url.origin !== base.origin) return false;
+    if (/%2f|%5c/i.test(url.pathname)) return false;
     if (url.pathname === base.pathname) return true;
     const folder = base.pathname.endsWith("/") ? base.pathname : `${base.pathname}/`;
     return url.pathname.startsWith(folder);
