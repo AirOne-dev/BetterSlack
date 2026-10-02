@@ -18,6 +18,7 @@ import type { Bridge } from './rpc.js';
 import { createSlackEvents, type SlackEvents } from './slack-events.js';
 import { inlineCssImports, StyleManager } from './themes.js';
 import type { Command as PaletteCommand } from './ui/palette.js';
+import { offerIconRestart } from './ui/dock-icon.js';
 
 /** Slack's client shell. Present once the app has rendered, absent while it boots. */
 const CLIENT_SELECTOR = '.p-client_container';
@@ -253,6 +254,14 @@ export class ModManager {
       .request<{ state?: DockIconState }>({ type: 'app.dockIcon', action })
       .catch(() => null);
     return answer?.state ?? 'unsupported';
+  }
+
+  /** Whether restarting Slack would change its Dock icon -- after a theme switch, say. */
+  async dockIconPending(): Promise<boolean> {
+    const answer = await this.bridge
+      .request<{ pending?: boolean }>({ type: 'app.dockIcon', action: 'status' })
+      .catch(() => null);
+    return answer?.pending === true;
   }
 
   /** Stop Slack and launch it again, through the loader -- the same process carries on. */
@@ -725,6 +734,7 @@ export class ModManager {
     // copy, and another Slack window may have changed it since this one loaded.
     this.settings = await this.bridge.request<Settings>({ type: 'mod.enable', id, enabled });
     this.notify();
+    if (record.type === 'theme') void offerIconRestart(this);
   }
 
   /** Apply or drop mods so this window matches `next`. */

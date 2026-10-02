@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { offerDockIcon } from '../dist/ui/dock-icon.mjs';
+import { offerDockIcon, offerIconRestart } from '../dist/ui/dock-icon.mjs';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -109,5 +109,34 @@ test('still refused after the pane: no restart for nothing', async () => {
     button('Restart Slack').click();
     await offer;
     assert.ok(!manager.calls.some(([kind]) => kind === 'restart'));
+  });
+});
+
+/** Every button on the page, inside shadow roots too: toasts live in one. */
+function allButtons(root = document) {
+  const found = [...root.querySelectorAll('button')];
+  for (const node of root.querySelectorAll('*')) if (node.shadowRoot) found.push(...allButtons(node.shadowRoot));
+  return found;
+}
+
+test('a theme switch that does not move the icon offers nothing', async () => {
+  await withDom(async () => {
+    const manager = { ...fakeManager(), dockIconPending: async () => false };
+    await offerIconRestart(manager);
+    assert.deepEqual(allButtons(), []);
+  });
+});
+
+test('one that does offers the restart, and only offers it', async () => {
+  await withDom(async () => {
+    const base = fakeManager();
+    const manager = { ...base, dockIconPending: async () => true };
+    await offerIconRestart(manager);
+    assert.ok(!base.calls.some(([kind]) => kind === 'restart'), 'nothing restarts by itself');
+    const restart = allButtons().find((b) => b.textContent.trim() === 'Restart Slack');
+    assert.ok(restart, 'the toast carries the button');
+    restart.click();
+    await wait(10);
+    assert.ok(base.calls.some(([kind]) => kind === 'restart'));
   });
 });

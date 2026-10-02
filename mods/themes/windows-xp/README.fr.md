@@ -17,7 +17,7 @@ Slack en Luna, l'apparence livrée avec Windows XP en 2001. Chaque couleur vient
 
 ## Son icône et son écran de démarrage
 
-Tant que le thème est activé, BetterSlack porte son logo à la manière d'XP -- brillant, cerné, dans une fenêtre Luna -- dans le Dock sur macOS, dès que le thème est activé. Et l'écran qui couvre Slack pendant son démarrage est celui d'XP : fond noir, le logo, et les trois blocs bleus qui glissent dans leur piste.
+Tant que le thème est activé, BetterSlack porte son logo à la manière d'XP -- brillant, cerné, dans une fenêtre Luna -- dans le Dock sur macOS, dès le prochain démarrage de Slack (activer le thème propose de le relancer). Et l'écran qui couvre Slack pendant son démarrage est celui d'XP : fond noir, le logo, et les trois blocs bleus qui glissent dans leur piste.
 
 ## Fonctionne avec tous les plugins
 

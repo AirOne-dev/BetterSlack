@@ -17,7 +17,7 @@ Slack in Luna, the look Windows XP shipped with in 2001, with every colour taken
 
 ## Its own icon and boot screen
 
-While the theme is on, BetterSlack wears its mark the way XP drew things -- glossy, outlined, inside a Luna window -- in the Dock on macOS, as soon as the theme is switched on. And the screen that covers Slack while it starts is XP's boot screen: black, the mark, and the three blue blocks sliding along their track.
+While the theme is on, BetterSlack wears its mark the way XP drew things -- glossy, outlined, inside a Luna window -- in the Dock on macOS, from Slack's next start (switching the theme on offers the restart). And the screen that covers Slack while it starts is XP's boot screen: black, the mark, and the three blue blocks sliding along their track.
 
 ## Works with every plugin
 

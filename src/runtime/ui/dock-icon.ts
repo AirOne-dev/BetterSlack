@@ -51,6 +51,23 @@ export async function requestDockIcon(manager: ModManager): Promise<boolean> {
   return true;
 }
 
+/**
+ * After a theme switch that changes the icon: the launcher already wears it,
+ * Slack's tile only at its next start -- the Dock draws a running app with
+ * the icon it launched with -- so the restart is offered, never imposed.
+ */
+export async function offerIconRestart(manager: ModManager): Promise<void> {
+  try {
+    if (!(await manager.dockIconPending())) return;
+    toast(t('dockIconPending'), {
+      duration: 12_000,
+      action: { label: t('dockIconRestart'), onClick: () => void manager.restartSlack() },
+    });
+  } catch {
+    // Nothing to say: the icon changes at the next start either way.
+  }
+}
+
 /** At startup: ask once, and only when the icon was refused. */
 export async function offerDockIcon(manager: ModManager): Promise<void> {
   try {
