@@ -472,6 +472,23 @@ is the same check offered to a user, as a command. What it has to cover:
   stages something a client always has. The palette's `>` message search has
   results only if the words are in *this* workspace, and no word always is
   (`>ok` can come back empty), so there is deliberately no frame for it.
+- **A mod that talks to a server is photographed against an invented one.**
+  `pnpm shoot --mods` starts `scripts/shoot-gitlab.mjs` when the GitLab plugin is
+  among the pictures: an https server on the loopback interface with a
+  certificate made for the run (`openssl`), answering the five reads the plugin
+  makes from invented projects, merge requests, pipelines and jobs, and 401 to a
+  request without the demo token in the header the manifest names. The loader --
+  which makes the requests -- is started with `NODE_EXTRA_CA_CERTS` pointing at
+  that certificate (it is read when the process starts, so it is set by the
+  launcher, not by the recipe). The recipe signs in as a person does: the
+  address goes in the mod's settings and the token to the loader through the
+  bridge's `net.credential`, and nothing is written for the plugin to read. Every
+  name is invented and none a word Slack is likely to show, since a string that
+  was on screen before the sweep and is there after it fails the run.
+- **BetterSlack's own dialogs can be over the first picture.** The Dock icon
+  dialog opens once as the client starts. A full run never saw it -- an earlier
+  mod's frame ended with an Escape -- but a run for one mod (`--only`) has no
+  earlier frame, so the recipe closes whatever is open before the first one.
 - **`shoot.mjs` files only what the run took, and clears up after itself.**
   `site/shots/mods` is also where `pnpm site` puts a copy of every committed
   screenshot, so the folder is full before a run starts; filing whatever is in
@@ -847,6 +864,14 @@ tests fail below it.
     it. It is a plain file, not a keychain entry, and is not described as
     encrypted anywhere.
   - **No redirect carries it**, since none is followed.
+
+  What it is *not* is isolation between plugins. The loader is told which mod a
+  `net.request` or `net.credential` is for by the message the page sends, and
+  every plugin shares the page and its bridge binding, so a plugin that talks to
+  the bridge directly can have a request made as another mod -- answer included
+  -- or replace its secret. It can never read the token. That is the review
+  contract `api.net` already is, with a secret attached, and the reason a mod
+  holding one is read before it merges.
   `src/loader/net-credentials.ts` is the file; `tests/net-credentials.test.mjs`
   holds the negative properties.
 - **At a cold start the URL names a workspace the client is not showing.**
@@ -1050,6 +1075,46 @@ tests fail below it.
   middle; first in the row, it pushes Slack's own button over to the others.
   Quelio sits before the button group and takes that margin over while it is
   there, scoped with `:has()`, so nothing of Slack's moves.
+- **The top bar's far left is an empty container.** Measured in Slack 4.51 at
+  2560px: `.p-ia4_top_nav__container_wrapper` starts at 76px (after
+  `.p-ia4_top_nav__native_ui_spacer`, the room for the window's own buttons) and
+  holds `.p-ia4_top_nav__left_container`, whose first child
+  `.p-ia4_top_nav__left_container--start` is a flex container 226px wide
+  (`justify-content: flex-start`) with **nothing in it**; the history arrows are
+  in `--end`, after it, pushed to its right: about half of `--end` is empty
+  too. A mod's bar mounted in `--start` is the first thing in the top bar and
+  moves nothing of Slack's. **Slack sets `flex-grow: 1; flex-basis: 0` on
+  `--start`, `--end` and the container as inline styles**, which no ordinary
+  rule outranks: letting `--start` grow into the empty half of `--end` (`flex: 1
+  1 auto`, with `--end` at `0 0 auto`) takes `!important`, scoped with `:has()`
+  to while the bar is there. Measured at 2560: `--start` 246px -> 399px, `--end`
+  246 -> 92, and the history arrows (475) and the search (579) do not move,
+  because the pair keeps its width.
+  Two traps in it, both measured: sized by `flex-basis: auto`, `--start` took the
+  bar's *content* width, the container grew with it and the arrows moved 17px and
+  the search 17px -- `flex: 1 1 0` is what keeps the pair's width -- and even then
+  a child's minimum content width grows `.p-ia4_top_nav__left_container`, which
+  `contain: inline-size` on `--start` stops without clipping anything.
+  **`.p-ia4_top_nav__native_ui_spacer`** (76px at 2560) is the room for the
+  window's own buttons; a full-screen window has none, so a bar may then start 14px
+  from the edge by a negative margin of the spacer's width less 14px -- read from
+  the spacer, so a platform that reserves nothing is not moved. Full screen is
+  `innerWidth/innerHeight` equal to `screen.width/height`: `matchMedia
+  ('(display-mode: fullscreen)')` is **false** in a macOS native full-screen
+  Electron window (measured).
+
+- **Slack's top bar is the window's drag handle, and anything a mod puts in it
+  has to opt out.** Measured in Slack 4.51 with `getComputedStyle(el)
+  .webkitAppRegion`: `.p-ia4_top_nav`, `.p-ia4_top_nav__container_wrapper`,
+  `.p-ia4_top_nav__left_container` and `--start` are `drag`; the history buttons,
+  the search and the right-hand items are `no-drag`. A button added inside a
+  `drag` region does not receive the click -- the operating system takes it as
+  the start of dragging the window -- and no error says so. `-webkit-app-region:
+  no-drag` on the mod's own element is the whole fix. **A CDP click does not
+  reproduce this** (`Input.dispatchMouseEvent` reaches the page without going
+  through the window system), so a probe that clicks the bar and sees it open
+  proves the handler and says nothing about the drag region: read the computed
+  value instead.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
 - **Slack's own "(edited)" is `.c-message__edited_label`**, a visible span
