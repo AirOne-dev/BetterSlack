@@ -22,8 +22,11 @@ import {
   customFor,
   fallbackFor,
   fileNameFor,
+  indexFromText,
   indexOf,
+  indicesFor,
   labelFor,
+  optionLabel,
   reconcile,
   soundFromUrl,
   valueAt,
@@ -301,24 +304,26 @@ export default {
       return Boolean(done);
     }
 
-    /** Labels, in the reader's language, by option index -- the same in every select. */
-    const labels = new Map();
     /**
-     * Each slot's options, read once when Preferences comes up, so a picker
-     * opens on the click rather than after a round trip through Slack's list.
+     * Which option a slot's select holds, read off its own text -- no list
+     * opened. Null where the text is in a language this does not know, and
+     * then, only when it matters, Slack's list is read instead.
      */
-    const optionsBySlot = new Map();
-    function learnLabels(options) {
-      for (const option of options ?? []) if (option.index > 0) labels.set(option.label, option.index);
+    const shownIndex = (slot) => indexFromText(button(slot)?.textContent, slot);
+
+    async function selectedIndex(slot) {
+      const shown = shownIndex(slot);
+      if (shown !== null) return shown;
+      const options = await readOptions(slot);
+      return options?.find((option) => option.selected)?.index ?? null;
     }
 
-    /** What every slot holds right now, as Slack values, read off the selects' own text. */
+    /** What every slot holds right now, as Slack values; a slot it cannot read is left out. */
     function currentValues() {
       const values = {};
       for (const slot of SLOTS) {
-        const text = button(slot)?.textContent.trim();
-        if (!text) continue;
-        values[slot] = labels.has(text) ? valueAt(labels.get(text)) : NONE;
+        const index = shownIndex(slot);
+        if (index !== null) values[slot] = valueAt(index);
       }
       return values;
     }
@@ -338,13 +343,11 @@ export default {
     /** Give a slot one of your sounds, through a carrier. */
     async function chooseCustom(slot, id) {
       const teamId = team();
-      const options = await readOptions(slot);
-      if (!options?.length) {
+      if (!button(slot)) {
         api.ui.toast(t('openPrefs'), { variant: 'warning' });
         return;
       }
-      learnLabels(options);
-      const selected = options.find((option) => option.selected)?.index ?? 0;
+      const selected = (await selectedIndex(slot)) ?? 0;
       const existing = mine(teamId)[slot];
       // The sound to come back to is the last real choice, never a carrier.
       const previous = existing?.previous ?? valueAt(selected);
@@ -385,11 +388,6 @@ export default {
       }
       pending = { ...pending, [teamId]: waiting };
       await api.settings.set('pending', pending);
-      // Only with labels to read the selects by, or every slot reads as None.
-      if (!labels.size) {
-        refreshButtons();
-        return;
-      }
       const values = currentValues();
       let changed = false;
       for (const step of reconcile(values, mine(teamId))) {
@@ -699,26 +697,20 @@ export default {
     }
 
     /**
-     * Slack's own options -- its labels, in the reader's language, and the
-     * list that slot really offers (huddles have one more) -- then yours.
+     * Slack's own options, then yours -- opened on the click, with nothing of
+     * Slack's opened first. Reading Slack's list to build this one put a
+     * hidden list on screen for a moment, which with Motion switched on was a
+     * frame drawn and gone before the menu appeared; and the list is
+     * virtualised, so a read could miss "None" altogether. The options are
+     * Slack's fixed table, and their labels are Slack's own, kept in sounds.js.
      */
     async function openPicker(slot, anchor) {
-      let options = optionsBySlot.get(slot);
-      if (!options || !options.some((option) => option.index === 0)) {
-        options = await readOptions(slot);
-        // Kept only when whole: a list read without its first option is the
-        // virtualised list showing a window of itself, and caching that is how
-        // "None" went missing for good.
-        if (options?.some((option) => option.index === 0)) optionsBySlot.set(slot, options);
-        learnLabels(options);
-      }
-      // What Slack holds now, by its own words on its own button.
-      const shown = button(slot)?.textContent.trim();
+      const shown = shownIndex(slot);
       const assignment = mine()[slot];
-      const items = (options ?? []).map((option) => ({
-        label: option.label,
-        icon: !assignment && option.label === shown ? CHECK : undefined,
-        onSelect: () => chooseSlack(slot, option.index),
+      const items = indicesFor(slot).map((index) => ({
+        label: optionLabel(index, slot, api.i18n.language),
+        icon: !assignment && index === shown ? CHECK : undefined,
+        onSelect: () => chooseSlack(slot, index),
       }));
       if (sounds.length) {
         items.push({ label: t('yourSounds'), disabled: true, onSelect: () => undefined });
@@ -795,7 +787,12 @@ export default {
         overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; }
       /* While this plugin works Slack's select, its list is never seen. */
       html.betterslack-custom-sounds-busy .c-select_options_list,
-      html.betterslack-custom-sounds-busy .c-select_options_list * { opacity: 0 !important; }
+      html.betterslack-custom-sounds-busy .ReactModal__Overlay:has([role="listbox"]),
+      html.betterslack-custom-sounds-busy .ReactModal__Content:has([role="listbox"]),
+      html.betterslack-custom-sounds-busy [class*="popover"]:has([role="listbox"]) {
+        opacity: 0 !important; animation: none !important; transition: none !important;
+        box-shadow: none !important; pointer-events: none !important;
+      }
       .betterslack-custom-sounds__select { min-width: 225px; justify-content: space-between; }
       .betterslack-custom-sounds__select.c-input_select { margin: 0; }
       .betterslack-custom-sounds__list { display: flex; flex-direction: column; gap: 8px; }

@@ -212,6 +212,30 @@ test('a virtualised list opened at its bottom still offers None', async () => {
   }
 });
 
+test('a picker opens without opening Slack\'s list, and always starts with its option 0', async () => {
+  const h = harness({ settings: { sounds: MINE }, files: { 's1.mp3': 'x' } });
+  try {
+    const sent = slackSelect('dm_sent_sound', 0, { virtual: true });
+    slackSelect('priority_desktop_sound', 0);
+    await plugin.start(h.api);
+    await settled();
+    await settle();
+    document.querySelector('[data-custom-sounds-slot="dm_sent_sound"]').click();
+    await settle();
+    // Nothing of Slack's put on screen first: with Motion on, that was a
+    // frame drawn and gone before the menu appeared.
+    assert.equal(sent.opens, 0);
+    const items = h.recorded.menus.at(-1).items;
+    assert.equal(items[0].label, 'None');
+    assert.ok(items[0].icon, 'and it is ticked when it is the choice');
+    document.querySelector('[data-custom-sounds-slot="priority_desktop_sound"]').click();
+    await settle();
+    assert.equal(h.recorded.menus.at(-1).items[0].label, 'Same as messages sound');
+  } finally {
+    await h.done();
+  }
+});
+
 test('Preferences coming up opens none of Slack\'s lists', async () => {
   const h = harness({ settings: { sounds: MINE }, files: { 's1.mp3': 'x' } });
   try {

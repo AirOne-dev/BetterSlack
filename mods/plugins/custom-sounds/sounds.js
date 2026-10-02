@@ -47,6 +47,51 @@ export const SLACK_SOUNDS = [
   { value: 'boop.mp3', label: 'Boop' },
 ];
 
+/*
+ * What Slack calls each option, by index, in the languages BetterSlack
+ * speaks -- read off Slack's own lists in Preferences, not translated here.
+ * Index 0 is "None" (VIP's says "Same as messages sound" instead), 14 the
+ * huddles' extra. Known labels are what lets a picker open without opening
+ * Slack's list first, and what lets a select's own text say which option it
+ * holds. A language not listed falls back to English and, where Slack's text
+ * does not match, to reading Slack's list.
+ */
+export const OPTION_LABELS = {
+  en: ['None', 'Ding', 'Boing', 'Drop', 'Ta-da', 'Plink', 'Wow', 'Here you go', 'Hi',
+    'Knock Brush', 'Whoa!', 'Yoink', 'Hummus', 'Boop', 'Boop Plus'],
+  fr: ['Aucun', 'Ding', 'Boing', 'Chute', 'Ta-da', 'Plink', 'Oh !', 'Et voilà', 'Bonjour',
+    'Knock Brush', 'Waouh !', 'Yoink', 'Houmous', 'Bip', 'Bip plus'],
+};
+export const SAME_AS_MESSAGES = { en: 'Same as messages sound', fr: 'Identique au son des messages' };
+
+/** Slack writes "Oh !" with a no-break space; compare words, not spacing. */
+export const normalise = (text) => String(text ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+/** The indices a slot's list has: huddles have one more. */
+export function indicesFor(slot) {
+  const last = slot === 'huddle_invite_sound' ? 14 : 13;
+  return Array.from({ length: last + 1 }, (_, index) => index);
+}
+
+/** An option's label in `language`, English where that language is not listed. */
+export function optionLabel(index, slot, language) {
+  const lang = OPTION_LABELS[language] ? language : 'en';
+  if (index === 0 && slot === 'priority_desktop_sound') return SAME_AS_MESSAGES[lang];
+  return OPTION_LABELS[lang][index];
+}
+
+/** Which option a select's own text names, in any known language; null if none. */
+export function indexFromText(text, slot) {
+  const wanted = normalise(text);
+  if (!wanted) return null;
+  for (const language of Object.keys(OPTION_LABELS)) {
+    for (const index of indicesFor(slot)) {
+      if (normalise(optionLabel(index, slot, language)) === wanted) return index;
+    }
+  }
+  return null;
+}
+
 /** Huddles offer one more, at the end of their list. */
 export const HUDDLE_ONLY = { value: 'boop_remix.mp3', label: 'Boop Plus' };
 
