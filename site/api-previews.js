@@ -3820,6 +3820,122 @@
     { key: "notificationPlayback", type: "string", restart: true, defaults: false, note: `Who plays a notification's sound: "web" is Slack, in the page; "system" hands it to the operating system with the files Slack ships. Read at launch -- and on macOS 12 and later Slack forces "system" at every launch, so a value written here does not survive there.` },
     { key: "zoomLevel", type: "number", restart: true, defaults: false, note: "Interface zoom, in Chromium steps." }
   ];
+  var NET_TIMEOUT_MS = 25e3;
+
+  // src/loader/net.ts
+  var MAX_ANSWER_BYTES = 4 * 1024 * 1024;
+  var MAX_FORM_BYTES = 64 * 1024;
+  var MAX_FORM_FIELDS = 50;
+  function httpsUrl(value) {
+    let url;
+    try {
+      url = new URL(value);
+    } catch {
+      return null;
+    }
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    return url;
+  }
+  function allowedBases(record, values) {
+    const bases = [];
+    for (const key of record.network?.settings ?? []) {
+      const declared = record.settings?.find((field) => field.key === key);
+      const value = key in values ? values[key] : declared?.default;
+      if (typeof value !== "string" || !value.trim()) continue;
+      const base = httpsUrl(value.trim());
+      if (base) bases.push(base);
+    }
+    return bases;
+  }
+  function within(url, base) {
+    if (url.origin !== base.origin) return false;
+    if (url.pathname === base.pathname) return true;
+    const folder = base.pathname.endsWith("/") ? base.pathname : `${base.pathname}/`;
+    return url.pathname.startsWith(folder);
+  }
+  function isForm(value) {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const entries = Object.entries(value);
+    return entries.length <= MAX_FORM_FIELDS && entries.every(([key, field]) => key !== "" && typeof field === "string");
+  }
+  var TooLarge = class extends Error {
+  };
+  var failure = (error) => ({ error });
+  function isTimeout(err) {
+    const name = err?.name;
+    return name === "TimeoutError" || name === "AbortError";
+  }
+  async function readCapped(response, max) {
+    if (Number(response.headers.get("content-length") ?? "0") > max) {
+      await response.body?.cancel().catch(() => void 0);
+      throw new TooLarge();
+    }
+    if (!response.body) return "";
+    const reader = response.body.getReader();
+    const chunks = [];
+    let size = 0;
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > max) {
+        await reader.cancel().catch(() => void 0);
+        throw new TooLarge();
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(bytes);
+  }
+  function parseJson(text) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }
+  async function netRequest(record, enabled, values, request, fetchImpl = fetch) {
+    if (!record || record.type !== "plugin" || !enabled) return failure("blocked");
+    const url = typeof request.url === "string" ? httpsUrl(request.url) : null;
+    if (!url) return failure("blocked");
+    url.hash = "";
+    if (!allowedBases(record, values).some((base) => within(url, base))) return failure("blocked");
+    const method = request.method ?? (request.form === void 0 ? "GET" : "POST");
+    if (method !== "GET" && method !== "POST") return failure("invalid");
+    let body;
+    if (request.form !== void 0) {
+      if (method !== "POST" || !isForm(request.form)) return failure("invalid");
+      body = new URLSearchParams(request.form).toString();
+      if (body.length > MAX_FORM_BYTES) return failure("invalid");
+    }
+    let response;
+    try {
+      response = await fetchImpl(url.href, {
+        method,
+        body,
+        headers: body === void 0 ? { accept: "application/json" } : { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
+        redirect: "manual",
+        signal: AbortSignal.timeout(NET_TIMEOUT_MS)
+      });
+    } catch (err) {
+      return failure(isTimeout(err) ? "timeout" : "network");
+    }
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel().catch(() => void 0);
+      return { status: response.status, json: null };
+    }
+    try {
+      return { status: response.status, json: parseJson(await readCapped(response, MAX_ANSWER_BYTES)) };
+    } catch (err) {
+      if (err instanceof TooLarge) return failure("too-large");
+      return failure(isTimeout(err) ? "timeout" : "network");
+    }
+  }
 
   // src/runtime/ui/kit.ts
   function createKit(doc = document) {
@@ -7305,6 +7421,40 @@ ${JSON.stringify(url)}`, "javascript"),
           button,
           out,
           stubbed("The loader fetches it, because Slack\u2019s CDN serves without CORS headers and the renderer cannot.")
+        ];
+      }
+    },
+    "net-request": {
+      render: (v) => {
+        const record = {
+          id: "hours",
+          type: "plugin",
+          settings: [{ key: "apiUrl", type: "text", label: "Server address" }],
+          network: { settings: ["apiUrl"] }
+        };
+        const server = async () => new Response(
+          JSON.stringify({ week: "2026-w-40", paid: "29:42" }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        const send = kit.button("Send it", { variant: "primary" });
+        send.addEventListener("click", async () => {
+          const answer = await netRequest(record, true, { apiUrl: v.base }, {
+            url: v.url,
+            method: "POST",
+            form: { username: "robin", token: "\u2026" }
+          }, server);
+          out.textContent = JSON.stringify(answer, null, 2);
+        });
+        return [
+          source(`// "network": { "settings": ["apiUrl"] }, apiUrl = '${v.base}'
+const answer = await api.net.request('${v.url}', {
+  method: 'POST',
+  form: { username, token },
+});`),
+          send,
+          out,
+          stubbed("The rule that allows or refuses the address is the loader\u2019s own. The server answering is imitated.")
         ];
       }
     },

@@ -43,6 +43,24 @@ the theme lists it in `requires`. What a review looks for:
 - **Say in the pull request why CSS could not do it.** "The account strip needs
   a display name and CSS cannot fetch one" is an answer. "It was easier" is not.
 
+## Talking to a server of your own
+
+A page cannot read the answer of a server that sends no CORS headers, which is
+most of them. `api.net.request` has the loader make the request instead, and
+only to an address held by a setting your manifest names:
+
+```json
+{
+  "settings": [{ "key": "apiUrl", "type": "text", "label": "Server address" }],
+  "network": { "settings": ["apiUrl"] }
+}
+```
+
+So the address is the user's, typed and shown in the panel, and a reviewer reads
+one line to know where your mod can talk. Say in the pull request what the
+server is and exactly what is sent to it -- and never anything that came from
+Slack.
+
 ## Text a user reads
 
 Every plugin here ships **English and French**, through `api.i18n.strings()`.

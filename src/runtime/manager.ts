@@ -2,6 +2,7 @@
 
 import {
   missingRequirements,
+  NET_TIMEOUT_MS,
   type Event as PushEvent,
   type LoaderInfo,
   type ModFiles,
@@ -9,6 +10,7 @@ import {
   type RemoteMod,
   type Settings,
   type ModUpdate,
+  type NetResult,
   type UpdateStatus,
 } from '../shared/protocol.js';
 import { createPluginApi } from './api.js';
@@ -21,6 +23,8 @@ import type { Command as PaletteCommand } from './ui/palette.js';
 /** Slack's client shell. Present once the app has rendered, absent while it boots. */
 const CLIENT_SELECTOR = '.p-client_container';
 const CLIENT_TIMEOUT_MS = 20_000;
+/** Longer than the loader's own wait, so its `timeout` answer arrives first. */
+const NET_BRIDGE_TIMEOUT_MS = NET_TIMEOUT_MS + 5_000;
 
 /**
  * Resolve once Slack has built its client, or after CLIENT_TIMEOUT_MS -- never
@@ -628,6 +632,17 @@ export class ModManager {
           url,
           filename,
         }),
+      /*
+       * Waited on longer than any other request, and never left to reject.
+       *
+       * The loader answers within its own timeout, which is shorter than this
+       * one, so a `timeout` arrives as a value; the bridge giving up as well
+       * means the loader is gone, which for a mod is a server it cannot reach.
+       */
+      netRequest: (modId, url, { method, form }) =>
+        this.bridge
+          .request<NetResult>({ type: 'net.request', modId, url, method, form }, NET_BRIDGE_TIMEOUT_MS)
+          .catch((): NetResult => ({ error: 'network' })),
       listThemes: () =>
         this.mods
           .filter((m) => m.type === 'theme')

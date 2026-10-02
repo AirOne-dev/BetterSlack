@@ -123,12 +123,14 @@ const runtimeModules = {
 };
 
 /**
- * Pure loader helpers, emitted so `tests/download.test.mjs` can exercise the
- * download guards without pulling in the whole loader entry point.
+ * Pure loader helpers, emitted so `tests/download.test.mjs` and
+ * `tests/net.test.mjs` can exercise the download and request guards without
+ * pulling in the whole loader entry point.
  */
 const loaderLib = {
   entryPoints: [
     `${root}/src/loader/download.ts`,
+    `${root}/src/loader/net.ts`,
     `${root}/src/loader/update.ts`,
     `${root}/src/loader/catalog.ts`,
     `${root}/src/loader/mod-updates.ts`,

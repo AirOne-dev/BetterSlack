@@ -174,6 +174,13 @@ export function createTestApi({
   // The catalogue a mod sees through `api.app`. Empty by default: a mod that
   // reads it should behave with nothing installed.
   mods = [],
+  /*
+   * The server behind `api.net.request`: `(url, options) => answer`, where the
+   * answer is what the loader would hand back -- `{ status, json }` or
+   * `{ error }`. Refused by default, which is what the loader says to a mod
+   * whose manifest names no address.
+   */
+  net = async () => ({ error: 'blocked' }),
 } = {}) {
   const recorded = {
     css: [],
@@ -215,6 +222,8 @@ export function createTestApi({
     watching: [],
     /** Whoever asked to hear about the workspace changing. */
     teamListeners: [],
+    /** Every `api.net.request(...)`, in order: `{ url, method, form }`. */
+    requests: [],
   };
 
   /*
@@ -721,6 +730,13 @@ export function createTestApi({
         name, bytes: entry.bytes.byteLength, modified: entry.modified,
       })),
       remove: async (name) => recorded.data.delete(name),
+    },
+
+    net: {
+      request: async (url, options = {}) => {
+        recorded.requests.push({ url, method: options.method, form: options.form });
+        return net(url, options);
+      },
     },
 
     // The mod's own folder. Tests that need it pass `files` to createTestApi;

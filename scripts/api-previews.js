@@ -31,6 +31,7 @@ import { createSlackEvents } from '../src/runtime/slack-events.js';
 import { h } from '../src/runtime/dom.js';
 import { SLACK_FIXTURE } from '../tests/slack-fixture.mjs';
 import { SLACK_PREFS } from '../src/shared/protocol.js';
+import { netRequest } from '../src/loader/net.js';
 import { createKit } from '../src/runtime/ui/kit.js';
 import { KIT_CSS } from '../src/runtime/ui/kit-css.js';
 import { createHelpers } from '../src/runtime/helpers.js';
@@ -1717,6 +1718,42 @@ const IMITATED = {
         button,
         out,
         stubbed('The loader fetches it, because Slack’s CDN serves without CORS headers and the renderer cannot.'),
+      ];
+    },
+  },
+
+  'net-request': {
+    render: (v) => {
+      // A mod declaring one address setting, as a manifest would.
+      const record = {
+        id: 'hours',
+        type: 'plugin',
+        settings: [{ key: 'apiUrl', type: 'text', label: 'Server address' }],
+        network: { settings: ['apiUrl'] },
+      };
+      // The server is imitated. Whether it is asked at all is decided by the
+      // loader's own function, run here as it runs in Node.
+      const server = async () => new Response(
+        JSON.stringify({ week: '2026-w-40', paid: '29:42' }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+      const out = kit.el('pre', { class: 'pg__out' }, ['']);
+      const send = kit.button('Send it', { variant: 'primary' });
+      send.addEventListener('click', async () => {
+        const answer = await netRequest(record, true, { apiUrl: v.base }, {
+          url: v.url,
+          method: 'POST',
+          form: { username: 'robin', token: '…' },
+        }, server);
+        out.textContent = JSON.stringify(answer, null, 2);
+      });
+      return [
+        source(`// "network": { "settings": ["apiUrl"] }, apiUrl = '${v.base}'\n`
+          + `const answer = await api.net.request('${v.url}', {\n`
+          + `  method: 'POST',\n  form: { username, token },\n});`),
+        send,
+        out,
+        stubbed('The rule that allows or refuses the address is the loader’s own. The server answering is imitated.'),
       ];
     },
   },

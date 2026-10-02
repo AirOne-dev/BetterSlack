@@ -44,6 +44,19 @@ export interface ModManifest {
   settings?: ModSettingField[];
 
   /**
+   * Plugins only: which of its settings hold an address `api.net` may reach.
+   *
+   * A page cannot read the answer of a server that sends no CORS headers, so
+   * `api.net` has the loader make the request -- and the loader only makes it
+   * to an address held by one of the settings named here. A reviewer reads one
+   * line to know where a mod can talk; the address itself is the user's, typed
+   * and shown in the panel like any other setting.
+   *
+   * Every key must be a declared `text` setting.
+   */
+  network?: { settings: string[] };
+
+  /**
    * A square mark for the mod, as a file in its folder -- `icon.svg`.
    *
    * SVG rather than a bitmap: it is drawn at four sizes between the panel's
@@ -376,6 +389,12 @@ export type Request =
   | { type: 'data.read'; id: string; name: string }
   | { type: 'data.list'; id: string }
   | { type: 'data.remove'; id: string; name: string }
+  /**
+   * One HTTP request on a mod's behalf, to an address held by one of the
+   * settings its manifest names under `network`. The rules are in
+   * `loader/net.ts`; the answer is a `NetResult`.
+   */
+  | { type: 'net.request'; modId: string; url: string; method?: 'GET' | 'POST'; form?: Record<string, string> }
   /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
   /**
    * Photograph the window and put the picture in the download folder.
@@ -429,6 +448,38 @@ export type Request =
    * listening should be in: the tap costs nothing when nobody is on it.
    */
   | { type: 'slack.watch'; types: string[] };
+
+/**
+ * What `net.request` answers with: the status and the parsed JSON body, or why
+ * there is none.
+ *
+ * A failure is a value rather than a rejection. A rejection crosses the bridge
+ * as a sentence, and a mod has to tell "the loader refused" from "the server is
+ * down" from "it took too long" without matching on English.
+ */
+export type NetResult =
+  | { status: number; json: unknown }
+  | { error: NetError };
+
+/**
+ * - `blocked`: the address is not one this mod's `network` settings hold, or
+ *   it is not https.
+ * - `invalid`: the request itself is malformed -- a method or a form the
+ *   loader does not send.
+ * - `timeout`, `network`: the server did not answer, or could not be reached.
+ * - `too-large`: the answer was bigger than the loader will hold.
+ */
+export type NetError = 'blocked' | 'invalid' | 'timeout' | 'network' | 'too-large';
+
+/**
+ * How long the loader waits on the server before answering `timeout`.
+ *
+ * Here rather than in the loader because the renderer has to wait longer than
+ * this, or the bridge gives up first and the mod gets a rejection instead of an
+ * answer. Long, because the server on the other end may itself be signing in
+ * somewhere before it answers.
+ */
+export const NET_TIMEOUT_MS = 25_000;
 
 /** Push notifications the loader sends to the renderer unprompted. */
 export type Event =

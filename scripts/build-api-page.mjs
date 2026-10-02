@@ -27,7 +27,7 @@ const escape = (text) => String(text)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const ORDER = ['tools', 'kit', 'helpers', 'slack', 'ui', 'dom', 'i18n', 'settings',
-  'commands', 'files', 'data', 'assets', 'themes', 'app', 'log', 'plugin'];
+  'commands', 'files', 'data', 'net', 'assets', 'themes', 'app', 'log', 'plugin'];
 
 /*
  * `tools` is not part of `PluginApi`.

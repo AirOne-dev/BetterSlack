@@ -4,7 +4,7 @@
 // the plugin is disabled, so toggling a plugin off really does leave the DOM as
 // it was found.
 
-import { SLACK_PREFS, type ModFiles, type ModRecord, type Settings } from '../shared/protocol.js';
+import { SLACK_PREFS, type ModFiles, type ModRecord, type NetResult, type Settings } from '../shared/protocol.js';
 import { h, keepMounted, onEach, onShortcut, waitFor, type Cleanup } from './dom.js';
 import { collectCleanups } from './plugins.js';
 import { createHelpers, type Helpers } from './helpers.js';
@@ -215,6 +215,21 @@ export interface PluginApi {
   };
 
   /**
+   * One HTTP request to a server that sends no CORS headers, made by the loader.
+   *
+   * A page cannot read such a server's answer at all. The loader can, and it
+   * only does so for an address held by one of the settings this mod's
+   * manifest names under `network` -- typed by the user, shown in the panel --
+   * over https, with a form body or none, no cookies, and no redirect
+   * followed. The answer is the status and the body parsed as JSON; a failure
+   * is `{ error }` and never a rejection.
+   */
+  readonly net: {
+    request(url: string, options?: { method?: 'GET' | 'POST'; form?: Record<string, string> }):
+      Promise<NetResult>;
+  };
+
+  /**
    * The plugin's own files, as shipped in its folder.
    *
    * A mod is a folder, and everything in it that the runtime can read is here:
@@ -367,6 +382,11 @@ export interface ApiContext {
   };
   screenshot: (options: { size?: string; filename?: string }) =>
     Promise<{ path: string; bytes: number }>;
+  netRequest: (
+    modId: string,
+    url: string,
+    options: { method?: 'GET' | 'POST'; form?: Record<string, string> },
+  ) => Promise<NetResult>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
   listThemes: () => Array<{ id: string; name: string; description: string; enabled: boolean }>;
   themeSource: (id: string) => Promise<string>;
@@ -549,6 +569,12 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
       },
       list: () => ctx.data.list(record.id),
       remove: (name) => ctx.data.remove(record.id, name),
+    },
+
+    // Named by the record rather than by the caller: the loader decides what
+    // this mod may reach from its own copy of the manifest and the settings.
+    net: {
+      request: (url, options) => ctx.netRequest(record.id, url, options ?? {}),
     },
 
     app: {

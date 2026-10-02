@@ -140,6 +140,10 @@ from exactly these numbers and what the mod calls.
 - [`remove`](api/data-remove.md) — Delete a file this mod kept. Answers true if there was one to delete, so asking twice is harmless. _(since 3.4.0)_
 - [`write`](api/data-write.md) — Keep a file of this mod's own, on disk, across restarts and updates: a sound somebody picked, a picture, an export. It goes under `~/.betterslack/data/<mod id>/`, which no other mod can name; the name is reduced to a safe basename, at most 8 MB a file and 64 MB a mod. A file of the same name is replaced. Nothing is deleted when the mod is switched off or removed. _(since 3.4.0)_
 
+## api.net
+
+- [`request`](api/net-request.md) — One request to a server that sends no CORS headers, made by the loader, since _(unreleased)_
+
 ## api.assets
 
 - [`list`](api/assets-list.md) — Every readable file in the mod's own folder, folder-relative and forward-slashed — the same strings you would import. _(since 2.0.1)_

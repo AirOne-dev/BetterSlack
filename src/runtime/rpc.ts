@@ -74,7 +74,11 @@ export class Bridge {
     return () => this.listeners.delete(listener);
   }
 
-  request<T = unknown>(payload: Request): Promise<T> {
+  /**
+   * Ask the loader something. `timeoutMs` is for the one request whose answer
+   * depends on somebody else's server rather than on the loader alone.
+   */
+  request<T = unknown>(payload: Request, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
     const send = (window as unknown as Record<string, unknown>)[BINDING_NAME];
     if (typeof send !== 'function') {
       return Promise.reject(new Error('BetterSlack loader is not attached'));
@@ -83,8 +87,8 @@ export class Bridge {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(rid);
-        reject(new Error(`loader did not answer "${payload.type}" within ${REQUEST_TIMEOUT_MS}ms`));
-      }, REQUEST_TIMEOUT_MS);
+        reject(new Error(`loader did not answer "${payload.type}" within ${timeoutMs}ms`));
+      }, timeoutMs);
 
       this.pending.set(rid, {
         resolve: (value) => {

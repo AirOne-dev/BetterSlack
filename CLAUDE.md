@@ -884,6 +884,25 @@ tests fail below it.
 - **Slack's CDN has no CORS headers.** `fetch('https://ca.slack-edge.com/…')`
   from the renderer always fails; downloads go through `api.files.save`, which
   the loader performs.
+- **Neither does almost anybody else's server, and a mod reading one goes
+  through `api.net`.** Measured on a quelio-api deployment: no
+  `Access-Control-Allow-Origin` on any answer and a 404 to the preflight. The
+  page's request still leaves and the server still acts on it -- a sign-in is
+  counted against its rate limit -- but the page is handed nothing it can open.
+  `api.net.request` has the loader make it instead, and only to an address held
+  by a setting the manifest names under `network`, at that path or below a slash
+  of it: https, a form body or none, no cookies, no header of the mod's, and no
+  redirect followed. A 3xx comes back as a status, because following one leaves
+  the address the user typed -- and on that same server an address missing its
+  trailing slash answers 301, which a POST would follow as a GET. Who may reach
+  what is read from the settings file at the moment of asking, not from
+  anything the page sends. A failure is `{ error }` rather than a rejection, so
+  a mod tells "refused" from "down" from "too slow" without matching on
+  English, and nothing about the request is logged, since the form is where a
+  password travels. The bridge waits `NET_TIMEOUT_MS` plus five seconds for this
+  one request instead of its usual fifteen, so the loader's own `timeout`
+  answer arrives first. `src/loader/net.ts` is the whole of it, and the API
+  page runs that same function against an imitated server.
 - **At a cold start the URL names a workspace the client is not showing.**
   Measured with three workspaces signed in: `location.pathname` read
   `/client/T0BQ89Z4L4F/C0BQ8AG3771` while the client had drawn thirty-seven
@@ -1522,7 +1541,8 @@ Shape of it:
   everywhere renders as the key rather than as a blank. Every shipped plugin has
   `en` and `fr`, and `tests/i18n.test.mjs` fails a mod whose tables do not cover
   the same keys.
-- `api.dom`, `api.files.save`, `api.settings`, `api.css`, `api.log`.
+- `api.dom`, `api.files.save`, `api.net.request`, `api.settings`, `api.css`,
+  `api.log`.
 - `api.data` -- files a mod keeps for itself under
   `~/.betterslack/data/<id>/`, for anything too big or too binary for
   `api.settings`, which is read whole at every launch and rewritten whole on
