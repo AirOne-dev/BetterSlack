@@ -124,6 +124,36 @@ function parseSettings(value: unknown, file: string): ModSettingField[] | undefi
   return fields.length > 0 ? fields : undefined;
 }
 
+/**
+ * Which settings hold an address the mod may reach through `api.net`.
+ *
+ * Each has to be a `text` setting of the same mod. The loader reads the address
+ * out of it at request time, so naming one that is not declared leaves a mod
+ * that can reach nothing and no message saying why -- and naming one the panel
+ * cannot draw would put the address somewhere the user can neither see nor
+ * change.
+ */
+function parseNetwork(
+  value: unknown,
+  type: ModType,
+  settings: ModSettingField[] | undefined,
+  file: string,
+): ModManifest['network'] {
+  if (value === undefined) return undefined;
+  if (type !== 'plugin') throw new ManifestError(file, '"network" is for plugins only');
+  const keys = (value as { settings?: unknown } | null)?.settings;
+  if (!Array.isArray(keys) || keys.length === 0) {
+    throw new ManifestError(file, '"network" must be { "settings": [...] } naming at least one setting');
+  }
+  for (const key of keys) {
+    const field = settings?.find((candidate) => candidate.key === key);
+    if (!field || field.type !== 'text') {
+      throw new ManifestError(file, `"network" names ${JSON.stringify(key)}, which is not a text setting of this mod`);
+    }
+  }
+  return { settings: [...new Set(keys as string[])] };
+}
+
 export function parseManifest(raw: string, file: string, expectedType: ModType): ModManifest {
   let data: unknown;
   try {
@@ -175,6 +205,7 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
   }
 
   const settings = parseSettings(m.settings, file);
+  const network = parseNetwork(m.network, expectedType, settings, file);
 
   const api = typeof m.betterslackApi === 'number' ? m.betterslackApi : 0;
   if (api < 1) throw new ManifestError(file, '"betterslackApi" is missing or below 1');
@@ -243,6 +274,7 @@ export function parseManifest(raw: string, file: string, expectedType: ModType):
     entry,
     requires,
     settings,
+    network,
     betterslackApi: api,
     slackVersion: typeof m.slackVersion === 'string' ? m.slackVersion : undefined,
     needsBetterSlack: typeof m.needsBetterSlack === 'string' ? m.needsBetterSlack : undefined,

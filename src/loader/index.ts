@@ -14,6 +14,7 @@ import { Catalog, scanRoot, parseManifest } from './catalog.js';
 import { downloadFile, saveBytes } from './download.js';
 import { applyIcon, bundleOf, chooseIcon, clearIcon, launcherBundles } from './app-icon.js';
 import { listData, readData, removeData, writeData } from './mod-data.js';
+import { netRequest } from './net.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack,
   slackVersion,
 } from './slack.js';
@@ -1114,6 +1115,17 @@ class Loader {
         return listData(request.id);
       case 'data.remove':
         return removeData(request.id, request.name);
+      case 'net.request': {
+        // The settings file decides, not the page: whether the mod is on and
+        // which address its `network` settings hold are read here, now.
+        const settings = await readSettings();
+        return netRequest(
+          this.catalog.get(request.modId),
+          settings.enabled.includes(request.modId),
+          settings.modSettings[request.modId] ?? {},
+          request,
+        );
+      }
 
       case 'app.screenshot': {
         /*

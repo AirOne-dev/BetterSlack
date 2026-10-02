@@ -1,0 +1,182 @@
+// Making an HTTP request on a mod's behalf.
+//
+// A page cannot read the answer of a server that sends no CORS headers: the
+// request leaves, the server acts on it, and the page is handed nothing it can
+// open. Node has no such rule, so `api.net` has the loader make the request --
+// the same reason `file.download` exists, and kept as narrow, since this too is
+// something a mod does on its own say-so. Everything below is a constraint a
+// reviewer can check:
+//
+//   - only to an address held by one of the settings the manifest names under
+//     `network`, read at request time -- the user typed it, and the panel shows
+//     it -- and only at that path or below it
+//   - https only, no credentials in the URL, and no redirect followed: a 3xx
+//     comes back as a status, because following one leaves the address the
+//     setting holds
+//   - no cookies (Node's fetch keeps none) and no header the mod chooses
+//   - a form body or none, capped; an answer capped and parsed as JSON
+//   - nothing about the request is logged, since the form is where a password
+//     travels, and a failure is a value rather than a thrown error so the
+//     loader's own "request failed" line has nothing to print either
+
+import { NET_TIMEOUT_MS, type ModRecord, type NetError, type NetResult } from '../shared/protocol.js';
+
+const MAX_ANSWER_BYTES = 4 * 1024 * 1024;
+const MAX_FORM_BYTES = 64 * 1024;
+const MAX_FORM_FIELDS = 50;
+
+export interface NetRequest {
+  url: unknown;
+  method?: unknown;
+  form?: unknown;
+}
+
+function httpsUrl(value: string): URL | null {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' || url.username || url.password) return null;
+  return url;
+}
+
+/** What the mod's `network` settings hold right now, as addresses. */
+export function allowedBases(record: ModRecord, values: Record<string, unknown>): URL[] {
+  const bases: URL[] = [];
+  for (const key of record.network?.settings ?? []) {
+    const declared = record.settings?.find((field) => field.key === key);
+    const value = key in values ? values[key] : declared?.default;
+    if (typeof value !== 'string' || !value.trim()) continue;
+    const base = httpsUrl(value.trim());
+    if (base) bases.push(base);
+  }
+  return bases;
+}
+
+/**
+ * Same origin, and the base's path or something under it.
+ *
+ * "Under" means past a slash: `/api` covers `/api` and `/api/x`, never
+ * `/api-admin`. The URL parser has already folded `..` and its escaped forms
+ * away by the time this compares anything.
+ */
+export function within(url: URL, base: URL): boolean {
+  if (url.origin !== base.origin) return false;
+  if (url.pathname === base.pathname) return true;
+  const folder = base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`;
+  return url.pathname.startsWith(folder);
+}
+
+function isForm(value: unknown): value is Record<string, string> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const entries = Object.entries(value);
+  return entries.length <= MAX_FORM_FIELDS
+    && entries.every(([key, field]) => key !== '' && typeof field === 'string');
+}
+
+class TooLarge extends Error {}
+
+const failure = (error: NetError): NetResult => ({ error });
+
+function isTimeout(err: unknown): boolean {
+  const name = (err as { name?: string } | null)?.name;
+  return name === 'TimeoutError' || name === 'AbortError';
+}
+
+/** The body as text, refusing to hold more than `max` bytes of it. */
+async function readCapped(response: Response, max: number): Promise<string> {
+  // A claim, not a guarantee, so it is only a way to refuse early.
+  if (Number(response.headers.get('content-length') ?? '0') > max) {
+    await response.body?.cancel().catch(() => undefined);
+    throw new TooLarge();
+  }
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => undefined);
+      throw new TooLarge();
+    }
+    chunks.push(value);
+  }
+  // Not Buffer: the API page runs this same function in a browser.
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Make the request, or say why not.
+ *
+ * `enabled` and `values` come from the settings file at the moment of asking,
+ * not from anything the page sent: the page names a mod and an address, and
+ * the loader decides whether that mod may reach it.
+ */
+export async function netRequest(
+  record: ModRecord | undefined,
+  enabled: boolean,
+  values: Record<string, unknown>,
+  request: NetRequest,
+  fetchImpl: typeof fetch = fetch,
+): Promise<NetResult> {
+  if (!record || record.type !== 'plugin' || !enabled) return failure('blocked');
+  const url = typeof request.url === 'string' ? httpsUrl(request.url) : null;
+  if (!url) return failure('blocked');
+  url.hash = '';
+  if (!allowedBases(record, values).some((base) => within(url, base))) return failure('blocked');
+
+  const method = request.method ?? (request.form === undefined ? 'GET' : 'POST');
+  if (method !== 'GET' && method !== 'POST') return failure('invalid');
+  let body: string | undefined;
+  if (request.form !== undefined) {
+    if (method !== 'POST' || !isForm(request.form)) return failure('invalid');
+    // Percent-encoded, so every character is one byte.
+    body = new URLSearchParams(request.form).toString();
+    if (body.length > MAX_FORM_BYTES) return failure('invalid');
+  }
+
+  let response: Response;
+  try {
+    response = await fetchImpl(url.href, {
+      method,
+      body,
+      headers: body === undefined
+        ? { accept: 'application/json' }
+        : { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(NET_TIMEOUT_MS),
+    });
+  } catch (err) {
+    return failure(isTimeout(err) ? 'timeout' : 'network');
+  }
+
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel().catch(() => undefined);
+    return { status: response.status, json: null };
+  }
+  try {
+    return { status: response.status, json: parseJson(await readCapped(response, MAX_ANSWER_BYTES)) };
+  } catch (err) {
+    if (err instanceof TooLarge) return failure('too-large');
+    return failure(isTimeout(err) ? 'timeout' : 'network');
+  }
+}

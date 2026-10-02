@@ -151,6 +151,8 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
       <ul><li><a href="#files-save">save</a></li><li><a href="#files-screenshot">screenshot</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.data</p>
       <ul><li><a href="#data-list">list</a></li><li><a href="#data-read">read</a></li><li><a href="#data-remove">remove</a></li><li><a href="#data-write">write</a></li></ul></li>
+<li class="side__group"><p class="side__title">api.net</p>
+      <ul><li><a href="#net-request">request</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.assets</p>
       <ul><li><a href="#assets-list">list</a></li><li><a href="#assets-text">text</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.themes</p>
@@ -2092,6 +2094,27 @@ if (blob) new Audio(URL.createObjectURL(blob)).play();</code></pre>
     <pre class="api-code"><code>// A file the person picked, kept for good.
 const [file] = input.files;
 const { name } = await api.data.write(file.name, file);</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-net-request" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.net</p>
+    <h1><code>request</code></h1>
+    <p class="api-sig api-sig--big">(url: string, options?: { method?: 'GET' | 'POST'; form?: Record&lt;string, string&gt; }): Promise&lt;NetResult&gt;</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>One request to a server that sends no CORS headers, made by the loader, since a page can never read such a server's answer. Only to an address held by one of the settings the manifest names under <code>network</code> -- typed by the user and shown in the panel -- or somewhere under it; over https, with a form body or none, no cookies and no redirect followed. The answer is <code>{ status, json }</code>, and a failure is <code>{ error }</code> (<code>blocked</code>, <code>invalid</code>, <code>timeout</code>, <code>network</code>, <code>too-large</code>) rather than a rejection.</p>
+    <div class="api-demo" data-demo="net-request" data-controls="[{&quot;key&quot;:&quot;base&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;https://hours.example.com/api/&quot;,&quot;label&quot;:&quot;address in the setting&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;url&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;https://hours.example.com/api/&quot;,&quot;label&quot;:&quot;address asked for&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>// mod.json: a text setting &quot;apiUrl&quot;, and &quot;network&quot;: { &quot;settings&quot;: [&quot;apiUrl&quot;] }
+const answer = await api.net.request(api.settings.get('apiUrl'), {
+  method: 'POST',
+  form: { username, token },
+});
+if ('error' in answer) return showOffline(answer.error);
+if (answer.status === 401) return signOut();
+render(answer.json);</code></pre>
   </div>
 </section>
 <section class="panel" id="p-assets-list" hidden>
