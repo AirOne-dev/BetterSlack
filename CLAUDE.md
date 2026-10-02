@@ -1167,6 +1167,15 @@ tests fail below it.
   BetterSlack.app. A terminal that already holds the permission makes all of
   this look free -- measure from BetterSlack.app, not from a shell. Dressing
   BetterSlack.app is its own bundle and needs nothing.
+  **Switching a theme changes the running tile by restarting the Dock.** The
+  Dock reads a running app's icon when the app starts and when the Dock
+  starts, and at no other moment: a new icon on Slack.app, a touch of the
+  bundle, `lsregister -f` and `noteFileSystemChanged` all left the tile alone,
+  and `killall Dock` showed the new one at once. It costs a second of Dock
+  redraw and Slack's unread badge, which stays gone until Slack next changes
+  it -- its main process calls `dock.setBadge` only when the badge text moves.
+  `refreshDockIcon` therefore restarts the Dock only when the chosen icon
+  really differs from the one on the tile and Slack.app took it.
   Read the tile in a tight crop of the Dock and compare against a known
   render: the mark without its plate looked "dark" on a dark Dock and was
   misread once as the icon not having taken.
@@ -1181,8 +1190,8 @@ tests fail below it.
   A switched-on theme changes the icon by declaring `--betterslack-app-icon`
   in its stylesheet (see the theme section below); the last enabled theme that
   declares one wins, as its stylesheet does. Switching a theme re-dresses
-  BetterSlack.app at once and Slack's tile at the next launch -- the tile is
-  read when Slack starts and not again.
+  BetterSlack.app and Slack's tile at once, the second through the Dock
+  restart above.
 - **`slack://open?team=<id>` switches workspace**, in place, same document --
   and it is the only way to, from a script. The workspace rail is in the
   document with every workspace in it and measures **zero by zero** in Slack

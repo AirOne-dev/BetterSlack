@@ -1072,15 +1072,9 @@ class Loader {
       case 'mod.enable': {
         const saved = await setModEnabled(request.id, request.enabled);
         await this.refreshAllBootScripts();
-        /*
-         * A theme can bring its own app icon. The launcher takes it now; Slack
-         * at its next start, since the Dock keeps a running app's tile as it
-         * was when the app launched.
-         */
+        // A theme can bring its own app icon; the Dock takes it now.
         if (this.catalog.list().find((mod) => mod.id === request.id)?.type === 'theme') {
-          void enabledThemeCss()
-            .then((themes) => applyIcon(chooseIcon(themes), launcherBundles()))
-            .catch(() => undefined);
+          void refreshDockIcon(this.slackPath).catch(() => undefined);
         }
         // Other windows are holding their own copy of the list; tell them.
         this.broadcast({ type: 'settings.changed', settings: saved });
@@ -1460,6 +1454,9 @@ async function enabledThemeCss(): Promise<Array<{ css: string }>> {
  */
 let dockIcon: DockIconState = 'unsupported';
 
+/** The SVG Slack's tile is wearing, so a theme switch that changes nothing restarts nothing. */
+let dockIconShown: string | null = null;
+
 /** BetterSlack's icon -- or the theme's -- on Slack and on the launcher. */
 async function dressIcons(slackPath: string): Promise<DockIconState> {
   if (process.platform !== 'darwin') return dockIcon;
@@ -1467,7 +1464,32 @@ async function dressIcons(slackPath: string): Promise<DockIconState> {
   const slack = bundleOf(slackPath);
   const took: string[] = await applyIcon(svg, [...(slack ? [slack] : []), ...launcherBundles()]).catch(() => []);
   dockIcon = !slack ? 'unsupported' : took.includes(slack) ? 'ok' : 'refused';
+  if (dockIcon === 'ok') dockIconShown = svg;
   return dockIcon;
+}
+
+/*
+ * The icon, changed while Slack runs.
+ *
+ * The Dock reads a running app's icon when the app starts and when the Dock
+ * itself starts, and at no other moment -- measured: a new icon on Slack.app,
+ * a touch of the bundle, lsregister -f and noteFileSystemChanged all left the
+ * tile alone, and `killall Dock` showed the new icon at once. So that is what
+ * this does. Two costs, both measured and both accepted: the Dock redraws for
+ * about a second, and Slack's unread badge goes until Slack next sets it --
+ * its main process calls setBadge only when the badge text changes, and the
+ * Dock coming back is not a change it sees.
+ *
+ * Only when the icon really moves, and only when Slack.app takes it: a Dock
+ * restart that cannot show anything new is the cost with nothing bought.
+ */
+async function refreshDockIcon(slackPath: string): Promise<void> {
+  if (process.platform !== 'darwin') return;
+  const svg = chooseIcon(await enabledThemeCss());
+  if (svg === dockIconShown) return;
+  if ((await dressIcons(slackPath)) !== 'ok') return;
+  await new Promise<void>((resolve) => execFile('killall', ['Dock'], () => resolve()));
+  undressSlackLater(slackPath);
 }
 
 /** Where macOS lists the apps allowed to modify other apps. */
@@ -1480,11 +1502,16 @@ const APP_MANAGEMENT_PANE = 'x-apple.systempreferences:com.apple.preference.secu
  * Measured: still the custom tile well after the icon was taken off.
  */
 const UNDRESS_AFTER_MS = 45_000;
+let undressTimer: ReturnType<typeof setTimeout> | null = null;
 function undressSlackLater(slackPath: string): void {
   if (process.platform !== 'darwin') return;
   const slack = bundleOf(slackPath);
   if (!slack) return;
-  setTimeout(() => void clearIcon(slack), UNDRESS_AFTER_MS).unref?.();
+  // One timer: an earlier one firing while the Dock is still reading a newer
+  // icon would hand the tile Slack's own.
+  if (undressTimer) clearTimeout(undressTimer);
+  undressTimer = setTimeout(() => void clearIcon(slack), UNDRESS_AFTER_MS);
+  undressTimer.unref?.();
 }
 
 async function main(): Promise<void> {

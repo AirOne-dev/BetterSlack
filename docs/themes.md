@@ -377,8 +377,8 @@ update delivers. Keep the pictures as `app-icon.svg` and `splash.svg` beside
 `theme.css`, and let `node scripts/embed-theme-art.mjs <id>` write them in --
 an SVG can animate itself (`<animate>`, `<animateTransform>`), which is how
 Windows XP's boot screen slides its blocks. The icon is a 1024 square with
-transparent corners, like any macOS icon; the Dock shows it from the next time
-Slack starts.
+transparent corners, like any macOS icon; the Dock shows it as soon as the
+theme is switched on, once BetterSlack has the App Management permission.
 
 ## When CSS is not enough
 
