@@ -11,6 +11,7 @@ import {
   type RemoteMod,
   type Settings,
   type ModUpdate,
+  type NetCredentialResult,
   type NetResult,
   type UpdateStatus,
 } from '../shared/protocol.js';
@@ -676,6 +677,12 @@ export class ModManager {
         this.bridge
           .request<NetResult>({ type: 'net.request', modId, url, method, form }, NET_BRIDGE_TIMEOUT_MS)
           .catch((): NetResult => ({ error: 'network' })),
+      // The secret goes out in `set` and never comes back: there is no action
+      // that answers with it.
+      netCredential: (modId, action) =>
+        this.bridge
+          .request<NetCredentialResult>({ type: 'net.credential', modId, ...action })
+          .catch((): NetCredentialResult => ({ ok: false, error: 'blocked' })),
       listThemes: () =>
         this.mods
           .filter((m) => m.type === 'theme')

@@ -18,6 +18,7 @@ import {
   type ModRecord,
   type ModType,
 } from '../shared/protocol.js';
+import { parseCredentialSpec } from './net.js';
 
 /** Guard rails on reading a folder handed to us by a pull request. */
 const MAX_FILES = 60;
@@ -142,6 +143,14 @@ function parseNetwork(
   if (value === undefined) return undefined;
   if (type !== 'plugin') throw new ManifestError(file, '"network" is for plugins only');
   const keys = (value as { settings?: unknown } | null)?.settings;
+  const credential = (value as { credential?: unknown } | null)?.credential;
+  const spec = credential === undefined ? undefined : parseCredentialSpec(credential);
+  if (credential !== undefined && !spec) {
+    throw new ManifestError(
+      file,
+      '"network.credential" must be { "header": "<name>", "prefix": "<optional>" }, naming a header a secret may travel in',
+    );
+  }
   if (!Array.isArray(keys) || keys.length === 0) {
     throw new ManifestError(file, '"network" must be { "settings": [...] } naming at least one setting');
   }
@@ -151,7 +160,10 @@ function parseNetwork(
       throw new ManifestError(file, `"network" names ${JSON.stringify(key)}, which is not a text setting of this mod`);
     }
   }
-  return { settings: [...new Set(keys as string[])] };
+  return {
+    settings: [...new Set(keys as string[])],
+    ...(spec ? { credential: spec } : {}),
+  };
 }
 
 export function parseManifest(raw: string, file: string, expectedType: ModType): ModManifest {

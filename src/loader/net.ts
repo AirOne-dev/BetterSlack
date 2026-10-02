@@ -18,13 +18,23 @@
 //   - https only, no credentials in the URL, and no redirect followed: a 3xx
 //     comes back as a status, because following one leaves the address the
 //     setting holds
-//   - no cookies (Node's fetch keeps none) and no header the mod chooses
+//   - no cookies (Node's fetch keeps none) and no header the mod chooses; the
+//     one exception is a credential, which the mod never holds: it hands the
+//     secret to the loader once and the loader attaches it, as the single
+//     header the manifest names, to a request for the origin the secret was
+//     stored for -- so an address moved to another origin is sent nothing
 //   - a form body or none, capped; an answer capped and parsed as JSON
 //   - nothing about the request is logged, since the form is where a password
 //     travels, and a failure is a value rather than a thrown error so the
 //     loader's own "request failed" line has nothing to print either
 
-import { NET_TIMEOUT_MS, type ModRecord, type NetError, type NetResult } from '../shared/protocol.js';
+import {
+  NET_TIMEOUT_MS,
+  type ModRecord,
+  type NetCredentialSpec,
+  type NetError,
+  type NetResult,
+} from '../shared/protocol.js';
 
 const MAX_ANSWER_BYTES = 4 * 1024 * 1024;
 const MAX_FORM_BYTES = 64 * 1024;
@@ -88,6 +98,54 @@ class TooLarge extends Error {}
 
 const failure = (error: NetError): NetResult => ({ error });
 
+/** A secret and the one origin it may be sent to. */
+export interface StoredCredential {
+  origin: string;
+  secret: string;
+}
+
+/**
+ * Headers a credential may not be written into: they are the transport's, the
+ * browser's identity or the session's, and a secret there either breaks the
+ * request or becomes somebody else's cookie. Everything else is the manifest's
+ * to name, so a service nobody here has heard of needs no change to this file.
+ */
+const FORBIDDEN_HEADERS = new Set([
+  'host', 'cookie', 'set-cookie', 'origin', 'referer', 'user-agent', 'connection', 'upgrade',
+  'transfer-encoding', 'te', 'trailer', 'expect', 'keep-alive', 'via', 'forwarded',
+  'accept', 'accept-encoding', 'accept-language', 'content-type', 'content-length',
+  'content-encoding', 'location', 'dnt',
+]);
+
+/** The manifest's `network.credential`, if it is one the loader would send. */
+export function parseCredentialSpec(value: unknown): NetCredentialSpec | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const { header, prefix, ...rest } = value as Record<string, unknown>;
+  if (Object.keys(rest).length > 0) return null;
+  if (typeof header !== 'string' || !/^[A-Za-z][A-Za-z0-9-]{0,63}$/.test(header)) return null;
+  const name = header.toLowerCase();
+  if (FORBIDDEN_HEADERS.has(name) || name.startsWith('proxy-') || name.startsWith('sec-')) return null;
+  if (prefix !== undefined && (typeof prefix !== 'string' || !/^[\x21-\x7e]{1,31} ?$/.test(prefix))) return null;
+  return prefix === undefined ? { header: name } : { header: name, prefix };
+}
+
+/**
+ * The header a secret travels in, or nothing when it may not be sent.
+ *
+ * Both halves have to agree: the manifest has to ask for a credential, and the
+ * one held has to be for the origin being reached. A secret kept for
+ * `https://a.example` is never attached to a request for `https://b.example`,
+ * which is what a setting rewritten by somebody else's code would produce.
+ */
+export function credentialHeader(
+  spec: NetCredentialSpec | undefined,
+  stored: StoredCredential | null | undefined,
+  url: URL,
+): Record<string, string> {
+  if (!spec || !stored || stored.origin !== url.origin || !stored.secret) return {};
+  return { [spec.header]: `${spec.prefix ?? ''}${stored.secret}` };
+}
+
 function isTimeout(err: unknown): boolean {
   const name = (err as { name?: string } | null)?.name;
   return name === 'TimeoutError' || name === 'AbortError';
@@ -145,6 +203,7 @@ export async function netRequest(
   values: Record<string, unknown>,
   request: NetRequest,
   fetchImpl: typeof fetch = fetch,
+  credential: StoredCredential | null = null,
 ): Promise<NetResult> {
   if (!record || record.type !== 'plugin' || !enabled) return failure('blocked');
   const url = typeof request.url === 'string' ? httpsUrl(request.url) : null;
@@ -167,9 +226,11 @@ export async function netRequest(
     response = await fetchImpl(url.href, {
       method,
       body,
-      headers: body === undefined
-        ? { accept: 'application/json' }
-        : { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
+      headers: {
+        accept: 'application/json',
+        ...(body === undefined ? {} : { 'content-type': 'application/x-www-form-urlencoded' }),
+        ...credentialHeader(record.network?.credential, credential, url),
+      },
       redirect: 'manual',
       signal: AbortSignal.timeout(NET_TIMEOUT_MS),
     });

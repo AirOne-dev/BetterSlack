@@ -1758,6 +1758,63 @@ const IMITATED = {
     },
   },
 
+  'net-setcredential': {
+    render: (v) => {
+      // The loader's own function decides which header goes where. The secret
+      // is masked in what is printed: the page it is shown on holds it, a real
+      // mod never does.
+      const record = {
+        id: 'git',
+        type: 'plugin',
+        settings: [{ key: 'gitUrl', type: 'text', label: 'Server address' }],
+        network: { settings: ['gitUrl'], credential: { header: 'PRIVATE-TOKEN' } },
+      };
+      const seen = [];
+      const server = async (_url, options) => {
+        seen.push({ ...options.headers });
+        return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+      };
+      const out = kit.el('pre', { class: 'pg__out' }, ['']);
+      const send = kit.button('Send it', { variant: 'primary' });
+      send.addEventListener('click', async () => {
+        let origin = '';
+        try { origin = new URL(v.base).origin; } catch { /* not an address */ }
+        seen.length = 0;
+        const answer = await netRequest(record, true, { gitUrl: v.base }, { url: v.asked, method: 'GET' },
+          server, { origin, secret: 'glpat-example' });
+        const headers = seen[0] ?? {};
+        out.textContent = JSON.stringify({
+          answer,
+          sent: Object.fromEntries(Object.entries(headers).map(([name, value]) => [
+            name, /token|authorization/i.test(name) ? '••••••••' : value,
+          ])),
+        }, null, 2);
+      });
+      return [
+        source(`// "network": { "settings": ["gitUrl"], "credential": { "header": "PRIVATE-TOKEN" } }\n`
+          + `await api.net.setCredential(token, '${v.base}');\n`
+          + `await api.net.request('${v.asked}');`),
+        send,
+        out,
+        stubbed('Which header is attached, and to which origin, is the loader’s own function. The server is imitated, and the secret shown here is a placeholder.'),
+      ];
+    },
+  },
+
+  'net-clearcredential': {
+    render: () => [
+      source('await api.net.clearCredential();'),
+      stubbed('The loader deletes its file for this mod. Nothing is stored on this page to delete.'),
+    ],
+  },
+
+  'net-hascredential': {
+    render: () => [
+      source('if (!(await api.net.hasCredential())) showSignIn();'),
+      stubbed('True while the loader holds a secret for the origin the mod’s address setting names now.'),
+    ],
+  },
+
   'files-screenshot': {
     render: (v, { stage }) => {
       const frame = slackChrome();

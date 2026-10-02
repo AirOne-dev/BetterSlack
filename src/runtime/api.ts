@@ -4,7 +4,14 @@
 // the plugin is disabled, so toggling a plugin off really does leave the DOM as
 // it was found.
 
-import { SLACK_PREFS, type ModFiles, type ModRecord, type NetResult, type Settings } from '../shared/protocol.js';
+import {
+  SLACK_PREFS,
+  type ModFiles,
+  type ModRecord,
+  type NetCredentialResult,
+  type NetResult,
+  type Settings,
+} from '../shared/protocol.js';
 import { h, keepMounted, onEach, onShortcut, waitFor, type Cleanup } from './dom.js';
 import { collectCleanups } from './plugins.js';
 import { createHelpers, type Helpers } from './helpers.js';
@@ -223,10 +230,26 @@ export interface PluginApi {
    * over https, with a form body or none, no cookies, and no redirect
    * followed. The answer is the status and the body parsed as JSON; a failure
    * is `{ error }` and never a rejection.
+   *
+   * A server that wants a secret in a header gets it from the loader, not from
+   * the mod: the manifest declares `network.credential`, the mod hands the
+   * secret over once with `setCredential` and can never read it back, and the
+   * loader attaches it to requests for that address's origin and no other.
    */
   readonly net: {
     request(url: string, options?: { method?: 'GET' | 'POST'; form?: Record<string, string> }):
       Promise<NetResult>;
+    /**
+     * Give the loader the secret to send with this mod's requests, bound to the
+     * origin of `address`, which must be one of the mod's `network` settings.
+     * Resolves `{ ok: true }`, or `{ ok: false, error }`; the secret is in no
+     * answer and in no error.
+     */
+    setCredential(secret: string, address: string): Promise<NetCredentialResult>;
+    /** Forget the secret. */
+    clearCredential(): Promise<NetCredentialResult>;
+    /** Whether a secret is held for the address the settings name right now. */
+    hasCredential(): Promise<boolean>;
   };
 
   /**
@@ -387,6 +410,10 @@ export interface ApiContext {
     url: string,
     options: { method?: 'GET' | 'POST'; form?: Record<string, string> },
   ) => Promise<NetResult>;
+  netCredential: (
+    modId: string,
+    action: { action: 'set'; secret: string; address: string } | { action: 'clear' | 'has' },
+  ) => Promise<NetCredentialResult>;
   saveTheme: (options: { id: string; name: string; description: string; css: string }) => Promise<void>;
   listThemes: () => Array<{ id: string; name: string; description: string; enabled: boolean }>;
   themeSource: (id: string) => Promise<string>;
@@ -575,6 +602,12 @@ export function createPluginApi(record: ModRecord, ctx: ApiContext): PluginApi {
     // this mod may reach from its own copy of the manifest and the settings.
     net: {
       request: (url, options) => ctx.netRequest(record.id, url, options ?? {}),
+      setCredential: (secret, address) => ctx.netCredential(record.id, { action: 'set', secret, address }),
+      clearCredential: () => ctx.netCredential(record.id, { action: 'clear' }),
+      hasCredential: async () => {
+        const answer = await ctx.netCredential(record.id, { action: 'has' });
+        return answer.ok && answer.has;
+      },
     },
 
     app: {

@@ -646,6 +646,9 @@ export class Panel {
           ? t('networkTo', { addresses: addresses.join(', ') })
           : t('networkUnset'),
       ]));
+      if (mod.network?.credential) {
+        title.append(h('div', { class: 'betterslack-row__sub' }, [t('networkCredential')]));
+      }
     }
 
     const head = h('div', { class: 'betterslack-detail__head' }, [

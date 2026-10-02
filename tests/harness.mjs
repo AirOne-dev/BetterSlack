@@ -181,6 +181,11 @@ export function createTestApi({
    * whose manifest names no address.
    */
   net = async () => ({ error: 'blocked' }),
+  /*
+   * Whether `api.net.setCredential` is accepted. A test of a mod that signs in
+   * with a token passes `false` to see what it does when the loader refuses.
+   */
+  credentialAccepted = true,
 } = {}) {
   const recorded = {
     css: [],
@@ -224,6 +229,14 @@ export function createTestApi({
     teamListeners: [],
     /** Every `api.net.request(...)`, in order: `{ url, method, form }`. */
     requests: [],
+    /**
+     * What `api.net.setCredential` was given, in order: `{ secret, address }`.
+     * Kept so a test can assert the secret reached the loader and nowhere else;
+     * a real mod can never read it back.
+     */
+    credentials: [],
+    /** The address the credential held now is for, or null. */
+    credentialFor: null,
   };
 
   /*
@@ -735,8 +748,19 @@ export function createTestApi({
     net: {
       request: async (url, options = {}) => {
         recorded.requests.push({ url, method: options.method, form: options.form });
-        return net(url, options);
+        return net(url, { ...options, credential: recorded.credentialFor !== null });
       },
+      setCredential: async (secret, address) => {
+        recorded.credentials.push({ secret, address });
+        if (!credentialAccepted) return { ok: false, error: 'blocked' };
+        recorded.credentialFor = new URL(address).origin;
+        return { ok: true, has: true };
+      },
+      clearCredential: async () => {
+        recorded.credentialFor = null;
+        return { ok: true, has: false };
+      },
+      hasCredential: async () => recorded.credentialFor !== null,
     },
 
     // The mod's own folder. Tests that need it pass `files` to createTestApi;

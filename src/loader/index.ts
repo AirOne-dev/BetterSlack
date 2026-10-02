@@ -15,6 +15,7 @@ import { downloadFile, saveBytes } from './download.js';
 import { applyIcon, bundleOf, chooseIcon, clearIcon, launcherBundles } from './app-icon.js';
 import { listData, readData, removeData, writeData } from './mod-data.js';
 import { netRequest } from './net.js';
+import { clearCredential, hasCredential, readCredential, removeCredential, setCredential } from './net-credentials.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack,
   slackVersion,
 } from './slack.js';
@@ -1071,6 +1072,7 @@ class Loader {
 
       case 'mod.setInstalled': {
         const saved = await setModInstalled(request.id, request.installed);
+        if (!request.installed) await removeCredential(request.id);
         await this.refreshAllBootScripts();
         this.broadcast({ type: 'settings.changed', settings: saved });
         return saved;
@@ -1119,12 +1121,27 @@ class Loader {
         // Whether the mod is on and which address its `network` settings
         // hold, read now rather than from what the page sent.
         const settings = await readSettings();
+        const record = this.catalog.get(request.modId);
         return netRequest(
-          this.catalog.get(request.modId),
+          record,
           settings.enabled.includes(request.modId),
           settings.modSettings[request.modId] ?? {},
           request,
+          fetch,
+          // Read only for a mod whose manifest asks for one, and only here,
+          // in the loader: it never crosses the bridge.
+          record?.network?.credential ? await readCredential(request.modId) : null,
         );
+      }
+      case 'net.credential': {
+        const settings = await readSettings();
+        const record = this.catalog.get(request.modId);
+        const enabled = settings.enabled.includes(request.modId);
+        const values = settings.modSettings[request.modId] ?? {};
+        if (request.action === 'set') {
+          return setCredential(record, enabled, values, request.secret, request.address);
+        }
+        return request.action === 'clear' ? clearCredential(record) : hasCredential(record, enabled, values);
       }
 
       case 'app.screenshot': {
@@ -1377,6 +1394,7 @@ class Loader {
       throw new Error(`"${id}" ships with the repository; disable it instead of uninstalling`);
     }
     await fs.rm(path.join(USER_MODS_ROOT, record.path), { recursive: true, force: true });
+    await removeCredential(id);
     const settings = await readSettings();
     await mergeSettings({ enabled: settings.enabled.filter((x) => x !== id) });
     console.log(`[betterslack] uninstalled "${id}"`);

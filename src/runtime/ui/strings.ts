@@ -105,6 +105,7 @@ export const PANEL_STRINGS = {
       + 'Update BetterSlack first — taking it now would leave a mod calling things this version does not have.',
     networkTo: 'Talks to {addresses}, through BetterSlack.',
     networkUnset: 'Talks to a server of your choosing, once you give its address.',
+    networkCredential: 'Keeps a sign-in token in BetterSlack\u2019s own folder, readable only by you, and sends it to that address and nowhere else.',
     slackTooOld:
       'Written against Slack {wanted}, and this is {have}. It may not find what it expects.',
 
@@ -262,6 +263,7 @@ export const PANEL_STRINGS = {
       + 'Mettez d\'abord BetterSlack à jour — sinon ce mod appellerait des choses que cette version n\'a pas.',
     networkTo: 'Communique avec {addresses}, via BetterSlack.',
     networkUnset: 'Communique avec un serveur de votre choix, une fois son adresse indiquée.',
+    networkCredential: 'Garde un jeton de connexion dans le dossier propre à BetterSlack, lisible par vous seul, et ne l\u2019envoie qu\u2019à cette adresse.',
     slackTooOld:
       'Écrit pour Slack {wanted}, et vous avez {have}. Il peut ne pas trouver ce qu\'il attend.',
 

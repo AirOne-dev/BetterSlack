@@ -1966,6 +1966,7 @@
       modUpdateBlocked: "{name} {version} needs BetterSlack {needs}, and this is {running}. Update BetterSlack first \u2014 taking it now would leave a mod calling things this version does not have.",
       networkTo: "Talks to {addresses}, through BetterSlack.",
       networkUnset: "Talks to a server of your choosing, once you give its address.",
+      networkCredential: "Keeps a sign-in token in BetterSlack\u2019s own folder, readable only by you, and sends it to that address and nowhere else.",
       slackTooOld: "Written against Slack {wanted}, and this is {have}. It may not find what it expects.",
       cssHint: "Applied after every theme, so it always wins. Slack exposes its palette as CSS custom properties (--dt_color-*), which is a steadier target than its class names.",
       cssSave: "Save and apply",
@@ -2095,6 +2096,7 @@
       modUpdateBlocked: "{name} {version} n\xE9cessite BetterSlack {needs}, et vous avez {running}. Mettez d'abord BetterSlack \xE0 jour \u2014 sinon ce mod appellerait des choses que cette version n'a pas.",
       networkTo: "Communique avec {addresses}, via BetterSlack.",
       networkUnset: "Communique avec un serveur de votre choix, une fois son adresse indiqu\xE9e.",
+      networkCredential: "Garde un jeton de connexion dans le dossier propre \xE0 BetterSlack, lisible par vous seul, et ne l\u2019envoie qu\u2019\xE0 cette adresse.",
       slackTooOld: "\xC9crit pour Slack {wanted}, et vous avez {have}. Il peut ne pas trouver ce qu'il attend.",
       cssHint: "Appliqu\xE9 apr\xE8s tous les th\xE8mes, il l\u2019emporte donc toujours. Slack expose sa palette en propri\xE9t\xE9s CSS personnalis\xE9es (--dt_color-*), une cible plus stable que ses noms de classe.",
       cssSave: "Enregistrer et appliquer",
@@ -3890,6 +3892,10 @@
   var TooLarge = class extends Error {
   };
   var failure = (error) => ({ error });
+  function credentialHeader(spec2, stored, url) {
+    if (!spec2 || !stored || stored.origin !== url.origin || !stored.secret) return {};
+    return { [spec2.header]: `${spec2.prefix ?? ""}${stored.secret}` };
+  }
   function isTimeout(err) {
     const name = err?.name;
     return name === "TimeoutError" || name === "AbortError";
@@ -3928,7 +3934,7 @@
       return null;
     }
   }
-  async function netRequest(record, enabled, values, request, fetchImpl = fetch) {
+  async function netRequest(record, enabled, values, request, fetchImpl = fetch, credential = null) {
     if (!record || record.type !== "plugin" || !enabled) return failure("blocked");
     const url = typeof request.url === "string" ? httpsUrl(request.url) : null;
     if (!url) return failure("blocked");
@@ -3947,7 +3953,11 @@
       response = await fetchImpl(url.href, {
         method,
         body,
-        headers: body === void 0 ? { accept: "application/json" } : { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
+        headers: {
+          accept: "application/json",
+          ...body === void 0 ? {} : { "content-type": "application/x-www-form-urlencoded" },
+          ...credentialHeader(record.network?.credential, credential, url)
+        },
         redirect: "manual",
         signal: AbortSignal.timeout(NET_TIMEOUT_MS)
       });
@@ -7486,6 +7496,67 @@ const answer = await api.net.request('${v.url}', {
           stubbed("The rule that allows or refuses the address is the loader\u2019s own. The server answering is imitated.")
         ];
       }
+    },
+    "net-setcredential": {
+      render: (v) => {
+        const record = {
+          id: "git",
+          type: "plugin",
+          settings: [{ key: "gitUrl", type: "text", label: "Server address" }],
+          network: { settings: ["gitUrl"], credential: { header: "PRIVATE-TOKEN" } }
+        };
+        const seen = [];
+        const server = async (_url, options) => {
+          seen.push({ ...options.headers });
+          return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+        };
+        const out = kit.el("pre", { class: "pg__out" }, [""]);
+        const send = kit.button("Send it", { variant: "primary" });
+        send.addEventListener("click", async () => {
+          let origin = "";
+          try {
+            origin = new URL(v.base).origin;
+          } catch {
+          }
+          seen.length = 0;
+          const answer = await netRequest(
+            record,
+            true,
+            { gitUrl: v.base },
+            { url: v.asked, method: "GET" },
+            server,
+            { origin, secret: "glpat-example" }
+          );
+          const headers = seen[0] ?? {};
+          out.textContent = JSON.stringify({
+            answer,
+            sent: Object.fromEntries(Object.entries(headers).map(([name, value]) => [
+              name,
+              /token|authorization/i.test(name) ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : value
+            ]))
+          }, null, 2);
+        });
+        return [
+          source(`// "network": { "settings": ["gitUrl"], "credential": { "header": "PRIVATE-TOKEN" } }
+await api.net.setCredential(token, '${v.base}');
+await api.net.request('${v.asked}');`),
+          send,
+          out,
+          stubbed("Which header is attached, and to which origin, is the loader\u2019s own function. The server is imitated, and the secret shown here is a placeholder.")
+        ];
+      }
+    },
+    "net-clearcredential": {
+      render: () => [
+        source("await api.net.clearCredential();"),
+        stubbed("The loader deletes its file for this mod. Nothing is stored on this page to delete.")
+      ]
+    },
+    "net-hascredential": {
+      render: () => [
+        source("if (!(await api.net.hasCredential())) showSignIn();"),
+        stubbed("True while the loader holds a secret for the origin the mod\u2019s address setting names now.")
+      ]
     },
     "files-screenshot": {
       render: (v, { stage }) => {
