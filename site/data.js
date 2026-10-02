@@ -300,7 +300,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Vos propres fichiers dans chaque liste de sons de Préférences → Notifications : messages, VIP, messages directs, appels d’équipe, calendrier. Ajoutez un son depuis un fichier, écoutez-le, renommez-le ou supprimez-le ; un son supprimé remet chaque emplacement sur celui qu’il avait avant."
       },
-      "version": "1.0.5",
+      "version": "1.0.6",
       "tags": [
         "notifications",
         "sound"

@@ -11,6 +11,7 @@ import {
   fileNameFor,
   labelFor,
   letGo,
+  clashing,
   soundFromUrl,
 } from './sounds.js';
 
@@ -48,6 +49,16 @@ test('a slot changed somewhere else is let go; one still on its carrier, or unre
   // Messages were set to Ding on another computer; huddles could not be read.
   const prefs = { desktop_sound: 'b2.mp3', dm_sent_sound: 'boop.mp3' };
   assert.deepEqual(letGo(prefs, assignments), ['desktop_sound']);
+});
+
+test('a custom slot whose carrier another slot also holds is a clash; a lone one is not', () => {
+  const assignments = {
+    desktop_sound: { sound: 's1', carrier: 'knock_brush.mp3', previous: 'knock_brush.mp3' },
+    dm_sent_sound: { sound: 's2', carrier: 'boop.mp3', previous: 'b2.mp3' },
+  };
+  // Direct messages were set to Knock Brush on another computer.
+  const prefs = { desktop_sound: 'knock_brush.mp3', dm_arrival_sound: 'knock_brush.mp3', dm_sent_sound: 'boop.mp3' };
+  assert.deepEqual(clashing(prefs, assignments), ['desktop_sound']);
 });
 
 test('a deleted sound falls back to the previous one, never to silence by accident', () => {
@@ -312,6 +323,24 @@ test('a carrier shared with another slot moves to a free sound, without Slack\'s
     assert.notEqual(assignment.carrier, 'b2.mp3');
     assert.equal(select.writes.length, 1, 'the carrier was chosen in Slack\'s select');
     assert.ok(!h.played.some((src) => /a\.slack-edge\.com/.test(src)), 'Slack\'s preview of the carrier was swallowed');
+  } finally {
+    await h.done();
+  }
+});
+
+test('Preferences coming up moves a custom sound off a carrier another slot now holds', async () => {
+  const assignments = { [TEAM]: { desktop_sound: { sound: 's1', carrier: 'knock_brush.mp3', previous: 'knock_brush.mp3' } } };
+  const h = harness({ settings: { sounds: MINE, assignments }, files: { 's1.mp3': 'x' } });
+  try {
+    const select = slackSelect('desktop_sound', 9);
+    slackSelect('dm_arrival_sound', 9);
+    await plugin.start(h.api);
+    await settled();
+    await settle();
+    const moved = h.api.settings.get('assignments')[TEAM].desktop_sound;
+    assert.equal(moved.sound, 's1', 'still your sound');
+    assert.notEqual(moved.carrier, 'knock_brush.mp3', 'on a carrier of its own');
+    assert.equal(select.writes.length, 1, 'chosen in Slack\'s select');
   } finally {
     await h.done();
   }

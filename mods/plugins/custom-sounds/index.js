@@ -27,6 +27,7 @@ import {
   labelFor,
   optionLabel,
   letGo,
+  clashing,
   soundFromUrl,
   valueAt,
 } from './sounds.js';
@@ -334,8 +335,28 @@ export default {
       }
       setAssignment(team(), slot, null);
       await saveAssignments();
+      await separateCarriers(team());
       refreshButtons();
       await ensurePlayback();
+    }
+
+    /**
+     * Give every custom slot that shares its carrier a free one. A slot with
+     * no free carrier left keeps the shared one: both then play the custom
+     * sound, which is still a sound rather than silence.
+     */
+    async function separateCarriers(teamId) {
+      let moved = false;
+      for (const slot of clashing(currentValues(), mine(teamId))) {
+        const assignment = mine(teamId)[slot];
+        const values = currentValues();
+        // The shared sound is held by the other slot, so it is never offered.
+        const carrier = allocateCarrier(slot, values, mine(teamId));
+        if (!carrier || !(await selectIndex(slot, indexOf(carrier), { quiet: true }))) continue;
+        setAssignment(teamId, slot, { ...assignment, carrier });
+        moved = true;
+      }
+      if (moved) await saveAssignments();
     }
 
     /** Give a slot one of your sounds, through a carrier. */
@@ -388,6 +409,7 @@ export default {
       const dropped = letGo(currentValues(), mine(teamId));
       for (const slot of dropped) setAssignment(teamId, slot, null);
       if (dropped.length) await saveAssignments();
+      await separateCarriers(teamId);
       refreshButtons();
     }
 

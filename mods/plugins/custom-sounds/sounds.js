@@ -171,6 +171,19 @@ export function letGo(prefs, assignments = {}) {
 }
 
 /**
+ * The custom slots whose carrier another slot also holds -- set from another
+ * computer, or chosen in Slack's own select. A shared carrier plays the custom
+ * sound for both, so each of these needs a carrier of its own again.
+ */
+export function clashing(prefs, assignments = {}) {
+  return SLOTS.filter((slot) => {
+    const carrier = assignments[slot]?.carrier;
+    if (!carrier || prefs[slot] !== carrier) return false;
+    return SLOTS.some((other) => other !== slot && prefs[other] === carrier);
+  });
+}
+
+/**
  * Where a slot goes when its custom sound is deleted: the sound it had before
  * the custom one, if that was one of Slack's, or Slack's default. Never
  * silence -- a deleted file is not somebody asking for no sound at all.

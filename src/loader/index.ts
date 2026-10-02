@@ -145,6 +145,8 @@ interface Attachment {
 
 class Loader {
   private catalog: Catalog;
+  /** Enabled mods already reported as unreadable, so the log says it once. */
+  private reportedUnreadable = new Set<string>();
   private attachments = new Map<string, Attachment>();
   /**
    * Slack's other windows -- the huddle preview, mostly. They are separate
@@ -999,7 +1001,11 @@ class Loader {
     const sources: Record<string, ModFiles> = {};
     for (const id of settings.enabled) {
       const files = await this.catalog.readSource(id).catch((err) => {
-        console.warn(`[betterslack] enabled mod "${id}" is unreadable: ${err.message}`);
+        // Once per mod: the bootstrap is rebuilt on every settings change.
+        if (!this.reportedUnreadable.has(id)) {
+          this.reportedUnreadable.add(id);
+          console.warn(`[betterslack] enabled mod "${id}" is unreadable: ${err.message}`);
+        }
         return null;
       });
       if (files !== null) sources[id] = files;
