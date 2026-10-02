@@ -169,3 +169,13 @@ test('checking by hand is the same sweep, not a second answer', () => {
   assert.match(panel, /this\.manager\.checkForUpdates\(\)/);
   assert.match(panel, /this\.renderUpdateCheck\(\)/, 'and the button is on the About tab');
 });
+
+test('installing from Browse takes the published version, when this build can run it', () => {
+  // Browse installs the copy the install shipped with. A colleague got Custom
+  // Sounds 1.0.0, broken, the day 1.0.4 was published.
+  const manager = read('src/runtime/manager.ts');
+  assert.match(manager, /if \(installed\) await this\.takeLatest\(id\);/);
+  const take = manager.slice(manager.indexOf('private async takeLatest'));
+  assert.match(take, /if \(!newer \|\| newer\.blockedBy\) return;/, 'never a version this build cannot run');
+  assert.match(take, /await this\.updateMod\(id\)/, 'through the Update button\'s own path');
+});

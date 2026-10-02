@@ -318,6 +318,25 @@ export class ModManager {
       installed,
     });
     this.notify();
+    if (installed) await this.takeLatest(id);
+  }
+
+  /**
+   * A mod installed from Browse is the copy this install shipped with, and the
+   * branch may have moved on since: a colleague installed Custom Sounds 1.0.0,
+   * broken, the day 1.0.4 was published, and was offered nothing better until
+   * the next hourly sweep. So installing asks the registry straight away and
+   * takes the published version when this build can run it -- through the
+   * same path as the Update button, which re-validates what it downloads.
+   *
+   * Never in the way: offline, blocked by an older BetterSlack, or a download
+   * that fails, and the shipped copy simply stays.
+   */
+  private async takeLatest(id: string): Promise<void> {
+    const updates = await this.refreshModUpdates().catch(() => []);
+    const newer = updates.find((update) => update.id === id);
+    if (!newer || newer.blockedBy) return;
+    await this.updateMod(id).catch(() => undefined);
   }
 
   onChange(listener: () => void): () => void {
