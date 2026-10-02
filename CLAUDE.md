@@ -440,6 +440,9 @@ is the same check offered to a user, as a command. What it has to cover:
   address ends `?ref=slack-digest&source=weekly`, and a real link on the same
   screen can contain "source" as well. A false alarm stops a shoot exactly as
   dead as a real leak, so everything this file writes is in `VOCABULARY`.
+  A survivor is matched as a whole word, never as a substring: an original
+  "rebase" is not the redactor's "rebased". A mod's own name, written in its
+  own interface, is in `CHROME`.
 - **"It is only digits" is not "it is nobody's".** A badge count and a year
   belong to nobody and inventing them makes the screen look wrong; a six-digit
   order reference is a customer's. Four digits or fewer are kept, longer ones

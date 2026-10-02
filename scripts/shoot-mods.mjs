@@ -58,6 +58,8 @@ const CHROME = new Set([
   'secondes', 'minutes', 'heures', 'jours', 'semaines', 'semaine', 'heure',
   'janvier', 'février', 'fevrier', 'mars', 'avril', 'juin', 'juillet',
   'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre',
+  // A mod's own name, written by the mod in its own interface.
+  'quelio',
 ]);
 
 /*
@@ -833,7 +835,11 @@ export default async function shootMods({ evaluate, shoot, shootWindow, evaluate
   const assertClean = async (label) => {
     const still = await evaluate(`(() => {
       const after = window.__betterslackRedaction.sample();
-      return ${JSON.stringify(before)}.filter((word) => after.includes(word));
+      // Whole words: an original rebase is not the redactor's own rebased.
+      const edge = '[^\\\\p{L}\\\\p{N}]';
+      const escape = (word) => word.replace(/[.*+?^\${}()|[\\]\\\\]/g, '\\\\$&');
+      return ${JSON.stringify(before)}.filter((word) =>
+        new RegExp('(^|' + edge + ')' + escape(word) + '(?=$|' + edge + ')', 'u').test(after));
     })()`);
     if (still.length > 0) {
       const where = await evaluate(`JSON.stringify(window.__betterslackRedaction.locate(${JSON.stringify(still.slice(0, 12))}))`);

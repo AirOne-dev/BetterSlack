@@ -430,6 +430,7 @@ window.CATALOGUE = {
       ],
       "requires": [],
       "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" opacity=\".25\"/><path d=\"M12 3a9 9 0 1 1-9 9\" fill=\"none\" stroke=\"#34d399\" stroke-width=\"2.4\" stroke-linecap=\"round\"/><path d=\"M12 7.5V12l3 2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>",
+      "shot": "shots/mods/quelio.webp",
       "settings": 15
     },
     {

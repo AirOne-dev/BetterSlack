@@ -48,9 +48,27 @@
       "hint": "A narrow window shortens it on its own.",
       "default": "full",
       "options": [
-        { "value": "full", "label": "Progress and today’s status", "labels": { "fr": "Progression et état du jour" } },
-        { "value": "week", "label": "Progress and what is left", "labels": { "fr": "Progression et reste à faire" } },
-        { "value": "compact", "label": "Progress only", "labels": { "fr": "Progression seule" } }
+        {
+          "value": "full",
+          "label": "Progress and today’s status",
+          "labels": {
+            "fr": "Progression et état du jour"
+          }
+        },
+        {
+          "value": "week",
+          "label": "Progress and what is left",
+          "labels": {
+            "fr": "Progression et reste à faire"
+          }
+        },
+        {
+          "value": "compact",
+          "label": "Progress only",
+          "labels": {
+            "fr": "Progression seule"
+          }
+        }
       ],
       "labels": {
         "fr": "Dans la barre du haut"
@@ -233,7 +251,9 @@
     }
   ],
   "network": {
-    "settings": ["apiUrl"]
+    "settings": [
+      "apiUrl"
+    ]
   },
   "betterslackApi": 1,
   "slackVersion": "4.51",
@@ -242,6 +262,22 @@
     "tools"
   ],
   "readme": "README.md",
+  "screenshots": [
+    {
+      "file": "screenshot.webp",
+      "captions": {
+        "en": "The week in the top bar, and its details: hours worked, today's suggested departure, and the days.",
+        "fr": "La semaine dans la barre du haut, et son détail : heures effectuées, départ conseillé du jour, et les jours."
+      }
+    },
+    {
+      "file": "screenshot-bar.webp",
+      "captions": {
+        "en": "The bar alone: progress toward the objective, what is left today, and when to leave.",
+        "fr": "La barre seule : progression vers l’objectif, ce qu’il reste aujourd’hui, et l’heure de départ."
+      }
+    }
+  ],
   "readmes": {
     "fr": "README.fr.md"
   }

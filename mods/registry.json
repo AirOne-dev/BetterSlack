@@ -1333,6 +1333,22 @@
         "tools"
       ],
       "readme": "README.md",
+      "screenshots": [
+        {
+          "file": "screenshot.webp",
+          "captions": {
+            "en": "The week in the top bar, and its details: hours worked, today's suggested departure, and the days.",
+            "fr": "La semaine dans la barre du haut, et son détail : heures effectuées, départ conseillé du jour, et les jours."
+          }
+        },
+        {
+          "file": "screenshot-bar.webp",
+          "captions": {
+            "en": "The bar alone: progress toward the objective, what is left today, and when to leave.",
+            "fr": "La barre seule : progression vers l’objectif, ce qu’il reste aujourd’hui, et l’heure de départ."
+          }
+        }
+      ],
       "readmes": {
         "fr": "README.fr.md"
       },
