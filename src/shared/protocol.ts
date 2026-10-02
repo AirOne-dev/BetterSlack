@@ -317,7 +317,16 @@ export interface Settings {
    * launch, so "set" means "keep it this way" rather than "poke it once".
    */
   slackPrefs?: Record<string, unknown>;
+  /**
+   * Whether BetterSlack has already asked for App Management, which putting
+   * its icon on Slack's Dock tile needs. Asked once at startup; the About tab
+   * offers it again for anyone who said later.
+   */
+  dockIconAsked?: boolean;
 }
+
+/** Whether Slack's Dock tile wears BetterSlack's icon, as `app.dockIcon` answers. */
+export type DockIconState = 'ok' | 'refused' | 'unsupported';
 
 export const DEFAULT_SETTINGS: Settings = {
   installed: [],
@@ -396,6 +405,13 @@ export type Request =
    * until this answers, which is a few milliseconds later.
    */
   | { type: 'app.art' }
+  /**
+   * Slack's Dock tile on macOS. `status` answers whether Slack.app took the
+   * icon at its last launch; `settings` opens App Management in System
+   * Settings, the permission writing into Slack.app needs; `retry` tries again
+   * now, so the answer to "did that work" does not wait for the next launch.
+   */
+  | { type: 'app.dockIcon'; action?: 'status' | 'settings' | 'retry' }
   /** Everything in ~/.betterslack worth keeping, as one JSON document. */
   | { type: 'backup.export' }
   /** Put one back. Replaces settings and user mods; never touches the install. */

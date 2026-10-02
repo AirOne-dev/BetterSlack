@@ -27,6 +27,7 @@ import { MARK_SVG } from './mark.js';
 import { renderMarkdown } from './markdown.js';
 import { sortMods, type SortId } from './sort.js';
 import { PANEL_STRINGS } from './strings.js';
+import { requestDockIcon } from './dock-icon.js';
 
 type TabId = 'themes' | 'plugins' | 'css' | 'about';
 /*
@@ -1211,6 +1212,7 @@ export class Panel {
         ]),
       ]),
       this.renderUpdateCheck(),
+      this.renderDockIcon(),
       this.renderBackup(),
       this.renderDiagnostics(),
       h('dl', { class: 'betterslack-info' }, [
@@ -1415,6 +1417,35 @@ export class Panel {
       ]),
       h('div', { class: 'betterslack-row__actions' }, [button]),
     ]);
+  }
+
+  /**
+   * Slack's Dock tile, on macOS: says whether it wears BetterSlack's icon and,
+   * when App Management is what stands in the way, offers to ask for it. The
+   * same conversation the startup offer has, for whoever said later.
+   */
+  private renderDockIcon(): Node {
+    const row = h('div', { class: 'betterslack-row', hidden: 'hidden' });
+    void this.manager.dockIcon().then((state) => {
+      if (state === 'unsupported') return;
+      const button = h('button', {
+        class: 'c-button c-button--outline c-button--medium',
+        type: 'button',
+      }, [t('dockIconAllow')]);
+      button.addEventListener('click', () => {
+        this.close();
+        void requestDockIcon(this.manager);
+      });
+      row.append(
+        h('div', { class: 'betterslack-row__meta' }, [
+          h('div', { class: 'betterslack-row__name' }, [t('dockIconRow')]),
+          h('div', { class: 'betterslack-row__desc' }, [t(state === 'ok' ? 'dockIconOk' : 'dockIconRefused')]),
+        ]),
+        h('div', { class: 'betterslack-row__actions' }, state === 'ok' ? [] : [button]),
+      );
+      row.removeAttribute('hidden');
+    });
+    return row;
   }
 
   private renderBackup(): Node {

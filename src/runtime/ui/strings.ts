@@ -112,7 +112,19 @@ export const PANEL_STRINGS = {
     cssApplied: 'Applied.',
 
     aboutBody:
-      'BetterSlack injects into the Slack renderer over the Chrome DevTools Protocol, carried on a private pipe rather than a debugging port — nothing listens on the network. It does not modify Slack.app, so Slack updates cannot break your install, but mods stay loaded only while the loader runs.',
+      'BetterSlack injects into the Slack renderer over the Chrome DevTools Protocol, carried on a private pipe rather than a debugging port — nothing listens on the network. Nothing of Slack.app is changed beyond, with your permission, its icon while it starts, so Slack updates cannot break your install, but mods stay loaded only while the loader runs.',
+    dockIconTitle: 'BetterSlack\u2019s icon in the Dock',
+    dockIconBody:
+      'BetterSlack can show its icon (or your theme\u2019s) on Slack in the Dock. To do that it puts the icon on Slack.app just before starting it, which macOS only allows with the App Management permission. Open System Settings and switch BetterSlack on there (if it is not listed, add it with +).',
+    dockIconOpen: 'Open System Settings',
+    dockIconLater: 'Later',
+    dockIconAfter: 'Once BetterSlack is switched on in App Management, restart Slack so the Dock picks up the icon.',
+    dockIconRestart: 'Restart Slack',
+    dockIconStill: 'macOS still refuses: switch BetterSlack on in System Settings \u203a Privacy & Security \u203a App Management.',
+    dockIconRow: 'Icon in the Dock',
+    dockIconOk: 'Slack wears BetterSlack\u2019s icon in the Dock.',
+    dockIconRefused: 'Slack keeps its own icon: macOS needs the App Management permission for BetterSlack.',
+    dockIconAllow: 'Allow\u2026',
     updatesTitle: 'Updates',
     updatesHint: 'BetterSlack and your mods are checked when Slack starts, then every hour.',
     updatesCheck: 'Check for updates',
@@ -254,7 +266,19 @@ export const PANEL_STRINGS = {
     cssApplied: 'Appliqué.',
 
     aboutBody:
-      'BetterSlack s’injecte dans le processus de rendu de Slack via le Chrome DevTools Protocol, acheminé par un pipe privé plutôt que par un port de débogage — rien n’écoute sur le réseau. Slack.app n’est jamais modifié : une mise à jour de Slack ne peut donc pas casser votre installation, mais les mods ne restent chargés que tant que le loader s’exécute.',
+      'BetterSlack s’injecte dans le processus de rendu de Slack via le Chrome DevTools Protocol, acheminé par un pipe privé plutôt que par un port de débogage — rien n’écoute sur le réseau. Rien n’est changé dans Slack.app hormis, avec votre permission, son icône pendant son lancement : une mise à jour de Slack ne peut donc pas casser votre installation, mais les mods ne restent chargés que tant que le loader s’exécute.',
+    dockIconTitle: 'L\u2019icône de BetterSlack dans le Dock',
+    dockIconBody:
+      'BetterSlack peut afficher son icône (ou celle de votre thème) sur Slack dans le Dock. Pour cela, il pose l\u2019icône sur Slack.app juste avant de le lancer, ce que macOS n\u2019autorise qu\u2019avec la permission Gestion des apps. Ouvrez les Réglages Système et activez BetterSlack (s\u2019il n\u2019est pas dans la liste, ajoutez-le avec +).',
+    dockIconOpen: 'Ouvrir les Réglages Système',
+    dockIconLater: 'Plus tard',
+    dockIconAfter: 'Une fois BetterSlack activé dans Gestion des apps, relancez Slack pour que le Dock prenne l\u2019icône.',
+    dockIconRestart: 'Relancer Slack',
+    dockIconStill: 'macOS refuse toujours : activez BetterSlack dans Réglages Système \u203a Confidentialité et sécurité \u203a Gestion des apps.',
+    dockIconRow: 'Icône dans le Dock',
+    dockIconOk: 'Slack porte l\u2019icône de BetterSlack dans le Dock.',
+    dockIconRefused: 'Slack garde son icône : macOS demande la permission Gestion des apps pour BetterSlack.',
+    dockIconAllow: 'Autoriser\u2026',
     updatesTitle: 'Mises à jour',
     updatesHint: 'BetterSlack et vos mods sont vérifiés au démarrage de Slack, puis toutes les heures.',
     updatesCheck: 'Vérifier les mises à jour',

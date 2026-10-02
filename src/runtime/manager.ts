@@ -2,6 +2,7 @@
 
 import {
   missingRequirements,
+  type DockIconState,
   type Event as PushEvent,
   type LoaderInfo,
   type ModFiles,
@@ -242,6 +243,23 @@ export class ModManager {
    * Check for a newer BetterSlack and newer mods now. Null when the loader
    * could not be asked; otherwise how many updates there are, app included.
    */
+  /**
+   * Slack's Dock tile: whether it took BetterSlack's icon, open the permission
+   * it needs, or try again. `unsupported` for anything that is not macOS, and
+   * for a loader too old to know the question.
+   */
+  async dockIcon(action: 'status' | 'settings' | 'retry' = 'status'): Promise<DockIconState> {
+    const answer = await this.bridge
+      .request<{ state?: DockIconState }>({ type: 'app.dockIcon', action })
+      .catch(() => null);
+    return answer?.state ?? 'unsupported';
+  }
+
+  /** Stop Slack and launch it again, through the loader -- the same process carries on. */
+  async restartSlack(): Promise<void> {
+    await this.bridge.request({ type: 'slack.restart' });
+  }
+
   async checkForUpdates(): Promise<number | null> {
     const answer = await this.bridge
       .request<{ app: UpdateStatus | null; mods: ModUpdate[] }>({ type: 'updates.check' })

@@ -5,7 +5,7 @@
 // (touch the filesystem, run code the page CSP would refuse) is served from
 // here over a Runtime binding.
 
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -45,6 +45,7 @@ import {
 import {
   BINDING_NAME,
   RECEIVER_NAME,
+  type DockIconState,
   type Envelope,
   type Event as PushEvent,
   type SlackEvent,
@@ -1137,6 +1138,22 @@ class Loader {
       case 'app.art':
         return LOADER_ART;
 
+      case 'app.dockIcon': {
+        if (request.action === 'settings') {
+          if (process.platform !== 'darwin') return { ok: false };
+          execFile('open', [APP_MANAGEMENT_PANE], () => undefined);
+          return { ok: true };
+        }
+        if (request.action === 'retry') {
+          // Dressed now, taken off again shortly: the tile itself only changes
+          // when Slack starts, which is the restart the runtime offers next.
+          const state = await dressIcons(this.slackPath);
+          if (state === 'ok') undressSlackLater(this.slackPath);
+          return { state };
+        }
+        return { state: dockIcon };
+      }
+
       case 'app.update': {
         /*
          * Pull, rebuild, and come back as the new version.
@@ -1434,13 +1451,27 @@ async function enabledThemeCss(): Promise<Array<{ css: string }>> {
   return out;
 }
 
+/**
+ * Whether Slack.app took the icon the last time it was dressed.
+ *
+ * `refused` is App Management: writing into another app's signed bundle is
+ * kTCCServiceSystemPolicyAppBundles, which macOS refuses silently until the
+ * user switches it on for BetterSlack. The runtime asks for it on this answer.
+ */
+let dockIcon: DockIconState = 'unsupported';
+
 /** BetterSlack's icon -- or the theme's -- on Slack and on the launcher. */
-async function dressIcons(slackPath: string): Promise<void> {
-  if (process.platform !== 'darwin') return;
+async function dressIcons(slackPath: string): Promise<DockIconState> {
+  if (process.platform !== 'darwin') return dockIcon;
   const svg = chooseIcon(await enabledThemeCss());
   const slack = bundleOf(slackPath);
-  await applyIcon(svg, [...(slack ? [slack] : []), ...launcherBundles()]).catch(() => []);
+  const took: string[] = await applyIcon(svg, [...(slack ? [slack] : []), ...launcherBundles()]).catch(() => []);
+  dockIcon = !slack ? 'unsupported' : took.includes(slack) ? 'ok' : 'refused';
+  return dockIcon;
 }
+
+/** Where macOS lists the apps allowed to modify other apps. */
+const APP_MANAGEMENT_PANE = 'x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles';
 
 /*
  * Off Slack again once it has started. The Dock has read the icon by then and

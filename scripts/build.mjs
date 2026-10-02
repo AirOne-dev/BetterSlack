@@ -109,6 +109,7 @@ const runtimeModules = {
     `${root}/src/runtime/ui/sort.ts`,
     `${root}/src/runtime/ui/mark.ts`,
     `${root}/src/runtime/ui/splash.ts`,
+    `${root}/src/runtime/ui/dock-icon.ts`,
     `${root}/src/runtime/slack-api.ts`,
     `${root}/src/runtime/mrkdwn.ts`,
     `${root}/src/runtime/slack-events.ts`,

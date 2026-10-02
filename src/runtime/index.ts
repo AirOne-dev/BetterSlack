@@ -9,6 +9,7 @@ import { installLauncher } from './ui/launcher.js';
 import { showSplash } from './ui/splash.js';
 import { LAUNCHER_CSS, PANEL_CSS } from './ui/styles.js';
 import { Panel } from './ui/panel.js';
+import { offerDockIcon } from './ui/dock-icon.js';
 
 declare global {
   interface Window {
@@ -215,6 +216,10 @@ async function boot(): Promise<void> {
   // The loader clears its crash marker on this. Sent after everything above,
   // so "up" means the panel exists and the mods have had their turn.
   bridge.notify({ type: 'app.ready' });
+
+  // Once the start screen has lifted, never in front of it: the one question
+  // BetterSlack asks at startup, and only when Slack's Dock icon was refused.
+  setTimeout(() => void offerDockIcon(manager), 2500);
 
   console.log(
     `%c BetterSlack ${payload.version} %c ${payload.settings.enabled.length} mod(s) active — ⌘⇧M `,

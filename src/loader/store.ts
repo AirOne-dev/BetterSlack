@@ -63,6 +63,7 @@ export async function readSettings(): Promise<Settings> {
         parsed.modFailures && typeof parsed.modFailures === 'object' ? parsed.modFailures : {},
       slackPrefs:
         parsed.slackPrefs && typeof parsed.slackPrefs === 'object' ? parsed.slackPrefs : {},
+      dockIconAsked: parsed.dockIconAsked === true,
     };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {

@@ -1154,12 +1154,18 @@ tests fail below it.
   icon goes on BetterSlack.app, which is how an install updated from the panel
   gets a new icon without re-running `install.sh`; measured first that a save
   into Downloads through BetterSlack's identity is still allowed with it on.
-  **Dressing Slack.app needs App Management, and BetterSlack does not hold
-  it.** Writing into another app's signed bundle is
-  `kTCCServiceSystemPolicyAppBundles`; launched from BetterSlack.app, tccd
-  answered `ReqResult(Auth Right: Unknown (None))` and the icon never landed,
-  silently. The measurement that showed the tile changing was made from a
-  terminal that holds that permission, which is why it looked free. Dressing
+  **Dressing Slack.app needs App Management.** Writing into another app's
+  signed bundle is `kTCCServiceSystemPolicyAppBundles`; without it tccd
+  answers `ReqResult(Auth Right: Unknown (None))` and the icon never lands,
+  silently, with no prompt -- nothing can raise one for this permission. So
+  the loader records whether Slack.app took the icon (`app.dockIcon`), and
+  `ui/dock-icon.ts` asks once at startup when it did not: why, a button that
+  opens the pane (`x-apple.systempreferences:...?Privacy_AppBundles`), then a
+  retry and the restart that shows the tile. `settings.dockIconAsked` is set
+  before the dialog, so it is never asked twice; the About tab offers it
+  again. The grant survives in-app updates, which never rebuild
+  BetterSlack.app. A terminal that already holds the permission makes all of
+  this look free -- measure from BetterSlack.app, not from a shell. Dressing
   BetterSlack.app is its own bundle and needs nothing.
   Read the tile in a tight crop of the Dock and compare against a known
   render: the mark without its plate looked "dark" on a dark Dock and was
