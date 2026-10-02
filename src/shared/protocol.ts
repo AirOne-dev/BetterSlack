@@ -412,6 +412,13 @@ export type Request =
    * now, so the answer to "did that work" does not wait for the next launch.
    */
   | { type: 'app.dockIcon'; action?: 'status' | 'settings' | 'retry' }
+  /**
+   * Start BetterSlack again, launcher and all, when it was started from
+   * BetterSlack.app -- the only way its own Dock tile takes a new icon, since
+   * the Dock draws a running app with the icon it launched with. Otherwise,
+   * from a checkout, just Slack.
+   */
+  | { type: 'app.relaunch' }
   /** Everything in ~/.betterslack worth keeping, as one JSON document. */
   | { type: 'backup.export' }
   /** Put one back. Replaces settings and user mods; never touches the install. */

@@ -1174,9 +1174,16 @@ tests fail below it.
   a running app with the icon it had at launch, and the Dock restart also
   drops Slack's unread badge, which its main process re-sends only when the
   badge text changes. A Dock restart that seemed to work had only brought back
-  the launch icon. So switching a theme re-dresses BetterSlack.app at once and
-  offers to restart Slack (`dockIconPending`), and only when the icon would
-  actually change.
+  the launch icon. BetterSlack.app's own tile follows the same rule -- the
+  launcher stays running, so its bundle can carry the new icon while its tile
+  keeps the old. So switching a theme re-dresses both bundles and, when the
+  icon would actually change (`dockIconPending`), asks in a dialog whether to
+  relaunch the whole app (`app.relaunch`): Slack stops, a detached shell runs
+  `open -a BetterSlack.app` once the loader has exited, and both tiles come
+  back new. The loader knows it came from the bundle by
+  `__CFBundleIdentifier=dev.airone.betterslack`, which LaunchServices puts in
+  the environment and `launch.sh` passes to Node; a checkout started with pnpm
+  has none and restarts only Slack.
   Read the tile in a tight crop of the Dock and compare against a known
   render: the mark without its plate looked "dark" on a dark Dock and was
   misread once as the icon not having taken.
@@ -1191,8 +1198,8 @@ tests fail below it.
   A switched-on theme changes the icon by declaring `--betterslack-app-icon`
   in its stylesheet (see the theme section below); the last enabled theme that
   declares one wins, as its stylesheet does. Switching a theme re-dresses
-  BetterSlack.app at once and offers to restart Slack for its tile, which is
-  read when Slack starts and not again.
+  BetterSlack.app's bundle at once and offers the relaunch that shows it on
+  both tiles.
 - **`slack://open?team=<id>` switches workspace**, in place, same document --
   and it is the only way to, from a script. The workspace rail is in the
   document with every workspace in it and measures **zero by zero** in Slack

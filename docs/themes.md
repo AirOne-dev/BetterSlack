@@ -378,8 +378,8 @@ update delivers. Keep the pictures as `app-icon.svg` and `splash.svg` beside
 an SVG can animate itself (`<animate>`, `<animateTransform>`), which is how
 Windows XP's boot screen slides its blocks. The icon is a 1024 square with
 transparent corners, like any macOS icon. Once BetterSlack has the App
-Management permission, Slack wears it in the Dock from its next start, and
-switching the theme on offers that restart.
+Management permission, Slack and BetterSlack wear it in the Dock from their
+next start, and switching the theme on offers that relaunch.
 
 ## When CSS is not enough
 

@@ -269,6 +269,15 @@ export class ModManager {
     await this.bridge.request({ type: 'slack.restart' });
   }
 
+  /**
+   * Start BetterSlack again, launcher included, so both Dock tiles take a new
+   * icon. A loader that predates the request restarts Slack instead.
+   */
+  async relaunch(): Promise<void> {
+    const answer = await this.bridge.request<{ ok?: boolean }>({ type: 'app.relaunch' }).catch(() => null);
+    if (!answer?.ok) await this.restartSlack();
+  }
+
   async checkForUpdates(): Promise<number | null> {
     const answer = await this.bridge
       .request<{ app: UpdateStatus | null; mods: ModUpdate[] }>({ type: 'updates.check' })

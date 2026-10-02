@@ -47,6 +47,7 @@ function fakeManager({ asked = false, states = ['refused'] } = {}) {
       return states.length > 1 ? states.shift() : states[0];
     },
     restartSlack: async () => { calls.push(['restart']); },
+    relaunch: async () => { calls.push(['restart']); },
   };
 }
 
@@ -91,7 +92,7 @@ test('the whole way: the pane, a retry, then the restart that shows the tile', a
     await wait(20);
     button('Open System Settings').click();
     await wait(20);
-    button('Restart Slack').click();
+    button('Restart').click();
     await offer;
     assert.deepEqual(manager.calls.filter(([kind]) => kind !== 'patch'), [
       ['dockIcon', 'status'], ['dockIcon', 'settings'], ['dockIcon', 'retry'], ['restart'],
@@ -106,7 +107,7 @@ test('still refused after the pane: no restart for nothing', async () => {
     await wait(20);
     button('Open System Settings').click();
     await wait(20);
-    button('Restart Slack').click();
+    button('Restart').click();
     await offer;
     assert.ok(!manager.calls.some(([kind]) => kind === 'restart'));
   });
@@ -127,16 +128,17 @@ test('a theme switch that does not move the icon offers nothing', async () => {
   });
 });
 
-test('one that does offers the restart, and only offers it', async () => {
-  await withDom(async () => {
-    const base = fakeManager();
-    const manager = { ...base, dockIconPending: async () => true };
-    await offerIconRestart(manager);
-    assert.ok(!base.calls.some(([kind]) => kind === 'restart'), 'nothing restarts by itself');
-    const restart = allButtons().find((b) => b.textContent.trim() === 'Restart Slack');
-    assert.ok(restart, 'the toast carries the button');
-    restart.click();
-    await wait(10);
-    assert.ok(base.calls.some(([kind]) => kind === 'restart'));
-  });
+test('one that does asks, in a dialog, and relaunches only on yes', async () => {
+  for (const [answer, restarts] of [['Later', false], ['Restart', true]]) {
+    await withDom(async () => {
+      const base = fakeManager();
+      const manager = { ...base, dockIconPending: async () => true };
+      const offer = offerIconRestart(manager);
+      await wait(20);
+      assert.ok(!base.calls.some(([kind]) => kind === 'restart'), 'nothing restarts by itself');
+      button(answer).click();
+      await offer;
+      assert.equal(base.calls.some(([kind]) => kind === 'restart'), restarts);
+    });
+  }
 });

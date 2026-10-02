@@ -1177,6 +1177,30 @@ class Loader {
         return result;
       }
 
+      case 'app.relaunch': {
+        const bundle = launchedFromBundle();
+        if (!bundle) {
+          setTimeout(() => void this.restartSlack(), 400);
+          return { ok: true, whole: false };
+        }
+        /*
+         * Slack first, then this process; the new launch is asked of
+         * LaunchServices by a detached shell once this one has gone, since an
+         * `open` while the old instance still runs only brings it forward.
+         */
+        setTimeout(() => {
+          console.log('[betterslack] relaunching');
+          void stopSlack().finally(() => {
+            spawn('/bin/sh', ['-c', 'sleep 1; open -a "$0"', bundle], {
+              detached: true,
+              stdio: 'ignore',
+            }).unref();
+            process.exit(0);
+          });
+        }, 400);
+        return { ok: true, whole: true };
+      }
+
       case 'slack.restart': {
         /*
          * Answered before anything happens: the renderer that asked is about
@@ -1491,6 +1515,16 @@ async function refreshLauncherIcon(): Promise<void> {
 async function dockIconPending(): Promise<boolean> {
   if (process.platform !== 'darwin' || dockIcon !== 'ok') return false;
   return chooseIcon(await enabledThemeCss()) !== dockIconShown;
+}
+
+/**
+ * The BetterSlack.app this loader was started from, or null. LaunchServices
+ * puts the bundle id in the environment of what it launches, and launch.sh
+ * passes it on to Node; a checkout started with pnpm has none.
+ */
+function launchedFromBundle(): string | null {
+  if (process.platform !== 'darwin' || process.env.__CFBundleIdentifier !== 'dev.airone.betterslack') return null;
+  return launcherBundles()[0] ?? null;
 }
 
 /** Where macOS lists the apps allowed to modify other apps. */
