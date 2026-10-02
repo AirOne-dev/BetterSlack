@@ -1141,13 +1141,26 @@ tests fail below it.
   'hidden'` and the channel-details modal never opens, so anything that drives
   Slack's own UI fails in the background — which is also why measuring by
   clicking through Slack from a terminal is flaky.
-- **The Dock shows Slack's icon, and nothing here can change that.** Measured
-  three ways: `Browser.setDockTile` does not exist in Slack's Electron
-  (`wasn't found`), `desktop.dock` only bounces, and a custom Finder icon set
-  on `Slack.app` (`NSWorkspace setIcon`, an `Icon\r` in the bundle) changes
-  Finder and Launchpad but not the tile of the running app, which Slack draws
-  itself. What is left is patching the bundle or opening the main process to
-  an inspector, and both are ruled out above.
+- **The Dock shows Slack's icon, and nothing short of changing Slack moves
+  it.** Every avenue, measured on Slack 4.51 / macOS 27:
+  - `Browser.setDockTile` does not exist in Slack's Electron (`wasn't found`).
+  - `desktop.dock` only bounces; the main process calls `dock.setBadge` and
+    nothing else on the Dock -- no `setIcon` anywhere in `app.asar`.
+  - `--customAppIcon` is parsed and kept in the environment, and no code in a
+    packaged build reads it: "macOS development builds only", literally.
+  - Injecting a library is closed: hardened runtime with library validation
+    and no `allow-dyld-environment-variables`.
+  - A custom Finder icon on `Slack.app` (`NSWorkspace setIcon`, an `Icon\r`
+    in the bundle) changes Finder and Launchpad, not the running app's tile,
+    even after `killall Dock`; it also fails `codesign --strict` ("detritus
+    not allowed"). Reverted after measuring.
+  - Slack has no setting to hide its own Dock icon, so BetterSlack cannot
+    stand in for it either.
+  What is left is drawing over the tile -- a borderless window above the Dock,
+  placed through the Accessibility API, which needs that permission and goes
+  wrong with magnification, auto-hide, bouncing and full-screen Spaces -- or
+  patching the bundle or opening the main process to an inspector, both ruled
+  out above.
 - **`slack://open?team=<id>` switches workspace**, in place, same document --
   and it is the only way to, from a script. The workspace rail is in the
   document with every workspace in it and measures **zero by zero** in Slack
