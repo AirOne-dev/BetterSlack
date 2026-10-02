@@ -8,3 +8,10 @@ declare module '*.webm' {
   const base64: string;
   export default base64;
 }
+
+// And `.svg` the text loader: the default app icon travels inside the loader
+// bundle for the same reason.
+declare module '*.svg' {
+  const text: string;
+  export default text;
+}

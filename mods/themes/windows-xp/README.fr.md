@@ -15,6 +15,10 @@ Slack en Luna, l'apparence livrée avec Windows XP en 2001. Chaque couleur vient
 - **Verre Aero** : XP ne l'a jamais eu (il est arrivé avec Vista), mais c'est ce dont tout le monde se souvient à côté. Une fois activé, Bliss est dessiné derrière le client, et la barre de titre, le rail et le volet de tâches deviennent le verre ciel flouté de Windows 7, avec un texte de titre noir auréolé de blanc.
 - **Texte des messages** : 11 px, c'est Tahoma 8 points, exactement ce qu'XP utilisait, et petit sur un écran moderne. 13 px est la valeur par défaut, 15 px la taille de Slack.
 
+## Son icône et son écran de démarrage
+
+Tant que le thème est activé, BetterSlack porte son logo à la manière d'XP -- brillant, cerné, dans une fenêtre Luna -- dans le Dock sur macOS, dès le prochain lancement de Slack. Et l'écran qui couvre Slack pendant son démarrage est celui d'XP : fond noir, le logo, et les trois blocs bleus qui glissent dans leur piste.
+
 ## Fonctionne avec tous les plugins
 
 Le thème repeint les jetons de design de Slack, et les plugins de BetterSlack lisent ces mêmes jetons. La colonne des membres, le bandeau de compte, l'Historique, la palette et chaque fenêtre ouverte par un mod suivent le jeu de couleurs sans que le thème ait à les nommer.

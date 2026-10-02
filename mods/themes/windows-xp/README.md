@@ -15,6 +15,10 @@ Slack in Luna, the look Windows XP shipped with in 2001, with every colour taken
 - **Aero glass**: XP never had it (it came with Vista), but it is what everyone remembers next to it. When it is on, Bliss is drawn behind the client, and the title bar, the rail and the task pane become Windows 7's blurred sky glass, with black caption text glowing white.
 - **Message text**: 11px is Tahoma 8 point, exactly what XP used, and small on a modern screen. 13px is the default; 15px is Slack's own size.
 
+## Its own icon and boot screen
+
+While the theme is on, BetterSlack wears its mark the way XP drew things -- glossy, outlined, inside a Luna window -- in the Dock on macOS, from the next time Slack starts. And the screen that covers Slack while it starts is XP's boot screen: black, the mark, and the three blue blocks sliding along their track.
+
 ## Works with every plugin
 
 The theme repaints Slack's design tokens, and BetterSlack's plugins read those same tokens. The member column, the account strip, History, the palette and every dialog a mod opens all follow the scheme without the theme having to name them.

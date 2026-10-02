@@ -50,7 +50,7 @@ const CSS = `
   flex-direction: column;
   gap: 22px;
   /* Slack's own surface once it exists, and its shade until then. */
-  background: var(--dt_color-base-pry, #1a1d21);
+  background: var(--betterslack-splash-background, var(--dt_color-base-pry, #1a1d21));
   opacity: 1;
   transition: opacity ${FADE_MS}ms ease-out;
   font-family: Lato, Slack-Lato, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -76,6 +76,24 @@ const CSS = `
 .mark svg { width: 100%; height: 100%; display: block; }
 .art { opacity: 0; transition: opacity 180ms ease-out; object-fit: contain; }
 
+/*
+ * A theme's own start screen. It declares the picture as a custom property on
+ * its root, which inherits through the shadow boundary, and the stage takes
+ * the size the theme asks for -- a boot screen is wider than a logo.
+ */
+.theme-art {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background: var(--betterslack-splash-art) center / contain no-repeat;
+}
+.stage--theme {
+  width: var(--betterslack-splash-width, 88px);
+  height: var(--betterslack-splash-height, 88px);
+}
+.stage--theme .theme-art { display: block; }
+.stage--theme .mark, .stage--theme .art { display: none; }
+
 /* Swapped only once the video can actually play, so a decode that fails leaves
    the mark where it was rather than replacing it with nothing. */
 .stage--art .art { opacity: 1; }
@@ -86,7 +104,7 @@ const CSS = `
   font-size: 13px;
   line-height: 18px;
   letter-spacing: .2px;
-  color: var(--dt_color-content-ter, rgba(209, 210, 211, .62));
+  color: var(--betterslack-splash-text, var(--dt_color-content-ter, rgba(209, 210, 211, .62)));
 }
 
 /*
@@ -176,7 +194,9 @@ export function showSplash(art?: Promise<string | null>): Splash {
       const mark = document.createElement('div');
       mark.className = 'mark';
       mark.innerHTML = MARK_SVG;
-      stage.append(mark);
+      const themeArt = document.createElement('div');
+      themeArt.className = 'theme-art';
+      stage.append(mark, themeArt);
       void playArt(stage);
       label = document.createElement('div');
       label.className = 'label';
@@ -186,10 +206,38 @@ export function showSplash(art?: Promise<string | null>): Splash {
       label.textContent = pending || t('splashLoading');
       root.append(style, stage, label);
       document.body.append(host);
+      // After the append: a detached host has no computed style to read.
+      watchTheme(stage);
     } catch {
       // A splash that throws must cost nothing: the app behind it is fine.
       host = null;
     }
+  };
+
+  /**
+   * Whether a theme brings its own start screen.
+   *
+   * Asked of the host's computed style, because the property is the theme's and
+   * arrives with its stylesheet -- which at document-start may be a moment
+   * behind the splash. So it is asked now and a few times after, and a theme
+   * that lands late still takes over the screen.
+   */
+  const watchTheme = (stage: HTMLElement): void => {
+    let tries = 0;
+    const look = (): void => {
+      if (finished) return;
+      try {
+        if (host && window.getComputedStyle(host).getPropertyValue('--betterslack-splash-art').trim()) {
+          stage.classList.add('stage--theme');
+          stage.querySelector('video')?.remove();
+          return;
+        }
+      } catch {
+        return;
+      }
+      if (++tries < 20) setTimeout(look, 100);
+    };
+    look();
   };
 
   /**
@@ -211,6 +259,8 @@ export function showSplash(art?: Promise<string | null>): Splash {
       return;
     }
     if (!base64 || finished || !stage.isConnected) return;
+    // A theme's own start screen replaces the animation, so nothing is decoded.
+    if (stage.classList.contains('stage--theme')) return;
 
     const video = document.createElement('video');
     video.className = 'art';

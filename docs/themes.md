@@ -357,6 +357,29 @@ switch, one stylesheet. Every colour lives in the palette at the top, and its
 test refuses a colour written anywhere below it -- the only way three schemes
 stay three schemes.
 
+## Your own app icon and start screen
+
+A theme can give BetterSlack a Dock icon and a start screen of its own, in CSS:
+
+```css
+:root {
+  --betterslack-app-icon: url("data:image/svg+xml,...");    /* the Dock, macOS */
+  --betterslack-splash-art: url("data:image/svg+xml,...");  /* while Slack starts */
+  --betterslack-splash-width: 416px;
+  --betterslack-splash-height: 240px;
+  --betterslack-splash-background: #000000;
+  --betterslack-splash-text: #ffffff;
+}
+```
+
+Both are SVG, and both live in the stylesheet because the stylesheet is what an
+update delivers. Keep the pictures as `app-icon.svg` and `splash.svg` beside
+`theme.css`, and let `node scripts/embed-theme-art.mjs <id>` write them in --
+an SVG can animate itself (`<animate>`, `<animateTransform>`), which is how
+Windows XP's boot screen slides its blocks. The icon is a 1024 square with
+transparent corners, like any macOS icon; the Dock shows it from the next time
+Slack starts.
+
 ## When CSS is not enough
 
 A theme is CSS and nothing else. CSS reaches everything about how Slack *looks*

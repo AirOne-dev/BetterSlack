@@ -1,0 +1,22 @@
+<!-- The app icon: the mark on a plain white plate, the shape and grid of a
+     macOS icon (an 824px rounded square inside a 1024px canvas). Built into
+     assets/icon.icns by `pnpm icon`, and the icon the loader puts on Slack while
+     no theme brings one of its own. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#FFFFFF" filter="url(#lift)"/>
+  <g transform="translate(144.53 144.53) scale(0.8667)">
+    <rect x="139" y="289" width="121" height="421" rx="60.5" fill="#E01858"/>
+  <path d="M288 499C288 465.587 315.087 438 348.5 438H410V499.5C410 532.913 382.413 560 349 560V560C315.587 560 288 532.413 288 499V499Z" fill="#E01858"/>
+  <rect x="560" y="139" width="121" height="421" rx="60.5" transform="rotate(90 560 139)" fill="#30C0F0"/>
+  <path d="M349 288C382.413 288 410 315.087 410 348.5L410 410L348.5 410C315.087 410 288 382.413 288 349V349C288 315.587 315.587 288 349 288V288Z" fill="#30C0F0"/>
+  <rect x="709" y="560" width="121" height="421" rx="60.5" transform="rotate(-180 709 560)" fill="#28B078"/>
+  <path d="M560 349C560 382.413 532.913 410 499.5 410L438 410L438 348.5C438 315.087 465.587 288 499 288V288C532.413 288 560 315.587 560 349V349Z" fill="#28B078"/>
+  <rect x="288" y="710" width="121" height="421" rx="60.5" transform="rotate(-90 288 710)" fill="#E8B028"/>
+  <path d="M499 560C465.587 560 438 532.913 438 499.5L438 438L499.5 438C532.913 438 560 465.587 560 499V499C560 532.413 532.413 560 499 560V560Z" fill="#E8B028"/>
+  </g>
+</svg>

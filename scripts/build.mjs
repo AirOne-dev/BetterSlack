@@ -39,7 +39,7 @@ const loader = {
    * Inlined rather than read at runtime so an install still needs nothing but
    * dist/, which is what stage-install.mjs checks.
    */
-  loader: { '.webm': 'base64' },
+  loader: { '.webm': 'base64', '.svg': 'text' },
   sourcemap: true,
   logLevel: 'info',
 };
@@ -135,9 +135,11 @@ const loaderLib = {
     `${root}/src/loader/store.ts`,
     `${root}/src/loader/slack-settings.ts`,
     `${root}/src/loader/mod-data.ts`,
+    `${root}/src/loader/app-icon.ts`,
   ],
   outdir: `${root}/dist`,
   outExtension: { '.js': '.mjs' },
+  loader: { '.svg': 'text' },
   bundle: true,
   platform: 'node',
   format: 'esm',

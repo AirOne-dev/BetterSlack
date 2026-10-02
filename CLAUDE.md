@@ -1141,8 +1141,23 @@ tests fail below it.
   'hidden'` and the channel-details modal never opens, so anything that drives
   Slack's own UI fails in the background — which is also why measuring by
   clicking through Slack from a terminal is flaky.
-- **The Dock shows Slack's icon, and nothing short of changing Slack moves
-  it.** Every avenue, measured on Slack 4.51 / macOS 27:
+- **The Dock tile is a custom Finder icon, put on Slack.app only for its
+  launch.** Measured on Slack 4.51 / macOS 27: with an icon set on the bundle
+  (`NSWorkspace setIcon`, which writes an `Icon\r` into it), the Dock reads it
+  when Slack starts and keeps that tile for as long as Slack runs -- even once
+  the icon has been taken off again. So `src/loader/app-icon.ts` dresses
+  Slack.app just before every launch (and every `api.slack.restart()`) and
+  undresses it 45 seconds later: present, the icon fails `codesign --strict`
+  ("detritus not allowed"), and Slack.app is not ours to leave altered. The
+  work is done through `osascript -l JavaScript`, which every Mac has, and
+  `NSImage` reads SVG itself -- nothing to ship, nothing to compile. The same
+  icon goes on BetterSlack.app, which is how an install updated from the panel
+  gets a new icon without re-running `install.sh`; measured first that a save
+  into Downloads through BetterSlack's identity is still allowed with it on.
+  Read the tile in a tight crop of the Dock and compare against a known
+  render: the mark without its plate looked "dark" on a dark Dock and was
+  misread once as the icon not having taken.
+  Everything else is closed, and each was measured:
   - `Browser.setDockTile` does not exist in Slack's Electron (`wasn't found`).
   - `desktop.dock` only bounces; the main process calls `dock.setBadge` and
     nothing else on the Dock -- no `setIcon` anywhere in `app.asar`.
@@ -1150,17 +1165,11 @@ tests fail below it.
     packaged build reads it: "macOS development builds only", literally.
   - Injecting a library is closed: hardened runtime with library validation
     and no `allow-dyld-environment-variables`.
-  - A custom Finder icon on `Slack.app` (`NSWorkspace setIcon`, an `Icon\r`
-    in the bundle) changes Finder and Launchpad, not the running app's tile,
-    even after `killall Dock`; it also fails `codesign --strict` ("detritus
-    not allowed"). Reverted after measuring.
-  - Slack has no setting to hide its own Dock icon, so BetterSlack cannot
-    stand in for it either.
-  What is left is drawing over the tile -- a borderless window above the Dock,
-  placed through the Accessibility API, which needs that permission and goes
-  wrong with magnification, auto-hide, bouncing and full-screen Spaces -- or
-  patching the bundle or opening the main process to an inspector, both ruled
-  out above.
+  A switched-on theme changes the icon by declaring `--betterslack-app-icon`
+  in its stylesheet (see the theme section below); the last enabled theme that
+  declares one wins, as its stylesheet does. Switching a theme re-dresses
+  BetterSlack.app at once and Slack's tile at the next launch -- the tile is
+  read when Slack starts and not again.
 - **`slack://open?team=<id>` switches workspace**, in place, same document --
   and it is the only way to, from a script. The workspace rail is in the
   document with every workspace in it and measures **zero by zero** in Slack
@@ -1726,6 +1735,21 @@ in place. The trap is where a token is *resolved*: a custom property holding
 declared only on `:root` keep the default palette whatever `body` says. Declare
 them on `body` as well -- Slack's `.sk-client-theme--*` class is on `<body>`,
 which is why existing themes' selector already half-covers it.
+
+**A theme can change BetterSlack's own pictures, still without code.** Two
+custom properties on its `:root`, each a `url("data:image/svg+xml,...")`:
+`--betterslack-app-icon` is read by the loader out of the enabled themes'
+stylesheets and becomes the Dock icon, and `--betterslack-splash-art` is
+read by the start screen off its host's computed style and replaces the mark
+and the animation (`--betterslack-splash-width`, `-height`, `-background` and
+`-text` size and colour it). In the stylesheet rather than as files or a
+manifest key, because the stylesheet is what every update path carries: the
+panel's mod update fetches `.css` and leaves an `.svg` behind, and a loader
+that predates a manifest key rewrites the manifest without it. An older
+loader or runtime ignores both properties, so a theme carrying them installs
+anywhere. A theme keeps the pictures as `app-icon.svg` and `splash.svg` beside
+its stylesheet, where they can be edited, and `scripts/embed-theme-art.mjs`
+writes them in; Windows XP's test fails if the two have drifted.
 
 - **A theme never gets its own way to run code.** Behaviour belongs in a plugin,
   which already has an API, a lifecycle and a consent step; a second, weaker

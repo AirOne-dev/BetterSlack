@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// assets/icon.icns, from assets/mark.svg.
+// assets/icon.icns, from assets/app-icon.svg: the mark on its white plate.
 //
 // The .icns was a committed binary with no recipe, so a change to the mark left
 // the app wearing the old one and nothing said so. This is the recipe.
@@ -28,7 +28,7 @@ import { promisify } from 'node:util';
 
 const run = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = path.join(root, 'assets', 'mark.svg');
+const source = path.join(root, 'assets', 'app-icon.svg');
 const iconset = path.join(root, 'assets', 'BetterSlack.iconset');
 const output = path.join(root, 'assets', 'icon.icns');
 

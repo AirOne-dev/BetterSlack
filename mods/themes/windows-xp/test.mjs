@@ -64,3 +64,18 @@ test('does not reach into a plugin\'s markup', () => {
     assert.ok(!css.includes(id), `${id} is a plugin's markup`);
   }
 });
+
+test('the Dock icon and the boot screen in the stylesheet are the SVG files beside it', async () => {
+  // The files are what gets edited and the stylesheet is what ships, since a
+  // mod update carries .css and leaves an .svg behind. Drift means somebody
+  // edited one and forgot scripts/embed-theme-art.mjs.
+  const { readFile } = await import('node:fs/promises');
+  const { fileURLToPath } = await import('node:url');
+  const { embed } = await import('../../../scripts/embed-theme-art.mjs');
+  const dir = fileURLToPath(new URL('.', import.meta.url));
+  const shipped = await readFile(new URL('./theme.css', import.meta.url), 'utf8');
+  assert.equal(await embed(dir, shipped), shipped, 'run: node scripts/embed-theme-art.mjs windows-xp');
+  for (const property of ['--betterslack-app-icon', '--betterslack-splash-art']) {
+    assert.match(shipped, new RegExp(`${property}: url\\("data:image/svg\\+xml,`), `${property} is declared`);
+  }
+});

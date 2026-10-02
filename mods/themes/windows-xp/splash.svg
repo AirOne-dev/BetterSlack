@@ -1,0 +1,38 @@
+<!-- Windows XP start screen for BetterSlack: the mark, the name, and the three blue blocks sliding along their track. Embedded into theme.css by scripts/embed-theme-art.mjs; edit this file, not the data URI. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 300">
+  <defs>
+    <linearGradient id="xp-red" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A66"/><stop offset=".45" stop-color="#F0482B"/><stop offset="1" stop-color="#B8200F"/></linearGradient>
+    <linearGradient id="xp-red-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C8301A"/><stop offset="1" stop-color="#7A1206"/></linearGradient>
+    <linearGradient id="xp-blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8AD0FF"/><stop offset=".45" stop-color="#2E8CEB"/><stop offset="1" stop-color="#0B4FB4"/></linearGradient>
+    <linearGradient id="xp-blue-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1A5FC8"/><stop offset="1" stop-color="#0A2F78"/></linearGradient>
+    <linearGradient id="xp-green" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A6EE7A"/><stop offset=".45" stop-color="#46B93A"/><stop offset="1" stop-color="#1E7A1E"/></linearGradient>
+    <linearGradient id="xp-green-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2F8F2A"/><stop offset="1" stop-color="#14501A"/></linearGradient>
+    <linearGradient id="xp-yellow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE98A"/><stop offset=".45" stop-color="#FFC21C"/><stop offset="1" stop-color="#D88A00"/></linearGradient>
+    <linearGradient id="xp-yellow-edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C98A00"/><stop offset="1" stop-color="#7A5000"/></linearGradient>
+    <linearGradient id="block" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2838C6"/><stop offset=".5" stop-color="#5A80F2"/><stop offset="1" stop-color="#2838C6"/>
+    </linearGradient>
+    <clipPath id="track"><rect x="173" y="226" width="174" height="18" rx="5"/></clipPath>
+  </defs>
+  <g transform="translate(178.18 6.00) scale(0.1930)">
+    <rect x="139" y="289" width="121" height="421" rx="60.5" fill="url(#xp-red)" stroke="url(#xp-red-edge)" stroke-width="10"/>
+  <path d="M288 499C288 465.587 315.087 438 348.5 438H410V499.5C410 532.913 382.413 560 349 560V560C315.587 560 288 532.413 288 499V499Z" fill="url(#xp-red)" stroke="url(#xp-red-edge)" stroke-width="10"/>
+  <rect x="560" y="139" width="121" height="421" rx="60.5" transform="rotate(90 560 139)" fill="url(#xp-blue)" stroke="url(#xp-blue-edge)" stroke-width="10"/>
+  <path d="M349 288C382.413 288 410 315.087 410 348.5L410 410L348.5 410C315.087 410 288 382.413 288 349V349C288 315.587 315.587 288 349 288V288Z" fill="url(#xp-blue)" stroke="url(#xp-blue-edge)" stroke-width="10"/>
+  <rect x="709" y="560" width="121" height="421" rx="60.5" transform="rotate(-180 709 560)" fill="url(#xp-green)" stroke="url(#xp-green-edge)" stroke-width="10"/>
+  <path d="M560 349C560 382.413 532.913 410 499.5 410L438 410L438 348.5C438 315.087 465.587 288 499 288V288C532.413 288 560 315.587 560 349V349Z" fill="url(#xp-green)" stroke="url(#xp-green-edge)" stroke-width="10"/>
+  <rect x="288" y="710" width="121" height="421" rx="60.5" transform="rotate(-90 288 710)" fill="url(#xp-yellow)" stroke="url(#xp-yellow-edge)" stroke-width="10"/>
+  <path d="M499 560C465.587 560 438 532.913 438 499.5L438 438L499.5 438C532.913 438 560 465.587 560 499V499C560 532.413 532.413 560 499 560V560Z" fill="url(#xp-yellow)" stroke="url(#xp-yellow-edge)" stroke-width="10"/>
+  </g>
+  <text x="252" y="178" text-anchor="middle" fill="#FFFFFF" font-family="Franklin Gothic Medium, Trebuchet MS, Tahoma, sans-serif" font-size="44" font-style="italic" font-weight="700">BetterSlack</text>
+  <text x="378" y="152" fill="#FF8A1C" font-family="Franklin Gothic Medium, Trebuchet MS, Tahoma, sans-serif" font-size="26" font-style="italic" font-weight="700">xp</text>
+  <rect x="171" y="224" width="178" height="22" rx="7" fill="none" stroke="#B2B2B2" stroke-width="2.5"/>
+  <g clip-path="url(#track)">
+    <g>
+      <rect x="0" y="229" width="13" height="12" rx="2" fill="url(#block)"/>
+      <rect x="17" y="229" width="13" height="12" rx="2" fill="url(#block)"/>
+      <rect x="34" y="229" width="13" height="12" rx="2" fill="url(#block)"/>
+      <animateTransform attributeName="transform" type="translate" from="126 0" to="350 0" dur="2.2s" repeatCount="indefinite"/>
+    </g>
+  </g>
+</svg>

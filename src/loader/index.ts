@@ -10,8 +10,9 @@ import { promises as fs } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { CdpConnection, CdpSession, sleep, waitForClientTarget, type TargetInfo } from './cdp.js';
-import { Catalog, parseManifest } from './catalog.js';
+import { Catalog, scanRoot, parseManifest } from './catalog.js';
 import { downloadFile, saveBytes } from './download.js';
+import { applyIcon, bundleOf, chooseIcon, clearIcon, launcherBundles } from './app-icon.js';
 import { listData, readData, removeData, writeData } from './mod-data.js';
 import { findSlack, launchSlack, SlackNotFoundError, stopSlack,
   slackVersion,
@@ -1070,6 +1071,16 @@ class Loader {
       case 'mod.enable': {
         const saved = await setModEnabled(request.id, request.enabled);
         await this.refreshAllBootScripts();
+        /*
+         * A theme can bring its own app icon. The launcher takes it now; Slack
+         * at its next start, since the Dock keeps a running app's tile as it
+         * was when the app launched.
+         */
+        if (this.catalog.list().find((mod) => mod.id === request.id)?.type === 'theme') {
+          void enabledThemeCss()
+            .then((themes) => applyIcon(chooseIcon(themes), launcherBundles()))
+            .catch(() => undefined);
+        }
         // Other windows are holding their own copy of the list; tell them.
         this.broadcast({ type: 'settings.changed', settings: saved });
         return saved;
@@ -1400,6 +1411,51 @@ class Loader {
   }
 }
 
+/**
+ * The stylesheets of the themes switched on, in the order they apply -- read
+ * straight off disk, since this runs before there is a catalogue or a client.
+ * An installed copy of a mod wins over the shipped one, as everywhere else.
+ */
+async function enabledThemeCss(): Promise<Array<{ css: string }>> {
+  const settings = await readSettings().catch(() => null);
+  if (!settings) return [];
+  const byId = new Map<string, { root: string; record: { path: string; entry: string; type: string } }>();
+  for (const [root, origin] of [[BUILTIN_MODS_ROOT, 'builtin'], [USER_MODS_ROOT, 'installed']] as const) {
+    const scan = await scanRoot(root, origin).catch(() => ({ mods: [] as ModRecord[] }));
+    for (const record of scan.mods) byId.set(record.id, { root, record });
+  }
+  const out: Array<{ css: string }> = [];
+  for (const id of settings.enabled) {
+    const found = byId.get(id);
+    if (!found || found.record.type !== 'theme') continue;
+    const css = await fs.readFile(path.join(found.root, found.record.path, found.record.entry), 'utf8').catch(() => '');
+    out.push({ css });
+  }
+  return out;
+}
+
+/** BetterSlack's icon -- or the theme's -- on Slack and on the launcher. */
+async function dressIcons(slackPath: string): Promise<void> {
+  if (process.platform !== 'darwin') return;
+  const svg = chooseIcon(await enabledThemeCss());
+  const slack = bundleOf(slackPath);
+  await applyIcon(svg, [...(slack ? [slack] : []), ...launcherBundles()]).catch(() => []);
+}
+
+/*
+ * Off Slack again once it has started. The Dock has read the icon by then and
+ * keeps that tile until Slack quits; Slack.app goes back to exactly what was
+ * shipped, which is what a signature check and Slack's own updater expect.
+ * Measured: still the custom tile well after the icon was taken off.
+ */
+const UNDRESS_AFTER_MS = 45_000;
+function undressSlackLater(slackPath: string): void {
+  if (process.platform !== 'darwin') return;
+  const slack = bundleOf(slackPath);
+  if (!slack) return;
+  setTimeout(() => void clearIcon(slack), UNDRESS_AFTER_MS).unref?.();
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
 
@@ -1449,9 +1505,13 @@ async function main(): Promise<void> {
    * mod asks for. The child is kept here so the shutdown handler and the next
    * launch both know which process they are talking about.
    */
+  await dressIcons(slackPath);
   let child = launchSlack({ slackPath });
+  undressSlackLater(slackPath);
   const relaunch = async (): Promise<CdpConnection> => {
+    await dressIcons(slackPath);
     child = launchSlack({ slackPath });
+    undressSlackLater(slackPath);
     const next = CdpConnection.fromChild(child);
     await waitForClientTarget(next, 90_000);
     return next;

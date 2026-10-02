@@ -173,7 +173,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Slack en Luna : la barre de titre bleue, la barre des tâches en guise de rail avec un bouton Démarrer vert, le volet de tâches de l'explorateur comme barre latérale, des boîtes de dialogue mastic, des boutons à l'anneau orange, des bulles jaunes et les barres de défilement d'XP. Bleu, Vert olive et Argent, plus un interrupteur verre Aero."
       },
-      "version": "1.0.0",
+      "version": "1.1.0",
       "tags": [
         "light",
         "retro",
