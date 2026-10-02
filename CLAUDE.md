@@ -819,6 +819,36 @@ tests fail below it.
   one request instead of its usual fifteen, so the loader's own `timeout`
   answer arrives first. `src/loader/net.ts` is the whole of it, and the API
   page runs that same function against an imitated server.
+
+  **A secret in a header is the loader's, never the mod's.** A server that
+  wants `PRIVATE-TOKEN: <token>` cannot be reached with no header of the mod's
+  and no token in the address (an access log keeps the address). The manifest
+  names the header -- `"network": { "settings": [...], "credential": { "header":
+  "PRIVATE-TOKEN" } }`, or `{ "header": "Authorization", "prefix": "Bearer " }`
+  -- and the mod hands the secret over once with `api.net.setCredential`.
+  **It is generic on purpose:** no service is named anywhere in the loader, so
+  a mod for another server with a header token changes nothing here. The
+  loader refuses only the headers that belong to the transport or the session
+  (`Host`, `Cookie`, `Content-*`, `Proxy-*`, `Sec-*`...), in
+  `parseCredentialSpec`. Four properties make it safe to offer to every plugin
+  in one page:
+
+  - **Write-only.** `setCredential`, `clearCredential`, `hasCredential` -- no
+    call returns the secret, and no answer or error carries it.
+  - **Bound to an origin.** It is stored with the origin of the address it was
+    given for, which must be one of the mod's `network` settings at that
+    moment, and `credentialHeader` attaches it only to a request for that
+    origin. Code that rewrites the address setting makes the loader send
+    nothing rather than the token (tested).
+  - **Not where settings go.** `~/.betterslack/credentials/<id>.json`, mode
+    0600 in a 0700 folder, outside `settings.json` (copied whole into every
+    backup, embedded in the page-start script, sent to every window) and
+    outside `api.data` (readable by the mod's page). Removing the mod deletes
+    it. It is a plain file, not a keychain entry, and is not described as
+    encrypted anywhere.
+  - **No redirect carries it**, since none is followed.
+  `src/loader/net-credentials.ts` is the file; `tests/net-credentials.test.mjs`
+  holds the negative properties.
 - **At a cold start the URL names a workspace the client is not showing.**
   Measured with three workspaces signed in: `location.pathname` read
   `/client/T0BQ89Z4L4F/C0BQ8AG3771` while the client had drawn thirty-seven

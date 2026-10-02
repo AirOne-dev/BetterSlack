@@ -53,8 +53,15 @@ export interface ModManifest {
    * and shown in the panel like any other setting.
    *
    * Every key must be a declared `text` setting.
+   *
+   * `credential` is for a server that wants a secret in a header, whichever
+   * server and whichever header: `{ "header": "PRIVATE-TOKEN" }`, or
+   * `{ "header": "Authorization", "prefix": "Bearer " }`. The page hands the
+   * secret to the loader once (`api.net.setCredential`) and can never read it
+   * back; the loader attaches it, as that one header, to requests for the
+   * origin it was stored for and for nothing else.
    */
-  network?: { settings: string[] };
+  network?: { settings: string[]; credential?: NetCredentialSpec };
 
   /**
    * A square mark for the mod, as a file in its folder -- `icon.svg`.
@@ -405,6 +412,13 @@ export type Request =
    */
   | { type: 'net.request'; modId: string; url: string; method?: 'GET' | 'POST'; form?: Record<string, string> }
   /**
+   * Keep, forget or ask about the secret a mod's requests carry. The rules are
+   * in `loader/net-credentials.ts`; the answer is a `NetCredentialResult`.
+   * There is no way to read the secret back.
+   */
+  | { type: 'net.credential'; modId: string; action: 'set'; secret: string; address: string }
+  | { type: 'net.credential'; modId: string; action: 'clear' | 'has' }
+  /**
    * Photograph the window and put the picture in the download folder.
    *
    * The renderer cannot photograph itself, so this is the loader doing it over
@@ -493,6 +507,26 @@ export type NetResult =
  * - `too-large`: the answer was bigger than the loader will hold.
  */
 export type NetError = 'blocked' | 'invalid' | 'timeout' | 'network' | 'too-large';
+
+/** Which header a stored credential travels in. See `ModManifest.network`. */
+export interface NetCredentialSpec {
+  header: string;
+  /** Written before the secret in the header's value, e.g. `Bearer `. */
+  prefix?: string;
+}
+
+/**
+ * What `net.credential` answers with.
+ *
+ * - `has`: whether a secret is held for the address the mod's settings name
+ *   right now. A secret stored for another origin is not held for this one.
+ * - `blocked`: the mod is off, declares no `credential`, or the address is not
+ *   one its `network` settings hold.
+ * - `invalid`: not a secret the loader will send in a header.
+ */
+export type NetCredentialResult =
+  | { ok: true; has: boolean }
+  | { ok: false; error: 'blocked' | 'invalid' };
 
 /**
  * How long the loader waits on the server before answering `timeout`.

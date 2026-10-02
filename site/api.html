@@ -152,7 +152,7 @@ pre.c-mrkdwn__pre[data-betterslack-lang]::after {
 <li class="side__group"><p class="side__title">api.data</p>
       <ul><li><a href="#data-list">list</a></li><li><a href="#data-read">read</a></li><li><a href="#data-remove">remove</a></li><li><a href="#data-write">write</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.net</p>
-      <ul><li><a href="#net-request">request</a></li></ul></li>
+      <ul><li><a href="#net-clearcredential">clearCredential</a></li><li><a href="#net-hascredential">hasCredential</a></li><li><a href="#net-request">request</a></li><li><a href="#net-setcredential">setCredential</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.assets</p>
       <ul><li><a href="#assets-list">list</a></li><li><a href="#assets-text">text</a></li></ul></li>
 <li class="side__group"><p class="side__title">api.themes</p>
@@ -2096,6 +2096,34 @@ const [file] = input.files;
 const { name } = await api.data.write(file.name, file);</code></pre>
   </div>
 </section>
+<section class="panel" id="p-net-clearcredential" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.net</p>
+    <h1><code>clearCredential</code></h1>
+    <p class="api-sig api-sig--big">(): Promise&lt;{ ok: true; has: false } | { ok: false; error: 'blocked' }&gt;</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>Forget the secret <code>setCredential</code> stored. Requests carry no header from then on. Signing out is this call, and so is a token the server has refused.</p>
+    <div class="api-demo" data-demo="net-clearcredential" data-controls="[]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>await api.net.clearCredential();</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-net-hascredential" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.net</p>
+    <h1><code>hasCredential</code></h1>
+    <p class="api-sig api-sig--big">(): Promise&lt;boolean&gt;</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>Whether a secret is held for the address the mod's settings name right now. A secret stored for another origin is not held for this one, so changing the address reads as signed out. It tells you whether there is a secret, never what it is.</p>
+    <div class="api-demo" data-demo="net-hascredential" data-controls="[]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>if (!(await api.net.hasCredential())) showSignIn();</code></pre>
+  </div>
+</section>
 <section class="panel" id="p-net-request" hidden>
   <header class="panel__head">
     <p class="eyebrow">api.net</p>
@@ -2115,6 +2143,27 @@ const answer = await api.net.request(api.settings.get('apiUrl'), {
 if ('error' in answer) return showOffline(answer.error);
 if (answer.status === 401) return signOut();
 render(answer.json);</code></pre>
+  </div>
+</section>
+<section class="panel" id="p-net-setcredential" hidden>
+  <header class="panel__head">
+    <p class="eyebrow">api.net</p>
+    <h1><code>setCredential</code></h1>
+    <p class="api-sig api-sig--big">(secret: string, address: string): Promise&lt;{ ok: true; has: true } | { ok: false; error: 'blocked' | 'invalid' }&gt;</p>
+    <p class="api-since">Not in a release yet &mdash; a mod using this needs a BetterSlack built from the default branch.</p>
+  </header>
+  <div class="panel__body">
+    <p>Hand the loader the secret a server wants in a header -- a GitLab token -- so <code>api.net.request</code> can send it and the mod never has to hold it. The manifest declares which header, whichever service it is (<code>&quot;credential&quot;: { &quot;header&quot;: &quot;PRIVATE-TOKEN&quot; }</code>, or <code>{ &quot;header&quot;: &quot;Authorization&quot;, &quot;prefix&quot;: &quot;Bearer &quot; }</code>) -- anything but a header that belongs to the transport or the session, such as <code>Host</code> or <code>Cookie</code>; the secret is bound to the origin of <code>address</code>, which has to be one of the mod's <code>network</code> settings right now, and the loader attaches it to requests for that origin and for no other.</p>
+<p>It is write-only: nothing answers with the secret, not this call, not <code>hasCredential</code>, not an error. Code that later rewrites the address setting to somewhere else makes the loader send nothing, rather than the token. It is kept in a file of its own under <code>~/.betterslack/credentials/</code>, readable by the user only -- not in <code>settings.json</code>, which every backup, every window and every page-start script carries -- and a plain file all the same, to be protected like the token it holds. Removing the mod deletes it.</p>
+    <div class="api-demo" data-demo="net-setcredential" data-controls="[{&quot;key&quot;:&quot;base&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;https://git.example.com&quot;,&quot;label&quot;:&quot;address in the setting&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;asked&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;https://git.example.com/api/v4/user&quot;,&quot;label&quot;:&quot;address asked for&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
+    <h2 data-en="Example" data-fr="Exemple">Example</h2>
+    <pre class="api-code"><code>// mod.json: &quot;network&quot;: { &quot;settings&quot;: [&quot;gitUrl&quot;], &quot;credential&quot;: { &quot;header&quot;: &quot;PRIVATE-TOKEN&quot; } }
+const base = api.settings.get('gitUrl');
+const stored = await api.net.setCredential(tokenInput.value, base);
+tokenInput.value = '';
+if (!stored.ok) return showError(stored.error);
+
+const me = await api.net.request(`${base}/api/v4/user`);</code></pre>
   </div>
 </section>
 <section class="panel" id="p-assets-list" hidden>

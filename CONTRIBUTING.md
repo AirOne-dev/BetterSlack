@@ -65,6 +65,27 @@ not a sandbox, since every plugin shares the page. Say in the pull request what
 the server is and exactly what is sent to it -- and never anything that came
 from Slack.
 
+### A server that wants a token in a header
+
+Never put a token in the address, and never keep one yourself. Declare the
+header, and hand the secret to the loader once -- it keeps it where the page
+cannot read it, and sends it only to the origin it was given for:
+
+```json
+{ "network": { "settings": ["gitUrl"], "credential": { "header": "PRIVATE-TOKEN" } } }
+```
+
+```js
+await api.net.setCredential(tokenField.value, api.settings.get('gitUrl'));
+tokenField.value = '';
+```
+
+`{ "header": "Authorization", "prefix": "Bearer " }` is the other common shape.
+There is no call that reads the secret back; `hasCredential()` says only
+whether one is held, and `clearCredential()` is signing out. Review checks that
+the field is emptied once sent and that nothing about the token is logged, shown
+in an error or written to a setting.
+
 ## Text a user reads
 
 Every plugin here ships **English and French**, through `api.i18n.strings()`.
