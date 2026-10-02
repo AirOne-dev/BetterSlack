@@ -115,6 +115,16 @@ const CSS = `
   background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.2);
 }
 #${STRIP_ID} .betterslack-me__text { min-width: 0; line-height: 1.2; }
+/* Your face and your name open the conversation with yourself. */
+#${STRIP_ID} .betterslack-me__figure,
+#${STRIP_ID} .betterslack-me__name { cursor: pointer; }
+#${STRIP_ID} .betterslack-me__name:hover { text-decoration: underline; }
+#${STRIP_ID} .betterslack-me__figure:focus-visible,
+#${STRIP_ID} .betterslack-me__name:focus-visible {
+  outline: 2px solid var(--dt_color-otl-hgl-1, rgba(29, 155, 209, 1));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 #${STRIP_ID} .betterslack-me__name,
 #${STRIP_ID} .betterslack-me__status {
   overflow: hidden;
@@ -167,6 +177,7 @@ const STRINGS = {
     away: 'Away',
     dnd: 'Do not disturb',
     editStatus: 'Set a status',
+    openSelf: 'Open your conversation with yourself',
   },
   fr: {
     settings: 'Réglages du compte',
@@ -174,6 +185,7 @@ const STRINGS = {
     away: 'Absent',
     dnd: 'Ne pas déranger',
     editStatus: 'Définir un statut',
+    openSelf: 'Ouvrir la discussion avec vous-même',
   },
 };
 
@@ -264,6 +276,8 @@ export default {
      * on its own: taking the node out is what makes `keepMounted` build it
      * again, against whatever Slack has now drawn in the rail.
      */
+    /** Your conversation with yourself, by workspace and id: it never moves. */
+    const selfChannels = new Map();
     api.slack.onTeamChange(() => document.getElementById(STRIP_ID)?.remove());
 
     api.dom.keepMounted('.p-channel_sidebar', STRIP_ID, () => {
@@ -341,10 +355,46 @@ export default {
       const status = api.dom.h('div', { class: 'betterslack-me__status' }, ['']);
 
       const dot = api.dom.h('span', { class: 'betterslack-me__dot' });
+      const figure = api.dom.h('span', { class: 'betterslack-me__figure' }, [avatar, dot]);
       const me = api.dom.h('div', { class: 'betterslack-me' }, [
-        api.dom.h('span', { class: 'betterslack-me__figure' }, [avatar, dot]),
+        figure,
         api.dom.h('div', { class: 'betterslack-me__text' }, [nameLine, status]),
       ]);
+
+      /*
+       * Your face and your name open the conversation with yourself -- where
+       * Slack keeps notes to self, and where people expect a click on their
+       * own name to take them. Slack has no address for it: `conversations.open`
+       * with your own id answers with that DM's id, and the same id is asked for
+       * once a workspace, since it never changes.
+       */
+      for (const target of [figure, name]) {
+        target.setAttribute('role', 'button');
+        target.setAttribute('tabindex', '0');
+        target.setAttribute('aria-label', t('openSelf'));
+        api.helpers.tooltip(target, t('openSelf'));
+        target.addEventListener('click', (event) => {
+          event.stopPropagation();
+          void openSelf();
+        });
+        target.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          void openSelf();
+        });
+      }
+      async function openSelf() {
+        if (!userId || !api.slack.web.available) return;
+        const key = `${api.slack.currentTeamId() ?? ''}:${userId}`;
+        let channel = selfChannels.get(key);
+        if (!channel) {
+          const res = await api.slack.web.call('conversations.open', { users: userId }).catch(() => null);
+          channel = res?.channel?.id ?? null;
+          if (!channel) return;
+          selfChannels.set(key, channel);
+        }
+        api.slack.openConversation(channel);
+      }
 
       // The gear is the control. Pressing it opens Slack's own account menu.
       const settings = api.dom.h('button', {

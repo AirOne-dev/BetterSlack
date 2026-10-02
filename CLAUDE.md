@@ -1141,6 +1141,13 @@ tests fail below it.
   'hidden'` and the channel-details modal never opens, so anything that drives
   Slack's own UI fails in the background — which is also why measuring by
   clicking through Slack from a terminal is flaky.
+- **The Dock shows Slack's icon, and nothing here can change that.** Measured
+  three ways: `Browser.setDockTile` does not exist in Slack's Electron
+  (`wasn't found`), `desktop.dock` only bounces, and a custom Finder icon set
+  on `Slack.app` (`NSWorkspace setIcon`, an `Icon\r` in the bundle) changes
+  Finder and Launchpad but not the tile of the running app, which Slack draws
+  itself. What is left is patching the bundle or opening the main process to
+  an inspector, and both are ruled out above.
 - **`slack://open?team=<id>` switches workspace**, in place, same document --
   and it is the only way to, from a script. The workspace rail is in the
   document with every workspace in it and measures **zero by zero** in Slack
@@ -1926,6 +1933,10 @@ are load-bearing rather than tidy:
 - **Hourly, not at boot only.** This is somebody's messaging app, left running
   for days; a check that answers once is a badge that is right for a minute.
   An hour is two requests -- `git fetch` and one registry read -- for a dot.
+- **Installing from Browse takes the published version.** Browse lists the
+  copy the install shipped with; `manager.setInstalled` then asks the registry
+  and, when a newer version exists that this build can run, takes it through
+  the Update button's own path. Offline or blocked, the shipped copy stays.
 - **And by hand, from the About tab.** "Check for updates" asks the loader
   for that same sweep now (`updates.check`), so the button and the badge
   cannot disagree. It exists because a mod installed from Browse is the copy

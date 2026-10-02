@@ -436,11 +436,11 @@ window.CATALOGUE = {
     {
       "id": "sidebar-account",
       "name": "Sidebar Account Strip",
-      "description": "Your avatar, name and availability at the bottom of the channel sidebar, the way Discord and other chat apps put them; clicking it opens Slack's own account menu.",
+      "description": "Your avatar, name and availability at the bottom of the channel sidebar, the way Discord and other chat apps put them; your face and name open your conversation with yourself, and the gear opens Slack's own account menu.",
       "descriptions": {
-        "fr": "Votre avatar, votre nom et votre disponibilité en bas de la barre latérale, comme Discord et les autres messageries les placent ; un clic ouvre le menu de compte de Slack."
+        "fr": "Votre avatar, votre nom et votre disponibilité en bas de la barre latérale, comme Discord et les autres messageries les placent ; votre photo et votre nom ouvrent la discussion avec vous-même, et la roue dentée ouvre le menu de compte de Slack."
       },
-      "version": "1.2.0",
+      "version": "1.3.0",
       "tags": [
         "sidebar",
         "profile"

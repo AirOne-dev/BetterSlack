@@ -48,7 +48,7 @@ test('reads the user id from the avatar URL, not the localised label', async () 
   }
 });
 
-test('the gear opens Slack’s account menu; the strip itself is inert', async () => {
+test('the gear opens Slack’s account menu; the rest of the strip does not', async () => {
   const dom = installDom();
   const { api, recorded } = createTestApi();
   try {
@@ -56,12 +56,45 @@ test('the gear opens Slack’s account menu; the strip itself is inert', async (
     let clicked = 0;
     document.querySelector('[data-qa="user-button"]').addEventListener('click', () => { clicked++; });
 
-    // The strip shows who you are; it promises no click, so it performs none.
-    document.querySelector('#betterslack-account-strip .betterslack-me').click();
+    document.querySelector('#betterslack-account-strip .betterslack-me__status').click();
     assert.equal(clicked, 0);
 
     document.querySelector('#betterslack-account-strip .betterslack-me__settings').click();
     assert.equal(clicked, 1, 'Slack opens its own menu rather than one we reimplemented');
+  } finally {
+    for (const dispose of recorded.disposers) dispose();
+    dom.cleanup();
+  }
+});
+
+test('your face and your name open the conversation with yourself', async () => {
+  const dom = installDom();
+  const calls = [];
+  const { api, recorded } = createTestApi({
+    web: {
+      call: async (method, args = {}) => {
+        calls.push({ method, ...args });
+        if (method === 'conversations.open') return { ok: true, channel: { id: 'D0SELF' } };
+        return { ok: true };
+      },
+    },
+  });
+  try {
+    await plugin.start(api);
+    let menu = 0;
+    document.querySelector('[data-qa="user-button"]').addEventListener('click', () => { menu++; });
+    const strip = document.querySelector('#betterslack-account-strip');
+
+    strip.querySelector('.betterslack-me__figure').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    strip.querySelector('.betterslack-me__name').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const opens = calls.filter((call) => call.method === 'conversations.open');
+    assert.equal(opens.length, 1, 'asked once, then remembered');
+    assert.match(opens[0].users, /^U/, 'with your own id, read off the avatar');
+    assert.deepEqual(recorded.navigations.filter((n) => n.kind === 'channel').map((n) => n.id), ['D0SELF', 'D0SELF']);
+    assert.equal(menu, 0, 'and the account menu stays shut');
   } finally {
     for (const dispose of recorded.disposers) dispose();
     dom.cleanup();
