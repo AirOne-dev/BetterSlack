@@ -1004,6 +1004,8 @@ export class Panel {
 
   /** Refreshed once per session, when the panel is first opened. */
   private checkedModUpdates = false;
+  /** The last check asked for from the About tab, for the line beside its button. */
+  private updateCheck: { state: 'checking' | 'done' | 'failed'; count?: number; at?: number } | null = null;
 
   /** Set while the requirements dialog is open, so Escape can cancel it. */
   private dismissRequires: (() => void) | null = null;
@@ -1208,6 +1210,7 @@ export class Panel {
           ]),
         ]),
       ]),
+      this.renderUpdateCheck(),
       this.renderBackup(),
       this.renderDiagnostics(),
       h('dl', { class: 'betterslack-info' }, [
@@ -1371,6 +1374,49 @@ export class Panel {
    * a backup holds is the part that cannot be downloaded again -- the settings,
    * and the mods someone wrote or installed themselves.
    */
+  /**
+   * Check for updates now, rather than at the next hourly sweep.
+   *
+   * Somebody who has just installed a mod from the catalogue gets the copy
+   * that shipped with their BetterSlack -- possibly a version behind the one
+   * published since -- and the sweep that would have found the newer one may
+   * be most of an hour away. The answer lands where it always does: the dot on
+   * the tab that owns it, and the notice with its button.
+   */
+  private renderUpdateCheck(): Node {
+    const check = this.updateCheck;
+    const time = check?.at
+      ? new Date(check.at).toLocaleTimeString(document.documentElement.lang || undefined, { hour: '2-digit', minute: '2-digit' })
+      : '';
+    const line = !check ? t('updatesHint')
+      : check.state === 'checking' ? t('updatesChecking')
+        : check.state === 'failed' ? t('updatesFailed')
+          : check.count ? t('updatesFound', { count: check.count, time })
+            : t('updatesNone', { time });
+    const button = h('button', {
+      class: 'c-button c-button--outline c-button--medium',
+      type: 'button',
+      ...(check?.state === 'checking' ? { disabled: 'disabled' } : {}),
+    }, [t('updatesCheck')]);
+    button.addEventListener('click', () => {
+      this.updateCheck = { state: 'checking' };
+      this.render();
+      void this.manager.checkForUpdates().then((count) => {
+        this.updateCheck = count === null
+          ? { state: 'failed' }
+          : { state: 'done', count, at: Date.now() };
+        this.render();
+      });
+    });
+    return h('div', { class: 'betterslack-row' }, [
+      h('div', { class: 'betterslack-row__meta' }, [
+        h('div', { class: 'betterslack-row__name' }, [t('updatesTitle')]),
+        h('div', { class: 'betterslack-row__desc' }, [line]),
+      ]),
+      h('div', { class: 'betterslack-row__actions' }, [button]),
+    ]);
+  }
+
   private renderBackup(): Node {
     const status = h('span', { class: 'betterslack-status' });
 

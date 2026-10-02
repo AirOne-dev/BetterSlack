@@ -1184,6 +1184,13 @@ class Loader {
       case 'mods.inspectRemote':
         return inspectRemote(request.url);
 
+      case 'updates.check': {
+        // The same sweep the hour runs, so the panel's button and the badge
+        // can never disagree about what there is.
+        await this.sweepForUpdates();
+        return { app: this.update ?? null, mods: this.modUpdates };
+      }
+
       case 'mods.checkUpdates': {
         // The panel asking is not a different question from the badge asking,
         // so the answer is kept: an unreachable registry leaves both alone.

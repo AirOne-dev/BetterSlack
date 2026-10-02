@@ -1926,6 +1926,11 @@ are load-bearing rather than tidy:
 - **Hourly, not at boot only.** This is somebody's messaging app, left running
   for days; a check that answers once is a badge that is right for a minute.
   An hour is two requests -- `git fetch` and one registry read -- for a dot.
+- **And by hand, from the About tab.** "Check for updates" asks the loader
+  for that same sweep now (`updates.check`), so the button and the badge
+  cannot disagree. It exists because a mod installed from Browse is the copy
+  the install shipped with, and the newer one published since is only found
+  by the next sweep -- up to an hour of running a mod that is already fixed.
 - **The notice names two versions, not a count of commits.** "Four commits
   behind" is true and means nothing to somebody who has never made one -- and a
   git checkout is what `install.sh` leaves behind, so it is not a developer's

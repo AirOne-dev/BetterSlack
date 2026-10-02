@@ -113,6 +113,13 @@ export const PANEL_STRINGS = {
 
     aboutBody:
       'BetterSlack injects into the Slack renderer over the Chrome DevTools Protocol, carried on a private pipe rather than a debugging port — nothing listens on the network. It does not modify Slack.app, so Slack updates cannot break your install, but mods stay loaded only while the loader runs.',
+    updatesTitle: 'Updates',
+    updatesHint: 'BetterSlack and your mods are checked when Slack starts, then every hour.',
+    updatesCheck: 'Check for updates',
+    updatesChecking: 'Checking…',
+    updatesFailed: 'Could not check: the update server did not answer.',
+    updatesNone: 'Everything is up to date (checked at {time}).',
+    updatesFound: '{count} update(s) available (checked at {time}): see the dot on the Themes, Plugins or About tab.',
     hotReload: 'Hot reload',
     hotReloadHint: 'Reapply a mod as soon as its file changes on disk.',
     version: 'Version',
@@ -248,6 +255,13 @@ export const PANEL_STRINGS = {
 
     aboutBody:
       'BetterSlack s’injecte dans le processus de rendu de Slack via le Chrome DevTools Protocol, acheminé par un pipe privé plutôt que par un port de débogage — rien n’écoute sur le réseau. Slack.app n’est jamais modifié : une mise à jour de Slack ne peut donc pas casser votre installation, mais les mods ne restent chargés que tant que le loader s’exécute.',
+    updatesTitle: 'Mises à jour',
+    updatesHint: 'BetterSlack et vos mods sont vérifiés au démarrage de Slack, puis toutes les heures.',
+    updatesCheck: 'Vérifier les mises à jour',
+    updatesChecking: 'Vérification…',
+    updatesFailed: 'Vérification impossible : le serveur de mises à jour n’a pas répondu.',
+    updatesNone: 'Tout est à jour (vérifié à {time}).',
+    updatesFound: '{count} mise(s) à jour disponible(s) (vérifié à {time}) : voir la pastille sur l’onglet Thèmes, Plugins ou À propos.',
     hotReload: 'Rechargement à chaud',
     hotReloadHint: 'Réappliquer un mod dès que son fichier change sur le disque.',
     version: 'Version',

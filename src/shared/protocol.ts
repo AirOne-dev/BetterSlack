@@ -410,6 +410,12 @@ export type Request =
   | { type: 'mods.inspectRemote'; url: string }
   /** Which installed mods have a newer version published. */
   | { type: 'mods.checkUpdates' }
+  /**
+   * Look for a newer BetterSlack and newer mods now, rather than at the next
+   * hourly sweep. The answers also go out as the usual `update.status` and
+   * `mods.updates` events, so every badge moves with them.
+   */
+  | { type: 'updates.check' }
   /** Fetch one mod's folder from the branch and install it over the old one. */
   | { type: 'mods.update'; id: string }
   /** The renderer saying it got all the way up, which clears the crash marker. */

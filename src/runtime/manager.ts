@@ -238,6 +238,23 @@ export class ModManager {
     return this.bridge.request<{ ok: boolean; detail: string }>({ type: 'backup.import', archive });
   }
 
+  /**
+   * Check for a newer BetterSlack and newer mods now. Null when the loader
+   * could not be asked; otherwise how many updates there are, app included.
+   */
+  async checkForUpdates(): Promise<number | null> {
+    const answer = await this.bridge
+      .request<{ app: UpdateStatus | null; mods: ModUpdate[] }>({ type: 'updates.check' })
+      .catch(() => null);
+    if (!answer) return null;
+    // The events carry the same answer; adopting it here as well means the
+    // panel is right even if it repaints before they arrive.
+    if (answer.app) this.update = answer.app;
+    this.modUpdates = answer.mods;
+    this.notify();
+    return answer.mods.length + (answer.app?.behind ? 1 : 0);
+  }
+
   /** Installed mods with a newer version published, or an empty list. */
   async refreshModUpdates(): Promise<ModUpdate[]> {
     const updates = await this.bridge

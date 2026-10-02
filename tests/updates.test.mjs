@@ -157,3 +157,15 @@ test('the loader looks again while Slack is left running', () => {
   );
   assert.match(loader, /this\.broadcast\(\{ type: 'mods\.updates', updates \}\)/, 'and pushed');
 });
+
+test('checking by hand is the same sweep, not a second answer', () => {
+  // Somebody who has just installed a mod got the copy their BetterSlack
+  // shipped with; the newer one is found by the sweep, which may be most of an
+  // hour away. The button asks for that sweep now -- the same code, so the
+  // badge and the panel cannot disagree about what there is.
+  const loader = read('src/loader/index.ts');
+  assert.match(loader, /case 'updates\.check': \{\s*\/\/[^\n]*\n[^\n]*\n\s*await this\.sweepForUpdates\(\);/);
+  const panel = read('src/runtime/ui/panel.ts');
+  assert.match(panel, /this\.manager\.checkForUpdates\(\)/);
+  assert.match(panel, /this\.renderUpdateCheck\(\)/, 'and the button is on the About tab');
+});
