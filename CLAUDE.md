@@ -1360,7 +1360,10 @@ tests fail below it.
   the huddles' Boop Plus); a programmatic `.click()` on the button and on an
   option works even with the select at 1px and opacity 0, and Slack then
   previews the option and writes it wherever it keeps it. The list is
-  virtualised -- scroll it to reach an option outside the window. Custom
+  virtualised, and the listbox is not what scrolls: react-virtualized's
+  `.ReactVirtualized__Grid` inside it is, opened scrolled to the chosen option
+  (measured: huddles opened on Boop Plus at scrollTop 180, options 5-14 drawn,
+  no "None" until that grid went back to the top). Custom
   Sounds is built on exactly this.
 - **A notification's sound is not the page's on a modern Mac.** Slack's
   desktop setting `notificationPlayback` decides: on "web" (Slack's default)

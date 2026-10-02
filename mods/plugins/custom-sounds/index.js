@@ -248,6 +248,17 @@ export default {
       }
     }
 
+    /*
+     * What actually scrolls. The listbox is a fixed-height box; inside it,
+     * react-virtualized's grid is the element with the overflow, and it opens
+     * scrolled to the chosen option -- measured on the huddles' list, opened on
+     * Boop Plus: scrollTop 180, options 5 to 14 drawn, and "None" nowhere until
+     * that grid, not the listbox, went back to the top.
+     */
+    const scrollerOf = (list) => list.querySelector('.ReactVirtualized__Grid')
+      ?? [...list.querySelectorAll('*')].find((el) => el.scrollHeight > el.clientHeight + 2)
+      ?? list;
+
     const optionIndex = (option) => Number(/_option_(\d+)$/.exec(option.getAttribute('data-qa') ?? option.id)?.[1]);
 
     /**
@@ -273,9 +284,10 @@ export default {
         }
       };
       collect();
-      const step = Math.max(40, Math.floor(list.clientHeight / 2));
-      for (let top = 0; top <= list.scrollHeight + step; top += step) {
-        list.scrollTop = top;
+      const scroller = scrollerOf(list);
+      const step = Math.max(40, Math.floor(scroller.clientHeight / 2));
+      for (let top = 0; top <= scroller.scrollHeight + step; top += step) {
+        scroller.scrollTop = top;
         await frame();
         await frame();
         collect();
@@ -289,9 +301,10 @@ export default {
       const done = await withList(slot, async (list) => {
         const find = () => [...list.querySelectorAll('[role="option"]')].find((option) => optionIndex(option) === index);
         let option = find();
-        const step = Math.max(40, Math.floor(list.clientHeight / 2));
-        for (let top = 0; !option && top <= list.scrollHeight + step; top += step) {
-          list.scrollTop = top;
+        const scroller = scrollerOf(list);
+        const step = Math.max(40, Math.floor(scroller.clientHeight / 2));
+        for (let top = 0; !option && top <= scroller.scrollHeight + step; top += step) {
+          scroller.scrollTop = top;
           await frame();
           await frame();
           option = find();

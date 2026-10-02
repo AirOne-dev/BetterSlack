@@ -100,11 +100,15 @@ function slackSelect(slot, selected, { virtual = false } = {}) {
     list.className = 'c-select_options_list';
     list.setAttribute('role', 'listbox');
     /*
-     * Virtualised the way Slack's is: six options drawn around the selected
-     * one, and a different six once the list is scrolled -- each 40px a row.
+     * Built the way Slack's is, as measured: a fixed listbox, and inside it
+     * react-virtualized's grid, which is what scrolls -- opened scrolled to
+     * the chosen option, six rows drawn around wherever it is.
      */
+    const grid = document.createElement('div');
+    grid.className = 'ReactVirtualized__Grid ReactVirtualized__List';
+    list.append(grid);
     const draw = (first) => {
-      list.replaceChildren(...options.filter((option, index) => !virtual || (index >= first && index < first + 6)));
+      grid.replaceChildren(...options.filter((option, index) => !virtual || (index >= first && index < first + 6)));
     };
     const options = [];
     LABELS.forEach((label, index) => {
@@ -123,12 +127,12 @@ function slackSelect(slot, selected, { virtual = false } = {}) {
       options.push(option);
     });
     let top = Math.max(0, state.selected - 5) * 40;
-    Object.defineProperty(list, 'scrollTop', {
+    Object.defineProperty(grid, 'scrollTop', {
       get: () => top,
       set: (value) => { top = value; draw(Math.floor(value / 40)); },
     });
-    Object.defineProperty(list, 'clientHeight', { get: () => 240 });
-    Object.defineProperty(list, 'scrollHeight', { get: () => LABELS.length * 40 });
+    Object.defineProperty(grid, 'clientHeight', { get: () => 240 });
+    Object.defineProperty(grid, 'scrollHeight', { get: () => LABELS.length * 40 });
     draw(Math.floor(top / 40));
     document.body.append(list);
   });
@@ -231,6 +235,25 @@ test('a picker opens without opening Slack\'s list, and always starts with its o
     document.querySelector('[data-custom-sounds-slot="priority_desktop_sound"]').click();
     await settle();
     assert.equal(h.recorded.menus.at(-1).items[0].label, 'Same as messages sound');
+  } finally {
+    await h.done();
+  }
+});
+
+test('None can be chosen on a list Slack opens at its bottom', async () => {
+  const h = harness({ settings: { sounds: MINE }, files: { 's1.mp3': 'x' } });
+  try {
+    // Opened on the last option, Slack's grid draws nothing near "None".
+    const select = slackSelect('desktop_sound', 13, { virtual: true });
+    await plugin.start(h.api);
+    await settled();
+    await settle();
+    document.querySelector('[data-custom-sounds-slot="desktop_sound"]').click();
+    await settle();
+    h.recorded.menus.at(-1).items[0].onSelect();
+    await settle();
+    assert.deepEqual(select.writes, [0], 'None chosen in Slack\'s own list');
+    assert.ok(!h.recorded.toasts.some((toast) => /Preferences/.test(toast.message)), 'and no message saying it could not be');
   } finally {
     await h.done();
   }
