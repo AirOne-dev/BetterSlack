@@ -106,6 +106,22 @@ export function withPrefs(state: unknown, wanted: Record<string, unknown>): {
       settings[key] = value;
       changed = true;
     }
+    /*
+     * And the layer that wins. Slack does not read `settings.<key>` back: it
+     * rebuilds its settings at every launch from four layers -- slackDefaults,
+     * itDefaults, userChoices, itPolicy, in that order -- and the top-level
+     * key is only where it last wrote the merged result. So a value somebody
+     * once chose in Slack's own menus sits in userChoices and overrules
+     * whatever was written above it, every time. Measured on a real file
+     * whose notificationPlayback was "system" in userChoices: writing the top
+     * level alone changed nothing at the next launch. itPolicy is an
+     * administrator's, and is left alone on purpose.
+     */
+    const choices = settings.userChoices;
+    if (choices && typeof choices === 'object' && choices[key] !== value) {
+      choices[key] = value;
+      changed = true;
+    }
     const spec = BY_KEY[key]!;
     if (spec.defaults && settings.slackDefaults && typeof settings.slackDefaults === 'object') {
       if (settings.slackDefaults[key] !== value) {

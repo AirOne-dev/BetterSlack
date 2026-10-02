@@ -3802,8 +3802,8 @@
     { key: "useHwAcceleration", type: "boolean", restart: true, defaults: true, note: "GPU acceleration." },
     { key: "shouldUseHighContrastColors", type: "boolean", restart: false, defaults: false, note: "Higher-contrast colours throughout." },
     { key: "spellcheckerLanguage", type: "string", restart: false, defaults: false, note: "Language tag the spell checker uses." },
-    { key: "notificationMethod", type: "string", restart: false, defaults: false, note: "How desktop notifications are delivered." },
-    { key: "notificationPlayback", type: "string", restart: false, defaults: false, note: "Notification sound behaviour." },
+    { key: "notificationMethod", type: "string", restart: true, defaults: false, note: "How desktop notifications are delivered. Read by the main process at launch." },
+    { key: "notificationPlayback", type: "string", restart: true, defaults: false, note: `Who plays a notification's sound: "web" is Slack, in the page; "system" hands it to the operating system with the files Slack ships. Read at launch -- and on macOS 12 and later Slack forces "system" at every launch, so a value written here does not survive there.` },
     { key: "zoomLevel", type: "number", restart: true, defaults: false, note: "Interface zoom, in Chromium steps." }
   ];
 
