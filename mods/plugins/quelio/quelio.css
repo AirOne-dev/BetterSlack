@@ -1,0 +1,304 @@
+/*
+ * Quelio's stylesheet, loaded with api.css(api.assets.text('quelio.css')).
+ *
+ * No colour of its own. The bar sits in Slack's top bar and takes that bar's
+ * ink with currentColor, mixed lighter for a track or a quiet word, so it is
+ * right on every theme's chrome, light or dark. The details are painted with
+ * the tokens Slack's menus are painted with, which every theme sets. The only
+ * named colours are Slack's semantic ones, for a week that is done, a rule
+ * about to be broken, and a week that cannot be done.
+ */
+
+/* ------------------------------------------------------------------ the slot */
+
+/*
+ * The top bar's right-hand side, as Slack 4.51 lays it out: a flex row whose
+ * first item -- one 28px button, just after the search -- carries an auto right
+ * margin that pushes the button group to the far end. With the bar's own auto
+ * margin beside it the free space was split in two, and the bar floated in the
+ * middle of it. So while the bar is there, Slack's first item gives its margin
+ * up to the bar: the item does not move, the buttons do not move, and the bar
+ * sits right after it, beside the search.
+ *
+ * Scoped with :has(), so nothing about Slack's layout changes once the plugin
+ * is off. More specific than Slack's own rule, which loads later.
+ */
+.p-ia4_top_nav__right_container:has(> #betterslack-quelio) {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.p-ia4_top_nav__right_container:has(> #betterslack-quelio) > .p-ia4_top_nav__right_container--start {
+  margin-right: 0;
+}
+
+/* ------------------------------------------------------------------- the bar */
+
+#betterslack-quelio {
+  --quelio-week: color-mix(in srgb, currentColor 78%, transparent);
+  --quelio-day: color-mix(in srgb, currentColor 55%, transparent);
+  --quelio-note: color-mix(in srgb, currentColor 72%, transparent);
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  height: 28px;
+  margin: 0 auto 0 12px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  /* Never spills over Slack's own buttons, whatever room it is given. */
+  overflow: hidden;
+  cursor: pointer;
+  transition: background-color 80ms ease;
+}
+#betterslack-quelio:hover,
+#betterslack-quelio[aria-expanded="true"] {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+#betterslack-quelio:focus-visible {
+  outline: 2px solid color-mix(in srgb, currentColor 60%, transparent);
+  outline-offset: 1px;
+}
+
+#betterslack-quelio[data-tone="success"] { --quelio-week: var(--dt_color-content-hgl-2, #2bac76); }
+#betterslack-quelio[data-tone="danger"] { --quelio-week: var(--dt_color-content-imp, #e01e5a); }
+#betterslack-quelio[data-day-tone="success"] { --quelio-day: var(--dt_color-content-hgl-2, #2bac76); }
+#betterslack-quelio[data-day-tone="warning"] {
+  --quelio-day: var(--dt_color-content-hgl-3, #e8912d);
+  --quelio-note: var(--dt_color-content-hgl-3, #e8912d);
+}
+#betterslack-quelio[data-day-tone="danger"] {
+  --quelio-day: var(--dt_color-content-imp, #e01e5a);
+  --quelio-note: var(--dt_color-content-imp, #e01e5a);
+}
+
+.betterslack-quelio__meter {
+  display: flex;
+  flex: 0 0 88px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 40px;
+}
+/* The last thing left, so the one thing allowed to shrink. */
+#betterslack-quelio[data-fit="meter"] .betterslack-quelio__meter { flex-shrink: 1; }
+.betterslack-quelio__track {
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 20%, transparent);
+}
+.betterslack-quelio__track--week { height: 5px; }
+.betterslack-quelio__track--day { height: 3px; }
+.betterslack-quelio__fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 400ms ease;
+}
+.betterslack-quelio__track--week .betterslack-quelio__fill { background: var(--quelio-week); }
+.betterslack-quelio__track--day .betterslack-quelio__fill { background: var(--quelio-day); }
+
+.betterslack-quelio__total {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+.betterslack-quelio__remaining,
+.betterslack-quelio__note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--quelio-note);
+}
+.betterslack-quelio__note { flex: 0 1 auto; }
+.betterslack-quelio__percent { flex: 0 0 auto; font-weight: 700; }
+.betterslack-quelio__offline {
+  flex: 0 0 auto;
+  color: var(--dt_color-content-hgl-3, #e8912d);
+}
+.betterslack-quelio__offline:empty { display: none; }
+
+/* Nothing to measure yet: the meter would only be an empty promise. */
+#betterslack-quelio:not([data-phase="ready"]) .betterslack-quelio__meter { display: none; }
+#betterslack-quelio:not([data-phase="ready"]) .betterslack-quelio__total {
+  font-weight: 400;
+  color: var(--quelio-note);
+}
+
+/*
+ * What is on screen: the reader's choice, stepped down by ui/bar.js while it
+ * does not fit -- full, then the total alone, then the percentage, then the
+ * meter. `week` is the total with what is left beside it.
+ */
+#betterslack-quelio .betterslack-quelio__remaining,
+#betterslack-quelio .betterslack-quelio__percent { display: none; }
+#betterslack-quelio[data-fit="week"] .betterslack-quelio__remaining { display: inline; }
+#betterslack-quelio[data-fit="week"] .betterslack-quelio__note,
+#betterslack-quelio[data-fit="total"] .betterslack-quelio__note,
+#betterslack-quelio[data-fit="percent"] .betterslack-quelio__note,
+#betterslack-quelio[data-fit="meter"] .betterslack-quelio__note,
+#betterslack-quelio[data-fit="meter"] .betterslack-quelio__offline { display: none; }
+#betterslack-quelio[data-phase="ready"][data-fit="percent"] .betterslack-quelio__total,
+#betterslack-quelio[data-phase="ready"][data-fit="meter"] .betterslack-quelio__total { display: none; }
+#betterslack-quelio[data-phase="ready"][data-fit="percent"] .betterslack-quelio__percent { display: inline; }
+
+/* --------------------------------------------------------------- the details */
+
+.betterslack-quelio-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  /* Over the client, under Slack's dialogs (1053) and BetterSlack's menus (1015). */
+  z-index: 1014;
+  will-change: transform;
+}
+.betterslack-quelio-details {
+  box-sizing: border-box;
+  width: 340px;
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  padding: 14px 16px 12px;
+  border-radius: 8px;
+  outline: none;
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  box-shadow: 0 0 0 1px rgba(var(--sk_foreground_low, 29, 28, 29), 0.13), 0 4px 12px 0 rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.betterslack-quelio-details__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.betterslack-quelio-details__titles { min-width: 0; }
+.betterslack-quelio-details__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+}
+.betterslack-quelio-details__sub {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+  font-size: 12px;
+}
+.betterslack-quelio-details__refresh { flex: 0 0 auto; }
+.betterslack-quelio-details__refresh svg { width: 16px; height: 16px; }
+.betterslack-quelio-details__refresh[disabled] { opacity: 0.4; cursor: default; }
+
+.betterslack-quelio-details__section {
+  padding: 10px 0;
+  border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.13);
+}
+.betterslack-quelio-details__head + .betterslack-quelio-details__section,
+.betterslack-quelio-details__head + .betterslack-quelio-details__notice { border-top: none; }
+.betterslack-quelio-details__heading {
+  margin: 0 0 6px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+  font-size: 12px;
+  font-weight: 700;
+}
+.betterslack-quelio-details__row,
+.betterslack-quelio-details__day {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+.betterslack-quelio-details__key { color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7); }
+.betterslack-quelio-details__value { margin-left: auto; text-align: right; }
+.betterslack-quelio-details__row--strong .betterslack-quelio-details__value { font-weight: 700; }
+
+.betterslack-quelio-details__meter {
+  --quelio-week: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.75);
+  display: block;
+  height: 6px;
+  margin: 2px 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(var(--sk_foreground_low, 29, 28, 29), 0.13);
+}
+.betterslack-quelio-details__meter .betterslack-quelio__fill { background: var(--quelio-week); }
+.betterslack-quelio-details__meter[data-tone="success"] { --quelio-week: var(--dt_color-content-hgl-2, #2bac76); }
+.betterslack-quelio-details__meter[data-tone="danger"] { --quelio-week: var(--dt_color-content-imp, #e01e5a); }
+
+.betterslack-quelio-details__status {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+.betterslack-quelio-details__status[data-tone="warning"] { color: var(--dt_color-content-hgl-3, #a66d00); }
+.betterslack-quelio-details__status[data-tone="danger"] { color: var(--dt_color-content-imp, #e01e5a); }
+.betterslack-quelio-details__status[data-tone="success"] { color: var(--dt_color-content-hgl-2, #2bac76); }
+
+.betterslack-quelio-details__notice {
+  margin: 8px 0 0;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.betterslack-quelio-details__notice[data-tone="danger"] { color: var(--dt_color-content-imp, #e01e5a); }
+.betterslack-quelio-details__notice[data-tone="warning"] { color: var(--dt_color-content-hgl-3, #a66d00); }
+.betterslack-quelio-details__notice[data-tone="success"] { color: var(--dt_color-content-hgl-2, #2bac76); }
+
+.betterslack-quelio-details__days {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.betterslack-quelio-details__day.is-today .betterslack-quelio-details__key,
+.betterslack-quelio-details__day.is-today .betterslack-quelio-details__value {
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  font-weight: 700;
+}
+.betterslack-quelio-details__link {
+  flex: 0 0 auto;
+  color: var(--dt_color-content-hgl-1, #1264a3);
+  font-size: 12px;
+  cursor: pointer;
+}
+.betterslack-quelio-details__link:hover { text-decoration: underline; }
+
+.betterslack-quelio-details__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.13);
+}
+
+/* ------------------------------------------------------------- the sign-in */
+
+.betterslack-quelio-login { display: flex; flex-direction: column; }
+.betterslack-quelio-login__field { display: flex; flex-direction: column; gap: 4px; }
+.betterslack-quelio-login__label { font-weight: 700; font-size: 15px; }
+/* Slack's field keeps its own 20px gap underneath, so a hint sits in it. */
+.betterslack-quelio-login__hint {
+  margin: -16px 0 16px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+  font-size: 13px;
+}
+.betterslack-quelio-login__server {
+  margin: 0 0 16px;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+}
+.betterslack-quelio-login__error { margin: 0 0 12px; color: var(--dt_color-content-imp, #e01e5a); }
+.betterslack-quelio-login__error:empty { display: none; }
+.betterslack-quelio-login__actions { display: flex; justify-content: flex-end; }
+.betterslack-quelio-login__privacy {
+  margin: 16px 0 0;
+  color: rgba(var(--sk_foreground_max, 29, 28, 29), 0.7);
+  font-size: 12px;
+  line-height: 1.5;
+}

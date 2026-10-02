@@ -1,0 +1,76 @@
+{
+  "id": "quelio",
+  "name": "Quelio",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "Arthur-MONNET",
+  "description": "A slim bar at the top of Slack showing how far your week is toward its Quelio objective, when to leave today, and where your lunch break stands.",
+  "descriptions": {
+    "fr": "Une fine barre en haut de Slack qui montre où en est votre semaine par rapport à l’objectif Quelio, à quelle heure partir aujourd’hui, et où en est la pause déjeuner."
+  },
+  "entry": "index.js",
+  "icon": "icon.svg",
+  "settings": [
+    {
+      "key": "apiUrl",
+      "type": "text",
+      "label": "Quelio server",
+      "hint": "The address of the quelio-api your company runs. Your Quelio username and password or token are sent there, and nothing else.",
+      "placeholder": "https://example.com/quelio-api/",
+      "default": "",
+      "labels": {
+        "fr": "Serveur Quelio"
+      },
+      "hints": {
+        "fr": "L’adresse du quelio-api de votre entreprise. Votre identifiant Quelio et votre mot de passe ou votre jeton y sont envoyés, et rien d’autre."
+      }
+    },
+    {
+      "key": "refreshMinutes",
+      "type": "number",
+      "label": "Refresh every",
+      "hint": "Minutes. Each refresh makes Quelio sign in to Kelio, so quelio-api asks for no more than one an hour.",
+      "default": 60,
+      "min": 60,
+      "max": 240,
+      "step": 15,
+      "labels": {
+        "fr": "Actualiser toutes les"
+      },
+      "hints": {
+        "fr": "Minutes. Chaque actualisation fait se connecter Quelio à Kelio, c’est pourquoi quelio-api demande de ne pas dépasser une par heure."
+      }
+    },
+    {
+      "key": "display",
+      "type": "choice",
+      "label": "In the top bar",
+      "hint": "A narrow window shortens it on its own.",
+      "default": "full",
+      "options": [
+        { "value": "full", "label": "Progress and today’s status", "labels": { "fr": "Progression et état du jour" } },
+        { "value": "week", "label": "Progress and what is left", "labels": { "fr": "Progression et reste à faire" } },
+        { "value": "compact", "label": "Progress only", "labels": { "fr": "Progression seule" } }
+      ],
+      "labels": {
+        "fr": "Dans la barre du haut"
+      },
+      "hints": {
+        "fr": "Une fenêtre étroite la raccourcit d’elle-même."
+      }
+    }
+  ],
+  "network": {
+    "settings": ["apiUrl"]
+  },
+  "betterslackApi": 1,
+  "slackVersion": "4.51",
+  "tags": [
+    "productivity",
+    "tools"
+  ],
+  "readme": "README.md",
+  "readmes": {
+    "fr": "README.fr.md"
+  }
+}
