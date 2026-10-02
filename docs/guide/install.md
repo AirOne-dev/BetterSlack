@@ -47,28 +47,24 @@ cd BetterSlack-master
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-The only difference afterwards is which route the update button takes: a copy
-that came from a clone is pulled, one that did not is replaced from the branch
-tarball. Both are one button, and both keep your mods and settings, which live
-in `~/.betterslack` and never inside the install.
+Either way the result is the same install, and it updates itself from the
+branch tarball. Your mods and settings live in `~/.betterslack`, never inside
+the install, so an update keeps them.
 
-## What it actually does
-
-Worth knowing, because an installer that will not say is an installer you have
-to take on trust.
+## What it does
 
 It finds a Node that satisfies this project's `engines` — and finds it by
 version, not by taking the first `node` on your `PATH`, which on a machine with
 nvm is whatever its `default` alias points at and is frequently too old. If
-there is no usable one it downloads the current LTS from nodejs.org into
+there is no usable one it downloads the latest Node 22 from nodejs.org into
 `~/.betterslack/runtime`, checks it against the digest published beside it, and
 keeps it to itself: nothing is added to your `PATH` and no other project sees
 it.
 
 Then it gets pnpm at the exact version `package.json` pins — through Corepack
-where the chosen Node still ships one, and otherwise a pnpm already on the
-machine. Corepack was removed from Node in version 25, so a Node that has
-neither is not used, and the installer downloads one that does. It has to be
+where the chosen Node ships one, and otherwise a pnpm already on the
+machine. Node 25 and later ship no Corepack, so a Node with neither is passed
+over, and the installer downloads a Node 22, which has one. It has to be
 pnpm: esbuild fetches its platform binary in an install script, and
 `pnpm-workspace.yaml` is what allows that script to run.
 
@@ -97,17 +93,13 @@ login items, the Start menu, your desktop's applications menu.
 
 It restarts Slack with BetterSlack attached and keeps running for as long as
 Slack does. Nothing is enabled on a fresh install — the repository is a
-catalogue, not a set of pre-installed mods. Open the panel with **⌘⇧M** and
-install what you want from **Browse**.
+catalogue, not a set of pre-installed mods. Open the panel with **⌘⇧M**
+(Ctrl+Shift+M elsewhere) and install what you want from **Browse**.
 
-## Starting it
-
-Launching BetterSlack starts Slack with your mods attached. The BetterSlack mark
-covers the window while that happens, with the name of whatever is starting
-underneath it, and lifts once every theme and plugin is in — so you see the app
-you configured rather than the several seconds of it assembling itself. If a mod
-ever hangs, the name on screen is the one to switch off, and the screen lifts by
-itself after twenty seconds either way.
+While Slack starts, the BetterSlack mark covers the window with the name of
+whatever is starting underneath it, and lifts once every theme and plugin is
+in. If a mod hangs, the name on screen is the one to switch off; the screen
+lifts by itself after twenty seconds either way.
 
 ## Update, and uninstall
 
@@ -118,16 +110,14 @@ belongs to carries a dot too -- **Themes**, **Plugins** or **About** -- with the
 notice and its button above whatever tab you are on. It is looked for at start
 and once an hour after that, so a client left running for days still tells you.
 
-Run the installer again to update. It rebuilds from the clone you have, so
-`git pull` first if you want the newest version. BetterSlack can also update
-itself from the panel, which fetches the current source, builds it and re-stages
-the install without touching anything else.
+BetterSlack updates itself from the panel: it fetches the current source,
+builds it and re-stages the install without touching anything else. Running the
+installer again also updates, from the folder you run it in, so fetch a newer
+copy of that folder first.
 
-A mod updates on its own, from its own button, without pulling the app along
-with it -- which is the point: a one-line fix to a theme should not wait for a
-release of the whole project. Where a newer mod needs a newer BetterSlack, the
-panel says which version it wants and offers no button, because installing it
-would hand you a mod that throws on its first click.
+A mod updates on its own, from its own button, without updating the app. Where
+a newer mod needs a newer BetterSlack, the panel says which version it wants and
+offers no button, because the mod could not run.
 
 To uninstall, delete `~/.betterslack` and the launcher: the app in
 `/Applications`, or `~/.local/bin/betterslack` and
@@ -172,10 +162,9 @@ saves a file. `xcode-select --install`, then run the installer again.
 
 ## What each symptom means
 
-- **Slack quits the moment a call starts or rings (macOS).** You are on a
-  BetterSlack older than the fix for it: update from the About tab. Calls
-  then use the microphone and camera permissions you already gave Slack, and
-  nothing new is asked.
+- **Slack quits the moment a call starts or rings (macOS).** Update BetterSlack
+  from the About tab, or run the installer again. Calls use the microphone and
+  camera permissions you already gave Slack, and nothing new is asked.
 - **Mods stop working.** BetterSlack stopped. Mods live exactly as long as the
   loader does, so quitting it takes them with it.
 - **Your mod is not in the panel.** `id` must equal the folder name. Run

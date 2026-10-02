@@ -683,7 +683,7 @@ const MIME: Record<string, string> = {
   json: 'application/json', txt: 'text/plain', css: 'text/css', md: 'text/markdown',
 };
 
-export function mimeFor(name: string): string {
+function mimeFor(name: string): string {
   const ext = /\.([a-z0-9]+)$/i.exec(name)?.[1]?.toLowerCase() ?? '';
   return MIME[ext] ?? 'application/octet-stream';
 }

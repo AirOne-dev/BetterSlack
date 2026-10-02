@@ -396,7 +396,7 @@
       "id": "custom-sounds",
       "name": "Custom Sounds",
       "type": "plugin",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "author": "AirOne-dev",
       "description": "Your own files in every sound list of Preferences → Notifications: messages, VIP, direct messages, huddles, calendar. Add a sound from a file, play, rename or delete it; a deleted sound puts each slot back on the one it had before.",
       "descriptions": {
@@ -684,7 +684,7 @@
       "id": "history",
       "name": "History",
       "type": "plugin",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": "AirOne-dev",
       "description": "Everything Slack changes and never tells you about — edits, deletions, reactions taken back, renames, statuses, arrivals and departures — on one page you can search and sort",
       "descriptions": {

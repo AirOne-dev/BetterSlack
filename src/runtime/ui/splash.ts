@@ -39,12 +39,12 @@ const SPLASH_VAR = /(--betterslack-splash-[a-z-]+)\s*:\s*((?:"[^"]*"|'[^']*'|[^;
  * The start screen a switched-on theme declares, read out of its stylesheet
  * text in the boot payload, as declarations for the splash's own host.
  *
- * Read here rather than off the computed style because the theme's stylesheet
- * reaches the document a beat after the splash does -- at document-start there
- * is no head to put it in -- and in that beat BetterSlack's own screen was
- * what showed. The payload already carries every enabled theme's source, so
- * the first frame can be the theme's. The last theme wins, as its stylesheet
- * does in the client.
+ * Read from the text rather than off the computed style because the theme's
+ * stylesheet reaches the document a beat after the splash does -- at
+ * document-start there is no head to put it in -- and in that beat the
+ * default screen would show. The payload already carries every enabled
+ * theme's source, so the first frame can be the theme's. The last theme wins,
+ * as its stylesheet does in the client.
  */
 export function splashVarsFrom(payload: ThemeSource): string {
   const found = new Map<string, string>();
@@ -114,9 +114,9 @@ const CSS = `
 .art { opacity: 0; transition: opacity 180ms ease-out; object-fit: contain; }
 
 /*
- * A theme's own start screen. It declares the picture as a custom property on
- * its root, which inherits through the shadow boundary, and the stage takes
- * the size the theme asks for -- a boot screen is wider than a logo.
+ * A theme's own start screen. Its declarations are written onto the host by
+ * showSplash, and the stage takes the size the theme asks for -- a boot screen
+ * is wider than a logo.
  */
 .theme-art {
   position: absolute;
@@ -246,38 +246,10 @@ export function showSplash(art?: Promise<string | null>, themeVars = ''): Splash
       label.textContent = pending || t('splashLoading');
       root.append(style, stage, label);
       document.body.append(host);
-      // After the append: a detached host has no computed style to read.
-      watchTheme(stage);
     } catch {
       // A splash that throws must cost nothing: the app behind it is fine.
       host = null;
     }
-  };
-
-  /**
-   * Whether a theme brings its own start screen.
-   *
-   * Asked of the host's computed style, because the property is the theme's and
-   * arrives with its stylesheet -- which at document-start may be a moment
-   * behind the splash. So it is asked now and a few times after, and a theme
-   * that lands late still takes over the screen.
-   */
-  const watchTheme = (stage: HTMLElement): void => {
-    let tries = 0;
-    const look = (): void => {
-      if (finished) return;
-      try {
-        if (host && window.getComputedStyle(host).getPropertyValue('--betterslack-splash-art').trim()) {
-          stage.classList.add('stage--theme');
-          stage.querySelector('video')?.remove();
-          return;
-        }
-      } catch {
-        return;
-      }
-      if (++tries < 20) setTimeout(look, 100);
-    };
-    look();
   };
 
   /**

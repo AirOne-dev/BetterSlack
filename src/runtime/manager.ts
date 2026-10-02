@@ -241,10 +241,6 @@ export class ModManager {
   }
 
   /**
-   * Check for a newer BetterSlack and newer mods now. Null when the loader
-   * could not be asked; otherwise how many updates there are, app included.
-   */
-  /**
    * Slack's Dock tile: whether it took BetterSlack's icon, open the permission
    * it needs, or try again. `unsupported` for anything that is not macOS, and
    * for a loader too old to know the question.
@@ -278,6 +274,10 @@ export class ModManager {
     if (!answer?.ok) await this.restartSlack();
   }
 
+  /**
+   * Check for a newer BetterSlack and newer mods now. Null when the loader
+   * could not be asked; otherwise how many updates there are, app included.
+   */
   async checkForUpdates(): Promise<number | null> {
     const answer = await this.bridge
       .request<{ app: UpdateStatus | null; mods: ModUpdate[] }>({ type: 'updates.check' })
@@ -359,11 +359,10 @@ export class ModManager {
 
   /**
    * A mod installed from Browse is the copy this install shipped with, and the
-   * branch may have moved on since: a colleague installed Custom Sounds 1.0.0,
-   * broken, the day 1.0.4 was published, and was offered nothing better until
-   * the next hourly sweep. So installing asks the registry straight away and
-   * takes the published version when this build can run it -- through the
-   * same path as the Update button, which re-validates what it downloads.
+   * branch may have moved on since -- with a fix the next hourly sweep would
+   * only find up to an hour later. So installing asks the registry straight
+   * away and takes the published version when this build can run it, through
+   * the same path as the Update button, which re-validates what it downloads.
    *
    * Never in the way: offline, blocked by an older BetterSlack, or a download
    * that fails, and the shipped copy simply stays.
@@ -618,9 +617,7 @@ export class ModManager {
       // Slack had; the settings BetterSlack keeps are the part it owns, and
       // the launch snapshot is the rest.
       slackPrefsNow: () => ({ ...this.boot.info.slackPrefsAtLaunch, ...this.settings.slackPrefs }),
-      restartSlack: async () => {
-        await this.bridge.request({ type: 'slack.restart' });
-      },
+      restartSlack: () => this.restartSlack(),
       listCommands: () => [...this.commands.values()],
       listMods: () => this.mods.map((mod) => ({
         id: mod.id,

@@ -7,8 +7,7 @@ since: 2.0.1
 preview: helpers-each
 ---
 
-Run a handler for every element matching a selector, now and in future,
-and undo it for you when the plugin stops.
+Run a handler for every element matching a selector, now and as more arrive, and undo it when the plugin stops.
 
 ```js
 api.helpers.each('[data-qa="message_container"]', (message) => {

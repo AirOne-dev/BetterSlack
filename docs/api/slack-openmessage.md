@@ -9,14 +9,9 @@ control: channel | text | C0BFQCYBRAB | channel id
 control: ts | text | 1786386808.130969 | message ts
 ---
 
-Move the client to one message, and highlight it. The same deep link
-`openConversation` uses, with the message's timestamp on it: Slack routes it in
-place and flashes the message it lands on, the way its own search results do.
+Move the client to one message and highlight it, the way Slack's own search results do. It is `openConversation`'s deep link with the message's timestamp on it.
 
-The team matters. Search answers across every workspace you are signed into, so
-a link built without one goes to whichever client is on screen and lands on a
-channel id that may not exist there. Pass `team` whenever the message came from
-somewhere that names it; left out, it is the workspace being drawn.
+Pass `team` whenever the message came from somewhere that names it: search answers across every workspace you are signed into, and a link without a team goes to the workspace on screen, where that channel may not exist. Left out, it is the workspace being drawn.
 
 ```js
 // Slack's search gives you the conversation and the message inside it.

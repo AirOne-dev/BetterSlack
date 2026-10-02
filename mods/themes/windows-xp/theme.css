@@ -57,7 +57,6 @@ body,
   --xp-face: #ece9d8;
   --xp-face-light: #f1efe2;
   --xp-face-shadow: #aca899;
-  --xp-face-dark: #716f64;
   --xp-gray-text: #aca899;
   --xp-text-dim: #716f64;
   --xp-highlight: #316ac5;
@@ -96,10 +95,7 @@ body,
     #7a93df 97%, #abbae3 100%);
   --xp-title-inactive-text: #d8e4f8;
 
-  /* Caption buttons: blue for minimise/maximise, red for close. */
-  --xp-caption: radial-gradient(circle at 90% 90%, #0054e9 0%, #2263d5 55%, #4479e4 70%, #a3bbec 90%, #ffffff 100%);
-  --xp-caption-hover: radial-gradient(circle at 90% 90%, #134bbf 0%, #2f72fb 55%, #4985ff 70%, #9cbdff 90%, #ffffff 100%);
-  --xp-caption-ring: #4646ff;
+  /* The close button in a caption, and the white edge of a caption button. */
   --xp-close: radial-gradient(circle at 90% 90%, #cc4600 0%, #dc6527 55%, #cd7546 70%, #ffccb2 90%, #ffffff 100%);
   --xp-close-hover: radial-gradient(circle at 90% 90%, #c93c2b 0%, #ec4f3d 55%, #ff6b5a 70%, #ffb2a9 90%, #ffffff 100%);
   --xp-close-ring: #da4600;
@@ -156,7 +152,6 @@ body,
   --xp-tab: linear-gradient(180deg, #ffffff 0%, #fafaf9 26%, #f0f0ea 95%, #ecebe5 100%);
   --xp-tab-cap: #e68b2c;
   --xp-tab-cap-light: #ffc73c;
-  --xp-tab-panel: linear-gradient(180deg, #fcfcfe 0%, #f4f3ee 100%);
 
   /* Scroll bars. */
   --xp-scroll-track: linear-gradient(90deg, #eeede5 0%, #eeede5 5%, #f3f1ec 6%, #fefefe 94%, #eeede5 95%, #eeede5 100%);
@@ -166,7 +161,6 @@ body,
   --xp-scroll-thumb-hover: linear-gradient(90deg, #dae9ff 0%, #d4e6ff 65%, #cae0ff 100%);
   --xp-scroll-thumb-edge: #b4c8f6;
   --xp-scroll-button: linear-gradient(180deg, #e1eafe 0%, #c3d3fd 30%, #c3d3fd 60%, #bbcdf9 100%);
-  --xp-scroll-button-hover: linear-gradient(180deg, #fdffff 0%, #e2f3fd 25%, #b9dafb 100%);
   --xp-scroll-button-edge: #b4c8f6;
 
   /* Balloons and tooltips. */
@@ -285,9 +279,6 @@ body,
       #8ba169 55%, #86995f 75%, #7e9558 88%, #6b7a4d 96%, #5a6b3a 100%);
     --xp-title-inactive: linear-gradient(180deg, #e3e6cd 0%, #d4d6ba 40%, #cbcfae 90%, #bdc19c 100%);
     --xp-title-inactive-text: #ffffff;
-    --xp-caption: radial-gradient(circle at 90% 90%, #6a8a2c 0%, #84a64a 55%, #9fbb6c 70%, #d6e3b6 90%, #ffffff 100%);
-    --xp-caption-hover: radial-gradient(circle at 90% 90%, #7a9a3c 0%, #97b95c 55%, #b2cd80 70%, #e4eecb 90%, #ffffff 100%);
-    --xp-caption-ring: #5a7a1c;
     --xp-rail: linear-gradient(90deg,
       #5a6b3a 0%, #94a770 6%, #93a66e 12%, #8ea36a 25%, #889c63 50%,
       #82955c 80%, #7e8f58 92%, #5a6b3a 100%);
@@ -313,7 +304,6 @@ body,
     --xp-scroll-thumb-hover: linear-gradient(90deg, #d8e3ba 0%, #d9e5bc 65%, #d0dca8 100%);
     --xp-scroll-thumb-edge: #b4c08e;
     --xp-scroll-button: linear-gradient(180deg, #d9e2c1 0%, #bccb98 40%, #a2b38d 100%);
-    --xp-scroll-button-hover: linear-gradient(180deg, #ecf2dc 0%, #cfdcae 40%, #b4c49c 100%);
     --xp-scroll-button-edge: #b4c08e;
     --xp-start-head: linear-gradient(180deg, #8ba169 0%, #96aa6a 30%, #9fb377 60%, #a9bc84 100%);
     --xp-start-foot: linear-gradient(180deg, #a9bc84 0%, #96aa6a 40%, #849a5c 100%);
@@ -351,9 +341,6 @@ body,
       #d4d4de 68%, #c9c9d6 82%, #b8b7cb 94%, #a8a7bf 100%);
     --xp-title-inactive: linear-gradient(180deg, #ffffff 0%, #f4f4f7 40%, #ebebef 90%, #dcdce4 100%);
     --xp-title-inactive-text: #a2a1a1;
-    --xp-caption: linear-gradient(180deg, #ffffff 0%, #ececf2 45%, #d4d4de 80%, #bdbccc 100%);
-    --xp-caption-hover: linear-gradient(180deg, #ffffff 0%, #f6f6fa 45%, #e3e3ec 80%, #cfcedc 100%);
-    --xp-caption-ring: #8e8da5;
     --xp-caption-edge: #8e8da5;
     --xp-rail: linear-gradient(90deg,
       #8e8da5 0%, #e8e8f0 6%, #e1e1ea 15%, #d9d9e5 35%, #cecedc 60%,
@@ -379,7 +366,6 @@ body,
     --xp-scroll-thumb-hover: linear-gradient(90deg, #ffffff 0%, #f1f1f5 30%, #e6e6ee 60%, #d6d7e2 100%);
     --xp-scroll-thumb-edge: #a5acb2;
     --xp-scroll-button: linear-gradient(180deg, #ffffff 0%, #ececf2 40%, #d4d4de 100%);
-    --xp-scroll-button-hover: linear-gradient(180deg, #ffffff 0%, #f6f6fa 40%, #e3e3ec 100%);
     --xp-scroll-button-edge: #a5acb2;
     --xp-start-head: linear-gradient(180deg, #a8a7bf 0%, #c4c3d4 40%, #d9d9e5 100%);
     --xp-start-foot: linear-gradient(180deg, #d9d9e5 0%, #c4c3d4 50%, #a8a7bf 100%);
@@ -593,7 +579,6 @@ body {
   color: var(--xp-title-text) !important;
   text-shadow: 1px 1px var(--xp-title-shadow);
 }
-.p-ia4_top_nav .c-button-unstyled.c-icon_button,
 .p-ia4_top_nav .c-icon_button {
   color: var(--xp-title-text) !important;
 }
@@ -1049,7 +1034,7 @@ blockquote::before {
 
 /* ---- Inputs -------------------------------------------------------------- */
 
-.c-input_text,
+/* .c-input_text is written twice to outrank Slack's own .c-input_text rules. */
 .c-input_textarea,
 .c-input_select,
 .c-select_input,
@@ -1060,7 +1045,6 @@ blockquote::before {
   box-shadow: none !important;
   color: var(--xp-window-text) !important;
 }
-.c-input_text:focus,
 .c-input_textarea:focus,
 .c-input_text.c-input_text:focus {
   border-color: var(--xp-highlight) !important;
@@ -1084,9 +1068,9 @@ blockquote::before {
  * Check boxes and radio buttons, drawn the XP way: a 13px box with a dark
  * blue edge and a diagonal sheen, a green tick. Only plain ones: Slack's own
  * (.c-input_checkbox and friends) draw their tick themselves, so redrawing
- * the box put two ticks side by side -- measured in Preferences. Those take
- * their colours from the tokens. BetterSlack's switch keeps its shape too:
- * it is a switch, and XP had none to borrow.
+ * their box shows two ticks side by side; they take their colours from the
+ * tokens. BetterSlack's switch keeps its shape too: it is a switch, and XP
+ * had none to borrow.
  */
 input[type="checkbox"]:not([class*="c-input"], .betterslack-switch > input),
 input[type="radio"]:not([class*="c-input"], .betterslack-switch > input) {
@@ -1358,9 +1342,6 @@ input[type="radio"]:not([class*="c-input"], .betterslack-switch > input):checked
 }
 ::-webkit-scrollbar-thumb:horizontal {
   background: var(--xp-glyph-grip-x) no-repeat center / 8px 7px, var(--xp-scroll-thumb-y);
-}
-::-webkit-scrollbar-thumb:hover {
-  background-color: transparent;
 }
 ::-webkit-scrollbar-button:single-button {
   display: block;

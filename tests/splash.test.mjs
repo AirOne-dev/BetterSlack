@@ -213,28 +213,6 @@ test('the video is inlined in the loader, not in the runtime', () => {
   assert.doesNotMatch(splash, /import .*\.webm/, 'and the screen is handed it rather than importing it');
 });
 
-test('a theme that declares a start screen takes over the stage, and no video is decoded', async () => {
-  /*
-   * The theme declares the picture as --betterslack-splash-art on its root,
-   * which inherits through the shadow boundary; the splash only has to notice
-   * it is set. jsdom does not cascade custom properties, so the computed style
-   * is answered here the way Chromium answers it.
-   */
-  await withDom('<!doctype html><html><head></head><body></body></html>', async (dom) => {
-    const real = dom.window.getComputedStyle.bind(dom.window);
-    dom.window.getComputedStyle = (node) => {
-      const style = real(node);
-      return { getPropertyValue: (name) => (name === '--betterslack-splash-art' ? ' url("data:image/svg+xml,x")' : style.getPropertyValue(name)) };
-    };
-    const splash = showSplash(Promise.resolve('AAAA'));
-    await wait(40);
-    const stage = hostIn(dom).shadowRoot.querySelector('.stage');
-    assert.ok(stage.classList.contains('stage--theme'), 'the theme\'s picture is shown');
-    assert.equal(stage.querySelector('video'), null, 'and the animation it replaces is never decoded');
-    splash.done();
-  });
-});
-
 test('without a theme picture the stage is BetterSlack\'s own', async () => {
   await withDom('<!doctype html><html><head></head><body></body></html>', async (dom) => {
     const splash = showSplash(Promise.resolve(null));

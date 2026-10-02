@@ -103,9 +103,8 @@ export function openMenu(anchor: HTMLElement, items: MenuItem[], options: MenuOp
   /*
    * Placed against the anchor, and placed again when the window changes size.
    * A menu is fixed to the viewport while the anchor lives in a layout that
-   * reflows -- a dialog recentres, a column narrows -- so without this a
-   * resize left the menu where the anchor used to be. Found photographing
-   * one: the screenshot recipe resizes the page, and the menu stayed behind.
+   * reflows -- a dialog recentres, a column narrows -- so a resize would
+   * otherwise leave the menu where the anchor used to be.
    */
   const scroller = layer.querySelector<HTMLElement>('.c-menu__items_scroller');
   function place() {
@@ -119,9 +118,9 @@ export function openMenu(anchor: HTMLElement, items: MenuItem[], options: MenuOp
      * Below the anchor if it fits, above if that fits -- which is where a
      * control strip at the bottom of the rail always puts it -- and otherwise
      * on whichever side has more room, scrolling. A long list (a select of
-     * fifteen sounds, say) fits on neither side of an anchor in the middle of a
-     * dialog, and placed by the first two rules alone it opened off the bottom
-     * of the window with its last items unreachable.
+     * fifteen sounds, say) fits on neither side of an anchor in the middle of
+     * a dialog, and would otherwise run off the window with its last items
+     * unreachable.
      */
     const below = view.innerHeight - rect.bottom - 4 - MARGIN;
     const above = rect.top - 4 - MARGIN;

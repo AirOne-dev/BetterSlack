@@ -2,7 +2,7 @@
   "id": "history",
   "name": "History",
   "type": "plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "AirOne-dev",
   "description": "Everything Slack changes and never tells you about — edits, deletions, reactions taken back, renames, statuses, arrivals and departures — on one page you can search and sort",
   "descriptions": {

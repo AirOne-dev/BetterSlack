@@ -133,7 +133,8 @@ restarts Slack with your mods attached and keeps running for as long as Slack
 does. Nothing is enabled on a fresh install -- open the panel and pick what you
 want from **Browse**.
 
-To update, or to move to a newer Node, run `./install.sh` again. To uninstall,
+To update, use the panel's About tab, or run `./install.sh` again from a newer
+copy of the folder, which also moves you to a newer Node. To uninstall,
 delete `~/.betterslack` and the launcher (`/Applications/BetterSlack.app`, or
 `~/.local/bin/betterslack` and its `.desktop` file, or the Start menu shortcut).
 
@@ -176,9 +177,8 @@ Several themes can run at once. Terminal is the exception: it restyles through
 `*` selectors, so run it on its own.
 
 A mod carries its own version and updates on its own, so a fix to one theme does
-not mean pulling the whole project. The panel also offers to update BetterSlack
-itself — over git when there is a checkout, and by downloading the release from
-GitHub when there is not.
+not mean updating the whole project. The panel also updates BetterSlack itself,
+from GitHub, keeping your mods and settings.
 
 ## If something goes wrong
 
@@ -272,8 +272,8 @@ pnpm start                        # launch Slack with mods, from this checkout
 
 pnpm, not npm: esbuild fetches its platform binary in an install script, and
 `pnpm-workspace.yaml` is what allows that script to run. If you have no pnpm,
-`corepack enable` gets you one on a Node older than 25, and
-`npm i -g pnpm` on any of them -- Corepack was removed from Node in 25.
+`corepack enable` gets you one on a Node older than 25 (later ones ship no
+Corepack), and `npm i -g pnpm` on any of them.
 
 `pnpm build` is not optional: the loader and the runtime are TypeScript and
 `dist/` is not committed. Run it after cloning and after any change under

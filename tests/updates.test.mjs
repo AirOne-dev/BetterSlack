@@ -171,8 +171,8 @@ test('checking by hand is the same sweep, not a second answer', () => {
 });
 
 test('installing from Browse takes the published version, when this build can run it', () => {
-  // Browse installs the copy the install shipped with. A colleague got Custom
-  // Sounds 1.0.0, broken, the day 1.0.4 was published.
+  // Browse installs the copy the install shipped with, which may be behind a
+  // fix published since.
   const manager = read('src/runtime/manager.ts');
   assert.match(manager, /if \(installed\) await this\.takeLatest\(id\);/);
   const take = manager.slice(manager.indexOf('private async takeLatest'));

@@ -9,7 +9,7 @@ control: label | text | Notes
 control: surface | select | header |  | strip, header, composer
 ---
 
-An icon button wearing Slack's classes for the surface you name — the control strip, a header, the composer. Getting the classes right is what keeps it 28px instead of 36px.
+An icon button wearing Slack's classes for the surface you name — the control strip, a header, the composer, a message's toolbar. The right classes are what keep it 28px instead of 36px.
 
 ```js
 const button = api.helpers.iconButton({

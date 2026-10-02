@@ -543,9 +543,8 @@ function writeDocsIndex(groups) {
     '[CLAUDE.md](../CLAUDE.md#the-api-documentation-format) — one file per entry, a',
     'few keys at the top, prose, and one example.',
     '',
-    'Each entry says which release it arrived in. That is not decoration: a mod is',
-    'refused by an install too old to run it, and the version it needs is worked out',
-    'from exactly these numbers and what the mod calls.',
+    'Each entry names the release it arrived in. A mod needs the highest release',
+    'among the calls it makes, and an install older than that refuses it.',
     '',
   ];
   for (const group of groups) {
@@ -609,10 +608,9 @@ export function buildThemeTokens() {
     ].filter(Boolean).join('\n');
 
     /*
-     * Both selectors, and the second is not decoration: a dialog, a menu and a
-     * tooltip render into `document.body`, so tokens defined only on the
-     * preview box never reach them -- which is exactly how the modal came to be
-     * an unstyled heading at the bottom of the page.
+     * Both selectors: a dialog, a menu and a tooltip render into
+     * `document.body`, so tokens defined only on the preview box would never
+     * reach them.
      */
     return `.slack-stage[data-theme="${theme.id}"],\nbody.api-page[data-theme="${theme.id}"] {\n${declarations}${extra ? `\n${extra}` : ''}\n}`;
   });

@@ -464,7 +464,6 @@ body.api-page[data-theme="windows-xp"] {
   --xp-face: #ece9d8;
   --xp-face-light: #f1efe2;
   --xp-face-shadow: #aca899;
-  --xp-face-dark: #716f64;
   --xp-gray-text: #aca899;
   --xp-text-dim: #716f64;
   --xp-highlight: #316ac5;
@@ -492,9 +491,6 @@ body.api-page[data-theme="windows-xp"] {
   --xp-title: linear-gradient(180deg,
   --xp-title-inactive: linear-gradient(180deg,
   --xp-title-inactive-text: #d8e4f8;
-  --xp-caption: radial-gradient(circle at 90% 90%, #0054e9 0%, #2263d5 55%, #4479e4 70%, #a3bbec 90%, #ffffff 100%);
-  --xp-caption-hover: radial-gradient(circle at 90% 90%, #134bbf 0%, #2f72fb 55%, #4985ff 70%, #9cbdff 90%, #ffffff 100%);
-  --xp-caption-ring: #4646ff;
   --xp-close: radial-gradient(circle at 90% 90%, #cc4600 0%, #dc6527 55%, #cd7546 70%, #ffccb2 90%, #ffffff 100%);
   --xp-close-hover: radial-gradient(circle at 90% 90%, #c93c2b 0%, #ec4f3d 55%, #ff6b5a 70%, #ffb2a9 90%, #ffffff 100%);
   --xp-close-ring: #da4600;
@@ -535,7 +531,6 @@ body.api-page[data-theme="windows-xp"] {
   --xp-tab: linear-gradient(180deg, #ffffff 0%, #fafaf9 26%, #f0f0ea 95%, #ecebe5 100%);
   --xp-tab-cap: #e68b2c;
   --xp-tab-cap-light: #ffc73c;
-  --xp-tab-panel: linear-gradient(180deg, #fcfcfe 0%, #f4f3ee 100%);
   --xp-scroll-track: linear-gradient(90deg, #eeede5 0%, #eeede5 5%, #f3f1ec 6%, #fefefe 94%, #eeede5 95%, #eeede5 100%);
   --xp-scroll-track-y: linear-gradient(180deg, #eeede5 0%, #eeede5 5%, #f3f1ec 6%, #fefefe 94%, #eeede5 95%, #eeede5 100%);
   --xp-scroll-thumb: linear-gradient(90deg, #c9d8fc 0%, #c2d3fc 65%, #b6cdfb 100%);
@@ -543,7 +538,6 @@ body.api-page[data-theme="windows-xp"] {
   --xp-scroll-thumb-hover: linear-gradient(90deg, #dae9ff 0%, #d4e6ff 65%, #cae0ff 100%);
   --xp-scroll-thumb-edge: #b4c8f6;
   --xp-scroll-button: linear-gradient(180deg, #e1eafe 0%, #c3d3fd 30%, #c3d3fd 60%, #bbcdf9 100%);
-  --xp-scroll-button-hover: linear-gradient(180deg, #fdffff 0%, #e2f3fd 25%, #b9dafb 100%);
   --xp-scroll-button-edge: #b4c8f6;
   --xp-balloon-shadow: drop-shadow(2px 2px 1px rgba(0, 0, 0, 0.4));
   --xp-menu-shadow: 2px 2px 3px rgba(0, 0, 0, 0.45);
@@ -600,9 +594,6 @@ body.api-page[data-theme="windows-xp"] {
     --xp-title: linear-gradient(180deg,
     --xp-title-inactive: linear-gradient(180deg, #e3e6cd 0%, #d4d6ba 40%, #cbcfae 90%, #bdc19c 100%);
     --xp-title-inactive-text: #ffffff;
-    --xp-caption: radial-gradient(circle at 90% 90%, #6a8a2c 0%, #84a64a 55%, #9fbb6c 70%, #d6e3b6 90%, #ffffff 100%);
-    --xp-caption-hover: radial-gradient(circle at 90% 90%, #7a9a3c 0%, #97b95c 55%, #b2cd80 70%, #e4eecb 90%, #ffffff 100%);
-    --xp-caption-ring: #5a7a1c;
     --xp-rail: linear-gradient(90deg,
     --xp-task-button: #9cb07a;
     --xp-task-button-hover: #b0c48c;
@@ -626,7 +617,6 @@ body.api-page[data-theme="windows-xp"] {
     --xp-scroll-thumb-hover: linear-gradient(90deg, #d8e3ba 0%, #d9e5bc 65%, #d0dca8 100%);
     --xp-scroll-thumb-edge: #b4c08e;
     --xp-scroll-button: linear-gradient(180deg, #d9e2c1 0%, #bccb98 40%, #a2b38d 100%);
-    --xp-scroll-button-hover: linear-gradient(180deg, #ecf2dc 0%, #cfdcae 40%, #b4c49c 100%);
     --xp-scroll-button-edge: #b4c08e;
     --xp-start-head: linear-gradient(180deg, #8ba169 0%, #96aa6a 30%, #9fb377 60%, #a9bc84 100%);
     --xp-start-foot: linear-gradient(180deg, #a9bc84 0%, #96aa6a 40%, #849a5c 100%);

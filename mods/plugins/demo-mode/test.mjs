@@ -201,13 +201,6 @@ test('sweeps what the palette got from Slack and spares what it wrote itself', (
   }
 });
 
-/*
- * "It is only digits" is not the same as "it is nobody's".
- *
- * Found by the audit on a real workspace: two six-digit order references sat
- * alone in message bubbles and survived every sweep. A badge count and a year
- * genuinely belong to nobody; an order number is a customer's.
- */
 test('a node Slack writes the original back into is swept again, a bounded number of times', () => {
   const dom = installDom();
   try {
@@ -239,6 +232,11 @@ test('a node Slack writes the original back into is swept again, a bounded numbe
   }
 });
 
+/*
+ * "It is only digits" is not the same as "it is nobody's". A badge count and
+ * a year genuinely belong to nobody; a six-digit order reference alone in a
+ * message bubble is a customer's.
+ */
 test('keeps counts and years, and replaces a number long enough to identify something', () => {
   const dom = installDom();
   try {

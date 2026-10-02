@@ -9,7 +9,7 @@ control: title | text | Channel notes
 control: subtitle | text | ⌘⇧N
 ---
 
-Slack's tooltip on any element. Slack's own are React portals a mod cannot register with, so this rebuilds one from Slack's classes — including the ~150ms delay, measured with a real pointer.
+Slack's tooltip on any element. Slack's own tooltips are React portals a mod cannot register with, so this builds one from Slack's classes, with Slack's ~150ms hover delay.
 
 ```js
 api.helpers.tooltip(button, 'Channel notes', '⌘⇧N');

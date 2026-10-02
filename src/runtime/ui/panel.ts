@@ -1369,14 +1369,6 @@ export class Panel {
   }
 
   /**
-   * Take everything with you, or put it back.
-   *
-   * The catalogue is deliberately not in it: those mods come back with the
-   * project, and carrying them would restore stale copies over newer ones. What
-   * a backup holds is the part that cannot be downloaded again -- the settings,
-   * and the mods someone wrote or installed themselves.
-   */
-  /**
    * Check for updates now, rather than at the next hourly sweep.
    *
    * Somebody who has just installed a mod from the catalogue gets the copy
@@ -1448,6 +1440,14 @@ export class Panel {
     return row;
   }
 
+  /**
+   * Take everything with you, or put it back.
+   *
+   * The catalogue is deliberately not in it: those mods come back with the
+   * project, and carrying them would restore stale copies over newer ones. What
+   * a backup holds is the part that cannot be downloaded again -- the settings,
+   * and the mods someone wrote or installed themselves.
+   */
   private renderBackup(): Node {
     const status = h('span', { class: 'betterslack-status' });
 

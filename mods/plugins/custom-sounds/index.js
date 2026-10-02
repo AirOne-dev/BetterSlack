@@ -15,7 +15,6 @@
 
 import {
   ACCEPT,
-  NONE,
   SLOTS,
   allocateCarrier,
   checkFile,
@@ -27,7 +26,7 @@ import {
   indicesFor,
   labelFor,
   optionLabel,
-  reconcile,
+  letGo,
   soundFromUrl,
   valueAt,
 } from './sounds.js';
@@ -194,10 +193,9 @@ export default {
 
     /*
      * Opening Slack's select focuses it, and a focused element is scrolled
-     * into view -- so every hidden list this opened dragged Preferences to
-     * wherever that select sits, in the middle of somebody's own scrolling,
-     * which read as the page hesitating and flickering. Every scrolled
-     * ancestor is put back where it was, after the click and at the end.
+     * into view, which would drag Preferences to wherever that select sits in
+     * the middle of somebody's own scrolling. Every scrolled ancestor is put
+     * back where it was, after the click and at the end.
      */
     function holdScroll(from) {
       const held = [];
@@ -230,7 +228,7 @@ export default {
         for (let i = 0; i < 20 && !list; i += 1) {
           await sleep(30);
           putBack();
-          list = document.querySelector('.c-select_options_list[role="listbox"], [role="listbox"]');
+          list = document.querySelector('[role="listbox"]');
         }
         if (!list) return null;
         return await work(list);
@@ -262,56 +260,48 @@ export default {
     const optionIndex = (option) => Number(/_option_(\d+)$/.exec(option.getAttribute('data-qa') ?? option.id)?.[1]);
 
     /**
-     * The options of a slot's select: { index, label, selected }.
+     * Walk an open list top to bottom until `visit` answers true.
      *
      * The list is virtualised: it draws the options around the selected one
      * and nothing else, so a list that opens on Boop Plus has no "None" in it
-     * at all. It is walked top to bottom a page at a time, each step given two
-     * frames to draw, until a pass adds nothing new. Three jumps with 20ms
-     * between them missed the top of a list opened at its bottom.
+     * at all. So it is scrolled a page at a time, each step given two frames
+     * to draw, and `visit` looks at what is drawn after each.
      */
-    const readOptions = (slot) => withList(slot, async (list) => {
-      const seen = new Map();
-      const collect = () => {
-        for (const option of list.querySelectorAll('[role="option"]')) {
-          const index = optionIndex(option);
-          if (Number.isNaN(index) || seen.has(index)) continue;
-          seen.set(index, {
-            index,
-            label: option.textContent.trim(),
-            selected: option.getAttribute('aria-selected') === 'true',
-          });
-        }
-      };
-      collect();
+    async function walk(list, visit) {
+      if (visit()) return true;
       const scroller = scrollerOf(list);
       const step = Math.max(40, Math.floor(scroller.clientHeight / 2));
       for (let top = 0; top <= scroller.scrollHeight + step; top += step) {
         scroller.scrollTop = top;
         await frame();
         await frame();
-        collect();
+        if (visit()) return true;
       }
-      return [...seen.values()].sort((a, b) => a.index - b.index);
+      return false;
+    }
+
+    /** The option Slack's list marks as chosen, or null. */
+    const selectedInList = (slot) => withList(slot, async (list) => {
+      let selected = null;
+      await walk(list, () => {
+        selected = list.querySelector('[role="option"][aria-selected="true"]');
+        return selected !== null;
+      });
+      const index = selected ? optionIndex(selected) : NaN;
+      return Number.isNaN(index) ? null : index;
     });
 
     /** Click option `index` in a slot's select. `quiet` swallows Slack's preview of it. */
     async function selectIndex(slot, index, { quiet = false } = {}) {
       quietUntil = quiet ? Date.now() + 1500 : 0;
       const done = await withList(slot, async (list) => {
-        const find = () => [...list.querySelectorAll('[role="option"]')].find((option) => optionIndex(option) === index);
-        let option = find();
-        const scroller = scrollerOf(list);
-        const step = Math.max(40, Math.floor(scroller.clientHeight / 2));
-        for (let top = 0; !option && top <= scroller.scrollHeight + step; top += step) {
-          scroller.scrollTop = top;
-          await frame();
-          await frame();
-          option = find();
-        }
-        if (!option) return false;
-        option.click();
-        return true;
+        let option = null;
+        const found = await walk(list, () => {
+          option = [...list.querySelectorAll('[role="option"]')].find((each) => optionIndex(each) === index);
+          return Boolean(option);
+        });
+        if (found) option.click();
+        return found;
       });
       await sleep(120);
       return Boolean(done);
@@ -324,12 +314,7 @@ export default {
      */
     const shownIndex = (slot) => indexFromText(button(slot)?.textContent, slot);
 
-    async function selectedIndex(slot) {
-      const shown = shownIndex(slot);
-      if (shown !== null) return shown;
-      const options = await readOptions(slot);
-      return options?.find((option) => option.selected)?.index ?? null;
-    }
+    const selectedIndex = async (slot) => shownIndex(slot) ?? selectedInList(slot);
 
     /** What every slot holds right now, as Slack values; a slot it cannot read is left out. */
     function currentValues() {
@@ -388,10 +373,9 @@ export default {
      */
     async function onPrefsShown() {
       /*
-       * Nothing is opened here. Reading every select as Preferences came up
-       * opened five hidden lists while the page was being scrolled, and each
-       * one pulled the page somewhere. Lists are read when somebody clicks a
-       * picker; until then a select's own text is what it holds.
+       * No list is opened here: each one opened pulls the page towards its
+       * select while somebody may be scrolling. A select's own text is what
+       * it holds; a list is read only when somebody clicks a picker.
        */
       const teamId = team();
       const waiting = pending[teamId] ?? {};
@@ -401,15 +385,9 @@ export default {
       }
       pending = { ...pending, [teamId]: waiting };
       await api.settings.set('pending', pending);
-      const values = currentValues();
-      let changed = false;
-      for (const step of reconcile(values, mine(teamId))) {
-        if (step.drop) {
-          setAssignment(teamId, step.slot, null);
-          changed = true;
-        }
-      }
-      if (changed) await saveAssignments();
+      const dropped = letGo(currentValues(), mine(teamId));
+      for (const slot of dropped) setAssignment(teamId, slot, null);
+      if (dropped.length) await saveAssignments();
       refreshButtons();
     }
 
@@ -424,11 +402,10 @@ export default {
      * "system" the main process puts the sound's name on the native
      * notification and macOS plays the file from inside Slack.app, which
      * nothing in the page can reach; it also answers the page's
-     * `shouldPlaySound()` with no, so the page plays nothing at all. And on
-     * macOS 12 and later Slack forces "system" at *every* launch, whatever its
-     * settings file says -- measured: written as "web" before a launch, it came
-     * back "system" in the same second. So every custom notification sound was
-     * quietly Slack's own: the swap worked, and never ran.
+     * `shouldPlaySound()` with no, so the page plays nothing at all and the
+     * swap never runs. And on macOS 12 and later Slack forces "system" at
+     * *every* launch, whatever its settings file says -- measured: written as
+     * "web" before a launch, it came back "system" in the same second.
      *
      * `desktop.app.setPreference` is Slack's own way for the page to change a
      * desktop setting, live, and it is honoured at once: measured, "system" to
@@ -711,11 +688,9 @@ export default {
 
     /**
      * Slack's own options, then yours -- opened on the click, with nothing of
-     * Slack's opened first. Reading Slack's list to build this one put a
-     * hidden list on screen for a moment, which with Motion switched on was a
-     * frame drawn and gone before the menu appeared; and the list is
-     * virtualised, so a read could miss "None" altogether. The options are
-     * Slack's fixed table, and their labels are Slack's own, kept in sounds.js.
+     * Slack's opened first: a hidden list put on screen even for a moment is a
+     * frame drawn and gone before the menu appears. The options are Slack's
+     * fixed table, and their labels are Slack's own, kept in sounds.js.
      */
     async function openPicker(slot, anchor) {
       const shown = shownIndex(slot);
@@ -843,7 +818,7 @@ export default {
         const slots = [...new Set(usesOf(sound.id).map((use) => slotLabel(use.slot)))];
         uses.textContent = slots.length ? t('usedBy', { slots: slots.join(', ') }) : t('unused');
         meta.append(name, uses);
-        const button = (label, variant, onClick) => {
+        const action = (label, variant, onClick) => {
           const element = document.createElement('button');
           element.type = 'button';
           element.className = `c-button c-button--${variant} c-button--small`;
@@ -853,8 +828,8 @@ export default {
         };
         row.append(
           meta,
-          button(t('play'), 'outline', async () => preview(await urlFor(sound.id))),
-          button(t('rename'), 'outline', () => {
+          action(t('play'), 'outline', async () => preview(await urlFor(sound.id))),
+          action(t('rename'), 'outline', () => {
             const input = document.createElement('input');
             input.className = 'c-input_text';
             input.value = sound.label;
@@ -875,7 +850,7 @@ export default {
             });
             input.addEventListener('blur', () => void commit(), { once: true });
           }),
-          button(t('delete'), 'danger', async () => {
+          action(t('delete'), 'danger', async () => {
             if (await deleteSound(sound.id)) renderManager();
           }),
         );

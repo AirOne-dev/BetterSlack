@@ -187,24 +187,22 @@ cd BetterSlack-master
 Expand-Archive bs.zip -DestinationPath .
 cd BetterSlack-master
 powershell -ExecutionPolicy Bypass -File .\install.ps1</code></pre>
-<p>The only difference afterwards is which route the update button takes: a copy that came from a clone is pulled, one that did not is replaced from the branch tarball. Both are one button, and both keep your mods and settings, which live in <code>~/.betterslack</code> and never inside the install.</p>
-<h2>What it actually does</h2>
-<p>Worth knowing, because an installer that will not say is an installer you have to take on trust.</p>
-<p>It finds a Node that satisfies this project's <code>engines</code> — and finds it by version, not by taking the first <code>node</code> on your <code>PATH</code>, which on a machine with nvm is whatever its <code>default</code> alias points at and is frequently too old. If there is no usable one it downloads the current LTS from nodejs.org into <code>~/.betterslack/runtime</code>, checks it against the digest published beside it, and keeps it to itself: nothing is added to your <code>PATH</code> and no other project sees it.</p>
-<p>Then it gets pnpm at the exact version <code>package.json</code> pins — through Corepack where the chosen Node still ships one, and otherwise a pnpm already on the machine. Corepack was removed from Node in version 25, so a Node that has neither is not used, and the installer downloads one that does. It has to be pnpm: esbuild fetches its platform binary in an install script, and <code>pnpm-workspace.yaml</code> is what allows that script to run.</p>
+<p>Either way the result is the same install, and it updates itself from the branch tarball. Your mods and settings live in <code>~/.betterslack</code>, never inside the install, so an update keeps them.</p>
+<h2>What it does</h2>
+<p>It finds a Node that satisfies this project's <code>engines</code> — and finds it by version, not by taking the first <code>node</code> on your <code>PATH</code>, which on a machine with nvm is whatever its <code>default</code> alias points at and is frequently too old. If there is no usable one it downloads the latest Node 22 from nodejs.org into <code>~/.betterslack/runtime</code>, checks it against the digest published beside it, and keeps it to itself: nothing is added to your <code>PATH</code> and no other project sees it.</p>
+<p>Then it gets pnpm at the exact version <code>package.json</code> pins — through Corepack where the chosen Node ships one, and otherwise a pnpm already on the machine. Node 25 and later ship no Corepack, so a Node with neither is passed over, and the installer downloads a Node 22, which has one. It has to be pnpm: esbuild fetches its platform binary in an install script, and <code>pnpm-workspace.yaml</code> is what allows that script to run.</p>
 <p>Then it builds, and copies the result into <code>~/.betterslack/app</code>: the two bundles, the entry point and the mod catalogue, about 6 MB. A Node it had to download sits beside it in <code>~/.betterslack/runtime</code> and is a further ~190 MB.</p>
 <p>Finally it makes something you can double-click — <code>BetterSlack.app</code> in <code>/Applications</code> on macOS, a <code>.desktop</code> entry and a <code>betterslack</code> command on Linux, a Start menu shortcut on Windows.</p>
 <p>Everything is written under your home directory, with one exception the installer announces before it happens: copying the app into <code>/Applications</code> on macOS. That folder is owned by root and writable by the <code>admin</code> group, so on a Mac whose owner is an administrator — most of them — it needs no password at all. Where it does, macOS asks, and the terminal has already said what for.</p>
 <p><strong>The clone is not part of the install and can be deleted.</strong> Nothing in <code>~/.betterslack/app</code> refers back to it. Keep it only if you intend to work on BetterSlack itself.</p>
 <h2>Run it</h2>
 <p>Start BetterSlack the way you start any application: Spotlight, the Dock, your login items, the Start menu, your desktop's applications menu.</p>
-<p>It restarts Slack with BetterSlack attached and keeps running for as long as Slack does. Nothing is enabled on a fresh install — the repository is a catalogue, not a set of pre-installed mods. Open the panel with <strong>⌘⇧M</strong> and install what you want from <strong>Browse</strong>.</p>
-<h2>Starting it</h2>
-<p>Launching BetterSlack starts Slack with your mods attached. The BetterSlack mark covers the window while that happens, with the name of whatever is starting underneath it, and lifts once every theme and plugin is in — so you see the app you configured rather than the several seconds of it assembling itself. If a mod ever hangs, the name on screen is the one to switch off, and the screen lifts by itself after twenty seconds either way.</p>
+<p>It restarts Slack with BetterSlack attached and keeps running for as long as Slack does. Nothing is enabled on a fresh install — the repository is a catalogue, not a set of pre-installed mods. Open the panel with <strong>⌘⇧M</strong> (Ctrl+Shift+M elsewhere) and install what you want from <strong>Browse</strong>.</p>
+<p>While Slack starts, the BetterSlack mark covers the window with the name of whatever is starting underneath it, and lifts once every theme and plugin is in. If a mod hangs, the name on screen is the one to switch off; the screen lifts by itself after twenty seconds either way.</p>
 <h2>Update, and uninstall</h2>
 <p><strong>A dot on the BetterSlack button in Slack's rail means something is out of date</strong>, and the number on it is how many things: BetterSlack itself, plus every installed mod that has a newer version published. Open the panel and the tab it belongs to carries a dot too -- <strong>Themes</strong>, <strong>Plugins</strong> or <strong>About</strong> -- with the notice and its button above whatever tab you are on. It is looked for at start and once an hour after that, so a client left running for days still tells you.</p>
-<p>Run the installer again to update. It rebuilds from the clone you have, so <code>git pull</code> first if you want the newest version. BetterSlack can also update itself from the panel, which fetches the current source, builds it and re-stages the install without touching anything else.</p>
-<p>A mod updates on its own, from its own button, without pulling the app along with it -- which is the point: a one-line fix to a theme should not wait for a release of the whole project. Where a newer mod needs a newer BetterSlack, the panel says which version it wants and offers no button, because installing it would hand you a mod that throws on its first click.</p>
+<p>BetterSlack updates itself from the panel: it fetches the current source, builds it and re-stages the install without touching anything else. Running the installer again also updates, from the folder you run it in, so fetch a newer copy of that folder first.</p>
+<p>A mod updates on its own, from its own button, without updating the app. Where a newer mod needs a newer BetterSlack, the panel says which version it wants and offers no button, because the mod could not run.</p>
 <p>To uninstall, delete <code>~/.betterslack</code> and the launcher: the app in <code>/Applications</code>, or <code>~/.local/bin/betterslack</code> and <code>~/.local/share/applications/betterslack.desktop</code>, or the Start menu shortcut.</p>
 <h2>If something goes wrong</h2>
 <p><strong>Look at the log first.</strong> It is at <code>~/Library/Logs/BetterSlack.log</code> on macOS and <code>~/.betterslack/betterslack.log</code> on Linux and Windows, and it holds the page's own errors as well as the loader's — which is how a mod that threw at boot tells you so.</p>
@@ -221,7 +219,7 @@ betterslack --safe
 BETTERSLACK_SLACK_PATH=/path/to/Slack betterslack        # Linux, one run</code></pre>
 <p>On macOS, two things are worth knowing. The first launch needs right-click → <strong>Open</strong>, because the app is unsigned. And if you had no C compiler when you ran the installer, the app is a shell script rather than a real binary: it launches, but macOS refuses it access to <code>~/Downloads</code>, which is where a mod saves a file. <code>xcode-select --install</code>, then run the installer again.</p>
 <h2>What each symptom means</h2>
-<ul><li><strong>Slack quits the moment a call starts or rings (macOS).</strong> You are on a BetterSlack older than the fix for it: update from the About tab. Calls then use the microphone and camera permissions you already gave Slack, and nothing new is asked.</li><li><strong>Mods stop working.</strong> BetterSlack stopped. Mods live exactly as long as the loader does, so quitting it takes them with it.</li><li><strong>Your mod is not in the panel.</strong> <code>id</code> must equal the folder name. Run <code>pnpm check-structure -- &lt;id&gt;</code>.</li><li><strong>Edits do not show up.</strong> Hot reload is off, or the mod is not enabled. Check the About tab.</li><li><strong>A theme changes messages but not the sidebar.</strong> You only overrode the first token family; there are four.</li><li><strong><code>eval is not allowed</code>.</strong> Slack's Content Security Policy. There is no way around it; restructure.</li><li><strong><code>Failed to fetch</code> on a Slack CDN URL.</strong> No CORS headers. Use <code>api.files.save</code>.</li><li><strong>Nothing in the console.</strong> Install the <strong>DevTools</strong> plugin, or press ⌘⌥I.</li><li><strong>Slack comes up grey, or the panel never appears.</strong> A mod wedged the renderer. The next start applies nothing on its own, and <code>--safe</code> forces it: switch the suspect off, then start again.</li><li><strong>A mod's row says it is not running.</strong> It threw during <code>start()</code>. Two failures and it is skipped at boot -- switching it off and on again clears the count.</li><li><strong>⌘K opens Slack's switcher, not BetterSlack's.</strong> The <strong>Command Palette</strong> plugin is not installed or not enabled. Its own settings can move it to ⌘⇧K.</li></ul>
+<ul><li><strong>Slack quits the moment a call starts or rings (macOS).</strong> Update BetterSlack from the About tab, or run the installer again. Calls use the microphone and camera permissions you already gave Slack, and nothing new is asked.</li><li><strong>Mods stop working.</strong> BetterSlack stopped. Mods live exactly as long as the loader does, so quitting it takes them with it.</li><li><strong>Your mod is not in the panel.</strong> <code>id</code> must equal the folder name. Run <code>pnpm check-structure -- &lt;id&gt;</code>.</li><li><strong>Edits do not show up.</strong> Hot reload is off, or the mod is not enabled. Check the About tab.</li><li><strong>A theme changes messages but not the sidebar.</strong> You only overrode the first token family; there are four.</li><li><strong><code>eval is not allowed</code>.</strong> Slack's Content Security Policy. There is no way around it; restructure.</li><li><strong><code>Failed to fetch</code> on a Slack CDN URL.</strong> No CORS headers. Use <code>api.files.save</code>.</li><li><strong>Nothing in the console.</strong> Install the <strong>DevTools</strong> plugin, or press ⌘⌥I.</li><li><strong>Slack comes up grey, or the panel never appears.</strong> A mod wedged the renderer. The next start applies nothing on its own, and <code>--safe</code> forces it: switch the suspect off, then start again.</li><li><strong>A mod's row says it is not running.</strong> It threw during <code>start()</code>. Two failures and it is skipped at boot -- switching it off and on again clears the count.</li><li><strong>⌘K opens Slack's switcher, not BetterSlack's.</strong> The <strong>Command Palette</strong> plugin is not installed or not enabled. Its own settings can move it to ⌘⇧K.</li></ul>
   </div>
 </section>
 <section class="panel panel--guide" id="p-guide-plugin" hidden>
@@ -279,11 +277,11 @@ export default {
     }
   ]
 }</code></pre>
-<p><code>label</code>, <code>hint</code> and a choice's option labels each take a table of languages beside them -- <code>labels</code>, <code>hints</code> -- exactly as <code>description</code> takes <code>descriptions</code>. English stays required and is the fallback. A test fails a mod whose settings are English only: they are the half of a mod a reader meets while changing something, and a catalogue that asks every mod for two languages and then hands over an English form is not a rule, it is a preference.</p>
-<p>and read it where you need it:</p>
+<p><code>label</code>, <code>hint</code> and a choice's option labels each take a table of languages beside them -- <code>labels</code>, <code>hints</code> -- exactly as <code>description</code> takes <code>descriptions</code>. English stays required and is the fallback, and a test fails a mod whose settings are English only.</p>
+<p>Read the value where you need it:</p>
 <pre class="api-code" data-lang="javascript" data-label="js"><code>const greeting = api.settings.get('greeting', 'Hello');
 api.ui.toast(greeting, { variant: 'success' });</code></pre>
-<p><code>api.settings.onChange</code> fires when the user edits it, so a mod can redraw without being switched off and on.</p>
+<p>When the user changes a setting, the plugin is restarted with the new value. A plugin that registers <code>api.settings.onChange</code> is told instead and keeps running, for when a restart would show.</p>
 <p>Settings are for preferences. A file -- a sound somebody picked, a picture, an export -- goes in <code>api.data</code>, the mod's own folder on disk:</p>
 <pre class="api-code" data-lang="javascript" data-label="js"><code>const { name } = await api.data.write(file.name, file);
 const blob = await api.data.read(name);</code></pre>
@@ -375,7 +373,7 @@ themeChecks(test, assert, import.meta.url);</code></pre>
 <p>One command: types, build, manifests, the registry, the site, and every test. It regenerates <code>mods/registry.json</code>, which is committed — a dirty tree after it means the catalogue had drifted, and the fix is to commit it.</p>
 <p>Then open a pull request. A human reads it, and that review is the security model: a plugin runs unsandboxed in an authenticated Slack tab. <code>CONTRIBUTING.md</code> lists what gets rejected.</p>
 <h2>Three things that will catch you out</h2>
-<ul><li><strong><code>eval()</code> and <code>new Function()</code> throw.</strong> Slack's Content Security Policy has no <code>'unsafe-eval'</code>. They *work* in a DevTools console, which misleads.</li><li><strong>Anchor on <code>data-qa</code> attributes</strong>, then on design tokens. A class like <code>circleButton__cMiUK</code> is CSS-module output and changes every Slack build; <code>p-channel_sidebar__channel</code> is stable.</li><li><strong>Switching workspace does not reload the client.</strong> Same page, same mods, new team id in the URL. Anything cached at boot then belongs to the workspace the user has left, so watch the team in the URL and drop per-workspace state.</li></ul>
+<ul><li><strong><code>eval()</code> and <code>new Function()</code> throw.</strong> Slack's Content Security Policy has no <code>'unsafe-eval'</code>. They *work* in a DevTools console, which misleads.</li><li><strong>Anchor on <code>data-qa</code> attributes</strong>, then on design tokens. A class like <code>circleButton__cMiUK</code> is CSS-module output and changes every Slack build; <code>p-channel_sidebar__channel</code> is stable.</li><li><strong>Switching workspace does not reload the client.</strong> Same page, same mods, new team id. Anything cached then belongs to the workspace the user has left, so drop per-workspace state in <code>api.slack.onTeamChange</code>, and ask <code>api.slack.currentTeamId()</code> rather than parsing the URL.</li></ul>
   </div>
 </section>
 <section class="panel panel--guide" id="p-guide-theme" hidden>
@@ -410,7 +408,7 @@ themeChecks(test, assert, import.meta.url);</code></pre>
 }</code></pre>
 <p>Save it, open the panel, install and enable. Every save after that re-applies live.</p>
 <h2>4. All four token families, or the app chrome stays Slack's</h2>
-<p>This is the one that catches everybody. There are four, and a theme that only writes the first leaves the rail, the sidebar and the headers untouched:</p>
+<p>There are four, and a theme that only writes the first leaves the rail, the sidebar and the headers untouched:</p>
 <pre class="api-code" data-lang="css" data-label="css"><code>:root,
 .sk-client-theme--light,
 .sk-client-theme--dark {
@@ -429,7 +427,7 @@ themeChecks(test, assert, import.meta.url);</code></pre>
   /* Raw palette, also triplets. */
   --dt_color-plt-blue-50: 108, 182, 255 !important;
 }</code></pre>
-<p><code>--sk_foreground_low</code> alone is referenced 31 times across BetterSlack's own interface, and its fallback is Slack's *light* default — leave it out of a dark theme and a dialog's hint text comes out near-black on near-black.</p>
+<p>BetterSlack's own interface reads the legacy family too, and its fallbacks are Slack's *light* defaults: leave <code>--sk_foreground_low</code> out of a dark theme and a dialog's hint text comes out near-black on near-black.</p>
 <h2>5. Clear the backdrop before painting one</h2>
 <p><code>.p-theme_background</code> is a full-viewport opaque layer above <code>&lt;body&gt;</code>. Anything you draw on <code>body</code> — a gradient, an image, translucency — is simply covered up until you clear it:</p>
 <pre class="api-code" data-lang="css" data-label="css"><code>.p-theme_background { background: transparent !important; }
@@ -454,12 +452,12 @@ body { background: linear-gradient(160deg, #101418, #161c26); }</code></pre>
 <p>A big theme reads better in pieces. <code>@import</code> a relative path inside your own folder and BetterSlack inlines it, in order, before anything reaches the page:</p>
 <pre class="api-code" data-lang="css" data-label="css"><code>@import './tokens.css';
 @import './sidebar.css';</code></pre>
-<p>The stylesheet is injected as one <code>&lt;style&gt;</code> element with no URL to resolve against, so a browser <code>@import</code> of a file on a server would be a request Slack's CSP refuses anyway. Import each file once; a cycle is an error, not a hang.</p>
+<p>The stylesheet is injected as one <code>&lt;style&gt;</code> element with no URL to resolve against, so a browser <code>@import</code> of a file on a server would be a request Slack's CSP refuses anyway. An import that leads back to a file already being inlined is cut, with a line in the console naming the loop.</p>
 <p>The manifest keys that turn a row into a page somebody reads -- the icon, the translated descriptions, the screenshots and the READMEs -- are the same for a theme as for a plugin, and are step 8 of <strong>Your first plugin</strong>.</p>
 <h2>10. Ship it</h2>
 <pre class="api-code" data-lang="bash" data-label="bash"><code>pnpm check</code></pre>
 <p>The same one command as a plugin. <code>pnpm shoot --mods -- --only=my-theme</code> takes the screenshot the catalogue and the panel show, in a real Slack with every name, face and message on screen replaced first.</p>
-<h2>Two more traps, both measured</h2>
+<h2>Two more traps</h2>
 <ul><li><strong>Slack has two &quot;jump to unread&quot; pills</strong> in the sidebar, one above and one below, sharing every class except a hashed one that changes per build. Tell them apart by which half of the sidebar they sit in — a rule matching both sets <code>top</code> and <code>bottom</code> on the same element and stretches it between them.</li><li><strong>Borrowing a Slack class borrows its layout.</strong> <code>.p-r_member_profile__avatar__img</code> is <code>position: absolute</code> in Slack's stylesheet, which parks a borrowed avatar on top of its own title. Reset explicitly.</li></ul>
   </div>
 </section>
@@ -820,10 +818,9 @@ api.helpers.badge('[data-qa=&quot;betterslack_notes_button&quot;]', 'unread', ()
     <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
-    <p>A cache that survives a restart and refreshes itself behind you.</p>
-<p>Both mods that list people had the same shape: ask Slack, wait, draw. The answer is nearly always the one from last time, so the waiting is spent confirming what was already known — and after a restart there is nothing to confirm against, so every list starts empty. Measured on a live client: a member column took <strong>805ms</strong> to show anybody, and <strong>81ms</strong> from the cache.</p>
-<p><code>swr</code> hands back what is stored, synchronously, and goes to the network anyway. Your callback runs *only if the answer differs* from what was stored, so a list that has not changed never repaints and one that has does not stay wrong.</p>
-<p>It is stored through <code>api.settings</code>, a file the loader owns, which is why it is there at the next launch — and why <code>keys</code> exists. That file is read at every start, so a cache that grows without limit becomes a slower start than the network it replaced. The oldest keys go first. Pass a smaller number when the values are big: the member column keeps twelve channels, the palette four workspaces.</p>
+    <p>A cache that survives a restart and refreshes itself in the background.</p>
+<p><code>swr</code> hands back what is stored, synchronously, and asks the network anyway. Your callback runs *only if the answer differs* from what was stored, so a list that has not changed never repaints and one that has does not stay wrong. A list drawn from the cache is on screen in tens of milliseconds, where the network takes most of a second.</p>
+<p>It is stored through <code>api.settings</code>, a file the loader reads at every start, so a cache that grows without limit slows every launch. <code>keys</code> caps it, oldest first: pass a smaller number when the values are big.</p>
     <div class="api-demo" data-demo="helpers-cache" data-controls="[{&quot;key&quot;:&quot;stored&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;the list you saw last time&quot;,&quot;label&quot;:&quot;what is stored&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;fresh&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;the list Slack just answered&quot;,&quot;label&quot;:&quot;what Slack answers&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const store = api.helpers.cache('members', { keys: 12 });
@@ -855,7 +852,7 @@ if (held) paint(held);</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Debounce. No shipped mod calls this today -- the two that debounce something do it inside code that has no <code>api</code> to reach for: the palette's directory search, and Demo Mode's engine, which the screenshot recipe also runs outside the runtime. Kept because it is three lines and it is the obvious thing to reach for.</p>
+    <p>Wrap a function so a burst of calls runs it once, <code>ms</code> after the last call, with that call's arguments.</p>
     <div class="api-demo" data-demo="helpers-debounce" data-controls="[{&quot;key&quot;:&quot;ms&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:400,&quot;label&quot;:&quot;milliseconds&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const search = api.helpers.debounce((query) =&gt; run(query), 200);
@@ -885,12 +882,12 @@ box.addEventListener('input', () =&gt; search(box.value));</code></pre>
     <p class="api-since">Since BetterSlack 3.2.0</p>
   </header>
   <div class="panel__body">
-    <p>Make something Slack already draws open and close. It marks an edited message with &quot;(edited)&quot; and a channel with a member count: exactly where a reader would ask for more, and neither answers. A mod with the answer makes that label the way in rather than adding a fifth button to a toolbar of four.</p>
-<p>You get a caret, a keyboard control and a wrapper. What you avoid is the four things that make it hard, every one of which has been got wrong here first:</p>
-<ul><li><strong>Slack replaces the element.</strong> A listener bound to the node works exactly once — putting anything into a message makes React rebuild that subtree, so the second click lands on a different node. It reads as intermittent rather than broken. The click is delegated from the document and matched by selector, and nothing is ever remembered *on* the element.</li><li><strong>Slack tears out what you opened</strong>, by the same re-render, so it is put back rather than left to vanish under whoever opened it.</li><li><strong>Which one is open has to survive both</strong>, so identity is a key you derive from what the element is about, never the node.</li><li><strong>None of it may be driven from an observer.</strong> The message list is what Slack re-renders most, and an observer that reacts to that by putting a node back into it is the shape that has frozen this renderer twice. You call <code>refresh()</code> from your own sweep.</li></ul>
-<p><code>keyFor</code> returning null is how a trigger says it has nothing to show, and that trigger is left exactly as Slack drew it. <code>rebuild()</code> builds the content of every open panel again, for when what it shows has changed under somebody looking at it — <code>refresh()</code> deliberately leaves a panel that is still on screen alone, since rebuilding one on every sweep would restart its animation.</p>
-<p><strong>Nothing here animates.</strong> The classes are stable so that Motion can: installing a mod called Motion is the statement of intent about animation, and a component that moves whether or not you asked takes that decision away.</p>
-<p>Closing is a *state* rather than a removal — removing the panel outright leaves nothing on screen to animate — so it is marked with a closing class, and then taken away once whatever the stylesheet put on it has finished. How long that is comes from the panel itself: with nothing animating it, the answer is zero and it goes in the same breath, so a client without Motion never waits for something that is not happening. No height is measured anywhere, and that is deliberate: rows going between <code>0fr</code> and <code>1fr</code> interpolate over the animation's own time, so a long panel folds away in exactly as long as a short one. Measuring the content is what would make it vary.</p>
+    <p>Make something Slack already draws open and close — an &quot;(edited)&quot; label, a member count — so a mod with more to say puts it behind the label a reader would click rather than adding another toolbar button.</p>
+<p>You get a caret, a keyboard control and a wrapper, and the component handles what makes this hard:</p>
+<ul><li><strong>Slack replaces the element.</strong> React rebuilds the subtree, so a listener bound to the node works once. The click is delegated from the document and matched by selector, and nothing is stored on the element.</li><li><strong>Slack removes what was opened</strong> in the same re-render, so the panel is put back.</li><li><strong>Which one is open survives both</strong>, because identity is the key <code>keyFor</code> derives from what the element is about, never the node.</li><li><strong>Nothing is driven from an observer on the message list.</strong> Slack re-renders it constantly, and putting nodes back from an observer there can freeze the renderer. Call <code>refresh()</code> from your own sweep.</li></ul>
+<p><code>keyFor</code> returning null leaves that trigger exactly as Slack drew it. <code>refresh()</code> leaves a panel that is still on screen alone; <code>rebuild()</code> builds the content of every open panel again, for when what it shows has changed.</p>
+<p>Nothing here animates. The classes <code>betterslack-disclosure</code>, <code>betterslack-disclosure__panel</code> and <code>betterslack-disclosure__inner</code> are stable so a mod such as Motion can. Closing is a state: the panel wears a closing class and is removed once whatever animation or transition the stylesheet put on it has finished, or at once when there is none. No height is measured — the panel unfolds as <code>grid-template-rows</code> going from <code>0fr</code> to <code>1fr</code>, so a long panel takes as long as a short one.</p>
+<p><code>refresh()</code> removes any panel this instance does not own, such as one left by an earlier start of the same mod, and disposing removes every panel in the document.</p>
     <div class="api-demo" data-demo="helpers-disclosure" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;(edited)&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;motion&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;animated by Motion&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const wordings = api.helpers.disclosure({
@@ -919,7 +916,7 @@ api.helpers.poll(() =&gt; wordings.refresh(), 1500);</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Run a handler for every element matching a selector, now and in future, and undo it for you when the plugin stops.</p>
+    <p>Run a handler for every element matching a selector, now and as more arrive, and undo it when the plugin stops.</p>
     <div class="api-demo" data-demo="helpers-each" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.helpers.each('[data-qa=&quot;message_container&quot;]', (message) =&gt; {
@@ -969,7 +966,7 @@ api.helpers.hotkey('escape', () =&gt; zen.set(false), {
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>An icon button wearing Slack's classes for the surface you name — the control strip, a header, the composer. Getting the classes right is what keeps it 28px instead of 36px.</p>
+    <p>An icon button wearing Slack's classes for the surface you name — the control strip, a header, the composer, a message's toolbar. The right classes are what keep it 28px instead of 36px.</p>
     <div class="api-demo" data-demo="helpers-iconbutton" data-controls="[{&quot;key&quot;:&quot;label&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Notes&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;surface&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;header&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:[&quot;strip&quot;,&quot;header&quot;,&quot;composer&quot;]}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const button = api.helpers.iconButton({
@@ -1005,7 +1002,7 @@ api.helpers.hotkey('escape', () =&gt; zen.set(false), {
   </header>
   <div class="panel__body">
     <p>Run something every so often, and stop while nobody is looking.</p>
-<p>Slack does not render while its window is hidden, so a poll that keeps going in the background is requests nobody will see the result of -- and for anything hitting Slack's API, requests against a rate limit that is shared with the client itself. This runs once immediately, then on the interval, and pauses whenever the document is hidden, catching up as soon as it comes back. Stops with the plugin.</p>
+<p>It runs once immediately, then every <code>everyMs</code>, and pauses while the document is hidden, catching up as soon as it is visible again. Slack does not render while its window is hidden, and requests made then spend a rate limit shared with the client on answers nobody sees. It stops with the plugin.</p>
     <div class="api-demo" data-demo="helpers-poll" data-controls="[{&quot;key&quot;:&quot;ms&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:1000,&quot;label&quot;:&quot;milliseconds&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Runs once now, then on the interval, and pauses while the window is hidden.
@@ -1037,7 +1034,7 @@ api.helpers.poll(() =&gt; refreshPresence(), 60_000);</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>A persisted on/off flag that also drives a class on &lt;html&gt;, so the whole behaviour can be pure CSS. This is the shape most &quot;mode&quot; mods want.</p>
+    <p>A persisted on/off flag that also puts a class on <code>&lt;html&gt;</code>, so the behaviour can be pure CSS. This is the shape most &quot;mode&quot; mods want.</p>
     <div class="api-demo" data-demo="helpers-toggle" data-controls="[{&quot;key&quot;:&quot;className&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;demo-zen&quot;,&quot;label&quot;:&quot;class on &lt;html&gt;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;defaultOn&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:false,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const zen = api.helpers.toggle({
@@ -1058,7 +1055,7 @@ await zen.toggle();   // zen.on tells you where it landed</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Slack's tooltip on any element. Slack's own are React portals a mod cannot register with, so this rebuilds one from Slack's classes — including the ~150ms delay, measured with a real pointer.</p>
+    <p>Slack's tooltip on any element. Slack's own tooltips are React portals a mod cannot register with, so this builds one from Slack's classes, with Slack's ~150ms hover delay.</p>
     <div class="api-demo" data-demo="helpers-tooltip" data-controls="[{&quot;key&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Channel notes&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;subtitle&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;⌘⇧N&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.helpers.tooltip(button, 'Channel notes', '⌘⇧N');</code></pre>
@@ -1165,7 +1162,7 @@ api.helpers.badge(view.tabSelector, 'new', () =&gt; unread || null);</code></pre
   </header>
   <div class="panel__body">
     <p>The same avatar at another size.</p>
-<p>Slack serves them as <code>&lt;base&gt;-&lt;size&gt;</code>, so asking for a bigger one is a string edit rather than another request -- the rail renders a 48 and a profile wants a 72, and every mod that shows a face was doing this by hand. Returns null for anything that is not one of Slack's avatar URLs, which is what a custom image or a data URI will be.</p>
+<p>Slack serves avatars as <code>&lt;base&gt;-&lt;size&gt;</code>, so a bigger one is a string edit rather than another request: the rail renders a 48, a profile wants a 72. Returns null for anything that is not one of Slack's avatar URLs, such as a custom image or a data URI.</p>
     <div class="api-demo" data-demo="slack-avatarurl" data-controls="[{&quot;key&quot;:&quot;url&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;https://ca.slack-edge.com/T0EXAMPLE1-U0EXAMPLE1-06c4356b6ae3-48&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;size&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;192&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:[&quot;24&quot;,&quot;48&quot;,&quot;72&quot;,&quot;192&quot;,&quot;512&quot;]}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Slack serves them as &lt;base&gt;-&lt;size&gt;, so this is a string edit
@@ -1202,7 +1199,8 @@ if (api.slack.composer.isEmpty()) api.slack.composer.focus();</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>The channel on screen, read out of the URL. Null when what is on screen is not a conversation. Two workspaces can use the same channel id, so compare the team as well when you keep anything per-channel.</p>
+    <p>The conversation on screen: the channel of the messages Slack has drawn, or the conversation named in the address when none are drawn yet. Null when neither names one.</p>
+<p>The drawn channel wins because at a cold start Slack restores the view before it settles the address, so the address can name a conversation from another workspace. A view that draws messages from several conversations — Threads, Activity, Drafts — answers with one of them, so do not use this to decide whether a single conversation is open. Two workspaces can use the same channel id: key anything kept per channel by <code>currentTeamId()</code> as well.</p>
     <div class="api-demo" data-demo="slack-currentchannelid" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const channel = api.slack.currentChannelId();   // 'C0BFQCYBRAB' or null</code></pre>
@@ -1216,10 +1214,9 @@ if (api.slack.composer.isEmpty()) api.slack.composer.focus();</code></pre>
     <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
-    <p>The workspace the client is showing. Not simply the one in the address bar, and that distinction is the whole reason this exists rather than a one-line regex in each mod.</p>
-<p>At a cold start Slack restores the view before it settles the address. Measured with three workspaces signed in: <code>location.pathname</code> read <code>/client/T0BQ89Z4L4F/…</code> while the client had drawn thirty-seven avatars belonging to <code>T025V5WN2</code> and a conversation from it, and the two stayed apart until the user navigated by hand. Anything reading the URL then works against the workspace the user has *left* — the wrong token on every call, and a member list showing the one person that workspace admits to.</p>
-<p>So the page is asked instead. An avatar URL carries the workspace it belongs to, which makes what Slack has drawn a witness the address bar is not. The URL is trusted whenever it can be, and overruled only when its workspace appears nowhere in the drawn avatars and another one does — the stale case, and nothing else.</p>
-<p>Two workspaces can also use the same channel id, so compare this as well as the channel when you keep anything per-conversation.</p>
+    <p>The workspace the client is showing, which is not always the one in the address bar.</p>
+<p>At a cold start Slack restores the view before it settles the address, so for a while the URL names the workspace the user left while the screen shows another, and anything reading the URL uses the wrong token on every call. An avatar URL carries the workspace it belongs to, so this trusts the URL unless its workspace appears nowhere in the drawn avatars and another one does — the stale case, and nothing else.</p>
+<p>Two workspaces can use the same channel id, so key anything kept per conversation by this as well as by the channel.</p>
     <div class="api-demo" data-demo="slack-currentteamid" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const team = api.slack.currentTeamId();
@@ -1271,8 +1268,8 @@ if (status) row.append(api.slack.statusNode(status, user.profile));</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Slack's own translucent window, which it ships switched off.</p>
-<p><code>set</code> takes effect the next time Slack starts: the window's material is chosen when the window is created, and nothing in the page can restart it. Tell the user so rather than leaving them to wonder why nothing happened.</p>
+    <p>Slack's own desktop preferences, the ones it keeps outside <code>app.asar</code>: a translucent window (<code>windowVibrancy</code>), GPU acceleration, the tray, the zoom level and a few more. <code>keys()</code> lists what may be set, with each key's type and whether it needs a restart.</p>
+<p><code>set</code> and <code>clear</code> write a preference; <code>get</code> reads its value now and <code>launched</code> the value Slack started with, so comparing the two says whether a restart would change anything. A preference read when the window is created takes effect only after <code>api.slack.restart()</code> — tell the user, and ask before restarting. <code>managed()</code> lists what BetterSlack holds. <code>setMaterial(name)</code> switches the window's material live, among the names in <code>materials</code>; on a window created opaque it changes nothing visible. <code>supported</code> is false outside macOS and Windows.</p>
     <div class="api-demo" data-demo="slack-desktop" data-controls="[{&quot;key&quot;:&quot;key&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;windowVibrancy&quot;,&quot;label&quot;:&quot;preference&quot;,&quot;options&quot;:[&quot;windowVibrancy&quot;,&quot;useHwAcceleration&quot;,&quot;runFromTray&quot;,&quot;zoomLevel&quot;]},{&quot;key&quot;:&quot;value&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;wanted&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Slack's own preferences, the ones it keeps outside app.asar
@@ -1291,8 +1288,8 @@ if (api.slack.desktop.needsRestart('windowVibrancy')) await api.slack.restart();
   </header>
   <div class="panel__body">
     <p>An image for an emoji name, or <code>null</code> when nothing can draw it. The colons are optional — <code>tada</code> and <code>:tada:</code> are the same question.</p>
-<p>Two sources, in order. The workspace's custom emoji, which you pass in from <code>api.slack.web.emoji()</code> — held by the caller because it is one request for a whole workspace and a list redraws constantly. Then anything Slack has already drawn on the page: every emoji Slack renders is an <code>&lt;img&gt;</code> carrying <code>data-stringify-emoji</code>, so the client's own DOM is a name-to-image table for the set this workspace actually uses.</p>
-<p>A name neither knows draws nothing rather than the raw <code>:shortcode:</code>, which on screen reads as a rendering that failed. Where a message gives you the codepoints — Slack's <code>rich_text</code> blocks carry <code>unicode</code> on every standard emoji — draw the character instead and ask nothing of this.</p>
+<p>Two sources, in order. The workspace's custom emoji, which you pass in from <code>api.slack.web.emoji()</code> — held by the caller because it is one request for a whole workspace and a list redraws constantly. Then anything Slack has already drawn on the page: every emoji Slack renders is an <code>&lt;img&gt;</code> carrying <code>data-stringify-emoji</code>, so the client's own DOM is a name-to-image table for the set this workspace uses.</p>
+<p>A name neither knows draws nothing rather than the raw <code>:shortcode:</code>, which on screen reads as a rendering that failed. Where a message gives you the codepoints — Slack's <code>rich_text</code> blocks carry <code>unicode</code> on every standard emoji — draw the character instead.</p>
     <div class="api-demo" data-demo="slack-emojiurl" data-controls="[{&quot;key&quot;:&quot;name&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;glitch_crab&quot;,&quot;label&quot;:&quot;emoji name&quot;,&quot;options&quot;:[&quot;glitch_crab&quot;,&quot;tada&quot;,&quot;no_such_emoji&quot;]},{&quot;key&quot;:&quot;known&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;the workspace knows it&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const custom = await api.slack.web.emoji();
@@ -1383,8 +1380,8 @@ api.slack.onTeamChange(() =&gt; {
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Move the client to a conversation, without a page load.</p>
-<p>Slack's own navigation lives in a private closure: its router state is pushed with history.pushState and nothing outside reacts to a synthetic popstate, there is no exposed React Router instance, and an &lt;a&gt; to /archives/&lt;id&gt; leaves the client entirely. What does work is Slack's own documented deep-link scheme, which the desktop app handles in place -- measured against 4.51: same document, no reload, view follows.</p>
+    <p>Move the client to a conversation without a page load.</p>
+<p>It goes through Slack's <code>slack://channel</code> deep link, which the desktop app routes in place: same document, no reload, and the view follows. Slack's router is not reachable from a mod, and an <code>&lt;a&gt;</code> to <code>/archives/&lt;id&gt;</code> leaves the client entirely, so this is the way to navigate.</p>
     <div class="api-demo" data-demo="slack-openconversation" data-controls="[{&quot;key&quot;:&quot;channel&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;C0EXAMPLE1&quot;,&quot;label&quot;:&quot;channel id&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;design&quot;,&quot;label&quot;:&quot;its name&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// A deep link Slack routes in place: same document, no reload.
@@ -1414,8 +1411,8 @@ api.slack.openConversation('C0BFQCYBRAB');</code></pre>
     <p class="api-since">Since BetterSlack 3.0.0</p>
   </header>
   <div class="panel__body">
-    <p>Move the client to one message, and highlight it. The same deep link <code>openConversation</code> uses, with the message's timestamp on it: Slack routes it in place and flashes the message it lands on, the way its own search results do.</p>
-<p>The team matters. Search answers across every workspace you are signed into, so a link built without one goes to whichever client is on screen and lands on a channel id that may not exist there. Pass <code>team</code> whenever the message came from somewhere that names it; left out, it is the workspace being drawn.</p>
+    <p>Move the client to one message and highlight it, the way Slack's own search results do. It is <code>openConversation</code>'s deep link with the message's timestamp on it.</p>
+<p>Pass <code>team</code> whenever the message came from somewhere that names it: search answers across every workspace you are signed into, and a link without a team goes to the workspace on screen, where that channel may not exist. Left out, it is the workspace being drawn.</p>
     <div class="api-demo" data-demo="slack-openmessage" data-controls="[{&quot;key&quot;:&quot;channel&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;C0BFQCYBRAB&quot;,&quot;label&quot;:&quot;channel id&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;ts&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;1786386808.130969&quot;,&quot;label&quot;:&quot;message ts&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Slack's search gives you the conversation and the message inside it.
@@ -1502,7 +1499,7 @@ await api.slack.restart();</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on <code>data-qa</code> attributes rather than class names, which churn with every Slack release — so read one from here rather than writing it out, or your copy is the one nobody updates when Slack moves.</p>
+    <p>The Slack selectors BetterSlack keeps working, for a mod that needs to go past these helpers. They are anchored on <code>data-qa</code> attributes rather than class names, which change with Slack releases. Read one from here rather than writing your own copy, so it is updated along with BetterSlack.</p>
     <div class="api-demo" data-demo="slack-selectors" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const { composer, composerEditor } = api.slack.selectors;
@@ -1534,9 +1531,8 @@ document.querySelector(composerEditor);   // '.ql-editor'</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Start a huddle with someone: open the conversation, then press Slack's own start control.</p>
-<p>This one really is a press, and there is no way around it -- measured: <code>rooms.join</code> provisions a room that rings nobody, there is no <code>slack://huddle</code> scheme, and the handler goes through Electron to open a separate window that no web API exposes. A plain element.click() reaches it, so at least no trusted gesture is needed.</p>
-<p>Resolves false when Slack shows no huddle control for that conversation.</p>
+    <p>Start a huddle with someone: open the conversation, then press Slack's own start control in the channel header.</p>
+<p>Slack has no API call or deep link that starts a huddle, so the control is pressed; a plain click reaches it and no trusted gesture is needed. Slack opens the huddle in a separate window. Resolves false when Slack shows no huddle control for that conversation.</p>
     <div class="api-demo" data-demo="slack-starthuddle" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// Opens the conversation, then presses Slack's own start control.
@@ -1551,10 +1547,9 @@ const started = await api.slack.startHuddle('U0EXAMPLE1');</code></pre>
     <p class="api-since">Since BetterSlack 2.1.0</p>
   </header>
   <div class="panel__body">
-    <p>That status as a node, so the two mods that show one draw the same thing. An image when an emoji resolved, the unicode character when Slack sent one, and the sentence beside it.</p>
-<p>Never the raw shortcode. <code>:tada:</code> on screen reads as a rendering that failed, which is also what Slack does with an emoji it cannot draw — the name goes in the tooltip instead, so it is still there to be found. The sentence is drawn either way: it is the half carrying the meaning, and an emoji nobody could resolve is no reason to drop it.</p>
-<p><strong>Hovering it opens Slack's own kind of tooltip</strong>, with the emoji, the sentence, and when it runs out — which is what Slack's sidebar does and the reason the emoji alone is enough in a narrow row. <code>showText: false</code> keeps the picture and drops the sentence from the row *without* dropping it from the tooltip; pass the whole status rather than one with the text blanked, or the tooltip has nothing left to say. <code>placement</code> moves the tooltip for a column against the right edge of the window.</p>
-<p>Its stylesheet ships with the runtime rather than with each mod. Two of them show a status, and one that is 15px here and 20px there is exactly the drift this pair exists to stop.</p>
+    <p>A status as a node: an image when the emoji resolved, the unicode character when Slack sent one, and the sentence beside it. Its stylesheet ships with the runtime, so every mod that shows a status draws the same thing.</p>
+<p>Never the raw shortcode: <code>:tada:</code> on screen reads as a rendering that failed. The emoji's name goes in the tooltip instead, so it can still be found, and the sentence is drawn either way.</p>
+<p><strong>Hovering it opens Slack's kind of tooltip</strong>, with the emoji, the sentence and when the status runs out — which is why the emoji alone is enough in a narrow row. <code>showText: false</code> drops the sentence from the row and keeps it in the tooltip; pass the whole status rather than one with the text blanked, or the tooltip has nothing to say. <code>placement</code> moves the tooltip, for a column against the right edge of the window. When the status sits inside a control, <code>tooltipOn</code> hangs the hover on that control and <code>hint</code> adds a last line saying what clicking does, so one target has one tooltip.</p>
     <div class="api-demo" data-demo="slack-statusnode" data-controls="[{&quot;key&quot;:&quot;text&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;On holiday&quot;,&quot;label&quot;:&quot;status text&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;emoji&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;palm_tree&quot;,&quot;label&quot;:&quot;status emoji&quot;,&quot;options&quot;:[&quot;palm_tree&quot;,&quot;glitch_crab&quot;,&quot;tada&quot;,&quot;no_such_emoji&quot;]},{&quot;key&quot;:&quot;known&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;the workspace knows it&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;showText&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:true,&quot;label&quot;:&quot;draw the sentence in the row&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;expires&quot;,&quot;type&quot;:&quot;boolean&quot;,&quot;value&quot;:false,&quot;label&quot;:&quot;the status runs out&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const status = api.slack.describeStatus(user, await api.slack.web.emoji());
@@ -1605,7 +1600,8 @@ if (status) {
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Slack's own web API, as the signed-in user. Reads the session token in one audited place so mods never touch localStorage themselves; requests can only reach Slack's own origin. See src/runtime/web-api.ts.</p>
+    <p>Slack's own web API, as the signed-in user. <code>call(method, params)</code> reaches any method; <code>userInfo</code>, <code>users</code> (one batched request for a list, cached per workspace), <code>emoji</code> (the workspace's custom emoji), <code>presence</code>, <code>dndInfo</code>, <code>teamInfo</code> and <code>availability</code> (presence and do-not-disturb folded into one state) cover the common reads, and <code>available</code>, <code>teamDomain</code> and <code>selfId</code> describe the session.</p>
+<p>The session token is read in one audited place and never handed back, and requests reach only Slack's own origin, so a mod never touches <code>localStorage</code> itself.</p>
     <div class="api-demo" data-demo="slack-web" data-controls="[{&quot;key&quot;:&quot;user&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;U0EXAMPLE1&quot;,&quot;label&quot;:&quot;user id&quot;,&quot;options&quot;:[&quot;U0EXAMPLE1&quot;,&quot;U0EXAMPLE2&quot;,&quot;U0EXAMPLE3&quot;]}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const user = await api.slack.web.userInfo('U0EXAMPLE1');
@@ -1645,8 +1641,7 @@ const state = await api.slack.web.availability('U0EXAMPLE1');</code></pre>
   </header>
   <div class="panel__body">
     <p>Slack's design system, as components, bound to a document.</p>
-<p>Inside the client, Slack's own classes are the right answer -- the Mods panel wears <code>.c-dialog</code> and follows every theme for free. They are not available anywhere else: a mod that opens a window of its own gets a blank document with no stylesheet in it. This is that gap filled once, rather than once per mod.</p>
-<p>Bind it to the document you mean and put <code>api.ui.kitCss</code> in that document's head; every class it writes is prefixed <code>sm-</code>, so the stylesheet is also safe to inject into the client itself.</p>
+<p>Inside the client, borrow Slack's own classes. A window a mod opens is a blank document with no stylesheet; the kit gives it the same look. Bind it to the document you mean and put <code>api.ui.kitCss</code> in that document's head. Every class it writes is prefixed <code>sm-</code>, so the stylesheet is also safe to inject into the client itself.</p>
     <div class="api-demo" data-demo="ui-kit" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>// A window a mod opens is a blank document: no Slack stylesheet to borrow.
@@ -1728,7 +1723,7 @@ dialog.close();</code></pre>
     <p>The command palette, as a component.</p>
 <p>The list is yours: this draws it, ranks it as you type, moves with the arrow keys and closes on Escape. Nothing about what belongs in it is decided here -- the mod that opens it decides, which is what lets one plugin put Slack's own conversations and BetterSlack's actions in the same list.</p>
 <p>Because it fetches nothing, it cannot know when you are still fetching — and &quot;nothing matches&quot; is a different answer from &quot;still looking&quot;. Tell it with <code>setBusy</code> on the handle, and give it a <code>searching</code> label to show: an empty list then says it is waiting rather than that it found nothing. Waiting starts at the keystroke, not when the request goes out; a debounce in front of a search is part of the wait.</p>
-<p>A row is a line of text by default, and sometimes that is a poor version of the truth: a message search result had bold in it, a link with a label, an emoji. <code>titleNode</code> and <code>subtitleNode</code> are factories that draw those halves instead — factories rather than nodes, because the list is rebuilt on every keystroke and one node cannot be in two rows. <code>title</code> stays required either way: it is what the ranking sorts by and what a screen reader is given. Nothing drawn may be an anchor — a row is a button, and a link inside one swallows the click that was meant to open it.</p>
+<p>A row is a line of text by default, and sometimes that is a poor version of the truth: a message search result has bold in it, a link with a label, an emoji. <code>titleNode</code> and <code>subtitleNode</code> are factories that draw those halves instead — factories rather than nodes, because the list is rebuilt on every keystroke and one node cannot be in two rows. <code>title</code> stays required either way: it is what the ranking sorts by and what a screen reader is given. Nothing drawn may be an anchor — a row is a button, and a link inside one swallows the click that was meant to open it.</p>
 <p>A mode is a prefix that narrows the list — <code>/</code>, <code>@</code>, <code>#</code> — and it is reachable two ways. Typing the prefix turns it into a chip in front of the field; so does <code>setMode(id)</code> on the handle, which lets a row *be* the way in: &quot;search the messages for what you typed&quot; is a result before it is a mode, and a palette that can only be narrowed by somebody who already knows the punctuation is narrower than it looks. A row that refines rather than arrives sets <code>keepOpen: true</code>, or the palette closes under it. <code>setMode(null)</code> steps back out.</p>
     <div class="api-demo" data-demo="ui-palette" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
@@ -1898,7 +1893,7 @@ if (!composer) return;   // it resolves null rather than throwing</code></pre>
   </header>
   <div class="panel__body">
     <p>The app's language tag, e.g. &quot;fr-FR&quot;. Use it for <code>toLocaleString</code> and friends.</p>
-<p>It is read from Slack's <code>&lt;html lang&gt;</code>, never from <code>localConfig_v2</code> — that is the token file, and only <code>web-api.ts</code> may touch it. For choosing a translation use <code>api.i18n.language</code>, which is the tag without the region: a table keyed <code>fr</code> should match a client running <code>fr-CA</code>.</p>
+<p>It is read from Slack's <code>&lt;html lang&gt;</code>. Never read the language from <code>localConfig_v2</code>: that holds the session token, which a mod may not touch. For choosing a translation use <code>api.i18n.language</code>, the tag without the region, so a table keyed <code>fr</code> matches a client running <code>fr-CA</code>.</p>
     <div class="api-demo" data-demo="i18n-locale" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.i18n.locale;     // 'fr-FR' — read from Slack's &lt;html lang&gt;</code></pre>
@@ -1912,8 +1907,8 @@ if (!composer) return;   // it resolves null rather than throwing</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Build a translator from a table per language. It returns a <code>t(key, vars)</code> where <code>{count}</code>-style placeholders are filled from the second argument.</p>
-<p>Lookup goes exact locale first (<code>fr-CA</code>), then the language on its own (<code>fr</code>), then English. English is required and is the fallback both for an unknown language and for a key one table forgot — a key missing everywhere renders as the key itself, never as a blank.</p>
+    <p>Build a translator from a table per language. It returns <code>t(key, vars)</code>, where <code>{count}</code>-style placeholders are filled from the second argument.</p>
+<p>Lookup goes exact locale first (<code>fr-CA</code>), then the language on its own (<code>fr</code>), then English. English is required and is the fallback both for an unknown language and for a key one table lacks; a key missing everywhere renders as the key itself, never as a blank.</p>
     <div class="api-demo" data-demo="i18n-strings" data-controls="[{&quot;key&quot;:&quot;locale&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;en-GB&quot;,&quot;label&quot;:&quot;locale&quot;,&quot;options&quot;:[&quot;en-GB&quot;,&quot;fr-FR&quot;,&quot;de-DE&quot;]},{&quot;key&quot;:&quot;key&quot;,&quot;type&quot;:&quot;select&quot;,&quot;value&quot;:&quot;hello&quot;,&quot;label&quot;:&quot;key&quot;,&quot;options&quot;:[&quot;hello&quot;,&quot;bye&quot;,&quot;missing&quot;]},{&quot;key&quot;:&quot;name&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;Ada&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const t = api.i18n.strings({
@@ -1945,7 +1940,7 @@ t('saved', { count: 3 });</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Read one of this mod's settings, with a fallback for the first run. Synchronous: the values arrive with the plugin.</p>
+    <p>Read one of this mod's settings. When the user has not set it, the default declared in <code>mod.json</code> is returned, then <code>fallback</code>. Synchronous: the values arrive with the plugin.</p>
     <div class="api-demo" data-demo="settings-get" data-controls="[{&quot;key&quot;:&quot;key&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;memberLimit&quot;,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;fallback&quot;,&quot;type&quot;:&quot;number&quot;,&quot;value&quot;:200,&quot;label&quot;:&quot;&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>const limit = api.settings.get('memberLimit', 200);</code></pre>
@@ -1959,8 +1954,8 @@ t('saved', { count: 3 });</code></pre>
     <p class="api-since">Since BetterSlack 2.0.1</p>
   </header>
   <div class="panel__body">
-    <p>Called when the panel changes one of the declared settings.</p>
-<p>A plugin that does nothing here is still correct: the runtime reloads it after a change, so <code>start</code> simply runs again with the new values. This is for the ones where reloading would be visible -- a list that would flicker, a window that would close.</p>
+    <p>Called when the panel changes one of this mod's settings.</p>
+<p>A plugin that registers this is told and keeps running, for the cases where a restart would be visible — a list that would flicker, a window that would close. A plugin that does not is restarted with the new values, so <code>start</code> simply runs again.</p>
     <div class="api-demo" data-demo="settings-onchange" data-controls="[]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>api.settings.onChange((values) =&gt; {
@@ -2373,7 +2368,7 @@ api.onDispose(() =&gt; clearInterval(timer));</code></pre>
   </header>
   <div class="panel__body">
     <p>Write a theme into the user's own mods folder, where it appears in the panel like any other and survives a restart.</p>
-<p>Deliberately themes only. A theme is CSS and the loader re-validates the manifest it is handed, so the worst a mod can do here is add an ugly stylesheet the user can switch off -- which is not true of plugins, and is why there is no equivalent for them.</p>
+<p>Themes only. A theme is CSS and the loader re-validates the manifest it is handed, so the worst a mod can do here is add a stylesheet the user can switch off. That is not true of a plugin, which is why there is no equivalent for plugins.</p>
     <div class="api-demo" data-demo="plugin-savetheme" data-controls="[{&quot;key&quot;:&quot;id&quot;,&quot;type&quot;:&quot;text&quot;,&quot;value&quot;:&quot;my-theme&quot;,&quot;label&quot;:&quot;theme id&quot;,&quot;options&quot;:&quot;&quot;},{&quot;key&quot;:&quot;css&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;value&quot;:&quot;:root { --dt_color-base-pry: #101322; }&quot;,&quot;label&quot;:&quot;stylesheet&quot;,&quot;options&quot;:&quot;&quot;}]"></div>
     <h2 data-en="Example" data-fr="Exemple">Example</h2>
     <pre class="api-code"><code>await api.saveTheme({

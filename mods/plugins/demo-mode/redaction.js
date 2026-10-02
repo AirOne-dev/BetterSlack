@@ -108,8 +108,7 @@ const TEXT_AREAS = [
   /*
    * Slack's redesigned unfurl, which is not a `.c-message_attachment` at all:
    * its root is `.c-message_attachment_v3` and its parts hang off
-   * `.c-message_attachment__body`. A company's name and pitch went through
-   * both untouched until the audit stopped a run on them.
+   * `.c-message_attachment__body`, with a company's name and pitch in them.
    */
   '.c-message_attachment_v3', '.c-message_attachment__body',
   /*
@@ -132,8 +131,7 @@ const TEXT_AREAS = [
   '[class*="p-new_im_foreword"]', '.c-base_entity__text-contents',
   // Preferences lists people and channels of its own -- who may reach you
   // during Do Not Disturb, which channels notify differently -- in Slack's
-  // entity rows rather than in anything above. Found by the audit, with real
-  // names in them, while photographing a sound picker.
+  // entity rows rather than in anything above.
   '.c-base_entity__text', { sel: '.c-channel_entity__name', as: CHANNELS },
   /*
    * What the mods themselves draw out of the workspace -- the fields that hold
@@ -243,15 +241,13 @@ export function createRedaction(options = {}) {
   /*
    * What this wrote into each text node, and how many times it has had to.
    *
-   * `done` alone trusted a node for good once it was written, and Slack does
-   * not always leave one alone: an unfurl's title and body sit in
-   * `c-truncate`, which measures itself after a render and writes the
-   * original text back into the very same node. The audit caught a real
-   * company's name and pitch that way, after the sweep had replaced both. So a
-   * node whose text is no longer ours is swept again -- three times at most,
-   * because a component that insists for ever is how a sweep turns into the
-   * loop that froze Slack, and past that the audit reports it rather than the
-   * sweep chasing it.
+   * A node in `done` is not always left alone: an unfurl's title and body sit
+   * in `c-truncate`, which measures itself after a render and writes the
+   * original text back into the very same node. So a node whose text is no
+   * longer ours is swept again -- three times at most, because a component
+   * that insists for ever would turn the sweep into a loop that freezes
+   * Slack, and past that the audit reports it rather than the sweep chasing
+   * it.
    */
   let wrote = new WeakMap();
   let rewrites = new WeakMap();

@@ -265,6 +265,9 @@ export default {
     api.onDispose(() => window.removeEventListener('resize', onResize));
     api.css(CSS);
 
+    /** Your conversation with yourself, by workspace and id: it never moves. */
+    const selfChannels = new Map();
+
     /*
      * You are a different person in another workspace.
      *
@@ -276,24 +279,15 @@ export default {
      * on its own: taking the node out is what makes `keepMounted` build it
      * again, against whatever Slack has now drawn in the rail.
      */
-    /** Your conversation with yourself, by workspace and id: it never moves. */
-    const selfChannels = new Map();
     api.slack.onTeamChange(() => document.getElementById(STRIP_ID)?.remove());
 
     api.dom.keepMounted('.p-channel_sidebar', STRIP_ID, () => {
       /*
-       * The avatar, not merely the first image in the button.
-       *
-       * Slack draws your status emoji inside the same button when you have one
-       * set, and it comes first in the DOM -- so `querySelector('img')` picked
-       * the emoji, the strip showed it where the face goes, and the id read out
-       * of the URL below came back null because an emoji URL has no
-       * `/T…-U…-` in it. That last part is why the name stayed empty and no
-       * status was ever looked up: one wrong selector, three symptoms.
-       *
-       * An avatar is identifiable rather than positional: Slack serves it from
-       * a path carrying the team and the user. Take the first image that looks
-       * like one, and fall back to the old behaviour only if none does.
+       * The avatar, not merely the first image in the button: Slack draws your
+       * status emoji in the same button, before the face. An avatar is served
+       * from a path carrying the team and the user (/T…-U…-), which is also
+       * where the user id is read from; take the first image that has one, and
+       * the first image of all only when none does.
        */
       const images = [...document.querySelectorAll('[data-qa="user-button"] img')];
       const AVATAR_URL = /\/T[A-Z0-9]+-(U[A-Z0-9]+)-/i;

@@ -9,13 +9,9 @@ control: id | text | my-theme | theme id
 control: css | textarea | :root { --dt_color-base-pry: #101322; } | stylesheet
 ---
 
-Write a theme into the user's own mods folder, where it appears in the
-panel like any other and survives a restart.
+Write a theme into the user's own mods folder, where it appears in the panel like any other and survives a restart.
 
-Deliberately themes only. A theme is CSS and the loader re-validates the
-manifest it is handed, so the worst a mod can do here is add an ugly
-stylesheet the user can switch off -- which is not true of plugins, and is
-why there is no equivalent for them.
+Themes only. A theme is CSS and the loader re-validates the manifest it is handed, so the worst a mod can do here is add a stylesheet the user can switch off. That is not true of a plugin, which is why there is no equivalent for plugins.
 
 ```js
 await api.saveTheme({

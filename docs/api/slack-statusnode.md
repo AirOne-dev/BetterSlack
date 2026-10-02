@@ -12,13 +12,11 @@ control: showText | boolean | true | draw the sentence in the row
 control: expires | boolean | false | the status runs out
 ---
 
-That status as a node, so the two mods that show one draw the same thing. An image when an emoji resolved, the unicode character when Slack sent one, and the sentence beside it.
+A status as a node: an image when the emoji resolved, the unicode character when Slack sent one, and the sentence beside it. Its stylesheet ships with the runtime, so every mod that shows a status draws the same thing.
 
-Never the raw shortcode. `:tada:` on screen reads as a rendering that failed, which is also what Slack does with an emoji it cannot draw — the name goes in the tooltip instead, so it is still there to be found. The sentence is drawn either way: it is the half carrying the meaning, and an emoji nobody could resolve is no reason to drop it.
+Never the raw shortcode: `:tada:` on screen reads as a rendering that failed. The emoji's name goes in the tooltip instead, so it can still be found, and the sentence is drawn either way.
 
-**Hovering it opens Slack's own kind of tooltip**, with the emoji, the sentence, and when it runs out — which is what Slack's sidebar does and the reason the emoji alone is enough in a narrow row. `showText: false` keeps the picture and drops the sentence from the row *without* dropping it from the tooltip; pass the whole status rather than one with the text blanked, or the tooltip has nothing left to say. `placement` moves the tooltip for a column against the right edge of the window.
-
-Its stylesheet ships with the runtime rather than with each mod. Two of them show a status, and one that is 15px here and 20px there is exactly the drift this pair exists to stop.
+**Hovering it opens Slack's kind of tooltip**, with the emoji, the sentence and when the status runs out — which is why the emoji alone is enough in a narrow row. `showText: false` drops the sentence from the row and keeps it in the tooltip; pass the whole status rather than one with the text blanked, or the tooltip has nothing to say. `placement` moves the tooltip, for a column against the right edge of the window. When the status sits inside a control, `tooltipOn` hangs the hover on that control and `hint` adds a last line saying what clicking does, so one target has one tooltip.
 
 ```js
 const status = api.slack.describeStatus(user, await api.slack.web.emoji());

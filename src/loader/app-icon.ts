@@ -16,9 +16,9 @@
 // it tccd refuses and nothing changes. Every step here fails soft for that.
 //
 // The same icon goes on BetterSlack.app, whose own .icns is only rebuilt by
-// install.sh: this is how an install updated from the panel gets it. Measured
-// first that it costs nothing: with the custom icon on, a save into Downloads
-// through BetterSlack's identity was still allowed.
+// install.sh: this is how an install updated from the panel gets it. It costs
+// nothing, measured: with the custom icon on, a save into Downloads through
+// BetterSlack's identity is still allowed.
 //
 // A theme brings its own icon by declaring it in its stylesheet:
 //

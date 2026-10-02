@@ -102,10 +102,8 @@ test('your face and your name open the conversation with yourself', async () => 
 });
 
 test('follows the indicator Slack draws on its own avatar', async () => {
-  // The bug this replaced: users.getPresence lags the client, worst of all just
-  // after the window comes back, so the dot said away while the app said
-  // available -- and stayed wrong until the next poll a minute later. Slack
-  // puts the answer in the DOM; copying it is instant and always agrees.
+  // users.getPresence lags the client, worst of all just after the window comes
+  // back; Slack's own indicator is in the DOM, instant and always in agreement.
   const dom = installDom();
   try {
     // The node Slack itself renders, which the fixture now carries.

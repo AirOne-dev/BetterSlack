@@ -10,12 +10,7 @@ control: ms | number | 1000 | milliseconds
 
 Run something every so often, and stop while nobody is looking.
 
-Slack does not render while its window is hidden, so a poll that keeps
-going in the background is requests nobody will see the result of -- and
-for anything hitting Slack's API, requests against a rate limit that is
-shared with the client itself. This runs once immediately, then on the
-interval, and pauses whenever the document is hidden, catching up as soon
-as it comes back. Stops with the plugin.
+It runs once immediately, then every `everyMs`, and pauses while the document is hidden, catching up as soon as it is visible again. Slack does not render while its window is hidden, and requests made then spend a rate limit shared with the client on answers nobody sees. It stops with the plugin.
 
 ```js
 // Runs once now, then on the interval, and pauses while the window is hidden.

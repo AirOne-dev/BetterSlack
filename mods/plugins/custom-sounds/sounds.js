@@ -28,23 +28,24 @@ export const SLOTS = [
 ];
 
 /**
- * Slack's table, in Slack's order, with the names Slack gives them. `b2.mp3`
- * is "Ding" -- the file names and the labels have little to do with each other.
+ * Slack's table, in Slack's order: option 1 is the first file, and its label
+ * is OPTION_LABELS[1]. `b2.mp3` is "Ding" -- the file names and the labels
+ * have little to do with each other.
  */
-export const SLACK_SOUNDS = [
-  { value: 'b2.mp3', label: 'Ding' },
-  { value: 'animal_stick.mp3', label: 'Boing' },
-  { value: 'been_tree.mp3', label: 'Drop' },
-  { value: 'complete_quest_requirement.mp3', label: 'Ta-da' },
-  { value: 'confirm_delivery.mp3', label: 'Plink' },
-  { value: 'flitterbug.mp3', label: 'Wow' },
-  { value: 'here_you_go_lighter.mp3', label: 'Here you go' },
-  { value: 'hi_flowers_hit.mp3', label: 'Hi' },
-  { value: 'knock_brush.mp3', label: 'Knock Brush' },
-  { value: 'save_and_checkout.mp3', label: 'Whoa!' },
-  { value: 'item_pickup.mp3', label: 'Yoink' },
-  { value: 'hummus.mp3', label: 'Hummus' },
-  { value: 'boop.mp3', label: 'Boop' },
+const SLACK_SOUNDS = [
+  'b2.mp3',
+  'animal_stick.mp3',
+  'been_tree.mp3',
+  'complete_quest_requirement.mp3',
+  'confirm_delivery.mp3',
+  'flitterbug.mp3',
+  'here_you_go_lighter.mp3',
+  'hi_flowers_hit.mp3',
+  'knock_brush.mp3',
+  'save_and_checkout.mp3',
+  'item_pickup.mp3',
+  'hummus.mp3',
+  'boop.mp3',
 ];
 
 /*
@@ -56,16 +57,16 @@ export const SLACK_SOUNDS = [
  * holds. A language not listed falls back to English and, where Slack's text
  * does not match, to reading Slack's list.
  */
-export const OPTION_LABELS = {
+const OPTION_LABELS = {
   en: ['None', 'Ding', 'Boing', 'Drop', 'Ta-da', 'Plink', 'Wow', 'Here you go', 'Hi',
     'Knock Brush', 'Whoa!', 'Yoink', 'Hummus', 'Boop', 'Boop Plus'],
   fr: ['Aucun', 'Ding', 'Boing', 'Chute', 'Ta-da', 'Plink', 'Oh !', 'Et voilà', 'Bonjour',
     'Knock Brush', 'Waouh !', 'Yoink', 'Houmous', 'Bip', 'Bip plus'],
 };
-export const SAME_AS_MESSAGES = { en: 'Same as messages sound', fr: 'Identique au son des messages' };
+const SAME_AS_MESSAGES = { en: 'Same as messages sound', fr: 'Identique au son des messages' };
 
 /** Slack writes "Oh !" with a no-break space; compare words, not spacing. */
-export const normalise = (text) => String(text ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+const normalise = (text) => String(text ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
 
 /** The indices a slot's list has: huddles have one more. */
 export function indicesFor(slot) {
@@ -92,10 +93,10 @@ export function indexFromText(text, slot) {
   return null;
 }
 
-/** Huddles offer one more, at the end of their list. */
-export const HUDDLE_ONLY = { value: 'boop_remix.mp3', label: 'Boop Plus' };
+/** Huddles offer one more, at the end of their list: Boop Plus. */
+const HUDDLE_ONLY = 'boop_remix.mp3';
 
-export const NONE = 'none';
+const NONE = 'none';
 
 /*
  * Slack's selects number their options, and the number is the table's order:
@@ -108,25 +109,21 @@ export const NONE = 'none';
  */
 export function valueAt(index) {
   if (index === 0) return NONE;
-  if (index === SLACK_SOUNDS.length + 1) return HUDDLE_ONLY.value;
-  return SLACK_SOUNDS[index - 1]?.value ?? null;
+  if (index === SLACK_SOUNDS.length + 1) return HUDDLE_ONLY;
+  return SLACK_SOUNDS[index - 1] ?? null;
 }
 
 export function indexOf(value) {
   if (value === NONE) return 0;
-  if (value === HUDDLE_ONLY.value) return SLACK_SOUNDS.length + 1;
-  const at = SLACK_SOUNDS.findIndex((sound) => sound.value === value);
+  if (value === HUDDLE_ONLY) return SLACK_SOUNDS.length + 1;
+  const at = SLACK_SOUNDS.indexOf(value);
   return at < 0 ? -1 : at + 1;
 }
 
 /** Where Slack starts a slot that has never been set, and where a fallback lands. */
-export const DEFAULT_SOUND = 'b2.mp3';
+const DEFAULT_SOUND = 'b2.mp3';
 
-const KNOWN = new Set([...SLACK_SOUNDS, HUDDLE_ONLY].map((sound) => sound.value));
-
-export function isSlackSound(value) {
-  return KNOWN.has(value);
-}
+const KNOWN = new Set([...SLACK_SOUNDS, HUDDLE_ONLY]);
 
 /**
  * Which of Slack's sounds a URL is, or null.
@@ -158,46 +155,19 @@ export function allocateCarrier(slot, prefs, assignments = {}) {
     SLOTS.filter((other) => other !== slot).map((other) => prefs[other]).filter(Boolean),
   );
   const previous = assignments[slot]?.previous ?? prefs[slot];
-  const candidates = [previous, ...SLACK_SOUNDS.map((sound) => sound.value)];
-  return candidates.find((value) => value !== NONE && isSlackSound(value) && !used.has(value)) ?? null;
+  const candidates = [previous, ...SLACK_SOUNDS];
+  return candidates.find((value) => value !== NONE && KNOWN.has(value) && !used.has(value)) ?? null;
 }
 
 /**
- * What has to change so that every custom slot still has a carrier of its
- * own. Answers a list of steps, applied in order:
- *
- *   { slot, drop: true }       the slot's preference was changed somewhere
- *                              else -- Slack on another computer, Slack's own
- *                              select -- to something that is not its carrier,
- *                              so somebody chose a Slack sound: let it be
- *   { slot, carrier }          two slots ended up on one sound: move the
- *                              custom one to a free carrier
+ * The custom slots to let go of: those whose preference now holds something
+ * other than their carrier. It was changed somewhere else -- Slack on another
+ * computer, Slack's own select -- so somebody chose a Slack sound, and that
+ * choice wins. A slot whose preference cannot be read is kept.
  */
-export function reconcile(prefs, assignments = {}) {
-  const steps = [];
-  const live = { ...assignments };
-  for (const slot of SLOTS) {
-    const assignment = live[slot];
-    if (!assignment) continue;
-    if (prefs[slot] !== undefined && prefs[slot] !== assignment.carrier) {
-      steps.push({ slot, drop: true });
-      delete live[slot];
-    }
-  }
-  const working = { ...prefs };
-  for (const slot of SLOTS) {
-    const assignment = live[slot];
-    if (!assignment) continue;
-    const clash = SLOTS.some((other) => other !== slot && working[other] === assignment.carrier);
-    if (!clash) continue;
-    const carrier = allocateCarrier(slot, working, live);
-    if (carrier && carrier !== assignment.carrier) {
-      steps.push({ slot, carrier });
-      working[slot] = carrier;
-      live[slot] = { ...assignment, carrier };
-    }
-  }
-  return steps;
+export function letGo(prefs, assignments = {}) {
+  return SLOTS.filter((slot) => assignments[slot]
+    && prefs[slot] !== undefined && prefs[slot] !== assignments[slot].carrier);
 }
 
 /**
@@ -208,7 +178,7 @@ export function reconcile(prefs, assignments = {}) {
 export function fallbackFor(assignment) {
   const previous = assignment?.previous;
   if (previous === NONE) return NONE;
-  return isSlackSound(previous) ? previous : DEFAULT_SOUND;
+  return KNOWN.has(previous) ? previous : DEFAULT_SOUND;
 }
 
 /** The custom sound playing in place of `value`, in a workspace's assignments. */
@@ -232,7 +202,7 @@ export function labelFor(originalName) {
 }
 
 /** What a picked file has to be. */
-export const MAX_SOUND_BYTES = 5 * 1024 * 1024;
+const MAX_SOUND_BYTES = 5 * 1024 * 1024;
 export const ACCEPT = '.mp3,.wav,.ogg,.oga,.opus,.m4a,.aac,.flac,.webm,audio/*';
 
 export function checkFile(file) {

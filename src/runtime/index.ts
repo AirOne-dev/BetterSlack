@@ -112,7 +112,8 @@ async function boot(): Promise<void> {
     // Asked for straight away and never waited on: the screen draws the still
     // mark until this answers, and keeps drawing it if it never does.
     bridge.request<string>({ type: 'app.art' }).catch(() => null),
-    splashVarsFrom(payload),
+    // Safe mode applies no theme, so its start screen wears none either.
+    payload.info.safeMode ? '' : splashVarsFrom(payload),
   );
 
   /*

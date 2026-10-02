@@ -27,6 +27,14 @@ test('every --xp-* variable the stylesheet reads is declared', () => {
   assert.deepEqual(missing, [], 'read but never declared, so it paints nothing');
 });
 
+test('every --xp-* variable the palette declares is read', () => {
+  const settings = new Set(manifest.settings.map((field) => field.cssVar));
+  const declared = new Set([...css.matchAll(/(--xp-[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+  const unread = [...declared].filter((name) => !settings.has(name) && !css.includes(`var(${name})`)
+    && !css.includes(`var(${name},`));
+  assert.deepEqual(unread, [], 'declared but never read, so it paints nothing');
+});
+
 /*
  * Each setting has to reach the stylesheet, or it is a control that changes
  * nothing. Two are read by style queries rather than by var(), so the test

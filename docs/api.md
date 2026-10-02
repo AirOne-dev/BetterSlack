@@ -12,9 +12,8 @@ The format those files are written in is described in
 [CLAUDE.md](../CLAUDE.md#the-api-documentation-format) — one file per entry, a
 few keys at the top, prose, and one example.
 
-Each entry says which release it arrived in. That is not decoration: a mod is
-refused by an install too old to run it, and the version it needs is worked out
-from exactly these numbers and what the mod calls.
+Each entry names the release it arrived in. A mod needs the highest release
+among the calls it makes, and an install older than that refuses it.
 
 ## Tools
 
@@ -44,20 +43,20 @@ from exactly these numbers and what the mod calls.
 ## api.helpers
 
 - [`badge`](api/helpers-badge.md) — A small count or dot pinned to any element, kept in sync by a getter rather than by you remembering to redraw it. Return null from the getter and the badge goes away. _(since 2.0.1)_
-- [`cache`](api/helpers-cache.md) — A cache that survives a restart and refreshes itself behind you. _(since 2.1.0)_
+- [`cache`](api/helpers-cache.md) — A cache that survives a restart and refreshes itself in the background. _(since 2.1.0)_
 - [`copy`](api/helpers-copy.md) — Put text on the clipboard and confirm it with a toast, which is the pair almost every copy button wants. Resolves false if the clipboard refused. _(since 2.0.1)_
-- [`debounce`](api/helpers-debounce.md) — Debounce. No shipped mod calls this today -- the two that debounce _(since 2.0.1)_
+- [`debounce`](api/helpers-debounce.md) — Wrap a function so a burst of calls runs it once, `ms` after the last call, with that call's arguments. _(since 2.0.1)_
 - [`describeHotkey`](api/helpers-describehotkey.md) — A combo as a person would read it: `mod` becomes ⌘ on a Mac and Ctrl elsewhere, and the modifiers come out in the order that platform writes them. For a tooltip or a menu subtitle. _(since 2.0.1)_
-- [`disclosure`](api/helpers-disclosure.md) — Make something Slack already draws open and close. It marks an edited message with "(edited)" and a channel with a member count: exactly where a reader would ask for more, and neither answers. A mod with the answer makes that label the way in rather than adding a fifth button to a toolbar of four. _(since 3.2.0)_
-- [`each`](api/helpers-each.md) — Run a handler for every element matching a selector, now and in future, _(since 2.0.1)_
+- [`disclosure`](api/helpers-disclosure.md) — Make something Slack already draws open and close — an "(edited)" label, a member count — so a mod with more to say puts it behind the label a reader would click rather than adding another toolbar button. _(since 3.2.0)_
+- [`each`](api/helpers-each.md) — Run a handler for every element matching a selector, now and as more arrive, and undo it when the plugin stops. _(since 2.0.1)_
 - [`field`](api/helpers-field.md) — A labelled row in Slack's own profile style, so a mod's extra details sit in a profile pane looking like the details Slack put there. _(since 2.0.1)_
 - [`hotkey`](api/helpers-hotkey.md) — Bind a keyboard shortcut in the platform's idiom: `mod+shift+f`. _(since 2.0.1)_
-- [`iconButton`](api/helpers-iconbutton.md) — An icon button wearing Slack's classes for the surface you name — the control strip, a header, the composer. Getting the classes right is what keeps it 28px instead of 36px. _(since 2.0.1)_
+- [`iconButton`](api/helpers-iconbutton.md) — An icon button wearing Slack's classes for the surface you name — the control strip, a header, the composer, a message's toolbar. The right classes are what keep it 28px instead of 36px. _(since 2.0.1)_
 - [`mount`](api/helpers-mount.md) — Keep an element in a container across Slack's re-renders, and take it away when the plugin stops. `before` puts it above an existing button rather than at the end, which is where Slack's own re-renders land. _(since 2.0.1)_
 - [`poll`](api/helpers-poll.md) — Run something every so often, and stop while nobody is looking. _(since 2.0.1)_
 - [`section`](api/helpers-section.md) — A titled group of rows in Slack's profile style, for adding a block of detail to a pane Slack drew. _(since 2.0.1)_
-- [`toggle`](api/helpers-toggle.md) — A persisted on/off flag that also drives a class on <html>, so the whole _(since 2.0.1)_
-- [`tooltip`](api/helpers-tooltip.md) — Slack's tooltip on any element. Slack's own are React portals a mod cannot register with, so this rebuilds one from Slack's classes — including the ~150ms delay, measured with a real pointer. _(since 2.0.1)_
+- [`toggle`](api/helpers-toggle.md) — A persisted on/off flag that also puts a class on `<html>`, so the behaviour can be pure CSS. This is the shape most "mode" mods want. _(since 2.0.1)_
+- [`tooltip`](api/helpers-tooltip.md) — Slack's tooltip on any element. Slack's own tooltips are React portals a mod cannot register with, so this builds one from Slack's classes, with Slack's ~150ms hover delay. _(since 2.0.1)_
 
 ## api.slack
 
@@ -67,30 +66,30 @@ from exactly these numbers and what the mod calls.
 - [`addView`](api/slack-addview.md) — A whole view of your own, with its tab in Slack's rail — everything Home, Direct messages and Activity do. The tab sits beside theirs wearing Slack's own classes, so it follows every theme; the page takes the whole tab panel, the channel sidebar included, because those views replace it too, and what is under it is hidden rather than covered — covered, Slack keeps the conversation on screen and marks anything arriving in it as read; the workspace rail is all that is left beside it; one tab is lit at a time, and clicking another of Slack's tabs leaves, exactly as leaving Activity does. `render` is called each time it opens, and `refresh()` runs it again in place. Use `tabSelector` to hang a `helpers.badge` on the tab rather than rebuilding the selector by hand. _(since 3.1.0)_
 - [`avatarUrl`](api/slack-avatarurl.md) — The same avatar at another size. _(since 2.0.1)_
 - [`composer`](api/slack-composer.md) — The message box. `insertText` types into it as though you had, `insertLink` puts a real hyperlink at the caret, and `focus` puts the caret there in the first place — every insert focuses first, so calling it yourself is only needed when you want the caret and nothing else. _(since 2.0.1)_
-- [`currentChannelId`](api/slack-currentchannelid.md) — The channel on screen, read out of the URL. Null when what is on screen is not a conversation. Two workspaces can use the same channel id, so compare the team as well when you keep anything per-channel. _(since 2.0.1)_
-- [`currentTeamId`](api/slack-currentteamid.md) — The workspace the client is showing. Not simply the one in the address bar, and that distinction is the whole reason this exists rather than a one-line regex in each mod. _(since 2.1.0)_
+- [`currentChannelId`](api/slack-currentchannelid.md) — The conversation on screen: the channel of the messages Slack has drawn, or the conversation named in the address when none are drawn yet. Null when neither names one. _(since 2.0.1)_
+- [`currentTeamId`](api/slack-currentteamid.md) — The workspace the client is showing, which is not always the one in the address bar. _(since 2.1.0)_
 - [`describeMessage`](api/slack-describemessage.md) — Everything about a message that a mod usually wants, read off the element Slack drew: its channel, its timestamp, its permalink and its text. _(since 2.0.1)_
 - [`describeStatus`](api/slack-describestatus.md) — Somebody's status, ready to draw: the sentence, the emoji name without its colons, an image for that emoji when one could be found, and when it clears. Null when there is no status at all, so a caller can test the result rather than three fields. _(since 2.1.0)_
-- [`desktop`](api/slack-desktop.md) — Slack's own translucent window, which it ships switched off. _(since 2.0.1)_
-- [`emojiUrl`](api/slack-emojiurl.md) — An image for an emoji name, or `null` when nothing can draw it. The colons are _(since 3.0.0)_
+- [`desktop`](api/slack-desktop.md) — Slack's own desktop preferences, the ones it keeps outside `app.asar`: a translucent window (`windowVibrancy`), GPU acceleration, the tray, the zoom level and a few more. `keys()` lists what may be set, with each key's type and whether it needs a restart. _(since 2.0.1)_
+- [`emojiUrl`](api/slack-emojiurl.md) — An image for an emoji name, or `null` when nothing can draw it. The colons are optional — `tada` and `:tada:` are the same question. _(since 3.0.0)_
 - [`events`](api/slack-events.md) — Slack keeps a socket per workspace and pushes everything that happens in every conversation you are in down it — a message, an edit, a deletion, a reaction, somebody's status, somebody joining — whether or not that conversation is open. It is how the unread badges in the sidebar move without you looking at them, and it is the only way for a mod to know about a conversation it is not in front of without asking Slack for it one at a time. _(since 3.2.0)_
 - [`filesFrom`](api/slack-filesfrom.md) — The files somebody shared, newest first. `limit` caps how many come back; without one you get Slack's own default page, which is rarely what a panel wants to draw. _(since 2.0.1)_
 - [`hideConversation`](api/slack-hideconversation.md) — Take a conversation out of the sidebar. The history is untouched — this is Slack's own hide, not a leave. _(since 2.0.1)_
 - [`onTeamChange`](api/slack-onteamchange.md) — Switching workspace does not reload the client. Same page, same mods, same api objects, new team id in the address — so anything a mod cached belongs to the workspace the user has just left, and a mod that does not drop it goes quietly wrong rather than visibly broken: a member list of people who are not there, a status from somewhere else, a channel name on the wrong conversation. _(since 3.2.0)_
-- [`openConversation`](api/slack-openconversation.md) — Move the client to a conversation, without a page load. _(since 2.0.1)_
+- [`openConversation`](api/slack-openconversation.md) — Move the client to a conversation without a page load. _(since 2.0.1)_
 - [`openDirectMessage`](api/slack-opendirectmessage.md) — Open the direct message with someone, creating it if there is none. _(since 2.0.1)_
-- [`openMessage`](api/slack-openmessage.md) — Move the client to one message, and highlight it. The same deep link _(since 3.0.0)_
+- [`openMessage`](api/slack-openmessage.md) — Move the client to one message and highlight it, the way Slack's own search results do. It is `openConversation`'s deep link with the message's timestamp on it. _(since 3.0.0)_
 - [`openStatusEditor`](api/slack-openstatuseditor.md) — Slack's own "set a status" dialog. There is no deep link for it and no action a mod can dispatch: the entry lives in the account menu, so this opens the menu and then presses it. _(since 2.1.0)_
 - [`openUserProfile`](api/slack-openuserprofile.md) — Open somebody's profile, through Slack's own deep link — same document, no reload. Not every id has one: an app, or a conversation with yourself, gives a pane that never appears. _(since 2.0.1)_
 - [`renderMrkdwn`](api/slack-rendermrkdwn.md) — What Slack's API answers with is not what Slack draws. A mention arrives as `<@U04ED8UPV>`, a link as `<https://…|label>`, an ampersand as `&amp;`, and emphasis as the asterisks somebody typed — so anything showing a message as it came off the wire shows the wire. _(since 3.2.0)_
 - [`restart`](api/slack-restart.md) — Stop Slack and start it again, with the loader still driving. _(since 2.0.1)_
-- [`selectors`](api/slack-selectors.md) — The Slack selectors this project has measured and kept working, for a mod that needs to go past these helpers. Anchored on `data-qa` attributes rather than class names, which churn with every Slack release — so read one from here rather than writing it out, or your copy is the one nobody updates when Slack moves. _(since 2.0.1)_
+- [`selectors`](api/slack-selectors.md) — The Slack selectors BetterSlack keeps working, for a mod that needs to go past these helpers. They are anchored on `data-qa` attributes rather than class names, which change with Slack releases. Read one from here rather than writing your own copy, so it is updated along with BetterSlack. _(since 2.0.1)_
 - [`setVip`](api/slack-setvip.md) — Add or remove someone from your VIP list, and report the new state. _(since 2.0.1)_
-- [`startHuddle`](api/slack-starthuddle.md) — Start a huddle with someone: open the conversation, then press Slack's own _(since 2.0.1)_
-- [`statusNode`](api/slack-statusnode.md) — That status as a node, so the two mods that show one draw the same thing. An image when an emoji resolved, the unicode character when Slack sent one, and the sentence beside it. _(since 2.1.0)_
+- [`startHuddle`](api/slack-starthuddle.md) — Start a huddle with someone: open the conversation, then press Slack's own start control in the channel header. _(since 2.0.1)_
+- [`statusNode`](api/slack-statusnode.md) — A status as a node: an image when the emoji resolved, the unicode character when Slack sent one, and the sentence beside it. Its stylesheet ships with the runtime, so every mod that shows a status draws the same thing. _(since 2.1.0)_
 - [`userIdFromMessage`](api/slack-useridfrommessage.md) — The author's id, read off the avatar's URL — Slack writes them as `<team>-<user>-<hash>-<size>`. Null when the message has no avatar to read, which is the case for a consecutive message from the same person. _(since 2.0.1)_
 - [`vipUsers`](api/slack-vipusers.md) — The workspace's VIP list. VIP is a preference rather than an endpoint: a comma-separated list under `vip_users`. _(since 2.0.1)_
-- [`web`](api/slack-web.md) — Slack's own web API, as the signed-in user. Reads the session token in one _(since 2.0.1)_
+- [`web`](api/slack-web.md) — Slack's own web API, as the signed-in user. `call(method, params)` reaches any method; `userInfo`, `users` (one batched request for a list, cached per workspace), `emoji` (the workspace's custom emoji), `presence`, `dndInfo`, `teamInfo` and `availability` (presence and do-not-disturb folded into one state) cover the common reads, and `available`, `teamDomain` and `selfId` describe the session. _(since 2.0.1)_
 
 ## api.ui
 
@@ -115,13 +114,13 @@ from exactly these numbers and what the mod calls.
 
 - [`language`](api/i18n-language.md) — The language on its own, without the region: `fr` for `fr-FR`. What a translation table is usually keyed by. _(since 2.0.1)_
 - [`locale`](api/i18n-locale.md) — The app's language tag, e.g. "fr-FR". Use it for `toLocaleString` and friends. _(since 2.0.1)_
-- [`strings`](api/i18n-strings.md) — Build a translator from a table per language. It returns a `t(key, vars)` where _(since 2.0.1)_
+- [`strings`](api/i18n-strings.md) — Build a translator from a table per language. It returns `t(key, vars)`, where `{count}`-style placeholders are filled from the second argument. _(since 2.0.1)_
 
 ## api.settings
 
 - [`all`](api/settings-all.md) — Everything this mod has stored, as one object — for a settings screen that draws them all rather than asking for each. _(since 2.0.1)_
-- [`get`](api/settings-get.md) — Read one of this mod's settings, with a fallback for the first run. Synchronous: the values arrive with the plugin. _(since 2.0.1)_
-- [`onChange`](api/settings-onchange.md) — Called when the panel changes one of the declared settings. _(since 2.0.1)_
+- [`get`](api/settings-get.md) — Read one of this mod's settings. When the user has not set it, the default declared in `mod.json` is returned, then `fallback`. Synchronous: the values arrive with the plugin. _(since 2.0.1)_
+- [`onChange`](api/settings-onchange.md) — Called when the panel changes one of this mod's settings. _(since 2.0.1)_
 - [`set`](api/settings-set.md) — Write one of this mod's settings. The loader owns the file, so it survives a restart and an update. _(since 2.0.1)_
 
 ## api.commands
@@ -172,5 +171,5 @@ from exactly these numbers and what the mod calls.
 - [`id`](api/plugin-id.md) — This mod's id: its folder name, the key its settings are stored under, and the prefix on everything it puts in the DOM. _(since 2.0.1)_
 - [`manifest`](api/plugin-manifest.md) — This mod's own `mod.json`, as the loader parsed it — its version, its author, the settings it declares. _(since 2.0.1)_
 - [`onDispose`](api/plugin-ondispose.md) — Register a teardown callback. It runs when the plugin is switched off, which is the moment everything a mod started has to stop: intervals, listeners, anything it put on the page. _(since 2.0.1)_
-- [`saveTheme`](api/plugin-savetheme.md) — Write a theme into the user's own mods folder, where it appears in the _(since 2.0.1)_
+- [`saveTheme`](api/plugin-savetheme.md) — Write a theme into the user's own mods folder, where it appears in the panel like any other and survives a restart. _(since 2.0.1)_
 - [`version`](api/plugin-version.md) — BetterSlack's version, not the mod's — the mod's is `api.manifest.version`. _(since 2.0.1)_

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // assets/icon.icns, from assets/app-icon.svg: the mark on its white plate.
 //
-// The .icns was a committed binary with no recipe, so a change to the mark left
-// the app wearing the old one and nothing said so. This is the recipe.
+// A committed .icns with no recipe means a redrawn mark leaves the app wearing
+// the old one with nothing to say so. This is the recipe.
 //
 // It is not part of `pnpm check`: an icon changes when somebody redraws it, and
 // rasterising ten sizes on every gate would be a minute spent proving a file

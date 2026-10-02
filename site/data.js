@@ -300,7 +300,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Vos propres fichiers dans chaque liste de sons de Préférences → Notifications : messages, VIP, messages directs, appels d’équipe, calendrier. Ajoutez un son depuis un fichier, écoutez-le, renommez-le ou supprimez-le ; un son supprimé remet chaque emplacement sur celui qu’il avait avant."
       },
-      "version": "1.0.4",
+      "version": "1.0.5",
       "tags": [
         "notifications",
         "sound"
@@ -369,7 +369,7 @@ window.CATALOGUE = {
       "descriptions": {
         "fr": "Tout ce que Slack change sans jamais le dire — modifications, suppressions, réactions retirées, renommages, statuts, arrivées et départs — sur une page que l'on peut chercher et trier"
       },
-      "version": "1.0.0",
+      "version": "1.0.1",
       "tags": [
         "messages",
         "tools",

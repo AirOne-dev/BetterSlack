@@ -2,13 +2,13 @@
 
 Utilisez vos propres fichiers audio pour les notifications de Slack.
 
-Ouvrez **Préférences → Notifications**. Chaque liste de sons propose désormais, sous les sons de Slack :
+Ouvrez **Préférences → Notifications**. Chaque liste de sons propose, sous les sons de Slack :
 
 - **vos sons**, ceux que vous avez ajoutés ;
 - **Ajouter un son…**, qui ouvre un sélecteur de fichiers (mp3, wav, ogg, m4a, flac…, jusqu'à 5 Mo) ;
 - **Gérer vos sons…**, pour les écouter, les renommer ou les supprimer.
 
-Cela vaut pour chaque liste de la page : messages, messages des VIP, envoi d'un message, réception d'un message pendant que vous êtes dans la conversation, et appels d'équipe. Le gestionnaire est aussi dans la palette de commandes, sous *Gérer les sons personnalisés*.
+Cela vaut pour chaque liste de la page : messages, messages des VIP, envoi d'un message, réception d'un message pendant que vous êtes dans la conversation, appels d'équipe et notifications de calendrier. Le gestionnaire est aussi dans la palette de commandes, sous *Gérer les sons personnalisés*.
 
 ## Supprimer un son
 

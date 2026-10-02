@@ -9,8 +9,7 @@ control: className | text | demo-zen | class on <html>
 control: defaultOn | boolean | false
 ---
 
-A persisted on/off flag that also drives a class on <html>, so the whole
-behaviour can be pure CSS. This is the shape most "mode" mods want.
+A persisted on/off flag that also puts a class on `<html>`, so the behaviour can be pure CSS. This is the shape most "mode" mods want.
 
 ```js
 const zen = api.helpers.toggle({

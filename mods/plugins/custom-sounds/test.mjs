@@ -10,7 +10,7 @@ import {
   fallbackFor,
   fileNameFor,
   labelFor,
-  reconcile,
+  letGo,
   soundFromUrl,
 } from './sounds.js';
 
@@ -39,17 +39,15 @@ test('a carrier is never a sound another slot is using', () => {
   assert.ok(!['b2.mp3', 'animal_stick.mp3'].includes(carrier));
 });
 
-test('a slot changed somewhere else is let go; a clash moves the custom slot', () => {
+test('a slot changed somewhere else is let go; one still on its carrier, or unread, is kept', () => {
   const assignments = {
     desktop_sound: { sound: 's1', carrier: 'hummus.mp3', previous: 'hummus.mp3' },
     dm_sent_sound: { sound: 's2', carrier: 'boop.mp3', previous: 'b2.mp3' },
+    huddle_invite_sound: { sound: 's3', carrier: 'hi_flowers_hit.mp3', previous: 'b2.mp3' },
   };
-  // Messages were set to Ding on another computer; huddles took dm_sent's carrier.
-  const prefs = { desktop_sound: 'b2.mp3', dm_sent_sound: 'boop.mp3', huddle_invite_sound: 'boop.mp3' };
-  const steps = reconcile(prefs, assignments);
-  assert.deepEqual(steps[0], { slot: 'desktop_sound', drop: true });
-  assert.equal(steps[1].slot, 'dm_sent_sound');
-  assert.ok(!['boop.mp3', 'b2.mp3'].includes(steps[1].carrier));
+  // Messages were set to Ding on another computer; huddles could not be read.
+  const prefs = { desktop_sound: 'b2.mp3', dm_sent_sound: 'boop.mp3' };
+  assert.deepEqual(letGo(prefs, assignments), ['desktop_sound']);
 });
 
 test('a deleted sound falls back to the previous one, never to silence by accident', () => {
@@ -226,8 +224,8 @@ test('a picker opens without opening Slack\'s list, and always starts with its o
     await settle();
     document.querySelector('[data-custom-sounds-slot="dm_sent_sound"]').click();
     await settle();
-    // Nothing of Slack's put on screen first: with Motion on, that was a
-    // frame drawn and gone before the menu appeared.
+    // Nothing of Slack's put on screen first: a hidden list is a frame drawn
+    // and gone before the menu appears.
     assert.equal(sent.opens, 0);
     const items = h.recorded.menus.at(-1).items;
     assert.equal(items[0].label, 'None');

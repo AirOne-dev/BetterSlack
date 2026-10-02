@@ -46,9 +46,8 @@ the theme lists it in `requires`. What a review looks for:
 ## Text a user reads
 
 Every plugin here ships **English and French**, through `api.i18n.strings()`.
-English is the source and the fallback; a test fails a mod whose two tables do
-not cover the same keys, because half a translation is how French users end up
-with English holes nobody notices.
+English is the source and the fallback, and a test fails a mod whose two tables
+do not cover the same keys.
 
 You are not expected to speak every language — two is the bar. If you add
 another, add it to every plugin or none: one plugin speaking German inside an
@@ -61,14 +60,16 @@ real client and files it in your folder, replacing every name, face, message
 and channel on screen before it does. Nothing in this repository is
 photographed as-is.
 
-Do not print emoji shortcodes. `status_emoji` is `:tada:`, and a workspace's
-custom ones have no unicode to fall back on, so show the text without them.
+Do not print emoji shortcodes: `:tada:` on screen reads as a rendering that
+failed. `api.slack.emojiUrl`, `api.slack.describeStatus` and
+`api.slack.statusNode` draw an emoji when one can be found and nothing when it
+cannot.
 
 ## What gets a pull request rejected
 
 - Network calls to anywhere other than a clearly stated, purpose-obvious
   endpoint — and never with message content, tokens or workspace identifiers.
-- Listening to Slack's realtime socket (`api.slack.onEvent`) for anything other
+- Listening to Slack's realtime socket (`api.slack.events`) for anything other
   than what the mod visibly does with it. It carries every message in every
   conversation you are in, so a mod that asks for `message` and shows nothing
   from it is a mod nobody can check by using it.
@@ -145,9 +146,9 @@ end in a job with a stable name (`mod structure`, `mod tests`) — those are the
 ones branch protection requires, because matrix job names change with every
 pull request.
 
-One deliberate exception: if a branch changes the shared runtime API or the test
-harness, *every* mod is tested, because the contract they were written against
-has moved.
+One exception: if a branch changes the shared runtime API or the test harness,
+*every* mod is tested, because the contract they are written against has
+changed.
 
 Run the same thing locally before pushing:
 
@@ -191,7 +192,7 @@ resources, and no hashed Slack class names.
 
 ## Writing mods that survive Slack updates
 
-The two documents worth reading before you write anything:
+Read these before you write anything:
 
 - **[docs/guide/](docs/guide/)** — the walkthrough: install, a plugin, a theme.
 - **[docs/api.md](docs/api.md)** — the API, with an example per entry.
@@ -219,8 +220,8 @@ pnpm start
 
 pnpm, not npm: esbuild fetches its platform binary in an install script, and
 `pnpm-workspace.yaml` is what allows that script to run. If you have no pnpm,
-`corepack enable` gets you one on a Node older than 25, and `npm i -g pnpm` on
-any of them -- Corepack was removed from Node in 25.
+`corepack enable` gets you one on a Node older than 25 (later ones ship no
+Corepack), and `npm i -g pnpm` on any of them.
 
 Edit files in `mods/` and they reload in Slack immediately. Mods in
 `~/.betterslack/mods/` shadow the repo copies, which is convenient for iterating on

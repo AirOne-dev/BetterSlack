@@ -385,7 +385,6 @@ export type Request =
   | { type: 'data.read'; id: string; name: string }
   | { type: 'data.list'; id: string }
   | { type: 'data.remove'; id: string; name: string }
-  /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
   /**
    * Photograph the window and put the picture in the download folder.
    *
@@ -395,6 +394,7 @@ export type Request =
    * cropping it afterwards.
    */
   | { type: 'app.screenshot'; size?: string; filename?: string }
+  /** Pull, rebuild and relaunch. Answers before it restarts, or with why not. */
   | { type: 'app.update' }
   /**
    * The start screen's animation, as base64.

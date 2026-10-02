@@ -1,15 +1,13 @@
 # Theming Slack
 
-Everything below was measured against a live Slack, not assumed. New here?
 New here? Start with **[Your first theme](guide/theme.md)**.
 
 **There is a tool for this.** The **Theme Builder** plugin opens a window of its
 own and paints the client live, so the preview is Slack itself: two colours
 become twelve roles across all four families below, hovering a colour outlines
 what it paints, pointing at anything in the app shows the tokens behind it, and
-what it writes is the CSS this document describes. Everything here still applies
-— the builder is a faster way to reach the same stylesheet, and it exports one
-you can commit.
+what it writes is the CSS this document describes, exported as a stylesheet you
+can commit.
 
 ## Four families, not one
 
@@ -124,8 +122,7 @@ light content inside a dark frame.
 
 ### Nested elements: check which one Slack actually paints
 
-This is the trap that has bitten this repository most often. Slack nests a
-painted element inside a transparent wrapper, so styling "the obvious one" adds
+Slack nests a painted element inside a transparent wrapper, so styling "the obvious one" adds
 a second box behind the real one. Before styling anything, read the computed
 background of both:
 
@@ -165,8 +162,8 @@ clear them too:
 
 ## Selectors worth knowing
 
-Verified against Slack 4.51. Prefer `data-qa`; these are the structural class
-names that have held up.
+Checked against Slack 4.51. Prefer `data-qa`; the class names below are stable
+hand-written names, not hashed ones.
 
 | Selector | What |
 | --- | --- |
@@ -188,16 +185,11 @@ names that have held up.
 
 ## Matching another app
 
-If you are reproducing something, measure it — do not trust a published
-palette. Discord's redesign moved off the blurple-tinted greys every colour
-list still quotes (`#313338`, `#2b2d31`) onto near-black neutrals (`#1a1a1e`,
-`#121214`), so `discord-dark` was wrong in every surface until it was rebuilt
-from a screenshot.
-
-Sampling a screenshot takes a minute: decode the PNG, then take the *most
-common* colour in a flat region for a surface, and the *brightest* pixel in a
-text region for a text colour — antialiasing means the average is never the
-real value.
+To reproduce another app, sample its colours from a screenshot rather than
+trusting a published palette, which goes stale whenever the app is redesigned.
+Decode the PNG, then take the *most common* colour in a flat region for a
+surface, and the *brightest* pixel in a text region for a text colour —
+antialiasing means the average is never the real value.
 
 ## Recipes
 
@@ -333,8 +325,8 @@ A `choice` setting writes its value the same way, and a stylesheet can branch on
 it with a **style query**: every element is a style container for its children,
 so a rule inside `@container style(--x: value)` applies wherever the parent
 carries that value -- which, for a property the runtime writes on `:root`, is
-everywhere below `<html>`. Measured in Slack 4.51: switching the setting
-repaints the client in place, no reload.
+everywhere below `<html>`. Switching the setting repaints the client in place,
+with no reload.
 
 ```css
 @container style(--xp-scheme: olive) {
@@ -365,21 +357,29 @@ A theme can give BetterSlack a Dock icon and a start screen of its own, in CSS:
 :root {
   --betterslack-app-icon: url("data:image/svg+xml,...");    /* the Dock, macOS */
   --betterslack-splash-art: url("data:image/svg+xml,...");  /* while Slack starts */
-  --betterslack-splash-width: 416px;
+  --betterslack-splash-width: 416px;          /* the art's box, 88px if unset */
   --betterslack-splash-height: 240px;
   --betterslack-splash-background: #000000;
-  --betterslack-splash-text: #ffffff;
+  --betterslack-splash-text: #ffffff;         /* the line naming what starts */
 }
 ```
 
-Both are SVG, and both live in the stylesheet because the stylesheet is what an
-update delivers. Keep the pictures as `app-icon.svg` and `splash.svg` beside
-`theme.css`, and let `node scripts/embed-theme-art.mjs <id>` write them in --
-an SVG can animate itself (`<animate>`, `<animateTransform>`), which is how
-Windows XP's boot screen slides its blocks. The icon is a 1024 square with
-transparent corners, like any macOS icon. Once BetterSlack has the App
-Management permission, Slack and BetterSlack wear it in the Dock from their
-next start, and switching the theme on offers that relaunch.
+They live in the stylesheet because the stylesheet is what every update
+delivers. The icon has to be an SVG data URI inside a quoted `url("…")`: a 1024
+square with transparent corners, like any macOS icon. The splash art is drawn
+centred and contained in its box, in place of BetterSlack's own animation, and
+an SVG can animate itself (`<animate>`, `<animateTransform>`). When several
+enabled themes declare one, the last one wins, as its stylesheet does.
+
+To keep the pictures editable, save them as `app-icon.svg` and `splash.svg`
+beside `theme.css`, declare each property once with an empty `url("")`, and run
+`node scripts/embed-theme-art.mjs <id>` to write them in. Run it again after
+editing either picture.
+
+On macOS the icon needs the App Management permission for BetterSlack (System
+Settings → Privacy & Security → App Management); without it the Dock keeps
+Slack's icon. BetterSlack.app takes the icon at once, Slack's Dock tile when
+Slack next starts, and switching the theme on offers that relaunch.
 
 ## When CSS is not enough
 
@@ -420,7 +420,7 @@ ties the two together and makes both worse.
 | [`midnight`](../mods/themes/midnight/theme.css) | the plain three-family override, well commented |
 | [`discord-dark`](../mods/themes/discord-dark/theme.css) | a palette sampled from the real app, and two required plugins for the parts CSS cannot reach |
 | [`aurora`](../mods/themes/aurora/theme.css) | gradients, glass, translucent chrome |
-| [`cocoa`](../mods/themes/cocoa/theme.css) | a light theme, so every family had to be covered |
+| [`cocoa`](../mods/themes/cocoa/theme.css) | a light theme, which has to cover every family |
 | [`focus-rings`](../mods/themes/focus-rings/theme.css) | no tokens at all — pure `:focus-visible` semantics |
 | [`terminal`](../mods/themes/terminal/theme.css) | a full takeover with `*` selectors |
 | [`windows-xp`](../mods/themes/windows-xp/theme.css) | a light theme re-shaping Slack's chrome (title bar, task pane, dialogs), three schemes picked by a setting through style queries |

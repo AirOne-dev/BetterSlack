@@ -51,8 +51,7 @@ live.
 
 ## 4. All four token families, or the app chrome stays Slack's
 
-This is the one that catches everybody. There are four, and a theme that only
-writes the first leaves the rail, the sidebar and the headers untouched:
+There are four, and a theme that only writes the first leaves the rail, the sidebar and the headers untouched:
 
 ```css
 :root,
@@ -75,9 +74,9 @@ writes the first leaves the rail, the sidebar and the headers untouched:
 }
 ```
 
-`--sk_foreground_low` alone is referenced 31 times across BetterSlack's own
-interface, and its fallback is Slack's *light* default — leave it out of a dark
-theme and a dialog's hint text comes out near-black on near-black.
+BetterSlack's own interface reads the legacy family too, and its fallbacks are
+Slack's *light* defaults: leave `--sk_foreground_low` out of a dark theme and a
+dialog's hint text comes out near-black on near-black.
 
 ## 5. Clear the backdrop before painting one
 
@@ -149,7 +148,8 @@ folder and BetterSlack inlines it, in order, before anything reaches the page:
 
 The stylesheet is injected as one `<style>` element with no URL to resolve
 against, so a browser `@import` of a file on a server would be a request Slack's
-CSP refuses anyway. Import each file once; a cycle is an error, not a hang.
+CSP refuses anyway. An import that leads back to a file already being inlined
+is cut, with a line in the console naming the loop.
 
 The manifest keys that turn a row into a page somebody reads -- the icon, the
 translated descriptions, the screenshots and the READMEs -- are the same for a
@@ -165,7 +165,7 @@ The same one command as a plugin. `pnpm shoot --mods -- --only=my-theme` takes
 the screenshot the catalogue and the panel show, in a real Slack with every
 name, face and message on screen replaced first.
 
-## Two more traps, both measured
+## Two more traps
 
 - **Slack has two "jump to unread" pills** in the sidebar, one above and one
   below, sharing every class except a hashed one that changes per build. Tell

@@ -1181,7 +1181,7 @@ class Loader {
         const bundle = launchedFromBundle();
         if (!bundle) {
           setTimeout(() => void this.restartSlack(), 400);
-          return { ok: true, whole: false };
+          return { ok: true };
         }
         /*
          * Slack first, then this process; the new launch is asked of
@@ -1198,7 +1198,7 @@ class Loader {
             process.exit(0);
           });
         }, 400);
-        return { ok: true, whole: true };
+        return { ok: true };
       }
 
       case 'slack.restart': {
@@ -1498,13 +1498,12 @@ async function dressIcons(slackPath: string): Promise<DockIconState> {
  *
  * The launcher takes the new icon at once. Slack's tile cannot: the Dock draws
  * a running app with the icon it had when it launched, and keeps doing so
- * through anything short of the app starting again -- measured with the
- * bundle's icon reading back as the new one through NSWorkspace while the
- * tile kept the old, across `killall Dock`, a touch of the bundle,
- * `lsregister -f` and `noteFileSystemChanged`. A Dock restart only ever
- * brought back the launch icon, and cost Slack's unread badge on the way.
- * So the runtime offers the restart instead, when `dockIconPending` says it
- * would change something.
+ * through anything short of the app starting again -- the bundle's icon reads
+ * back as the new one through NSWorkspace while the tile keeps the old, across
+ * `killall Dock`, a touch of the bundle, `lsregister -f` and
+ * `noteFileSystemChanged`. Restarting the Dock brings back the launch icon and
+ * drops Slack's unread badge. So the runtime offers to restart Slack instead,
+ * when `dockIconPending` says it would change something.
  */
 async function refreshLauncherIcon(): Promise<void> {
   if (process.platform !== 'darwin') return;

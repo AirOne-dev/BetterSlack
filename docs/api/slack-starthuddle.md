@@ -7,16 +7,9 @@ since: 2.0.1
 preview: slack-starthuddle
 ---
 
-Start a huddle with someone: open the conversation, then press Slack's own
-start control.
+Start a huddle with someone: open the conversation, then press Slack's own start control in the channel header.
 
-This one really is a press, and there is no way around it -- measured:
-`rooms.join` provisions a room that rings nobody, there is no
-`slack://huddle` scheme, and the handler goes through Electron to open a
-separate window that no web API exposes. A plain element.click() reaches
-it, so at least no trusted gesture is needed.
-
-Resolves false when Slack shows no huddle control for that conversation.
+Slack has no API call or deep link that starts a huddle, so the control is pressed; a plain click reaches it and no trusted gesture is needed. Slack opens the huddle in a separate window. Resolves false when Slack shows no huddle control for that conversation.
 
 ```js
 // Opens the conversation, then presses Slack's own start control.

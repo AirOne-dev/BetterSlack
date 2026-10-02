@@ -2,13 +2,13 @@
 
 Use your own sound files for Slack's notifications.
 
-Open **Preferences → Notifications**. Every sound list there now has, under Slack's own sounds:
+Open **Preferences → Notifications**. Every sound list there has, under Slack's own sounds:
 
 - **your sounds**, the ones you added;
 - **Add a sound…**, which opens a file picker (mp3, wav, ogg, m4a, flac…, up to 5 MB);
 - **Manage your sounds…**, where you can play, rename or delete them.
 
-It works for every list on that page: messages, VIP messages, sending a message, receiving one while you are in the conversation, and huddles. The manager is also in the command palette, as *Manage custom sounds*.
+It works for every list on that page: messages, VIP messages, sending a message, receiving one while you are in the conversation, huddles and calendar notifications. The manager is also in the command palette, as *Manage custom sounds*.
 
 ## Deleting a sound
 

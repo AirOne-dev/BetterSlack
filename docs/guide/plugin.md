@@ -86,20 +86,19 @@ a form. Add this to `mod.json`:
 
 `label`, `hint` and a choice's option labels each take a table of languages
 beside them -- `labels`, `hints` -- exactly as `description` takes
-`descriptions`. English stays required and is the fallback. A test fails a mod
-whose settings are English only: they are the half of a mod a reader meets
-while changing something, and a catalogue that asks every mod for two languages
-and then hands over an English form is not a rule, it is a preference.
+`descriptions`. English stays required and is the fallback, and a test fails a
+mod whose settings are English only.
 
-and read it where you need it:
+Read the value where you need it:
 
 ```js
 const greeting = api.settings.get('greeting', 'Hello');
 api.ui.toast(greeting, { variant: 'success' });
 ```
 
-`api.settings.onChange` fires when the user edits it, so a mod can redraw
-without being switched off and on.
+When the user changes a setting, the plugin is restarted with the new value.
+A plugin that registers `api.settings.onChange` is told instead and keeps
+running, for when a restart would show.
 
 Settings are for preferences. A file -- a sound somebody picked, a picture, an
 export -- goes in `api.data`, the mod's own folder on disk:
@@ -300,5 +299,6 @@ model: a plugin runs unsandboxed in an authenticated Slack tab.
   `circleButton__cMiUK` is CSS-module output and changes every Slack build;
   `p-channel_sidebar__channel` is stable.
 - **Switching workspace does not reload the client.** Same page, same mods, new
-  team id in the URL. Anything cached at boot then belongs to the workspace the
-  user has left, so watch the team in the URL and drop per-workspace state.
+  team id. Anything cached then belongs to the workspace the user has left, so
+  drop per-workspace state in `api.slack.onTeamChange`, and ask
+  `api.slack.currentTeamId()` rather than parsing the URL.

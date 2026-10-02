@@ -17,9 +17,9 @@ import { PANEL_STRINGS } from './strings.js';
 import { confirm, toast } from './widgets.js';
 
 let translator: ReturnType<ReturnType<typeof createI18n>['strings']> | null = null;
-const t = (key: string, vars?: Record<string, string>): string => {
+const t = (key: string): string => {
   translator ??= createI18n().strings(PANEL_STRINGS);
-  return translator(key, vars);
+  return translator(key);
 };
 
 /**

@@ -10,13 +10,9 @@ control: key | select | hello | key | hello, bye, missing
 control: name | text | Ada
 ---
 
-Build a translator from a table per language. It returns a `t(key, vars)` where
-`{count}`-style placeholders are filled from the second argument.
+Build a translator from a table per language. It returns `t(key, vars)`, where `{count}`-style placeholders are filled from the second argument.
 
-Lookup goes exact locale first (`fr-CA`), then the language on its own (`fr`),
-then English. English is required and is the fallback both for an unknown
-language and for a key one table forgot — a key missing everywhere renders as
-the key itself, never as a blank.
+Lookup goes exact locale first (`fr-CA`), then the language on its own (`fr`), then English. English is required and is the fallback both for an unknown language and for a key one table lacks; a key missing everywhere renders as the key itself, never as a blank.
 
 ```js
 const t = api.i18n.strings({

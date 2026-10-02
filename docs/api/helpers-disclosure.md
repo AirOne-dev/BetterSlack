@@ -9,20 +9,20 @@ control: label | text | (edited)
 control: motion | boolean | true | animated by Motion
 ---
 
-Make something Slack already draws open and close. It marks an edited message with "(edited)" and a channel with a member count: exactly where a reader would ask for more, and neither answers. A mod with the answer makes that label the way in rather than adding a fifth button to a toolbar of four.
+Make something Slack already draws open and close — an "(edited)" label, a member count — so a mod with more to say puts it behind the label a reader would click rather than adding another toolbar button.
 
-You get a caret, a keyboard control and a wrapper. What you avoid is the four things that make it hard, every one of which has been got wrong here first:
+You get a caret, a keyboard control and a wrapper, and the component handles what makes this hard:
 
-- **Slack replaces the element.** A listener bound to the node works exactly once — putting anything into a message makes React rebuild that subtree, so the second click lands on a different node. It reads as intermittent rather than broken. The click is delegated from the document and matched by selector, and nothing is ever remembered *on* the element.
-- **Slack tears out what you opened**, by the same re-render, so it is put back rather than left to vanish under whoever opened it.
-- **Which one is open has to survive both**, so identity is a key you derive from what the element is about, never the node.
-- **None of it may be driven from an observer.** The message list is what Slack re-renders most, and an observer that reacts to that by putting a node back into it is the shape that has frozen this renderer twice. You call `refresh()` from your own sweep.
+- **Slack replaces the element.** React rebuilds the subtree, so a listener bound to the node works once. The click is delegated from the document and matched by selector, and nothing is stored on the element.
+- **Slack removes what was opened** in the same re-render, so the panel is put back.
+- **Which one is open survives both**, because identity is the key `keyFor` derives from what the element is about, never the node.
+- **Nothing is driven from an observer on the message list.** Slack re-renders it constantly, and putting nodes back from an observer there can freeze the renderer. Call `refresh()` from your own sweep.
 
-`keyFor` returning null is how a trigger says it has nothing to show, and that trigger is left exactly as Slack drew it. `rebuild()` builds the content of every open panel again, for when what it shows has changed under somebody looking at it — `refresh()` deliberately leaves a panel that is still on screen alone, since rebuilding one on every sweep would restart its animation.
+`keyFor` returning null leaves that trigger exactly as Slack drew it. `refresh()` leaves a panel that is still on screen alone; `rebuild()` builds the content of every open panel again, for when what it shows has changed.
 
-**Nothing here animates.** The classes are stable so that Motion can: installing a mod called Motion is the statement of intent about animation, and a component that moves whether or not you asked takes that decision away.
+Nothing here animates. The classes `betterslack-disclosure`, `betterslack-disclosure__panel` and `betterslack-disclosure__inner` are stable so a mod such as Motion can. Closing is a state: the panel wears a closing class and is removed once whatever animation or transition the stylesheet put on it has finished, or at once when there is none. No height is measured — the panel unfolds as `grid-template-rows` going from `0fr` to `1fr`, so a long panel takes as long as a short one.
 
-Closing is a *state* rather than a removal — removing the panel outright leaves nothing on screen to animate — so it is marked with a closing class, and then taken away once whatever the stylesheet put on it has finished. How long that is comes from the panel itself: with nothing animating it, the answer is zero and it goes in the same breath, so a client without Motion never waits for something that is not happening. No height is measured anywhere, and that is deliberate: rows going between `0fr` and `1fr` interpolate over the animation's own time, so a long panel folds away in exactly as long as a short one. Measuring the content is what would make it vary.
+`refresh()` removes any panel this instance does not own, such as one left by an earlier start of the same mod, and disposing removes every panel in the document.
 
 ```js
 const wordings = api.helpers.disclosure({

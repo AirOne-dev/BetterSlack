@@ -7,12 +7,9 @@ since: 2.0.1
 preview: settings-onchange
 ---
 
-Called when the panel changes one of the declared settings.
+Called when the panel changes one of this mod's settings.
 
-A plugin that does nothing here is still correct: the runtime reloads it
-after a change, so `start` simply runs again with the new values. This is
-for the ones where reloading would be visible -- a list that would flicker,
-a window that would close.
+A plugin that registers this is told and keeps running, for the cases where a restart would be visible — a list that would flicker, a window that would close. A plugin that does not is restarted with the new values, so `start` simply runs again.
 
 ```js
 api.settings.onChange((values) => {

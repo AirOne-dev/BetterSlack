@@ -23,15 +23,15 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { USER_ROOT } from './store.js';
 
-export const DATA_ROOT = path.join(USER_ROOT, 'data');
+const DATA_ROOT = path.join(USER_ROOT, 'data');
 
 /** Big enough for a song-length sound or a photo; small enough for the bridge. */
 export const MAX_FILE_BYTES = 8 * 1024 * 1024;
-export const MAX_MOD_BYTES = 64 * 1024 * 1024;
+const MAX_MOD_BYTES = 64 * 1024 * 1024;
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,48}$/;
 
-export class ModDataError extends Error {}
+class ModDataError extends Error {}
 
 export interface DataEntry {
   name: string;

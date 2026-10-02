@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Notes for an agent working in this repository. Everything here was measured
+Notes for an agent working in this repository. Everything here is measured
 against a live Slack, not assumed; re-measure before contradicting it.
 
 ## What this is
@@ -21,218 +21,173 @@ install.ps1    What a user runs: Windows
 
 **A user never runs pnpm.** Everything under Commands below is for working on
 BetterSlack; installing it is one script that needs nothing installed first.
-Keep the two apart in every document -- that separation is the point.
+Keep the two apart in every document.
 
 ## Commands
 
-**Keep `pnpm start` running the whole time you are working.** Not as a final
-check -- from the first minute, in the background, for the length of the
-session. Everything this project gets wrong is invisible until it is on screen:
-an animation that reads as a blink, a button that never mounted, a selector that
-stopped matching, a renderer that has quietly stopped answering. The loader
-prints the page's own errors to that terminal, so a mod that threw at boot says
-so there instead of hiding in a DevTools window you have to go and open.
+**Keep `pnpm start` running the whole time you are working**, in the
+background, from the first minute. What this project gets wrong is invisible
+until it is on screen: an animation that reads as a blink, a button that never
+mounted, a selector that stopped matching, a renderer that has stopped
+answering. The loader prints the page's own errors to that terminal, so a mod
+that threw at boot says so there instead of in a DevTools window.
 
-**And leave it running.** Somebody is using Slack while you work -- it is their
-messaging app before it is your test fixture, and they are being paid to answer
-the messages in it. Stopping it is a last resort, not a step in a loop, and the
-mistake that makes it a loop is easy to fall into: Slack is launched with
-`--remote-debugging-pipe` and the loader holds the descriptors, so a CDP probe
-of your own cannot attach while it runs. One question, one stop, one restart --
-do that per question and the app is down more than it is up, which is what
-happened over one long session here, and the person whose Slack it was said so.
-
-Three rules follow, and none of them is a preference:
+**And leave it running.** Somebody is using that Slack for work while you work.
+Slack is launched with `--remote-debugging-pipe` and the loader holds the
+descriptors, so a CDP probe of your own cannot attach while it runs -- which
+makes every probe a stop and a restart. Three rules follow:
 
 - **Never end a step with Slack down.** If you stopped it, the same command
-  that stopped it brings it back. Not the next message, not after the report --
-  before you do anything else. A client left stopped while you write a summary
-  is somebody unreachable at work for as long as the summary takes.
+  that stopped it brings it back, before you do anything else -- including
+  writing a summary.
 - **`pnpm check`, `pnpm test`, `pnpm build`, `pnpm typecheck` and the whole gate
-  need no client at all.** Run them against the running one, as often as you
+  need no client at all.** Run them against the running one as often as you
   like. Only `pnpm test:live`, `pnpm shoot` and a probe of your own take the
   client, and each of those is a decision rather than a step.
-- **One probe answers every open question.** Not one probe per question. Write
-  the code, let the questions pile up, then ask them all in a single launch --
-  and if the answer raises a new question, write down what you would have
-  asked and batch it with the next one rather than relaunching.
-
-So: write the code first, and let the questions pile up. Answer the ones that
-need no client at all -- unit tests, jsdom, reading Slack's own bundle, reading
-the source -- and batch what genuinely needs a live renderer into a single
-probe that asks everything at once. `pnpm shoot` is the shape to copy: every
-screenshot the site and the README use in one launch, and `pnpm shoot --mods`
-one per mod in another, because the runtime can be driven in place through
-`window.__betterslack` instead of being restarted between frames.
+- **One probe answers every open question.** Write the code, answer what needs
+  no client (unit tests, jsdom, reading Slack's bundle, reading the source),
+  and batch everything that genuinely needs a live renderer into a single
+  launch. A new question raised by the answer waits for the next batch.
+  `pnpm shoot` is the shape to copy: every screenshot in one launch, driving the
+  runtime in place through `window.__betterslack` rather than restarting
+  between frames.
 
 Mods hot-reload into the running client -- edit anything under `mods/` and the
-loader broadcasts it, no restart at all. A mod asking for `api.slack.restart()`
-does not cost the session either: the loader stops Slack, applies whatever
-preferences were wanted, launches it again and rebuilds its CDP connection in
-place, so the same process and the same terminal carry on. Only a change under
-`src/` needs `pnpm build` and a restart, and `pnpm dev` (esbuild watch) makes
-that one keystroke -- so batch those too rather than restarting per edit.
+loader broadcasts it. A mod asking for `api.slack.restart()` does not cost the
+session either: the loader stops Slack, applies the wanted preferences,
+launches it again and rebuilds its CDP connection in place, in the same process
+and terminal. Only a change under `src/` needs `pnpm build` and a restart;
+`pnpm dev` (esbuild watch) makes that one keystroke, so batch those too.
 
-`pnpm test:live` and `pnpm shoot` both take the client for themselves as well.
-Run them when the work is done, not while it is in progress.
+`pnpm test:live` and `pnpm shoot` both take the client for themselves. Run them
+when the work is done, not while it is in progress.
 
 `pnpm test:live` boots the real Slack, asks the runtime what loaded and turns
-the answer into an exit code. Every failure that has mattered here -- a wedged
-renderer, two runtimes in one document, a mod that threw on start -- was
-invisible to the unit tests and obvious to this. It closes Slack afterwards,
-which is why it is not part of `pnpm test`.
+the answer into an exit code. A wedged renderer, two runtimes in one document
+and a mod that throws on start are invisible to the unit tests and obvious to
+this. It closes Slack afterwards, which is why it is not part of `pnpm test`.
 
 The loader also watches while it runs: if the renderer stops answering, it says
 so, names the mods that were on, and re-arms the safe-start marker.
 
 **A tag is not a release, and only GitHub can make one.** `pnpm release` does
-everything git can -- bumps `package.json`, writes the changelog, commits, tags
--- and a pushed tag then sits on the releases page as a bare tag with no notes.
-`.github/workflows/release.yml` closes that: a pushed `v*` tag has its own
-section lifted out of `CHANGELOG.md` and posted as the release notes, so the
-changelog is the only place those words are written. It is idempotent, because
-the reason to re-run it is that the changelog was rewritten afterwards, and it
-takes a tag by hand (`workflow_dispatch`) so a tag pushed before it existed can
-still be given its release. The version heading is dropped from the notes: the
-release already carries the version and the date.
+everything git can -- bumps `package.json`, writes the changelog, commits, tags.
+`.github/workflows/release.yml` turns a pushed `v*` tag into a release: it lifts
+that version's section out of `CHANGELOG.md` and posts it as the notes, so the
+changelog is the only place those words are written. It is idempotent (re-run
+it after rewriting the changelog), takes a tag by hand (`workflow_dispatch`)
+for a tag that has no release yet, and drops the version heading from the
+notes, since the release already carries the version and the date.
 
 ## Installing is one script, and the checkout is not part of it
 
-`install.sh` (macOS and Linux) and `install.ps1` (Windows) are what a user runs.
+`install.sh` (macOS and Linux) and `install.ps1` (Windows) are what a user runs:
 `git clone` then one command, with nothing installed first -- not Node, not
-pnpm. Everything below was measured while making that true.
+pnpm.
 
-**The three installers share one answer about what an install is.**
+**The installers share one answer about what an install is.**
 `scripts/stage-install.mjs` copies `package.json`, `bin/`, `dist/`, `mods/` and
 `scripts/node-ok.cjs` into `~/.betterslack/app` and writes `node-path` beside
-them. Three installers each with their own list, in three languages, is three
-lists that drift the first time one is edited.
+them. No installer keeps a list of its own.
 
 **git is not a dependency, and nothing may make it one.** It is one way to get
-the folder and that is all: `install.sh` and `install.ps1` never call it -- the
-header of each says so -- staging does not, and an install updates itself from
+the folder and that is all: `install.sh` and `install.ps1` never call it (the
+header of each says so), staging does not, and an install updates itself from
 the branch tarball rather than by pulling. `update.ts` reaches for git only
 behind `isCheckout()`, which is false for `~/.betterslack/app`, and every one of
-those calls fails soft. Verified by unpacking
-`codeload.github.com/.../tar.gz/refs/heads/master`: a complete tree with
-`install.sh` in it and no `.git`. Most people do not have git, so a step that
-needed it would be the one step this installer exists to avoid.
+those calls fails soft. `codeload.github.com/.../tar.gz/refs/heads/master`
+unpacks to a complete tree with `install.sh` in it and no `.git`.
 
-**It is 6 MB because the loader bundle imports nothing but `node:` built-ins**,
-so an install needs no `node_modules` at all. That is a claim about the bundle
-rather than a fact of nature, so staging *checks* it and refuses to produce an
-install whose loader has an import it cannot satisfy -- naming the import. The
-failure it prevents is the one this whole installer exists to prevent: a
-module-not-found at startup, in a log, where nothing puts it on screen.
-
-**`ws` was a dependency and was never imported.** The loader uses
-`--remote-debugging-pipe` and no WebSocket. Removing it is what made the
-paragraph above true.
+**An install is 6 MB because the loader bundle imports nothing but `node:`
+built-ins**, so it needs no `node_modules`. Staging *checks* that and refuses
+to produce an install whose loader has an import it cannot satisfy, naming the
+import -- otherwise the failure is a module-not-found at startup, in a log,
+where nothing puts it on screen. The loader uses `--remote-debugging-pipe` and
+no WebSocket, so there is no `ws` dependency.
 
 **A Node is chosen by version, never by position on `PATH`.** Sourcing `nvm.sh`
-puts nvm's `default` alias in front of everything, and that alias is whatever
-the user last pointed it at -- `lts/fermium` on the machine this was found on,
-which is Node 14. The loader is modern JavaScript, so an old Node dies parsing
-it before running a line, the `SyntaxError` goes to the log, and a double-click
-does *nothing at all*. That is the same symptom as a missing Node and as a
-refused folder, which is why every launcher here has to tell them apart rather
-than assume the last one.
+puts nvm's `default` alias in front of everything, and that alias can be any
+version -- `lts/fermium` (Node 14) is a real case. An old Node dies parsing the
+loader before running a line, the `SyntaxError` goes to the log, and a
+double-click does *nothing at all* -- the same symptom as a missing Node and as
+a refused folder, so every launcher tells them apart rather than assuming one.
 
 `scripts/node-ok.cjs` is the single judge, used by all three installers and all
-three launchers. Two rules shape it:
+three launchers:
 
-- **It reads the range out of `package.json`.** Two answers to which Node this
-  needs is one answer too many, and the copy nobody edits is the one the user
-  meets.
+- **It reads the range out of `package.json`.** There is one answer to which
+  Node this needs.
 - **It is ES5 CommonJS** -- no arrow functions, no template literals, no `let`.
-  It runs on the Node it is judging, including one far too old to be used.
-  Anything newer in it and an old Node fails on a syntax error instead of being
-  told it is old. Verified against Node 14, 18, 20.18, 22.23 and 23.6 on one
-  machine: only 22.23 was accepted, which is what `engines` says.
+  It runs on the Node it is judging, including one far too old to be used, and
+  must be able to say "too old" rather than fail on a syntax error. Verified
+  against Node 14, 18, 20.18, 22.23 and 23.6: only 22.23 is accepted, which is
+  what `engines` says.
 
-**Passing that judge is not enough to *build* the checkout, and the two
-installers check the second half by running it.** `packageManager` names one
-exact pnpm, and that pnpm has a Node floor of its own which is higher than the
-app's: pnpm 11 requires `node:sqlite`, added in Node 22.5, while `engines.node`
-still admits 20.19 because that is all the loader and the tests need. Measured
-on a Mac whose shell node was 20.20.2 -- announced as usable, then
-`ERR_UNKNOWN_BUILTIN_MODULE` out of pnpm's own bundle at the install step, with
-fourteen newer Nodes sitting unused under `~/.nvm`. So the installers rank
-*every* qualifying Node (the shell's first, then newest first) and take the
-first one that can print `pnpm --version`, falling back to downloading one.
-Writing pnpm's floor down beside `engines` instead would be a second number
-nobody bumps when `packageManager` moves.
+**Passing that judge is not enough to *build* the checkout, and the installers
+check the second half by running it.** `packageManager` names one exact pnpm,
+and that pnpm has a higher Node floor than the app: pnpm 11 requires
+`node:sqlite` (Node 22.5), while `engines.node` admits 20.19 because that is all
+the loader and the tests need. On Node 20.20.2, pnpm fails with
+`ERR_UNKNOWN_BUILTIN_MODULE` out of its own bundle at the install step. So the
+installers rank *every* qualifying Node (the shell's first, then newest first)
+and take the first one that can print `pnpm --version`, falling back to
+downloading one. Do not write pnpm's floor down beside `engines`: it would be a
+second number nobody bumps when `packageManager` moves.
 
-**A Node that is downloaded is verified before it is unpacked.**
+**A downloaded Node is verified before it is unpacked.**
 `nodejs.org/download/release/latest-v22.x/SHASUMS256.txt` names the exact file
-and its digest in one request, so no version is pinned in a script to go stale
-and nothing has to parse JSON on a machine that has no Node yet. Match the
-architecture slug anchored at both ends: `darwin-x64` contains the substring
-`win-x64`, and the same file lists `win-x64/node_pdb.zip`.
+and its digest in one request, so no version is pinned in a script and nothing
+has to parse JSON on a machine that has no Node yet. Match the architecture slug
+anchored at both ends: `darwin-x64` contains the substring `win-x64`, and the
+same file lists `win-x64/node_pdb.zip`.
 
 **The launchers read `node-path`; they do not go looking.** A GUI process gets
 none of the user's shell PATH. If the recorded Node has gone -- an nvm version
 pruned, a Homebrew upgrade -- they fall back to a scan judged by the same
-`node-ok.cjs`, staged beside the app for exactly that, and rewrite `node-path`
+`node-ok.cjs`, staged beside the app for that purpose, and rewrite `node-path`
 with what they found.
 
-**corepack no longer ships with Node, and the updater assumed it did.** It was
-removed in Node 25: that bin directory holds `node`, `npm` and `npx` and nothing
-else. The update path's fallback was `corepack pnpm` -- with a comment saying
-corepack ships inside Node, which had been true -- so an install whose recorded
-Node is a 25 answered `command not found` and the panel said the update could
-not be built here, on a machine that was working perfectly. Reported from a real
-one, against a published release.
+**corepack does not ship with Node 25 and later** -- that bin directory holds
+`node`, `npm` and `npx` and nothing else. `packageManagerCommand` therefore
+tries `pnpm`, then `corepack`, then `npx --yes <the pinned pnpm>`, and asks
+**in the environment the install will actually run in**: a bare `exec` probing
+`pnpm --version` gets the ambient environment, which for an app launched from
+the Dock carries none of the user's shell PATH. `npx` is beside every Node and
+fetches the pinned pnpm on demand; it is the last rung rather than a probed one,
+since probing it means downloading pnpm. Measured end to end with only a Node 25
+on `PATH`: install and build both complete.
 
-`packageManagerCommand` tries `pnpm`, then `corepack`, then
-`npx --yes <the pinned pnpm>`, and asks **in the environment the install will
-actually run in**. A bare `exec` probing `pnpm --version` gets the ambient
-environment, which for an app launched from the Dock carries none of the user's
-shell PATH, and the answer would then be run with a different PATH entirely. `npx` is beside every
-Node there has ever been and fetches the pinned pnpm on demand, which is exactly
-what corepack was doing; it is the last rung rather than a probed one, since
-probing it means downloading pnpm to ask whether pnpm can be downloaded.
-Measured end to end with only a Node 25 on `PATH`: install and build both
-complete.
-
-**`install.sh` is not affected but is wasteful there**, and it is worth knowing
-before someone reports it as the same bug: `pnpm_ok` simply rejects a Node it
-cannot find corepack or pnpm for, so a machine with only Node 25 falls through
-to downloading Node 22 -- which does ship corepack. It works; it costs 190 MB
-that the machine did not need to spend.
+`install.sh`'s `pnpm_ok` rejects a Node it cannot find corepack or pnpm for, so
+a machine with only Node 25 falls through to downloading Node 22, which ships
+corepack. That works, at the cost of a 190 MB download.
 
 **A failed command's first line is the invocation, not the reason.** `exec`
 rejects with `Command failed: <the whole command line>` and the cause on the
-lines after it, so taking the first line and replacing it with a sentence of our
-own threw away the only useful part -- which is how a missing corepack reached a
-user as a shrug rather than as three words they could have searched for.
-`describeFailure` takes the *last* thing the command said, since that is where a
-tool puts its conclusion, and falls back to the generic line only when it said
-nothing at all.
+lines after it. `describeFailure` takes the *last* thing the command said, since
+that is where a tool puts its conclusion, and falls back to a generic line only
+when it said nothing at all.
 
 **The in-app updater knows the two shapes apart.** A checkout is replaced by the
 new tree; an install is re-staged from it, using the *new* copy's
 `stage-install.mjs` rather than the running one's idea of what an install
-contains. Handing a staged install the whole source tree would undo what it is,
-and every later update would then need a package manager on `PATH` -- which an
-install that fetched its own Node has no reason to have. The `exec` calls carry
-`dirname(process.execPath)` on `PATH` for the same reason: `corepack` and `npm`
-live beside the Node that is running, and nowhere a shell would look.
+contains. Handing a staged install the whole source tree would make every later
+update need a package manager on `PATH`, which an install that fetched its own
+Node has no reason to have. The `exec` calls carry `dirname(process.execPath)`
+on `PATH` for the same reason: `corepack` and `npm` live beside the running
+Node, and nowhere a shell would look.
 
-**The version reaches the loader from `package.json`, through the build.** It
-was a constant in `src/loader/index.ts`, which `pnpm release` does not touch, so
-it sat at the first release's number while `package.json` moved on. The update
-check compares the two: a stale constant reports an update for ever, and
-installing it clears nothing.
+**The version reaches the loader from `package.json`, through the build.** Never
+hard-code it in `src/`: `pnpm release` does not touch source files, and the
+update check compares the two -- a stale constant reports an update for ever,
+and installing it clears nothing.
 
 ### The macOS app
 
 **A bundle whose executable is a shell script is not an application**, as far
 as the gate on Desktop, Documents and Downloads is concerned. The process macOS
-sees is `/bin/bash`, a platform binary with no identity of its own, so the
-access is refused outright and there is nothing to grant. It matters because
-`api.files.save` writes to `~/Downloads`. Measured with throwaway bundles, in
-order:
+sees is `/bin/bash`, a platform binary with no identity of its own, so access
+is refused outright and there is nothing to grant. It matters because
+`api.files.save` writes to `~/Downloads`. Measured with throwaway bundles:
 
 | bundle | result |
 | --- | --- |
@@ -243,15 +198,14 @@ order:
 | Mach-O executable exec'ing the same script | same |
 
 So `Contents/MacOS/betterslack` is compiled from `scripts/launcher.c`, and
-execs `Contents/Resources/launch.sh`. Two things follow:
+execs `Contents/Resources/launch.sh`. Consequences:
 
 - **The stub explains rather than dying.** Running another program is not
   gated, only reading a file is, so it can still reach `osascript` even when it
   cannot read its own launcher.
 - **The grant lasts until the next build.** An ad-hoc signature identifies a
-  bundle by its contents, so installing again asks again. That is fine for a
-  user who installs once and invisible to anyone iterating on the launcher --
-  which is how a working app turned into a silent one mid-session, twice.
+  bundle by its contents, so installing again asks again. When iterating on the
+  launcher, expect the folder grant to be gone after every rebuild.
 - **Slack has to be its own responsible process, or a call kills it.** TCC
   attributes a request for the microphone, the camera or the screen to the
   *responsible* process, which a child inherits -- so Slack spawned plainly by
@@ -279,24 +233,24 @@ execs `Contents/Resources/launch.sh`. Two things follow:
   source's digest; `tests/disclaim.test.mjs` fails if `scripts/disclaim.c`
   moves without it, if the bit is lost, or if a slice is missing. The symbol
   is weakly linked and every failure falls through to a plain `execv`, so a
-  macOS that drops it gets a Slack that starts the old way rather than none.
+  macOS that drops it gets a Slack that starts the plain way rather than none.
 
   The plist still carries the microphone, camera and audio-capture strings,
   as the floor under that: if the helper is ever missing, a call asks for
   BetterSlack's permission instead of killing Slack.
 
 The app lives in `/Applications`, which is `root:admin` and group-writable, so
-an administrator needs no password; the elevation is attempted **only after** an
+an administrator needs no password; elevation is attempted **only after** an
 ordinary copy has been refused, since asking up front is a password prompt for
 something that does not need one. When it is needed, the removal, the copy and
 the signing all happen inside the one elevated shell -- split across the two,
-the copy would be root-owned and the signature would then fail as the user. And
-a path travels through two parsers there: `do shell script` takes an AppleScript
+the copy would be root-owned and the signature would then fail as the user. A
+path travels through two parsers there: `do shell script` takes an AppleScript
 string and hands it to `/bin/sh`, so it needs quoting for both.
 
-The C is a file rather than a string in `build-app.mjs`. It was a template
-literal for one revision, and between JavaScript escapes, C escapes and
-AppleScript quoting inside one `execl`, nothing would compile.
+The C is a file rather than a string in `build-app.mjs`: between JavaScript
+escapes, C escapes and AppleScript quoting inside one `execl`, a template
+literal does not compile.
 
 ### Linux and Windows
 
@@ -314,9 +268,9 @@ command, no console, output appended to a log). A shortcut aimed straight at
 Slack runs. The `.vbs` checks the Node *before* launching, because from a
 shortcut there is no console for an error to appear in.
 
-Two PowerShell traps, both hit here: splatting the tail of a one-element array
-asks for `$a[1..0]`, which is a descending range and hands the array back
-*reversed* rather than empty; and PowerShell 5.1 still defaults to TLS 1.0, so
+Two PowerShell traps: splatting the tail of a one-element array asks for
+`$a[1..0]`, which is a descending range and hands the array back *reversed*
+rather than empty; and PowerShell 5.1 defaults to TLS 1.0, so
 `Invoke-WebRequest` to nodejs.org fails with an error that says nothing about
 protocols.
 
@@ -327,8 +281,7 @@ been run end to end.
 its platform binary in an install script, and pnpm refuses to run one unless it
 is allowed by name -- without that, every command that touches the bundler
 fails on a fresh checkout with `ERR_PNPM_IGNORED_BUILDS`, and so does
-`install.sh`. Measured against the pinned pnpm 11.5.2 in a clean store, one key
-at a time:
+`install.sh`. Measured against the pinned pnpm 11.5.2 in a clean store:
 
 | `pnpm-workspace.yaml` | `pnpm install --frozen-lockfile` |
 | --- | --- |
@@ -336,13 +289,11 @@ at a time:
 | `onlyBuiltDependencies: [esbuild]` | `ERR_PNPM_IGNORED_BUILDS: esbuild` |
 | both | succeeds |
 
-So `allowBuilds` is load-bearing and `onlyBuiltDependencies` alone is not, which
-is worth knowing before tidying either away: taking `allowBuilds` out shipped a
-release whose install could not build, and pnpm quietly rewrote the key as
-`set this to true or false` -- not a boolean, so the builds stayed ignored and
-the file still *looked* like it said something. Both are kept, because
-`onlyBuiltDependencies` is pnpm's own documented spelling and a later version
-may prefer it.
+So `allowBuilds` is load-bearing and `onlyBuiltDependencies` alone is not. Its
+value must be the boolean `true`: pnpm can write the key as the placeholder
+string `set this to true or false`, which leaves the builds ignored while the
+file looks configured. Both keys are kept, because `onlyBuiltDependencies` is
+pnpm's own documented spelling and a later version may prefer it.
 
 The file also needs a `packages` field (`- .`, this one repo): pnpm 11 treats
 the mere presence of a `pnpm-workspace.yaml` as a workspace and aborts with
@@ -391,32 +342,29 @@ puts whatever the mod needs on screen, checks that something of the mod is
 actually there, and files the frame in the mod's own folder. The panel and the
 site both read it from there.
 
-Rules baked into both, each of which cost a set of pictures:
+Rules baked into both:
 
 - **Shoot at the size the picture is published at.** Cropping a taller frame
-  afterwards takes the crop from the middle, which is how the top bar and the
-  composer went missing from every panel shot on the site.
-- **Force the viewport.** Otherwise every picture depends on how wide whoever
-  took it happened to have Slack open, and the catalogue ends up with
-  thumbnails that do not match each other.
+  afterwards takes the crop from the middle and loses the top bar and the
+  composer.
+- **Force the viewport.** Otherwise every picture depends on how wide Slack
+  happened to be open, and the thumbnails in the catalogue do not match.
 - **Every frame has to show the mod.** Each entry names a selector that must be
   on screen -- the member column, the palette's box, the highlighted block --
-  and the run fails if it is not. Without it a message action, which only
-  exists while the pointer is over a message, photographs as an ordinary
-  channel, and fifteen identical pictures go into the catalogue unnoticed.
+  and the run fails if it is not. A message action exists only while the
+  pointer is over a message; without the check it photographs as an ordinary
+  channel.
 - **A mod can want more than one frame**, and six do: the member column and
   the dialog it opens, the palette empty and filtered by `/` and `@`, the
-  composer under and over its limit. An entry carries `frames: [...]`, each inheriting the
-  entry's staging unless it overrides it, and each filed as
+  composer under and over its limit. An entry carries `frames: [...]`, each
+  inheriting the entry's staging unless it overrides it, and each filed as
   `screenshot-<name>.webp` beside the first. The manifest's order is what the
   panel and the site draw, so the frame that shows the mod best goes first.
 - **`stage` runs before the frame is opened; `then` runs after.** Typing into
-  the palette is a `then` -- there is no box to type into until it is up -- and
-  the two are easy to confuse because both look like "do this as well".
-- **Every staging verb is checked before Slack launches.** An edit once cut four
-  of them out of `openFor`, and nothing said so: the fallback returned the
-  string `'true'`, the recipe evaluated it happily, and the frames came out
-  staged with nothing.
+  the palette is a `then` -- there is no box to type into until it is up.
+- **Every staging verb is checked before Slack launches.** A verb missing from
+  `openFor` would otherwise fall back to the string `'true'`, evaluate happily,
+  and stage nothing.
 
 A recipe is handed `evaluate`, `sleep`, `shoot`, and three things the page
 cannot do for itself:
@@ -433,17 +381,16 @@ cannot do for itself:
   the background is Slack that is not rendering, and a deep link that should
   slide a profile in does nothing there.
 
-`BETTERSLACK_SHOT=<dir>` alone still writes one picture per attached window,
-which is how a window a mod opened gets looked at outside a recipe.
+`BETTERSLACK_SHOT=<dir>` alone writes one picture per attached window, which is
+how a window a mod opened gets looked at outside a recipe.
 
 **Everything is WebP, and Chromium is the encoder.** `Page.captureScreenshot`
 writes the format directly, so there is no conversion step and no external tool
-in the pipeline at all -- which matters, because the two `sips` calls it
-replaced are macOS-only and `sips` cannot write WebP anyway (it reads it; the
-format is not listed Writable). Measured on one frame: 472 kB as PNG, 132 kB as a
-1400-wide JPEG, 160 kB as WebP at the full 3200x2000. The retina resolution
-costs 28 kB, so there is no downscale and every picture is 2x. Quality 78 is measured as well -- 70 starts showing on
-Slack's text, 85 costs 28 kB for nothing visible.
+in the pipeline (`sips` is macOS-only and cannot write WebP). Measured on one
+frame: 472 kB as PNG, 132 kB as a 1400-wide JPEG, 160 kB as WebP at the full
+3200x2000. The retina resolution costs 28 kB, so there is no downscale and every
+picture is 2x. Quality 78: 70 starts showing on Slack's text, 85 costs 28 kB
+for nothing visible.
 
 ## Photographing somebody's real Slack
 
@@ -455,60 +402,51 @@ original, so the same person is the same invented person in every frame and two
 runs produce the same picture.
 
 **It is a mod, and the recipe bundles it.** `shoot-mods.mjs` builds that file
-with esbuild and evaluates it in the page, rather than keeping a copy in
-`scripts/`: two implementations of one idea means the one users run is the one
-nothing checks. The recipe is therefore Demo Mode's test against a real Slack,
-and anybody taking their own screenshots hides exactly what the repository's
-hide.
+with esbuild and evaluates it in the page rather than keeping a copy in
+`scripts/`, so the implementation users run is the one that gets checked. The
+recipe is therefore Demo Mode's test against a real Slack, and anybody taking
+their own screenshots hides exactly what the repository's hide.
 
 **What makes it safe is not the list of selectors.** A list can always miss
-one. It is that the recipe reads the screen before and after and refuses to
-take the picture if anything survived, and re-checks before *every* frame,
-since Slack keeps rendering. A missed selector is a failed run, which is a bug
-report; it is not a leak. `remaining()` is the same check offered to a user, as
-a command. Everything below was found by it rather than by looking:
+one. The recipe reads the screen before and after and refuses to take the
+picture if anything survived, and re-checks before *every* frame, since Slack
+keeps rendering. A missed selector is a failed run, not a leak. `remaining()`
+is the same check offered to a user, as a command. What it has to cover:
 
 - The composer's grey prompt carries the channel's name.
 - A link Slack unfurled is a card with somebody's title and author in it.
 - Sidebar section headings are named by the person who made them.
 - Slack narrates every navigation for screen readers -- into
   `.c-aria_live_announcer_api`, and into a second region whose only class is a
-  CSS-module hash. Match those on `[aria-live]`, which is what they are; a
-  hashed class could never have been listed.
+  CSS-module hash. Match those on `[aria-live]`, which is what they are.
 - **Slack's own paths carry ids**, and the absolute rule never sees them
   because they have no host: `/team/U…` for a mention, `/archives/C…/p…` for a
-  permalink, `/services/B…` for an integration. The audit caught a real app id
-  that way. Replace the ids and keep the path's shape, so `/client/…` still
-  navigates.
+  permalink, `/services/B…` for an integration. Replace the ids and keep the
+  path's shape, so `/client/…` still navigates.
 - `aria-label` on every avatar reads "show X's profile" -- not drawn, but Slack
   builds a tooltip out of a `title`, and a picture taken with the pointer
   resting anywhere is a picture with a real name in it.
 - **The workspace's name is not a direct child of the element that holds it.**
   Slack wraps it in a span, so walking `childNodes` misses it and walking the
-  whole subtree finds it. Assigning `textContent` would find it too and is what
-  the script did -- but a mod has to be able to put the node back, so it writes
-  the first text node and empties the rest.
+  whole subtree finds it. The mod writes the first text node and empties the
+  rest rather than assigning `textContent`, so it can put the node back.
 - The audit reads what is **drawn**: text nodes that are visible, links and
-  images. Reading `body.textContent` put Slack's own inline `<script>` in it --
-  the word "master" from a bundler path -- and a hidden support link, and both
-  failed runs that were clean.
+  images. `body.textContent` includes Slack's own inline `<script>` (the word
+  "master" from a bundler path) and hidden support links, which fail clean runs.
 - Slack's own vocabulary is not a leak. The words the audit is allowed to see
   survive are listed, in one place, in `shoot-mods.mjs`, and anything not on
-  that short list still fails the run.
-- **The redactor's own words have to be excluded from the audit too.** The
-  invented address ends `?ref=slack-digest&source=weekly`, and a run failed on
-  the word "source" because a real link on the same screen had also contained
-  it. A false alarm stops a shoot exactly as dead as a real leak, so everything
-  this file writes is in `VOCABULARY`.
+  that short list fails the run.
+- **The redactor's own words are excluded from the audit too.** The invented
+  address ends `?ref=slack-digest&source=weekly`, and a real link on the same
+  screen can contain "source" as well. A false alarm stops a shoot exactly as
+  dead as a real leak, so everything this file writes is in `VOCABULARY`.
 - **"It is only digits" is not "it is nobody's".** A badge count and a year
   belong to nobody and inventing them makes the screen look wrong; a six-digit
   order reference is a customer's. Four digits or fewer are kept, longer ones
-  are replaced digit for digit so the bubble keeps its width. Found by the
-  audit, after two of them sat alone in message bubbles through every sweep.
+  are replaced digit for digit so the bubble keeps its width.
 - **An unfurl is wider than `.c-message_attachment`.** Slack draws a link
   preview's title, its breadcrumb and its body in `.p-mrkdwn_element` outside
-  the attachment box -- with a real name in a `<b>` inside one, which is how
-  this was found.
+  the attachment box, including real names in a `<b>`.
 - **Slack's redesigned unfurl is not a `.c-message_attachment`.** Its root is
   `.c-message_attachment_v3`, its parts hang off `.c-message_attachment__body`,
   and its title and text sit in `c-truncate`, which writes its own text back
@@ -519,7 +457,7 @@ a command. Everything below was found by it rather than by looking:
   for who may reach you during Do Not Disturb, `.c-channel_entity__name` for
   the channels with their own notification rules.
 - **The palette lists Slack and BetterSlack through one class**, and the badge
-  on the right is what tells them apart. Getting it wrong fails both ways: a
+  on the right tells them apart. Getting it wrong fails both ways: a
   conversation left alone is somebody's name in a public screenshot, and an
   action swept is a row of nonsense in the catalogue. A row badged Slack is one
   of the palette's own doings -- its title is our copy and survives, its second
@@ -529,22 +467,20 @@ a command. Everything below was found by it rather than by looking:
   decorated is the text the sweep has replaced.
 - **A frame may not depend on whose Slack is being photographed.** Every frame
   stages something a client always has. The palette's `>` message search has
-  results only if the words are in *this* workspace, and there is no word that
-  always is: `>ok` came back empty and failed the run, so there is deliberately
-  no frame for it.
+  results only if the words are in *this* workspace, and no word always is
+  (`>ok` can come back empty), so there is deliberately no frame for it.
 - **`shoot.mjs` files only what the run took, and clears up after itself.**
   `site/shots/mods` is also where `pnpm site` puts a copy of every committed
-  screenshot, so the folder is full before a run starts: filing whatever is in
-  it would have `--only=one-mod` announce the whole catalogue, and a run that
-  failed its audit before taking a single picture announce it too. It skips
-  `<name>-2`, `<name>-3` -- those are the one-picture-per-attached-window frames
-  the loader writes whenever `BETTERSLACK_SHOT` is set, and read back as frames
-  they land as `screenshot-2.webp` beside the real ones, where no manifest names
-  them, nothing draws them and nobody deletes them. And once a named frame is
+  screenshot, so the folder is full before a run starts; filing whatever is in
+  it would have `--only=one-mod`, or a run that failed its audit before taking
+  a picture, announce the whole catalogue. It skips `<name>-2`, `<name>-3` --
+  the one-picture-per-attached-window frames the loader writes whenever
+  `BETTERSLACK_SHOT` is set, which would otherwise land as unnamed
+  `screenshot-2.webp` files nothing draws or deletes. Once a named frame is
   filed into the mod's folder the working copy here is deleted: `pnpm site`
-  brings it back as `<id>-2`, which is the only name the page asks for, so a
-  `<id>-<name>.webp` left behind is a byte-identical second copy that no
-  manifest names and that the published folder pays for.
+  brings it back as `<id>-2`, the only name the page asks for, and a
+  `<id>-<name>.webp` left behind is a byte-identical second copy the published
+  folder pays for.
 
 It also carries the camera. `api.files.screenshot({ size })` is the loader
 photographing the renderer that asked -- a page cannot photograph itself -- and
@@ -559,13 +495,13 @@ in a `finally` -- with a class on `<html>`, not an inline style, because the
 toolbar buttons are re-mounted whenever Slack re-renders around them and a
 remount during the two seconds a capture takes would put one back in shot.
 
-Two things the mod needs that the script never did, both measured against a
-live client rather than assumed:
+Two things the mod does that the recipe does not need, both verified against a
+live client:
 
 - **Every write is recorded and put back**, and only where what is on screen is
   still what it wrote -- Slack re-renders, and restoring blind would put a
-  stale message back over a newer one. Verified live: body, sender, workspace
-  name and avatar all returned identical after switching it off.
+  stale message back over a newer one. Body, sender, workspace name and avatar
+  all return identical after switching it off.
 - **The composer is swept once and then left alone.** Sweeping it on every
   mutation rewrites what you are typing as you type it. The draft that was
   there when the demo started is somebody's words; what you type during the
@@ -575,9 +511,8 @@ live client rather than assumed:
 
 **Every entry in the plugin API is one file in `docs/api/`, and that file is the
 source.** `site/api.html` and `docs/api.md` are both built from the folder, so
-nothing about an entry is written twice and nothing about an entry can disagree
-with itself. `scripts/api-doc.mjs` is the parser; `scripts/build-api-page.mjs`
-turns the folder into the page.
+nothing about an entry is written twice. `scripts/api-doc.mjs` is the parser;
+`scripts/build-api-page.mjs` turns the folder into the page.
 
 ```md
 ---
@@ -604,52 +539,41 @@ kit.button('Save', { variant: 'primary', onClick: () => save() });
   cross-check rather than called an orphan.
 - `name`, `group`, `title`, `signature` and `since` are required. So are one
   paragraph of prose and one fenced example -- the parser refuses a file without
-  either, because a reference that shows an example for two thirds of what it
-  lists teaches the reader to distrust the third.
+  either.
 - **`since` is the release the entry arrived in**, or `unreleased` for one that
-  is on the default branch and in no release yet. It is not decoration: it is
-  what makes a mod's minimum BetterSlack computable, and the section below
-  depends on every entry having one. `pnpm release` turns every `unreleased`
-  into the version it cuts, so nobody has to remember to.
-- `preview` names a renderer in `scripts/api-previews.js`. A preview is code and
-  cannot be anything else; everything a writer writes about it is not. **Every
-  entry has one.** The ones that reach something a web page has not got --
-  Slack's API, the loader's filesystem, a window that can be restarted --
-  imitate it rather than saying "inside Slack", because a reference is read to
-  find out what a call *looks* like and "not available here" answers nothing.
-  Where the data can be real it is real: `site/api-fixtures.js` is generated
-  from a theme's stylesheet and a plugin's folder in this repository. Where it
-  cannot be -- a workspace, a download folder -- the preview wears the
-  `stubbed()` note, so the reader is never left to guess which.
+  is on the default branch and in no release yet. It is what makes a mod's
+  minimum BetterSlack computable (see below). `pnpm release` turns every
+  `unreleased` into the version it cuts.
+- `preview` names a renderer in `scripts/api-previews.js`. **Every entry has
+  one.** Previews that reach something a web page has not got -- Slack's API,
+  the loader's filesystem, a window that can be restarted -- imitate it rather
+  than saying "inside Slack", because a reference is read to find out what a
+  call *looks* like. Where the data can be real it is real:
+  `site/api-fixtures.js` is generated from a theme's stylesheet and a plugin's
+  folder in this repository. Where it cannot be -- a workspace, a download
+  folder -- the preview wears the `stubbed()` note.
 - Each `control` line is a knob beside the preview:
   `key | type | value | label | options`. `text`, `textarea`, `number`,
   `boolean` and `select`; `label` defaults to the key, and `options` is a
   comma-separated list that only means anything for a select. **`\n` in a
-  default is a newline**, since the line it is written on cannot contain one --
-  without that, `renderMarkdown`'s sample arrived as a single line with the
-  escapes in it, so the preview showed no headings, no list, and printed
-  `\n` for everyone to read. `textarea` exists for the same defaults: a `text`
-  control is an `<input>`, which collapses a newline to nothing.
-- **The controls are the only place to type.** Three previews carried a
-  `<textarea>` of their own beside their output, which was a second input after
-  the knobs below were already one, and the two never agreed about which held
-  the source. The exception is `kit.code`, where the editor *is* the component.
+  default is a newline**, since the line it is written on cannot contain one.
+  `textarea` exists for multi-line defaults: a `text` control is an `<input>`,
+  which collapses a newline to nothing.
+- **The controls are the only place to type.** A preview has no input of its
+  own beside its output. The exception is `kit.code`, where the editor *is* the
+  component.
 - Deliberately not YAML. Five keys and a repeated line do not need a parser with
-  a specification, and a dependency that can only be wrong about indentation is
-  a poor trade for a file a person writes by hand.
+  a specification.
 
 **A `preview:` must name a renderer, and a renderer must be named.** Both halves
-are checked, because both have failed: a preview naming nothing leaves an empty
-box that reads as a demo which broke, and a renderer nobody names is a demo that
-was written and then quietly lost -- which is what happened to three of the
-helpers the first time this folder was generated.
+are checked: a preview naming nothing leaves an empty box that reads as a broken
+demo, and a renderer nobody names is a demo silently lost.
 
 **Adding a method to the API means adding its file.** The build cross-checks the
 folder against the TypeScript interfaces -- `PluginApi`, `SlackApi`, `Helpers`,
 `I18n`, `Kit` -- and fails naming anything that is in one and not the other. It
-compares *what exists*, not the text of the signatures: those get reformatted by
-hand often enough that a character-by-character check would only cry wolf. Docs
-are the source; code is the proof.
+compares *what exists*, not the text of the signatures, which get reformatted by
+hand. Docs are the source; code is the proof.
 
 `scripts/api-previews.js` holds the render functions, bundled into
 `site/api-previews.js`. They import the real modules -- `createKit`,
@@ -658,7 +582,7 @@ Code Highlight's tokeniser, the theme builder's `derivePalette` -- so the page
 renders what runs in Slack, and the site build fails if one of them stops
 compiling.
 
-Three things make that possible:
+What makes that possible:
 
 - **`HelperContext` is five things**: an id, a way to write CSS, a toast, a
   settings store and a cleanup tracker. The site supplies all five against an
@@ -667,24 +591,23 @@ Three things make that possible:
   the widgets wear (`c-button`, `c-dialog`, `c-menu`, `c-tooltip`) plus the
   imitated client, **scoped to `body.api-page`, not to the preview box**.
   `api.ui.modal`, `menu`, `confirm` and `tooltip` all render into
-  `document.body`; scoped to the box that asked for them, the modal was a
-  60px heading in the page flow with no dialog, no scrim and no colours. Note
-  that `.c-dialog` is Slack's *overlay*, and `.c-dialog__content` the box.
+  `document.body`; scoped to the preview box, a modal renders as an unstyled
+  heading in the page flow. Note that `.c-dialog` is Slack's *overlay*, and
+  `.c-dialog__content` the box.
 - **The colours are not invented.** `site/api-themes.css` is generated from
   `mods/themes/*/theme.css` and the picker in the bar switches the whole page.
-  Three things that each cost a wrong-looking page:
   - **A theme has more than one `:root` block** -- `--dt_color-*` in one, the
-    legacy `--sk_*` triplets in another. Taking the first dropped the whole
-    legacy family, whose fallbacks in BetterSlack's own CSS are Slack's *light*
-    defaults, so a dialog's hint text came out near-black on near-black.
+    legacy `--sk_*` triplets in another. All of them are read: without the
+    legacy family, BetterSlack's own CSS falls back to Slack's *light*
+    defaults, and a dialog's hint text comes out near-black on near-black.
     `--sk_foreground_low` alone is referenced 31 times.
   - **Half the themes are translucent by design.** Aurora's `--dt_color-base-pry`
     is 34% opaque over a gradient it paints on `body`. So `--api-backdrop` and
     `--api-backdrop-image` travel with the tokens, and a pane is painted as the
     client paints it: backdrop colour, backdrop image, pane colour.
   - **The backdrop *image* only goes on the imitated client.** It is sized in vw
-    and vh; on a 90px box holding one button it is a flat wash, and every widget
-    preview came out lilac.
+    and vh; on a 90px box holding one button it is a flat wash that tints every
+    widget preview.
   - `LAUNCHER_CSS` is installed alongside `PANEL_CSS`. It is the only place a
     toolbar button's icon is given a size. Without it an SVG with no intrinsic
     size lays out at 300x150, in the client as on this page.
@@ -692,62 +615,55 @@ Three things make that possible:
   `addToolbarButton` and `addMessageAction` have the containers they look for.
   It stays a flat list of empty containers, which is all jsdom needs; the page
   moves those same nodes into Slack's layout and fills them (`dressChrome`), so
-  the answer to "where did my button go" is a client with a ring on it rather
-  than five dashed rectangles. Avatars keep their real `src` in the **fragment
-  of a 1x1 transparent SVG**: `userIdFromMessage` and Member Sidebar read the
-  user id out of that URL, so it has to be the real one, and a docs page has no
+  a demo shows a client with a ring on its button rather than five dashed
+  rectangles. Avatars keep their real `src` in the **fragment of a 1x1
+  transparent SVG**: `userIdFromMessage` and Member Sidebar read the user id
+  out of that URL, so it has to be the real one, and a docs page has no
   business fetching faces from Slack's CDN.
 - **Only the open panel's demo is mounted.** `addToolbarButton` and
-  `addMessageAction` mount by observing the whole document, so with four fake
-  clients in the page at once each collected every other entry's button --
-  `addProfileButton` showed a message action nobody had asked for. A panel's
-  demo is drawn when it is opened and torn down through the cleanup those same
-  functions return, and the helper context's `track` collects the rest: `mount`,
-  `each`, `badge`, `hotkey` and `poll` all keep observing after they return, and
-  an untracked `keepMounted` went on putting its button into the *next* entry's
-  client.
-- **The grid is the client, not the frame around it.** It was on `.chrome` with
-  `.p-client_container { display: contents }`, so anything a demo appended to
-  the frame became a fifth grid item: it landed in the 64px rail column, over
-  the control strip, cut off by the frame's `overflow: hidden`.
-  `describeMessage` printed its channel id into a sliver. Demos append to the
-  stage, and the layout does not punish them for forgetting. Nothing in the rail
-  may `flex-shrink` either, or a second button in the strip squashes the
-  first.
+  `addMessageAction` mount by observing the whole document, so with several
+  fake clients in the page each would collect every other entry's button. A
+  panel's demo is drawn when it is opened and torn down through the cleanup
+  those same functions return, and the helper context's `track` collects the
+  rest: `mount`, `each`, `badge`, `hotkey` and `poll` all keep observing after
+  they return, and an untracked `keepMounted` puts its button into the *next*
+  entry's client.
+- **The grid is the client, not the frame around it.** Demos append to the
+  stage; anything appended to a grid frame becomes an extra grid item and lands
+  in the 64px rail column, over the control strip, cut off by the frame's
+  `overflow: hidden`. Nothing in the rail may `flex-shrink` either, or a second
+  button in the strip squashes the first.
 - **Anything mounted into the fake client wears Slack's classes**, never
   `kit.button`. The kit is for a window a mod opens, where there is no
   stylesheet at all, and its colours are its own -- mounted into Slack's rail on
-  a light theme it came out white on cream. Same rule as the client.
+  a light theme it comes out white on cream. Same rule as the client.
 - **The output panes stay dark whatever the theme is.** They are the site
   talking, not a Slack surface, and the tokeniser's colours are fixed values
-  chosen against a dark background. `rgba(0, 0, 0, .4)` did follow the theme,
-  which on Cocoa's cream stage came out grey-on-grey.
+  chosen against a dark background. A translucent black would follow the theme
+  and read grey-on-grey on Cocoa's cream stage.
 
 **The guide is `docs/guide/*.md`, and it is markdown rather than the entry
 format.** Three keys -- `name`, `title`, `order` -- and then ordinary markdown,
 rendered by a small renderer in `build-api-page.mjs`: headings, paragraphs,
-lists, fenced code, inline code, bold, links. An entry's format exists because
-every entry has a signature and a preview; a guide page has neither, and forcing
-it into that shape would have meant inventing keys nobody fills in. A fence's
-language reaches the page as `data-lang` and is coloured by Code Highlight's
-tokeniser -- the same one running in Slack -- so a `json` manifest is coloured
-as JSON rather than as JavaScript that happens to parse. Aliases are resolved at
-build time (`js` -> `javascript`, `yml` -> `yaml`) and **an unknown one fails the
-build**, because the alternative is silent: a skipped block renders as flat grey
-text, which reads like a block that has no highlighting rather than like a
-mistake. The label above the block keeps what the writer typed, since `JS` reads
-better than `JAVASCRIPT`.
+lists, fenced code, inline code, bold, links. A guide page has no signature and
+no preview, so the entry format does not fit it. A fence's language reaches the
+page as `data-lang` and is coloured by Code Highlight's tokeniser -- the same one
+running in Slack -- so a `json` manifest is coloured as JSON. Aliases are
+resolved at build time (`js` -> `javascript`, `yml` -> `yaml`) and **an unknown
+one fails the build**: a skipped block renders as flat grey text, which reads
+like a block with no highlighting rather than like a mistake. The label above
+the block keeps what the writer typed, since `JS` reads better than
+`JAVASCRIPT`.
 
-**The guide comes first and the page opens on it.** Landing somebody on
-`tools.highlight` was an accident of the ordering, not a decision: a reference
-is what you come back to, a guide is what you need the first time. The tab in
-the bar says *Doc* for the same reason.
+**The guide comes first and the page opens on it**: a guide is what you need
+the first time, a reference is what you come back to. The tab in the bar says
+*Doc* for the same reason.
 
 **One file, one panel at a time.** Every entry is a `<section class="panel">` in
 that single document and the list on the left switches between them; the page
-itself does not scroll. One file per entry would be the wrong shape: a reference
-is read by jumping around it, and a jump that costs a page load loses the theme
-you picked, the arguments you set and your place in the list.
+itself does not scroll. A reference is read by jumping around it, and a jump
+that costs a page load loses the theme you picked, the arguments you set and
+your place in the list.
 
 **The Pages job installs the dependencies**, because bundling
 `site/api-previews.js` is esbuild. Without them every push fails on
@@ -756,21 +672,19 @@ you picked, the arguments you set and your place in the list.
 **Its `paths:` filter has to cover everything the page is generated from** --
 `docs/api/`, `docs/guide/`, the preview renderers and the TypeScript they are
 cross-checked against, not just `site/**` and `mods/**`. A filter that misses
-one of those does not run the job at all for that change, so the drift check
-below is silent for exactly the change it exists to catch.
+one does not run the job for that change, so the drift check below is silent
+for exactly the change it exists to catch.
 
 **The mark is `assets/mark.svg`, and everything else is made from it.**
 `site/mark.svg` is a copy (the site is published on its own and cannot reach
 `assets/`), `assets/icon.icns` is built by `pnpm icon`, and the client carries
 the same shapes inline in `src/runtime/ui/mark.ts` -- **one** copy, read by both
-the launcher in Slack's rail and the panel's own header, because a mark pasted
-into whichever file needed it next is how a redraw ships in one place and not
-the other. `tests/mark.test.mjs` compares the shapes across all three files and
-fails if a fourth copy appears in the runtime. `scripts/build-icon.mjs` rasterises
-the ten sizes `iconutil` wants, through `rsvg-convert`, ImageMagick or headless
-Chrome, whichever is on the machine -- a committed `.icns` with no recipe means
-redrawing the mark leaves the app wearing the old one with nothing to say so. It
-is not part of `pnpm check`: an icon changes when somebody redraws it.
+the launcher in Slack's rail and the panel's own header.
+`tests/mark.test.mjs` compares the shapes across all three files and fails if a
+fourth copy appears in the runtime. `scripts/build-icon.mjs` rasterises the ten
+sizes `iconutil` wants, through `rsvg-convert`, ImageMagick or headless Chrome,
+whichever is on the machine; redrawing the mark means running it. It is not
+part of `pnpm check`: an icon changes when somebody redraws it.
 
 The mark has four colours of its own rather than taking `currentColor`, so the
 launcher cannot dim with the icons beside it on hover: there is no single tint to
@@ -790,26 +704,20 @@ copies each mod's `screenshot.webp` into `site/shots/mods/`, since the page is
 published on its own and cannot reach `mods/`; the catalogue and the panel
 therefore show the same frame, out of the same file.
 
-**`pnpm check` is the gate**, and it is one command because seven remembered in
-the right order is not a gate. It runs typecheck, build, validate-mods,
-registry, site, test:core, test and check-structure, in that order -- build
-before the tests, since the harness imports the built runtime, and the registry
-before the site, which reads it. It regenerates `mods/registry.json` and
-`site/data.js` on the way through, both of which are committed, so a dirty tree
-afterwards means one of them had drifted and the fix is to commit it.
+**`pnpm check` is the gate**, one command rather than seven remembered in order.
+It runs typecheck, build, validate-mods, registry, site, test:core, test and
+check-structure, in that order -- build before the tests, since the harness
+imports the built runtime, and the registry before the site, which reads it. It
+regenerates `mods/registry.json` and `site/data.js` on the way through, both of
+which are committed, so a dirty tree afterwards means one of them had drifted
+and the fix is to commit it.
 
 `pnpm test:core` is `scripts/test-core.mjs`, which walks `tests/` and hands Node
-the files it finds. Two reasons it is a script rather than a line in
-`package.json`.
-
-A list of filenames means a new test file runs nowhere until somebody remembers
-to add it, and checking that by hand is not a thing to rely on.
-
-And there is no one-liner that works everywhere. Positional arguments to
-`--test` are glob patterns from Node 22 on, so a bare directory is not expanded
-but treated as a file to run, and the suite dies with
-`Cannot find module '…/tests'` before a single test starts. Neither form works
-on both:
+the files it finds, for two reasons. A list of filenames in `package.json`
+means a new test file runs nowhere until somebody adds it. And there is no
+one-liner that works everywhere: positional arguments to `--test` are glob
+patterns from Node 22 on, so a bare directory is treated as a file to run and
+the suite dies with `Cannot find module '…/tests'`. Neither form works on both:
 
 | node | `--test tests/` | `--test "tests/**/*.test.mjs"` |
 | --- | --- | --- |
@@ -820,7 +728,7 @@ on both:
 
 An explicit list of files works on every version and needs no shell glob, which
 is what the script produces. The CI pins `node-version: 22`, which floats -- so
-a change in Node breaks the build on a push that has nothing to do with it.
+a change in Node can break the build on a push that has nothing to do with it.
 
 **The floor is Node 20.19+, 22.13+ or 24+**, and it is jsdom's: the harness uses
 it, and it `require()`s an ES module. `package.json` states that range. Four
@@ -830,36 +738,36 @@ tests fail below it.
 
 - **`eval()` and `new Function()` throw in the page.** Slack's CSP has no
   `'unsafe-eval'`. Plugins load as ES modules through `blob:` URLs, which *is*
-  in `script-src`. Note that code run through CDP `Runtime.evaluate` is exempt,
-  so a console test of `eval` misleadingly succeeds.
+  in `script-src`. Code run through CDP `Runtime.evaluate` is exempt, so a
+  console test of `eval` misleadingly succeeds.
 - **A `blob:` URL has no directory**, so `import './x.js'` inside one resolves
   to `blob:https://app.slack.com/x.js` and fails. `buildModuleGraph` in
-  `plugins.ts` is the answer: read the folder, blob each file leaves-first, and
-  rewrite relative specifiers to the blob URL of the file they name. It rewrites
+  `plugins.ts` reads the folder, blobs each file leaves-first, and rewrites
+  relative specifiers to the blob URL of the file they name. It rewrites
   *only* specifiers, and skips comments -- mods type `api` with a JSDoc
   `{import('../../../src/runtime/api.js')}`, which is not an import.
 - **No debugging port.** The loader uses `--remote-debugging-pipe` (fds 3 and 4),
   so Slack listens on no TCP port. Do not add a flag that reopens one.
-- **`app.asar` cannot be patched, but it can be read** -- and reading it is how
-  the one genuinely new capability in this project was found. Slack's main
-  process builds its window options from its own settings:
-  `windowVibrancy` true gives macOS `vibrancy: "titlebar"` and Windows 11
+- **`app.asar` cannot be patched, but it can be read.**
+  `EnableEmbeddedAsarIntegrityValidation` and `OnlyLoadAppFromAsar` are on, with
+  the hash in a code-signed `Info.plist`. Reading it shows that Slack's main
+  process builds its window options from its own settings: `windowVibrancy`
+  true gives macOS `vibrancy: "titlebar"` and Windows 11
   `backgroundMaterial: "acrylic"` with `transparent: true`, and in both cases
   drops the opaque `backgroundColor` behind the page. The flag lives in
   `~/Library/Application Support/Slack/storage/root-state.json`, plain JSON
   outside the archive, so switching it on is a preference and not a patch.
   Measured: with the page's own backgrounds cleared, the window's darkest pixel
   goes 27 -> 43 over an identical backdrop, and an opaque window with no
-  `backgroundColor` would have been white.
+  `backgroundColor` would be white.
   **On macOS the ceiling is the material, not the CSS.** `vibrancy: "titlebar"`
   is an NSVisualEffectView: frosted by construction, with a blur and a grey of
   its own, and `transparent: true` is set only alongside Windows 11 acrylic --
-  never on macOS. A fully clear window is therefore not reachable from here
-  however transparent the page is, and it was worth proving rather than
-  assuming: with every dial at zero, no element covering more than 20% of the
-  window paints anything at all, and the only other filtered node is Slack's
-  split-view handle at `opacity: 0`. What is left is the operating system.
-  **But which material is a choice, and it is reachable.** Slack's main process
+  never on macOS. A fully clear window is not reachable from here however
+  transparent the page is: with every dial at zero, no element covering more
+  than 20% of the window paints anything, and the only other filtered node is
+  Slack's split-view handle at `opacity: 0`.
+  **Which material is a choice, and it is reachable.** Slack's main process
   registers `EXEC_BROWSERWINDOW_METHOD`, which runs an allow-listed set of
   `BrowserWindow` methods for the page -- `setVibrancy`, `setOpacity`,
   `setBackgroundColor`, `setBackgroundMaterial` are all on it -- and the preload
@@ -867,20 +775,17 @@ tests fail below it.
   over one wallpaper (which alone reads 3): `hud` 22, `fullscreen-ui` 24,
   `none` 29, `under-window` 33, `titlebar` 43. Slack asks for the frostiest of
   them. `api.slack.desktop.setMaterial` is the narrow wrapper: that one method,
-  those five names. No mod ships using it today -- the one it was built for was
-  dropped -- but the measurements are why it stays. On a window created opaque
-  it succeeds and does nothing (27.3 before and after), so the preference and
-  its restart are still what make any of it visible. It must be written *before*
-  Slack
-  starts, and re-written at every launch since Slack rewrites that file itself.
-  `src/loader/slack-settings.ts` owns the file, keeps one backup of the original
-  before its first write, and answers only for the keys in `SLACK_PREFS` --
-  `api.slack.desktop` publishes that same list, so a key cannot be offered and
-  then refused. Anything read when a window is created needs
-  `api.slack.restart()`; compare `desktop.get(key)` with `desktop.launched(key)`
-  to know whether a restart would change anything before offering one.
-- **`app.asar` cannot be patched.** `EnableEmbeddedAsarIntegrityValidation` and
-  `OnlyLoadAppFromAsar` are on, with the hash in a code-signed `Info.plist`.
+  those five names. No mod ships using it today. On a window created opaque it
+  succeeds and does nothing (27.3 before and after), so the preference and its
+  restart are what make any of it visible.
+  The preference must be written *before* Slack starts, and re-written at every
+  launch since Slack rewrites that file itself. `src/loader/slack-settings.ts`
+  owns the file, keeps one backup of the original before its first write, and
+  answers only for the keys in `SLACK_PREFS` -- `api.slack.desktop` publishes
+  that same list, so a key cannot be offered and then refused. Anything read
+  when a window is created needs `api.slack.restart()`; compare
+  `desktop.get(key)` with `desktop.launched(key)` to know whether a restart
+  would change anything before offering one.
 - **Slack's CDN has no CORS headers.** `fetch('https://ca.slack-edge.com/…')`
   from the renderer always fails; downloads go through `api.files.save`, which
   the loader performs.
@@ -888,7 +793,7 @@ tests fail below it.
   Measured with three workspaces signed in: `location.pathname` read
   `/client/T0BQ89Z4L4F/C0BQ8AG3771` while the client had drawn thirty-seven
   avatars belonging to `T025V5WN2` and a conversation from it, and the two
-  stayed apart until the user navigated by hand. Slack restores the view before
+  stay apart until the user navigates by hand. Slack restores the view before
   it settles the address, so anything reading the URL at boot works against the
   workspace the user *left*: the wrong token, and a member list showing the one
   person that workspace admits to -- yourself.
@@ -899,18 +804,17 @@ tests fail below it.
   URL whenever it can and overrules it only when its workspace appears nowhere
   in what has been drawn *and* another one does -- exactly the stale case and
   nothing else. `api.slack.currentChannelId()` prefers the drawn channel the
-  same way. **No mod should parse that URL itself**; three did, and all three
-  were wrong at boot.
+  same way. **No mod parses that URL itself.**
 
   **A route is not a channel, and the pattern has to be case-sensitive.** The
   third segment is a conversation id only when it is an uppercase `C`, `D` or
   `G` id; Slack's own views are lowercase words -- `later`, `dms`,
-  `activity-inbox`, `unified-files`, `platform`, `threads`. Read with a
-  case-insensitive `[A-Z0-9]+` they all came back as channels, so
-  `currentChannelId()` answered `LATER`, and the member column asked Slack for
-  the members of it on every one of those views and logged `channel_not_found`
-  each time. `tests/slack-routes.test.mjs` holds the runtime and the harness to
-  the same pattern.
+  `activity-inbox`, `unified-files`, `platform`, `threads`. A case-insensitive
+  `[A-Z0-9]+` reads them as channels, so `currentChannelId()` would answer
+  `LATER` and the member column would ask Slack for its members
+  (`channel_not_found`) on every one of those views.
+  `tests/slack-routes.test.mjs` holds the runtime and the harness to the same
+  pattern.
 
   **"Which conversation" and "is this a conversation at all" are two
   questions.** The drawn-channel fallback answers the first and must not be
@@ -921,13 +825,12 @@ tests fail below it.
 - **Switching workspace does not reload the client.** Same page, same mods,
   same api objects, new team id in the URL. Anything a mod cached at boot then
   belongs to the workspace the user has left. `web-api.ts` keys its config on
-  `currentTeamId()` for exactly this reason — caching the token once made every
-  call go out for the wrong team, which Slack reports as ordinary errors and
-  which reads as "this plugin is broken".
+  `currentTeamId()` for this reason -- a token cached once sends every call to
+  the wrong team, which Slack reports as ordinary errors.
 
   **`api.slack.onTeamChange` is the signal**, and a mod holding anything about
-  a workspace has to take it. Four kinds of state have been found wrong across
-  a switch, and each failed quietly rather than visibly:
+  a workspace has to take it. Four kinds of state go wrong across a switch, all
+  quietly:
 
   - **Anything from `users.info`.** The id is the same string in both, the
     answer is not: it is what *this* workspace's token can see of that person.
@@ -941,8 +844,8 @@ tests fail below it.
     `T…:C…` — or it belongs to whichever workspace asked last.
 
   A test gets the signal for free: `switchWorkspace` in the harness fires the
-  listeners, because in a real client the address moving *is* the signal and a
-  test that had to say so separately would pass for a mod that never
+  listeners, because in a real client the address moving *is* the signal, and
+  a test that had to fire it separately would pass for a mod that never
   subscribed.
 - **Slack's API refuses cookie-only auth.** It needs the `xoxc-` token from
   `localStorage`. Only `src/runtime/web-api.ts` may read it; mods use
@@ -969,39 +872,37 @@ tests fail below it.
 - **Never insert next to `.c-coachmark-anchor`.** Anchoring a toolbar button
   before the coachmark wrapper around the user button freezes the renderer
   solid: grey window, no error, no console, `Runtime.evaluate` times out and
-  Slack has to be killed. Slack's coachmark code evidently loops with whatever
-  changes the DOM around it. Bisected against a running client — the same button
-  anchored on `#betterslack-control-button` is fine every time, which is now the
+  Slack has to be killed. Slack's coachmark code loops with whatever changes
+  the DOM around it. Bisected against a running client: the same button
+  anchored on `#betterslack-control-button` is fine every time, which is the
   control strip's default. When an anchor is missing, `addToolbarButton`
   prepends rather than appends: the end of a container is where the app's own
   re-renders land.
-- **`installLauncher` owns more than the launcher.** It is also what installs
-  `LAUNCHER_CSS`, where `.betterslack-toolbar-button svg` gets its 20px. A
-  refactor once dropped the `mountUi()` call in `index.ts`: the BetterSlack
-  button vanished, every mod's icon drew at its SVG's intrinsic size, and the
-  other buttons lost the anchor they position against (`before:
-  '#betterslack-control-button'`). `--healthcheck` reports `launcher` and fails
-  on it -- it caught nothing because `pnpm test:live` was not run.
+- **`installLauncher` owns more than the launcher.** It also installs
+  `LAUNCHER_CSS`, where `.betterslack-toolbar-button svg` gets its 20px. Without
+  the `mountUi()` call in `index.ts` the BetterSlack button is missing, every
+  mod's icon draws at its SVG's intrinsic size, and the other buttons lose the
+  anchor they position against (`before: '#betterslack-control-button'`).
+  `--healthcheck` reports `launcher` and fails on it; `pnpm test:live` is what
+  runs it.
 - `keepMounted` gives up after 25 remounts in two seconds and logs which node
   and container, rather than looping forever. A missing button is a bug report;
   a frozen Slack is not.
-- **Two mods anchored on the same neighbour froze Slack**, and this is the
-  second freeze of exactly that shape. `keepMounted` asks only that its node be
-  *somewhere before* the anchor, never that it be the immediate previous
-  sibling: every control-strip button defaults to
-  `before: '#betterslack-control-button'`, and with two of them the strict form
-  has each shoving the other aside, forever, inside a MutationObserver callback.
-  Every DOM touch -- move as well as insert -- counts toward the give-up limit,
-  so no branch of that callback can spin.
-  Covered by `tests/mount.test.mjs`.
+- **`keepMounted` asks only that its node be *somewhere before* the anchor**,
+  never that it be the immediate previous sibling. Every control-strip button
+  defaults to `before: '#betterslack-control-button'`, and with two of them the
+  strict form has each shoving the other aside, forever, inside a
+  MutationObserver callback -- which freezes Slack. Every DOM touch -- move as
+  well as insert -- counts toward the give-up limit, so no branch of that
+  callback can spin. Covered by `tests/mount.test.mjs`.
 - **When Slack freezes, `Debugger.pause` names the loop** -- but only if
-  `Debugger.enable` was sent *before* the thread got busy; enabling it
-  afterwards never takes, and comes back empty.
-  `BETTERSLACK_DIAGNOSE=1` does both, and prints what the client looks like at 3s,
-  8s and 16s. `BETTERSLACK_NO_BOOTSCRIPT=1` forces the runtime in against a
-  finished document, which is what made the freeze reproducible every time
-  instead of one boot in five. `sample <renderer pid>` confirms it is JS rather
-  than layout: V8 frames under `MicrotasksScope`.
+  `Debugger.enable` was sent *before* the thread got busy; enabled afterwards it
+  never takes and comes back empty. `BETTERSLACK_DIAGNOSE=1` does both, and
+  prints what the client looks like at 3s, 8s and 16s.
+  `BETTERSLACK_NO_BOOTSCRIPT=1` forces the runtime in against a finished
+  document, which makes a boot-time freeze reproducible every time instead of
+  one boot in five. `sample <renderer pid>` confirms it is JS rather than
+  layout: V8 frames under `MicrotasksScope`.
 - **Plugins start only once `.p-client_container` exists** (`waitForClient` in
   `manager.ts`); themes go in immediately, since CSS cannot loop. The runtime is
   injected at document-start on a fresh navigation *or* straight into a page the
@@ -1013,19 +914,19 @@ tests fail below it.
   the coachmark freeze, so check both.
 - **The loader forwards the page's own errors to the terminal**: uncaught
   exceptions always, console warnings and errors mentioning betterslack, and
-  everything with `BETTERSLACK_VERBOSE=1`. Without it the only way to see why a mod
-  failed at boot is DevTools inside a Slack that may not be responding.
+  everything with `BETTERSLACK_VERBOSE=1`. That is the way to see why a mod
+  failed at boot without DevTools inside a Slack that may not be responding.
 - Reuse Slack's button classes rather than styling your own. Watch for
   `c-icon_button--default`: without it, icon buttons render 36px instead of 28px.
 - Slack's real DevTools open with **`desktop.app.toggleDevTools()`** — its own
-  preload method, posting to the TOGGLE_DEV_TOOLS IPC channel. Confirmed in
-  `~/Library/Application Support/Slack/logs`: `openDevToolsEpic: Received action
-  { willOpen: true }`. The epic only acts on a *focused* webContents, so it does
-  nothing while Slack is in the background.
+  preload method, posting to the TOGGLE_DEV_TOOLS IPC channel (logged in
+  `~/Library/Application Support/Slack/logs` as `openDevToolsEpic: Received
+  action { willOpen: true }`). The epic only acts on a *focused* webContents, so
+  it does nothing while Slack is in the background.
   `desktop.redux.dispatchUpdate` looks like a generic action forwarder and is
   **not**: it wraps the argument as the payload of REDUX_UPDATE_FROM_WEBAPP,
   whose reducer only reads `payload.teams`, so anything else is silently
-  dropped. That cost an afternoon.
+  dropped.
 - **The leftmost column is the workspace switcher** (`.p-team_sidebar__item`,
   one per signed-in workspace) and it only exists with more than one. That, not
   `.p-tab_rail`, is Slack's counterpart to Discord's server list; the tab rail
@@ -1037,24 +938,26 @@ tests fail below it.
   there is a page with somebody else's furniture down its side -- one tab lit
   at a time, and clicking another of Slack's tabs to leave.
 
-  **What is under a view is hidden, never merely covered**, and this is the
-  part that costs somebody something if it is got wrong. Covered, Slack's
-  conversation stays mounted, sized, and as far as Slack is concerned on
-  screen, so a message arriving in the channel behind the view is marked read
-  and the unread is gone. `display: none` on the panel's other children instead
-  -- and Slack's virtual list then renders nothing at all, measured: thirteen
-  messages in the document before, zero while the view is open, thirteen again
-  on the way out, with a half-written message still in the composer. Written as
-  `:has(> .betterslack-view)` on the panel so it stops applying when the view
-  unmounts, with no restore step to get wrong. Three things it knows that a mod should not have to. A rail entry
-  is a `button.p-tab_rail__button.c-tabs__tab` inside a `p-autoclog__hook`
-  wrapper, with `--active` on both classes and `aria-selected` marking the one
-  you are on -- borrowing those classes is what makes the entry follow every
-  theme. That menu is a descendant of a `.c-coachmark-anchor`, so the entry
-  goes in through `keepMounted`, which gives up rather than looping. And
-  Slack's own tab has to be put out by hand, because the route has not changed:
-  its classes come off on open and go back on close, which holds because Slack
-  re-renders the rail on navigation and navigation is what closes the view.
+  **What is under a view is hidden, never merely covered**, and getting this
+  wrong costs somebody their unreads. Covered, Slack's conversation stays
+  mounted, sized, and as far as Slack is concerned on screen, so a message
+  arriving in the channel behind the view is marked read. `display: none` on
+  the panel's other children instead -- Slack's virtual list then renders
+  nothing at all, measured: thirteen messages in the document before, zero
+  while the view is open, thirteen again on the way out, with a half-written
+  message still in the composer. Written as `:has(> .betterslack-view)` on the
+  panel so it stops applying when the view unmounts, with no restore step to
+  get wrong.
+
+  Three things it knows that a mod should not have to. A rail entry is a
+  `button.p-tab_rail__button.c-tabs__tab` inside a `p-autoclog__hook` wrapper,
+  with `--active` on both classes and `aria-selected` marking the one you are
+  on -- borrowing those classes is what makes the entry follow every theme.
+  That menu is a descendant of a `.c-coachmark-anchor`, so the entry goes in
+  through `keepMounted`, which gives up rather than looping. And Slack's own tab
+  has to be put out by hand, because the route has not changed: its classes
+  come off on open and go back on close, which holds because Slack re-renders
+  the rail on navigation and navigation is what closes the view.
 - **`.p-view_contents--primary` is `position: relative`, and the conversation
   inside it sits at `z-index: 201`.** So a mod drawing a whole view -- one that
   covers the conversation the way Activité does, with the rail and the sidebar
@@ -1070,13 +973,12 @@ tests fail below it.
   holding your column**, with `:has(> #your-column:not([hidden]))`. That pane is
   not only the conversation: Répertoires, Fils de discussion, Brouillons et
   envoyés and Appels d'équipe all render into it, and unlike a channel they
-  stack a header *above* their content. Unconditional, that one line laid the
+  stack a header *above* their content. Unconditional, the row layout lays the
   header down the left of each of them -- measured on Répertoires in a
-  2560-wide window, a 52px header became a 1631px column with 243px of content
-  beside it, which is four of Slack's own views broken by a mod that only ever
-  meant to touch channels. `:has()` is supported in Slack 4.51 (measured:
-  `CSS.supports('selector(:has(> div))')` is true), so the layout can travel
-  with the column rather than with the mod being switched on.
+  2560-wide window, a 52px header becomes a 1631px column with 243px of content
+  beside it. `:has()` is supported in Slack 4.51 (measured:
+  `CSS.supports('selector(:has(> div))')` is true), so the layout travels with
+  the column rather than with the mod being switched on.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
 - **Slack's own "(edited)" is `.c-message__edited_label`**, a visible span
@@ -1089,24 +991,21 @@ tests fail below it.
 - **Editing a message takes it out of the document.** Slack replaces the
   message with an editor while you type, so anything inferring a deletion from
   "the message left the window" writes down your own edit as your own deletion
-  -- and typing takes longer than any sane debounce, so no amount of waiting
-  fixes it. The socket says which of the two happened, and
-  `conversations.history` catches what the socket missed on the next visit;
-  between them there is nothing left for a heuristic to add.
+  -- and typing takes longer than any sane debounce. The socket says which of
+  the two happened, and `conversations.history` catches what the socket missed
+  on the next visit; between them there is nothing left for a heuristic to add.
 - **A reaction is `[data-qa="reactji"]`**, one button per emoji, carrying
   `data-stringify-emoji` (the shortcode, which is the same name in every
   language) and `.c-reaction__count`. The bar around them is
   `[data-qa="reaction_bar"]`. **Who reacted is not in the DOM**: Slack builds
   that as a tooltip when you hover, in the reader's language and with names
-  rather than ids, so a mod can know the emoji and the count honestly and
-  nothing else. A count moving on screen is therefore a **trigger to ask
-  `conversations.history`**, which does name them, and never a row of its own:
-  "somebody took a reaction back" is a line whose only question is who, and it
-  answers that question with a shrug.
+  rather than ids, so a mod can know the emoji and the count and nothing else.
+  A count moving on screen is therefore a **trigger to ask
+  `conversations.history`**, which does name them, and never a row of its own.
 - **`[data-qa="message_sender"]` holds the name twice on some messages** --
-  measured as `Ada LovelaceAda Lovelace :`, and once on others -- because Slack
-  draws a second copy for screen readers. Anything comparing it across renders
-  sees a rename every few seconds from somebody who changed nothing. Read
+  `Ada LovelaceAda Lovelace :`, and once on others -- because Slack draws a
+  second copy for screen readers. Anything comparing it across renders sees a
+  rename every few seconds from somebody who changed nothing. Read
   `.c-message__sender_button` and treat the result as a label; a display name
   that is *compared* has to come from `users.info`.
 - **The sidebar's section headings are `.p-channel_sidebar__section_heading`**,
@@ -1130,76 +1029,51 @@ tests fail below it.
 - **`[data-qa="member_profile_pane"]` + `.p-r_member_profile__avatar__img` is a
   contract, not just Slack's markup.** Anything presenting a profile carries
   both; `user-inspector` finds it and appends its sections, and reads the user
-  id off the avatar URL. `member-sidebar`'s dialog is the first non-Slack thing
-  to do it. `user-inspector` mounts **per pane** (stamped with
-  `data-betterslack-pane`) — a single `helpers.mount` filled whichever profile it
-  reached first and starved the other.
+  id off the avatar URL. `member-sidebar`'s dialog carries both as well.
+  `user-inspector` mounts **per pane** (stamped with `data-betterslack-pane`),
+  since a single `helpers.mount` fills whichever profile it reaches first and
+  starves the other.
 - **Borrowing a Slack class borrows its layout.** The avatar class above is
-  `position: absolute` in Slack's stylesheet, which parked the dialog's avatar
-  on top of its title. Reset explicitly.
+  `position: absolute` in Slack's stylesheet, which puts an avatar on top of
+  whatever is beside it. Reset explicitly.
 - **Slack does not render while its window is hidden.** `visibilityState ===
   'hidden'` and the channel-details modal never opens, so anything that drives
   Slack's own UI fails in the background — which is also why measuring by
   clicking through Slack from a terminal is flaky.
-- **The Dock tile is a custom Finder icon, put on Slack.app only for its
-  launch.** Measured on Slack 4.51 / macOS 27: with an icon set on the bundle
-  (`NSWorkspace setIcon`, which writes an `Icon\r` into it), the Dock reads it
-  when Slack starts and keeps that tile for as long as Slack runs -- even once
-  the icon has been taken off again. So `src/loader/app-icon.ts` dresses
-  Slack.app just before every launch (and every `api.slack.restart()`) and
-  undresses it 45 seconds later: present, the icon fails `codesign --strict`
-  ("detritus not allowed"), and Slack.app is not ours to leave altered. The
-  work is done through `osascript -l JavaScript`, which every Mac has, and
-  `NSImage` reads SVG itself -- nothing to ship, nothing to compile. The same
-  icon goes on BetterSlack.app, which is how an install updated from the panel
-  gets a new icon without re-running `install.sh`; measured first that a save
-  into Downloads through BetterSlack's identity is still allowed with it on.
-  **Dressing Slack.app needs App Management.** Writing into another app's
-  signed bundle is `kTCCServiceSystemPolicyAppBundles`; without it tccd
-  answers `ReqResult(Auth Right: Unknown (None))` and the icon never lands,
-  silently, with no prompt -- nothing can raise one for this permission. So
-  the loader records whether Slack.app took the icon (`app.dockIcon`), and
-  `ui/dock-icon.ts` asks once at startup when it did not: why, a button that
-  opens the pane (`x-apple.systempreferences:...?Privacy_AppBundles`), then a
-  retry and the restart that shows the tile. `settings.dockIconAsked` is set
-  before the dialog, so it is never asked twice; the About tab offers it
-  again. The grant survives in-app updates, which never rebuild
-  BetterSlack.app. A terminal that already holds the permission makes all of
-  this look free -- measure from BetterSlack.app, not from a shell. Dressing
-  BetterSlack.app is its own bundle and needs nothing.
-  **A running Slack keeps the tile it launched with, whatever happens to the
-  bundle.** Measured with NSWorkspace reading Slack.app's icon back as the new
-  one while the tile kept the old, across `killall Dock`, a touch of the
-  bundle, `lsregister -f` and `noteFileSystemChanged`: a restarted Dock draws
-  a running app with the icon it had at launch, and the Dock restart also
-  drops Slack's unread badge, which its main process re-sends only when the
-  badge text changes. A Dock restart that seemed to work had only brought back
-  the launch icon. BetterSlack.app's own tile follows the same rule -- the
-  launcher stays running, so its bundle can carry the new icon while its tile
-  keeps the old. So switching a theme re-dresses both bundles and, when the
-  icon would actually change (`dockIconPending`), asks in a dialog whether to
-  relaunch the whole app (`app.relaunch`): Slack stops, a detached shell runs
-  `open -a BetterSlack.app` once the loader has exited, and both tiles come
-  back new. The loader knows it came from the bundle by
-  `__CFBundleIdentifier=dev.airone.betterslack`, which LaunchServices puts in
-  the environment and `launch.sh` passes to Node; a checkout started with pnpm
-  has none and restarts only Slack.
-  Read the tile in a tight crop of the Dock and compare against a known
-  render: the mark without its plate looked "dark" on a dark Dock and was
-  misread once as the icon not having taken.
-  Everything else is closed, and each was measured:
-  - `Browser.setDockTile` does not exist in Slack's Electron (`wasn't found`).
-  - `desktop.dock` only bounces; the main process calls `dock.setBadge` and
-    nothing else on the Dock -- no `setIcon` anywhere in `app.asar`.
-  - `--customAppIcon` is parsed and kept in the environment, and no code in a
-    packaged build reads it: "macOS development builds only", literally.
-  - Injecting a library is closed: hardened runtime with library validation
-    and no `allow-dyld-environment-variables`.
-  A switched-on theme changes the icon by declaring `--betterslack-app-icon`
-  in its stylesheet (see the theme section below); the last enabled theme that
-  declares one wins, as its stylesheet does. Switching a theme re-dresses
-  BetterSlack.app's bundle at once and offers the relaunch that shows it on
-  both tiles.
+- **Slack's Dock tile wears the icon it was launched with** (macOS). Just
+  before launching Slack, the loader puts BetterSlack's icon -- or the enabled
+  theme's, declared in its stylesheet as `:root { --betterslack-app-icon:
+  url("data:image/svg+xml,…") }` -- on `Slack.app` as a custom Finder icon, and
+  takes it off again 45 s later (`UNDRESS_AFTER_MS` in `src/loader/index.ts`;
+  the icon itself is `src/loader/app-icon.ts`). The Dock reads the icon when
+  Slack starts and keeps that tile until Slack quits, so `Slack.app` is back to
+  exactly what was shipped for the rest of the session, which is what a
+  signature check and Slack's own updater expect (a custom icon is a file in
+  the bundle root, and `codesign --strict` calls it detritus). The same icon
+  goes on BetterSlack.app.
+
+  Writing into `Slack.app` needs macOS **App Management**
+  (`kTCCServiceSystemPolicyAppBundles`), which only the user can switch on in
+  System Settings; without it tccd refuses and every step fails soft.
+  `src/runtime/ui/dock-icon.ts` asks once at startup, only when the loader
+  reports the icon was refused: it explains why, opens the System Settings
+  pane, then retries and offers the relaunch that shows the result. The About
+  tab offers it again.
+
+  A running app's tile cannot be changed: `killall Dock`, touching the bundle,
+  `lsregister -f` and `noteFileSystemChanged` all leave the launch icon in
+  place, and restarting the Dock drops Slack's unread badge. So switching to a
+  theme that changes the icon re-dresses BetterSlack.app and asks, in a dialog,
+  to relaunch the whole app (`app.relaunch`, offered when `dockIconPending`
+  says a relaunch would change the tile). The loader knows it was started from
+  BetterSlack.app by `__CFBundleIdentifier` (`dev.airone.betterslack`); from a
+  checkout it restarts only Slack.
+
+  Nothing else reaches the tile: `Browser.setDockTile` does not exist in
+  Slack's Electron, `desktop.dock` only bounces (the main process calls
+  `dock.setBadge` and nothing else on the Dock), `--customAppIcon` is read only
+  by macOS development builds, and injecting a library is closed by hardened
+  runtime with library validation and no `allow-dyld-environment-variables`.
 - **`slack://open?team=<id>` switches workspace**, in place, same document --
   and it is the only way to, from a script. The workspace rail is in the
   document with every workspace in it and measures **zero by zero** in Slack
@@ -1213,39 +1087,36 @@ tests fail below it.
 - **`slack://user?team=…&id=…` opens a profile**, but not for everyone: an app
   or a conversation with yourself gives a pane that never appears. Try ids in
   turn rather than trusting the first.
-- **Slack's deep links are the only navigation that works from a mod**, and
-  they work well: assigning `slack://channel?team=…&id=…` or
-  `slack://user?team=…&id=…` hands the URL to the desktop app's protocol
-  handler, which routes it in place — same document, no reload, view follows.
-  Both measured. `slack://huddle?…` does nothing. `api.slack.openConversation` /
-  `openUserProfile` wrap them.
+- **Slack's deep links are the only navigation that works from a mod**:
+  assigning `slack://channel?team=…&id=…` or `slack://user?team=…&id=…` hands
+  the URL to the desktop app's protocol handler, which routes it in place —
+  same document, no reload, view follows. `slack://huddle?…` does nothing.
+  `api.slack.openConversation` / `openUserProfile` wrap them.
 - **A message timestamp on that link highlights the message.**
   `slack://channel?team=…&id=…&message=<ts>` routes in place *and* flashes the
-  message it lands on, the way Slack's own search results do — measured against
-  4.51, including across workspaces. `api.slack.openMessage` wraps it, and takes
-  the team, because search answers across every workspace you are signed into
-  and a link built without one lands on a channel id the current client has not
-  got.
+  message it lands on, the way Slack's own search results do, including across
+  workspaces. `api.slack.openMessage` wraps it, and takes the team, because
+  search answers across every workspace you are signed into and a link built
+  without one lands on a channel id the current client has not got.
 - **`conversations.history` answers for an `xoxc` token**, and it carries two
   things the screen cannot: `edited: { user, ts }` -- who rewrote a message and
   when -- and `reactions: [{ name, users, count }]`, where `users` are **ids**.
   So who took a reaction back is knowable through the API and not through the
-  DOM, where Slack only says it in a hover tooltip, in the reader's language,
-  with names. It answers a page with `has_more`, so a message older than the
-  page is outside the window and not deleted -- treating the two the same
-  empties somebody's history into a log every time they open a busy channel.
+  DOM. It answers a page with `has_more`, so a message older than the page is
+  outside the window and not deleted -- treating the two the same empties
+  somebody's history into a log every time they open a busy channel.
 - **`client.counts` is where you have been, in one request.** It is what Slack's
   own client asks for at boot, and it answers a record per conversation:
-  `last_read`, `latest`, `has_unreads`, `mention_count`. Measured: 52 channels
-  in one answer on a live workspace. It is the recency the desktop client sorts
-  by and it is shared across devices — but `last_read` only moves when there was
+  `last_read`, `latest`, `has_unreads`, `mention_count` (52 channels in one
+  answer on a live workspace). It is the recency the desktop client sorts by
+  and it is shared across devices — but `last_read` only moves when there was
   something new to read, so a quiet channel you open every morning stays at the
   bottom of it for ever. The command palette therefore orders by its own
   remembered list first and by `last_read` under it.
 - **A status can be set from a mod.** `users.profile.set` is allowed for an
-  `xoxc` token — verified by reading a real account's status, replacing it,
-  reading it back and restoring it. The whole profile goes as one JSON string
-  under `profile`; `status_text` as a field of its own is accepted and ignored.
+  `xoxc` token (verified by replacing a real status, reading it back and
+  restoring it). The whole profile goes as one JSON string under `profile`;
+  `status_text` as a field of its own is accepted and ignored.
   `status_expiration` is a unix time in seconds, zero for "until I clear it".
   `users.setPresence` (`away` / `auto`), `dnd.setSnooze` (`num_minutes`),
   `dnd.endSnooze` and `conversations.mark` (channel plus the `latest` timestamp
@@ -1253,27 +1124,31 @@ tests fail below it.
 - **`search.modules.messages` answers conversations, not messages.** An item is
   `{ iid, team, channel, messages }` and the match is `messages[0]`:
   `{ ts, user, username, text, permalink, extracts, blocks }`. **`text` is empty
-  on anything an integration posted** — measured, every Grafana alert in one
-  workspace — and the words are in `attachments[].fallback` or in the blocks, so
-  a row built from `text` alone reads "(no text)" eight times over. What comes
-  back is Slack's own mrkdwn as well: `<url|label>`, `&amp;`, `*bold*`,
-  `:shortcode:` and blockquote runs all have to come off before it goes on one
-  line.
+  on anything an integration posted** (every Grafana alert, for one) and the
+  words are in `attachments[].fallback` or in the blocks, so a row built from
+  `text` alone reads "(no text)". What comes back is Slack's own mrkdwn as
+  well: `<url|label>`, `&amp;`, `*bold*`, `:shortcode:` and blockquote runs all
+  have to come off before it goes on one line.
 - **VIP is a preference, not an endpoint.** `users.prefs.set` with
   `name=vip_users` and a comma-separated list of user ids; `users.prefs.get`
-  reads it back. Wrapped as `api.slack.vipUsers()` / `setVip()`. Verified by
-  adding, reading back and restoring.
-- **A huddle cannot be started from a mod, and this is now precise rather than a
-  shrug.** `rooms.join` exists and takes `channel_id`; it answers `ok` with
-  `call`, `canvas` and `huddle` — but the room it hands back has
-  `participants: []` and never rings anyone. It *provisions* the room; joining
-  is the WebRTC session Slack's own client establishes, which no mod can. (For
-  completeness: `rooms.leave` needs `channel_id` + `call_id` + `attendee_id`,
-  and answers `feature_not_enabled` here. `rooms.create`, `huddles.*` and
-  `slack://huddle` do not exist, `calls.*` refuses an `xoxc` token, and
-  `member_profile_huddle_btn` ignores `element.click()` *and* a trusted
-  `Input.dispatchMouseEvent`.) So do not offer a Huddle button; offer
-  `openUserProfile`, which puts Slack's own one click away.
+  reads it back. Wrapped as `api.slack.vipUsers()` / `setVip()`.
+- **A huddle cannot be joined from the API.** `rooms.join` exists and takes
+  `channel_id`; it answers `ok` with `call`, `canvas` and `huddle` -- but the
+  room it hands back has `participants: []` and never rings anyone. It
+  *provisions* the room; joining is the WebRTC session Slack's own client
+  establishes. `rooms.leave` needs `channel_id` + `call_id` + `attendee_id`, and
+  answers `feature_not_enabled`. `rooms.create`, `huddles.*` and
+  `slack://huddle` do not exist, and `calls.*` refuses an `xoxc` token.
+- **A huddle starts from the channel header.** `member_profile_huddle_btn` in
+  the profile pane is only a menu trigger (both halves open it, and its entry
+  does nothing, with `element.click()` and with a trusted
+  `Input.dispatchMouseEvent`); the control that works is
+  `[data-qa="huddle_channel_header_button__start_button"]`, and a plain
+  `element.click()` is enough. No user activation is needed:
+  `navigator.userActivation.isActive` is true under a CDP click, and the
+  microphone is granted. It opens a separate Electron window, "Slack - aperçu
+  de l'appel d'équipe", so nothing shows in the main renderer and no API call
+  is made. Wrapped as `api.slack.startHuddle(userId)`.
 - **When a trusted click seems to do nothing, check what is on top of it.** A
   leftover `ReactModal__Overlay` (z-index 1053) from Slack's own dialog swallows
   every click aimed at the profile pane, which reads as "trusted clicks do not
@@ -1281,40 +1156,29 @@ tests fail below it.
   says whether the point reaches what you think it does. The harness can
   dispatch a trusted Escape, which is what dismisses that overlay -- a synthetic
   one does not.
-- **A huddle does start, from the channel header.** `member_profile_huddle_btn`
-  in the profile pane is only a menu trigger (both halves open it, and its
-  entry does nothing); the control that works is
-  `[data-qa="huddle_channel_header_button__start_button"]`, and a plain
-  `element.click()` is enough -- no trusted gesture needed. It opens a separate
-  Electron window, "Slack - aperçu de l'appel d'équipe", which is why nothing
-  showed in the main renderer and why no API call was ever recorded. Wrapped as
-  `api.slack.startHuddle(userId)`. The earlier user-activation theory was wrong:
-  `navigator.userActivation.isActive` is true under a CDP click, and the
-  microphone is granted.
 - **Slack opens other windows, and they are separate renderers.** The loader
   attaches to every page target, not only the client, and paints the enabled
-  themes into the others -- stylesheet only, no runtime, no panel, no plugins.
-  Without it the huddle preview sits in Slack's default colours in the middle
-  of a themed app. `Target.getTargets` is how you see them at all.
+  themes into the others -- stylesheet only, no runtime, no panel, no plugins
+  -- so the huddle preview follows the theme. `Target.getTargets` is how you
+  see them at all.
 - **Slack's realtime socket is readable, and only from the loader.** Slack keeps
   one `wss://wss-primary.slack.com` socket **per workspace**, opened in the page
   (no worker), and pushes everything that happens in every conversation you are
   a member of down it -- open or not, in the workspace on screen or not.
-  Measured on a live client: a `message` for `C025UJ707` arrived while the
-  window was showing `C0BQ8AG3771` in another workspace entirely. It is how the
+  Measured on a live client: a `message` for `C025UJ707` arrives while the
+  window is showing `C0BQ8AG3771` in another workspace entirely. It is how the
   sidebar's unread badges move without you looking.
 
-  **The page cannot see it**, which is why the earlier attempt at intercepting
-  `fetch`, XHR and `WebSocket` came back empty: Slack's own bundle opens the
-  socket before anything else runs, so patching the constructor catches
-  nothing. `Network.enable` plus `Network.webSocketFrameReceived` on the client
-  session sees the frames whatever the bundle does. Enable it with
+  **The page cannot see it.** Slack's bundle opens the socket before anything
+  else runs, so patching the `WebSocket` constructor (or `fetch`, or XHR)
+  catches nothing. `Network.enable` plus `Network.webSocketFrameReceived` on the
+  client session sees the frames whatever the bundle does. Enable it with
   `maxTotalBufferSize: 1` and friends, or Chromium holds every response body in
   the client in memory for a `getResponseBody` nobody calls.
 
   **Reading it marks nothing read.** Slack marks a conversation read when its
   client sends `conversations.mark`; being told a message exists sends nothing.
-  That is the whole reason `api.slack.onEvent` exists rather than a mod opening
+  That is why `api.slack.onEvent` exists rather than a mod opening
   conversations to look at them, which would empty every unread badge.
 
   Three things it is easy to get wrong. **The socket's URL carries the `xoxc`
@@ -1324,8 +1188,7 @@ tests fail below it.
   too, so the text has to have actually moved. And **the socket's text is
   Slack's markup while the screen's is rendered** (`<@U…>` against a name), so
   the two readings of one message must never be compared with each other --
-  they differ for every message with a mention in it, which reads as an edit by
-  somebody who wrote nothing.
+  they differ for every message with a mention in it.
 
   The filter is the union of what mods asked for, and nothing is forwarded
   until something asks: `Network.enable` is not even sent before the first
@@ -1336,24 +1199,22 @@ tests fail below it.
   `onPresence`, `onTyping`, `onRead`, `onPin`, `onSaved`, `onEmojiChanged`.
   Each hands over what the event is *about* (an edit carries both wordings, a
   reaction the message it is on) plus `raw` for the rest, because Slack's
-  frames are shaped for its own client and every mod was about to write the
-  same three lines finding the text in `previous_message`.
-- **Discovering the API surface beats intercepting it.** Slack answers
+  frames are shaped for its own client.
+- **Discover the API surface rather than intercepting it.** Slack answers
   `unknown_method` for what does not exist and an argument error for what does,
   so calling a candidate with no arguments maps the surface without performing
-  anything. That is how `rooms.join` and `vip_users` were found, after
-  intercepting `fetch`, XHR and the WebSocket had all come back empty.
+  anything. Intercepting `fetch`, XHR and the WebSocket in the page sees
+  nothing.
 - **A profile cannot be opened by URL.** Slack keeps it out of the address bar,
   and a synthesised `<a href="/team/U…">` is intercepted by nothing: clicking
   one navigates the window off the client entirely. The way in is Slack's own
   member list — open the details modal and click the row whose avatar URL holds
   the user id (match on the id, not the name beside it).
-- **A status emoji cannot be drawn from its shortcode alone**, and the three
-  things that make it possible were all measured against a live client:
-  `emoji.list` answers with the workspace's **custom** emoji only -- fifteen in
-  the workspace this was measured in, with `coffee` and `tada` absent -- and
-  some of its values are `alias:other-name`, chains that have to be followed.
-  Slack draws every emoji as an `<img>`, standard ones included, from
+- **A status emoji cannot be drawn from its shortcode alone.**
+  `emoji.list` answers with the workspace's **custom** emoji only (no `coffee`,
+  no `tada`), and some of its values are `alias:other-name`, chains that have to
+  be followed. Slack draws every emoji as an `<img>`, standard ones included,
+  from
   `a.slack-edge.com/production-standard-emoji-assets/16.0/apple-small/<codepoint>@2x.png`
   -- the **codepoint**, so a name builds no URL. But each of those images
   carries `data-stringify-emoji`, which *is* the name, so Slack's own DOM is a
@@ -1366,11 +1227,10 @@ tests fail below it.
   categories of standard **names**, which is a list of what exists and still not
   a way to draw any of it.
 
-  **So the table is harvested rather than fetched.** `data-stringify-emoji` is
-  on every emoji Slack draws, standard ones included, beside the `src` it drew
-  it with -- so collecting the pairs off the screen and keeping them builds the
-  name-to-image table nobody publishes, and it fills itself as the client is
-  used. An emoji seen once is one a mod can draw for ever after. History does
+  **So the table is harvested rather than fetched.** Collecting the
+  `data-stringify-emoji` / `src` pairs off the screen and keeping them builds
+  the name-to-image table nobody publishes, and it fills itself as the client is
+  used: an emoji seen once is one a mod can draw for ever after. History does
   this, capped and persisted; without it a log of messages is a log of
   `:slightly_smiling_face:`, and `textContent` on a message body drops every
   emoji outright, because an image has no text.
@@ -1384,25 +1244,24 @@ tests fail below it.
   carries `c-presence--active` or `c-presence--away`, and Slack swaps it the
   moment it changes. Copy that rather than polling `users.getPresence`, which
   lags the client -- worst right after the window comes back to the front, where
-  it reported away for up to a minute while the app plainly said available.
-  `sidebar-account` was doing exactly that. Do-not-disturb is *not* in that
-  class, so it still comes from the API, slowly. The word beside the dot is
-  painted from the same reading, on every change. Read once at mount from
-  Slack's screen-reader label, it says whatever was true when the strip happened
-  to be built -- and a green dot next to "Absent(e)" is worse than either being
-  wrong alone.
+  it reports away for up to a minute while the app plainly says available.
+  Do-not-disturb is *not* in that class, so it still comes from the API, slowly.
+  The word beside the dot is painted from the same reading, on every change;
+  read once at mount from Slack's screen-reader label, it says whatever was true
+  when the strip was built, and a green dot next to "Absent(e)" is worse than
+  either being wrong alone.
 - **Timings for anything that animates a view change**, measured from the click
   on a channel in the sidebar: `navigation.currententrychange` fires at **9ms**
   (same tick as `history.pushState`), the conversation column starts repainting
   at **50ms** and stops at **291ms**, and a 250ms poll comparing
   `location.pathname` only notices at **286ms** -- after the repaint has
-  finished, which is why a poll-triggered entrance reads as a blink rather than
-  as a transition. Also: **Slack blocks the main thread for ~100ms after the
-  click**, so no frame at all is painted between the two, and the first frame
-  anyone sees is the new content at the animation's time zero. An entrance
-  therefore has to start from opacity 0; anything that starts at 1 and dips
-  paints the new content solid first and flickers. `mods/plugins/motion` is
-  where all of this is written down next to the code it decides.
+  finished, so a poll-triggered entrance reads as a blink rather than as a
+  transition. **Slack blocks the main thread for ~100ms after the click**, so
+  no frame at all is painted between the two, and the first frame anyone sees
+  is the new content at the animation's time zero. An entrance therefore has to
+  start from opacity 0; anything that starts at 1 and dips paints the new
+  content solid first and flickers. `mods/plugins/motion` is where all of this
+  is written down next to the code it decides.
 - **Notification sounds are played in the page and stored in three places.**
   Slack plays every one with `new Audio(url)` kept per URL and `.play()`,
   from one table of thirteen fingerprinted files (`b2-5fd58e3.mp3` is
@@ -1421,9 +1280,9 @@ tests fail below it.
   previews the option and writes it wherever it keeps it. The list is
   virtualised, and the listbox is not what scrolls: react-virtualized's
   `.ReactVirtualized__Grid` inside it is, opened scrolled to the chosen option
-  (measured: huddles opened on Boop Plus at scrollTop 180, options 5-14 drawn,
-  no "None" until that grid went back to the top). Custom
-  Sounds is built on exactly this.
+  (measured: huddles open on Boop Plus at scrollTop 180, options 5-14 drawn,
+  no "None" until that grid goes back to the top). Custom Sounds is built on
+  exactly this.
 - **A notification's sound is not the page's on a modern Mac.** Slack's
   desktop setting `notificationPlayback` decides: on "web" (Slack's default)
   the native notification is silent and the page plays the sound; on
@@ -1432,15 +1291,15 @@ tests fail below it.
   `desktop.notice.shouldPlaySound()` tells the page not to play anything. On
   macOS 12 and later Slack forces "system" in its `initialSettingsPayload` at
   every launch -- a value written to `root-state.json` beforehand is gone in
-  the same second, measured. What works is `desktop.app.setPreference({ name,
+  the same second. What works is `desktop.app.setPreference({ name,
   value })`, which sends `UPDATE_SETTINGS` to the main process live:
-  measured, "system" to "web" and `shouldPlaySound()` false to true with no
-  restart. `window.desktop` and everything under it are frozen by
-  contextBridge -- assignment, `defineProperty` and replacing `window.desktop`
-  all fail -- so the page cannot wrap `notice.notify`; the setting is the only
-  lever. Slack rebuilds its settings at launch from four layers (slackDefaults,
-  itDefaults, userChoices, itPolicy), which is why `slack-settings.ts` writes
-  userChoices too: the top-level key is only the last merged result.
+  "system" to "web" and `shouldPlaySound()` false to true with no restart.
+  `window.desktop` and everything under it are frozen by contextBridge --
+  assignment, `defineProperty` and replacing `window.desktop` all fail -- so the
+  page cannot wrap `notice.notify`; the setting is the only lever. Slack
+  rebuilds its settings at launch from four layers (slackDefaults, itDefaults,
+  userChoices, itPolicy), which is why `slack-settings.ts` writes userChoices
+  too: the top-level key is only the last merged result.
 - **Slack's Preferences is a tabbed dialog whose panel really is remounted.**
   `.p-prefs_dialog__modal` is the ReactModal content, `.p-prefs_dialog__menu` the
   vertical rail, and clicking a section adds a fresh `<section>` into
@@ -1451,36 +1310,33 @@ tests fail below it.
   column. The Mods panel is the opposite case and needs JavaScript -- it rebuilds
   itself wholesale on every change, so it stamps its body only when the tab
   really changed.
-- **`:host-context()` does not work.** Chromium has dropped it, so the obvious
-  way for a rule inside a shadow root to follow a class on `<html>` silently
-  matches nothing -- the stylesheet is inert and there is no error. Custom
-  properties *do* inherit through a shadow boundary (measured: a property set on
-  `<html>` read back inside one), so the way to switch shadow-root rules from
+- **`:host-context()` does not work.** Chromium has dropped it, so a rule inside
+  a shadow root written to follow a class on `<html>` silently matches nothing.
+  Custom properties *do* inherit through a shadow boundary (a property set on
+  `<html>` reads back inside one), so the way to switch shadow-root rules from
   outside is to define or not define a property, not to write a selector.
 - Slack's tooltips are React portals you cannot register with. `ui/tooltip.ts`
   rebuilds them from Slack's classes; the hover delay is ~150ms, measured with a
   real pointer (synthetic mouse events take a different path and mislead).
   **`--large` is the only modifier Slack styles**, and its one rule is
-  `max-width: 400px`; `--small` has no rule at all, which is why a long status
-  ran off the edge of the window in a single line where Slack's own wrapped.
-  Read out of the live stylesheet -- `site/slack-context.css` had invented a
-  `--small` with a smaller font, so the docs page was not showing what the
-  client shows.
+  `max-width: 400px`; `--small` has no rule at all, so long text needs `--large`
+  to wrap. `site/slack-context.css` follows the live stylesheet in this and
+  invents no `--small` rule.
 - **A tooltip's global listeners live only while it is showing.** `keydown`,
   `scroll` (capture) and `resize` are registered in `show()` and removed in
   `hide()`, because `attachTooltip` is called *per element* and some callers
   build a great many: `statusNode` attaches one per row and a member column
   redraws on every channel change. Registered for the life of the trigger
-  instead, four channel changes left **38 capture-phase scroll handlers on
-  `window`** with nothing to remove them, on a page that scrolls constantly.
-  Found by patching `addEventListener` in a live client and counting -- a
-  MutationObserver sees nothing here, because nothing is mutating. One tooltip
-  is visible at a time, so there is at most one set of these and usually none.
+  instead, four channel changes leave **38 capture-phase scroll handlers on
+  `window`** with nothing to remove them. To count listeners, patch
+  `addEventListener` in a live client -- a MutationObserver sees nothing,
+  because nothing is mutating. One tooltip is visible at a time, so there is at
+  most one set of these and usually none.
 - **A real pointer cannot photograph a tooltip.** `shoot`'s `hover` moves the
   pointer and captures in the same breath, and the tooltip is 150ms behind it,
-  so the frame always comes back empty. Clicking is worse: `mousedown` is one of
-  the things that hides one. Dispatch a synthetic `mouseenter` and read the DOM
-  -- the warning above is about *Slack's* tooltip code, and this one is ours.
+  so the frame comes back empty. Clicking is worse: `mousedown` is one of the
+  things that hides one. Dispatch a synthetic `mouseenter` and read the DOM --
+  the warning above is about *Slack's* tooltip code, and this one is ours.
 
 ## The plugin API
 
@@ -1490,18 +1346,17 @@ an incomplete change. [docs/guide/](docs/guide/) is the human entry point --
 three pages, install / a plugin / a theme, and the site's Doc tab is built from
 that folder -- and [docs/themes.md](docs/themes.md) holds the CSS knowledge.
 [docs/getting-started.md](docs/getting-started.md) points at the three and holds
-nothing of its own: one walkthrough written twice is one that goes wrong twice.
-All of it is part of the same contract.
+nothing of its own. All of it is part of the same contract.
 
 Shape of it:
 
 - **`api.helpers.cache(name, { keys })` is stale-while-revalidate, persisted.**
-  Both mods that list people asked Slack, waited, then drew -- and the answer is
-  nearly always the one from last time, so the waiting confirmed what was
-  already known. `swr` hands back what is stored, synchronously, goes to the
-  network anyway, and calls back **only when the answer differs**: an unchanged
-  list never repaints, a changed one does not stay wrong. Measured live on a
-  member column: 805ms to show anybody, 81ms from the cache.
+  A list of people is nearly always the same answer as last time, so waiting
+  for the network only confirms what is already known. `swr` hands back what is
+  stored, synchronously, goes to the network anyway, and calls back **only when
+  the answer differs**: an unchanged list never repaints, a changed one does not
+  stay wrong. Measured live on a member column: 805ms to show anybody from the
+  network, 81ms from the cache.
 
   It is written through `api.settings`, which is the file the loader reads at
   every launch -- so `keys` is not decoration. A cache that grows without limit
@@ -1513,15 +1368,14 @@ Shape of it:
   swallow the key), `mount`, `each`, `badge`, `tooltip`, `copy`, `iconButton`,
   `field`, `section`, `debounce`, `disclosure`.
 - **`api.helpers.disclosure` makes something Slack already draws open and
-  close**, which is four problems rather than one and every one of them was got
-  wrong here first: Slack replaces the element (so the click is delegated from
-  the document and nothing is remembered *on* the node -- a bound listener
-  works exactly once and reads as intermittent), Slack tears out what was
-  opened (so it is put back), which one is open has to survive both (so
-  identity is a key the caller derives, never the node), and none of it may be
-  driven from an observer on the message list. `refresh()` is called from the
-  mod's own sweep. `keyFor` returning null leaves the trigger exactly as Slack
-  drew it.
+  close**, which is four problems rather than one: Slack replaces the element
+  (so the click is delegated from the document and nothing is remembered *on*
+  the node -- a bound listener works exactly once and reads as intermittent),
+  Slack tears out what was opened (so it is put back), which one is open has to
+  survive both (so identity is a key the caller derives, never the node), and
+  none of it may be driven from an observer on the message list. `refresh()` is
+  called from the mod's own sweep. `keyFor` returning null leaves the trigger
+  exactly as Slack drew it.
 
   **It animates nothing, and that is the arrangement.** The classes
   (`betterslack-disclosure`, `__panel`, `__inner`) are stable so Motion can,
@@ -1542,19 +1396,17 @@ Shape of it:
   panel (`animationDuration`/`transitionDuration`), so a client without Motion
   removes it in the same breath rather than waiting for something that is not
   happening. Measured with Motion on: rows at 0.7px and opacity 0.11 a hundred
-  and fifty milliseconds in, then gone. **No height is measured anywhere**, and
-  that is the point of the `fr` trick -- rows between `0fr` and `1fr`
-  interpolate over the animation's own time, so a long panel folds away in
-  exactly as long as a short one. Measuring the content is what would make the
-  duration vary.
+  and fifty milliseconds in, then gone. **No height is measured anywhere** --
+  rows between `0fr` and `1fr` interpolate over the animation's own time, so a
+  long panel folds away in exactly as long as a short one.
 
   **And it sweeps what a previous life of the mod left.** A mod is stopped and
   started again whenever its files change, and switched off and on by hand;
   what it left inside Slack's own markup is not something Slack will ever
-  remove. Measured in a real client: two panels, one per reload, reading as the
-  same content printed twice. `refresh()` removes any panel this instance does
-  not own, and disposing removes every one in the document rather than only the
-  tracked ones. The same rule the headstones follow, for the same reason.
+  remove, so each reload would leave another panel showing the same content.
+  `refresh()` removes any panel this instance does not own, and disposing
+  removes every one in the document rather than only the tracked ones. The same
+  rule the headstones follow, for the same reason.
 
   **The caret is drawn with borders, never typed as a glyph.** A character sits
   wherever its font puts it in the em box, which is never the middle, so
@@ -1588,35 +1440,33 @@ Shape of it:
 itself -- the emoji, the sentence, and when it runs out, which is what Slack's
 own sidebar shows. A caller that has made the status into a control passes
 `tooltipOn` (the element the pointer is really aiming at, since a 15px picture
-leaves its padding silent) and `hint` (what clicking does, as the last line).
-The strip in Slack's rail had its own tooltip on the button as well, so one
-emoji opened two popovers. The order inside is the sentence, then the action,
-then the emoji's own name **last** -- the name is there so a picture nobody
-could draw is still findable, and it says nothing at all to a reader who can see
-the picture.
+leaves its padding silent) and `hint` (what clicking does, as the last line),
+and adds no tooltip of its own -- two on one target open two popovers for one
+emoji. The order inside is the sentence, then the action, then the emoji's own
+name **last** -- the name is there so a picture nobody could draw is still
+findable, and it says nothing to a reader who can see the picture.
 
 **A plugin writes CSS through two nodes, not one.** `api.css` replaces the
-plugin's stylesheet whole -- that is the contract, and it is right, since a mod
-that recomputes its CSS on a settings change would otherwise stack copies of it
-for ever. `helpers.toggle({ whenOn })`, `helpers.badge` and `helpers.tooltip`
-write CSS too, so **the helpers own a node of their own**, `plugin:<id>:helpers`.
-Sharing one node means a mod using both keeps only whichever wrote last -- it
-puts its class on `<html>`, draws its indicator, and folds nothing away, because
-the indicator stylesheet has overwritten the rules that hide the sidebar. Tests
-that assert on every call the mod makes pass throughout, since the bug is that
-only one of those calls survives. `tests/styles.test.mjs` covers it, and carries
-that shape as a fixture rather than importing a mod: a regression test that can
-be deleted along with its subject is not covering the runtime.
+plugin's stylesheet whole -- that is the contract, since a mod that recomputes
+its CSS on a settings change would otherwise stack copies of it for ever.
+`helpers.toggle({ whenOn })`, `helpers.badge` and `helpers.tooltip` write CSS
+too, so **the helpers own a node of their own**, `plugin:<id>:helpers`. With a
+shared node, a mod using both keeps only whichever wrote last -- it puts its
+class on `<html>`, draws its indicator, and folds nothing away, because the
+indicator stylesheet has overwritten the rules that hide the sidebar -- while
+tests that assert on every call the mod makes still pass.
+`tests/styles.test.mjs` covers it, and carries that shape as a fixture rather
+than importing a mod, so the regression test cannot be deleted along with its
+subject.
 
 When two mods want the same block, it belongs in the API, and the mods get
-refactored onto it in the same change. Five things were lifted that way after an
-audit of every plugin, and each one had been written two or three times:
+refactored onto it in the same change. The shared blocks:
 
-- `api.slack.web.users(ids)` — the batched `users.info`, cached per workspace.
-  Three plugins kept their own cache and their own drop-on-switch rule.
+- `api.slack.web.users(ids)` — the batched `users.info`, cached per workspace
+  and dropped on a workspace switch.
 - `api.slack.web.availability(id)` — presence and dnd folded into one state.
   `dnd_enabled` alone is a **schedule**, not a state: someone with quiet hours
-  every night is not away all day, which is what the three copies all showed.
+  every night is not away all day.
 - `api.ui.menu(anchor, items)` — Slack's `c-menu`, positioned and dismissed.
 - `api.slack.avatarUrl(url, size)` — Slack serves them as `<base>-<size>`.
 - `api.helpers.poll(fn, ms)` — an interval that stops while the window is
@@ -1628,8 +1478,8 @@ audit of every plugin, and each one had been written two or three times:
   message. `shortLinks` and `oneLine` are the row's concerns; a message keeps
   the whole address, because a link pasted alone is usually the point of it.
   `_italic_` is deliberately not emphasis -- half the handles in a workspace
-  are snake_case, and `deploy_from_main` comes out italic with the underscores
-  eaten.
+  are snake_case, and `deploy_from_main` would come out italic with the
+  underscores eaten.
 
 ## The theme builder
 
@@ -1647,45 +1497,42 @@ It opens on a **door** (`views/start.js`): new theme, open one you have, or
 carry on. Work is kept through `api.settings` -- the loader's file on disk --
 not `localStorage`, which is Slack's storage and is wiped by an app update.
 
-**Choosing a base reads that theme's colours into the palette** -- loading its
-stylesheet under the generated one is not enough, and the way that failed was
-confusing: the base went in first, the twelve derived roles went in after and
-painted over every colour it had set, so a chosen theme's fonts and layout
-appeared while its colours did not. `read-theme.js` maps Slack's tokens back to
-the twelve roles, following `var()` references (themes name their own colours
-and point Slack's tokens at them) and unwrapping triplets. Roles a theme is
-silent about stay derived.
+**Choosing a base reads that theme's colours into the palette.** Loading its
+stylesheet under the generated one is not enough: the twelve derived roles go
+in after and paint over every colour it sets, so the base's fonts and layout
+appear while its colours do not. `read-theme.js` maps Slack's tokens back to the
+twelve roles, following `var()` references (themes name their own colours and
+point Slack's tokens at them) and unwrapping triplets. Roles a theme is silent
+about stay derived.
 
 **While the builder is open it holds the user's themes back**
 (`api.themes.suspend`, which detaches the whole `theme` layer without touching
-the settings). Without that, choosing a base changes nothing you can see: the
-theme that is switched on is still painting underneath, and the builder's job is
-to show what *it* is painting. `StyleManager.reattachOrphans` skips a suppressed
-layer, or Slack's next touch of `<head>` puts it straight back.
+the settings). Otherwise the theme that is switched on keeps painting
+underneath, and choosing a base changes nothing you can see.
+`StyleManager.reattachOrphans` skips a suppressed layer, or Slack's next touch
+of `<head>` puts it straight back.
 
 Laid out like Slack's preferences: a rail of sections, one view at a time, a bar
 of actions along the bottom (`views/` is a file per section, and the primitives
 come from `api.ui.kit(doc)` + `api.ui.kitCss`, never a `ui.js` of its own --
-that drift is what the kit exists to stop). Do not stack every tool in one
+the kit exists so that does not drift). Do not stack every tool in one
 scrolling column: it reads as a list of controls in the order they were
 written.
 
 **Hovering a colour outlines what it paints**, which is `highlight.js`: the
-stylesheet inverted once into token -> selectors, then queried. Two things that
-look like details and are not. State pseudo-classes are *stripped* from a
-selector rather than skipped -- the hover colour only ever appears in a `:hover`
-rule, so skipping them left the role called "the row under the pointer"
-highlighting nothing. And a role reaches Slack through its tokens *and* through
-the handful of rules `roles.js` writes directly (rail, sidebar,
-`.p-theme_background`), so `targetsForRole` returns both; tokens alone left
-Chrome lighting up nothing. Both derived from `buildThemeCss` with a sentinel
-colour per role, never from a second table.
+stylesheet inverted once into token -> selectors, then queried. State
+pseudo-classes are *stripped* from a selector rather than skipped -- the hover
+colour only ever appears in a `:hover` rule, so skipping them would leave "the
+row under the pointer" highlighting nothing. And a role reaches Slack through
+its tokens *and* through the handful of rules `roles.js` writes directly (rail,
+sidebar, `.p-theme_background`), so `targetsForRole` returns both; tokens alone
+would leave Chrome lighting up nothing. Both are derived from `buildThemeCss`
+with a sentinel colour per role, never from a second table.
 
-**To see a mod's own window, screenshot it through CDP** -- `BETTERSLACK_SHOT=<dir>`
-writes a PNG per attached window. `screencapture` photographs the desktop, and a
-window Slack opened is routinely on another Space or display, so it comes back
-without the window in it. This is how the builder's interface was looked at
-while it was being built.
+**To see a mod's own window, screenshot it through CDP** --
+`BETTERSLACK_SHOT=<dir>` writes a PNG per attached window. `screencapture`
+photographs the desktop, and a window Slack opened is routinely on another Space
+or display, so it comes back without the window in it.
 
 `tokens.js` reads the client's own custom properties rather than shipping a
 list: there are ~525 colour tokens in Slack 4.51, they change between releases,
@@ -1695,9 +1542,8 @@ nothing, and reports nothing, which is why every value goes through
 `formatFor(kind, colour)`.
 
 **Discord Light is Discord Dark's stylesheet with one block changed**, and a
-test in its folder fails if the two drift below the palette. Two stylesheets
-meaning to be one design come apart the moment a fix lands in whichever file was
-open, and the one that misses out is always the one nobody is looking at. Five
+test in its folder fails if the two drift below the palette: two stylesheets
+meaning to be one design come apart the moment a fix lands in only one. Five
 things a light palette cannot inherit are variables for that reason --
 `--dc-header-shadow`, `--dc-float`, `--dc-float-text` and the two scrollbar
 colours: a shadow that has to be a tint rather than a shade, a floating surface
@@ -1706,9 +1552,9 @@ scrollbar whose thumb and track trade places. A second test refuses any hex or
 `rgb()` below the palette at all, white excepted -- the text on the blurple
 accent and on the red badge, which is the same colour either way.
 
-The two are honest about coming from different places, and say so in their own
-headers: Discord Dark's colours were sampled off a screenshot of the real
-client, Discord Light's are Discord's published design tokens by name.
+The two say in their own headers where their colours come from: Discord Dark's
+are sampled off a screenshot of the real client, Discord Light's are Discord's
+published design tokens by name.
 
 ## Themes require plugins; they do not run code
 
@@ -1724,32 +1570,31 @@ plugin id in `requires` and the panel offers to switch it on.
   theme is off, so it is never turned on silently.
 - The required plugin must stand alone: it reads Slack's tokens and follows any
   theme, and the theme must not style its markup. Also a test.
+
 **A setting speaks both languages, like everything else a mod says.** `label`,
 `hint` and a choice's option labels each take a table beside them -- `labels`,
 `hints` -- the same shape `description` / `descriptions` already uses, with
 English required and the fallback. `tests/i18n.test.mjs` fails a mod whose
-settings are English only, which every one of them was: the panel drew a French
-mod's French readme above a form nobody had translated.
+settings are English only.
 
 **A theme can have settings, and still runs no code.** A field in its `mod.json`
 carries `cssVar` naming a custom property; the runtime writes
 `:root { <cssVar>: <value> }` into a `theme:<id>:vars` layer created after the
 theme's own, so the value wins on order rather than on specificity. The theme
-reads nothing and the panel does the writing -- which is the whole point, and
-why this is not the `script` field below wearing a different hat.
+reads nothing and the panel does the writing -- which is why this is not the
+`script` field below wearing a different hat.
 
-Two things it would half-work without, both of which cost a repaint that only
-covers some of the client:
+Two things it needs to repaint the whole client rather than part of it:
 
 - **The legacy families take bare triplets.** `--sk_*` and `--dt_color-plt-*`
   want `r, g, b`, and a `var()` holding a hex parses there, paints nothing and
   reports nothing. So a colour setting also writes `<cssVar>-rgb` as a triplet,
   and a theme points its legacy tokens at that. Terminal does.
 - **A theme must not write a colour out by hand.** A tint written as a literal
-  `rgba(53, 224, 127, …)` is a tint a colour chosen in the panel never reaches:
-  the setting arrives at the tokens and at nothing else. Terminal derives all of
-  its from `color-mix(in srgb, var(--term-green) N%, transparent)`, and a test
-  fails the theme if a literal comes back.
+  `rgba(53, 224, 127, …)` is a tint a colour chosen in the panel never reaches.
+  Terminal derives all of its from
+  `color-mix(in srgb, var(--term-green) N%, transparent)`, and a test fails the
+  theme if a literal comes back.
 
 Removing the theme removes its variables with it -- left behind they would paint
 a theme that is off, and beat the next one, since they are written after every
@@ -1766,21 +1611,6 @@ declared only on `:root` keep the default palette whatever `body` says. Declare
 them on `body` as well -- Slack's `.sk-client-theme--*` class is on `<body>`,
 which is why existing themes' selector already half-covers it.
 
-**A theme can change BetterSlack's own pictures, still without code.** Two
-custom properties on its `:root`, each a `url("data:image/svg+xml,...")`:
-`--betterslack-app-icon` is read by the loader out of the enabled themes'
-stylesheets and becomes the Dock icon, and `--betterslack-splash-art` is
-read by the start screen off its host's computed style and replaces the mark
-and the animation (`--betterslack-splash-width`, `-height`, `-background` and
-`-text` size and colour it). In the stylesheet rather than as files or a
-manifest key, because the stylesheet is what every update path carries: the
-panel's mod update fetches `.css` and leaves an `.svg` behind, and a loader
-that predates a manifest key rewrites the manifest without it. An older
-loader or runtime ignores both properties, so a theme carrying them installs
-anywhere. A theme keeps the pictures as `app-icon.svg` and `splash.svg` beside
-its stylesheet, where they can be edited, and `scripts/embed-theme-art.mjs`
-writes them in; Windows XP's test fails if the two have drifted.
-
 - **A theme never gets its own way to run code.** Behaviour belongs in a plugin,
   which already has an API, a lifecycle and a consent step; a second, weaker
   model beside it would be another surface to keep in step and another dialog to
@@ -1791,7 +1621,7 @@ writes them in; Windows XP's test fails if the two have drifted.
 Inside the client, **borrow Slack's classes** -- the Mods panel wears
 `.c-dialog` / `.c-button` and follows every theme for nothing. Its fields do
 too: `.c-input_text` for every text and number input, and `.c-input_select` for
-a select. Two things that only show up once you try it:
+a select. Things to know:
 
 - **Slack's select is not a `<select>`.** It is a bordered button carrying
   `.c-input_select__selected_value` and `.c-input_select__chevron` that opens a
@@ -1801,73 +1631,63 @@ a select. Two things that only show up once you try it:
 - **Both of those classes carry `margin: 0 0 20px`**, because in Slack they are
   form fields stacked in a column. Undoing it needs the class written **twice**
   (`.betterslack-search.betterslack-search`): Slack's stylesheet loads after
-  BetterSlack's, so one class ties on specificity and loses on source order --
-  measured, the field kept the 20px as a gap under the toolbar.
+  BetterSlack's, so one class ties on specificity and loses on source order,
+  leaving a 20px gap under the toolbar.
 - **Slack's focus is a halo, and the panel does not use it.** The rule is two
   stacked shadows -- `0 0 0 1px` plus `0 0 0 5px` at 30% -- with the border set
   transparent underneath, so what is left is a glow floating where the edge was.
-  On a form of one field at a time that reads as attention; on a toolbar of two
-  controls it reads as a light left on. The border shows focus instead: already
-  there, already animating over the same 80ms, and still visible to anyone
-  arriving by keyboard, which is the one thing removing a focus indicator may
-  not cost. Doubling the class is needed here too -- `.c-input_text:focus`
-  scores a class and a pseudo-class. Anywhere else
-there is no stylesheet at all: a window a mod opens is a blank document. That is
-what `api.ui.kit(doc)` + `api.ui.kitCss` are for (`src/runtime/ui/kit.ts`), and
-they exist because the theme builder had rebuilt the whole system by hand and it
-was drifting on its own. Everything is prefixed `sm-`, so the stylesheet is safe
-in the client too.
+  On a toolbar of two controls it reads as a light left on. The border shows
+  focus instead: already there, already animating over the same 80ms, and still
+  visible to anyone arriving by keyboard. Doubling the class is needed here
+  too -- `.c-input_text:focus` scores a class and a pseudo-class.
+
+Anywhere else there is no stylesheet at all: a window a mod opens is a blank
+document. That is what `api.ui.kit(doc)` + `api.ui.kitCss` are for
+(`src/runtime/ui/kit.ts`), so no mod rebuilds the design system by hand.
+Everything is prefixed `sm-`, so the stylesheet is safe in the client too.
 
 `kit.code()` is the CSS editor: a highlighted `<pre>` under a transparent
 `<textarea>`. Both must agree on **every** metric or the caret drifts from the
 text; that is why `CODE_CSS` lives beside the tokeniser and is shared by the kit
 and by `PANEL_CSS` rather than copied.
 
-**Two runtimes can boot into one document.** `window.__betterslack` is only
-assigned at the *end* of an async boot, so the document-start script and a
-loader injection into the same live page both found it empty, both built a
-Bridge, and both started every plugin -- the second receiver on `window` won and
-the first runtime's plugins were left with a bridge nothing answers: every
-request timed out after fifteen seconds while their buttons sat there looking
-fine. `boot()` therefore claims `window.__BETTERSLACK_BOOTING__` synchronously.
-The symptom is a theme gallery that comes up blank, with the answers delivered
-by the loader and the same number of timeouts in the page.
+**Two runtimes must never boot into one document.** `window.__betterslack` is
+only assigned at the *end* of an async boot, so a document-start script and a
+loader injection into the same live page can both find it empty, both build a
+Bridge, and both start every plugin -- the second receiver on `window` wins and
+the first runtime's plugins are left with a bridge nothing answers: every
+request times out after fifteen seconds while their buttons look fine.
+`boot()` therefore claims `window.__BETTERSLACK_BOOTING__` synchronously. The
+symptom is a theme gallery that comes up blank, with the answers delivered by
+the loader and the same number of timeouts in the page.
 
 **Nothing may touch the document while a module is being evaluated.** The
-runtime is injected at document-start, before Slack's markup exists, so
-`document.documentElement` is genuinely `null` there. `ui/panel.ts` built its
-translator at module scope, `detectLocale` read `lang` off that null, and the
-*whole bundle* threw at evaluation -- so the document-start injection failed and
-the mods arrived through the loader's re-injection fallback instead, against a
-DOM Slack had already half built, which is precisely where both renderer
-freezes came from. It was silent for months because the fallback works.
+runtime is injected at document-start, before Slack's markup exists:
 
-There were two of them, and the second only became reachable once the first was
-fixed: `waitForClient` and `dom.waitFor` both called
-`observer.observe(document.documentElement, …)`, which throws on `null` for the
-same reason. Both now observe `document.documentElement ?? document` -- the
-Document node is observable and sees `<html>` itself arrive.
-
-There is a third, and it is `document.head`: `StyleManager.anchorFor` read
-`querySelector` off it, which is `null` at document-start, so `boot()` threw
-before a single stylesheet was written -- seen twice in four launches of a real
-client, printed as `boot failed TypeError` and then covered up by the same
-re-injection fallback. `set()` now holds the node and attaches it through the
-ordinary anchor path once a head exists, so the layer order still holds.
-`tests/styles.test.mjs` builds a document with no `documentElement` at all and
-watches the stylesheet land.
+- **`document.documentElement` is `null` there.** Anything reading it at module
+  scope -- a translator built at the top of a file, `detectLocale` reading
+  `lang` -- throws the *whole bundle* at evaluation. The document-start
+  injection then fails silently and the mods arrive through the loader's
+  re-injection fallback instead, against a DOM Slack has already half built,
+  which is precisely where the renderer freezes come from.
+- **Observers observe `document.documentElement ?? document`.** `waitForClient`
+  and `dom.waitFor` do; observing a `null` throws. The Document node is
+  observable and sees `<html>` itself arrive.
+- **`document.head` is `null` there too.** `StyleManager.set()` holds the node
+  and attaches it through the ordinary anchor path once a head exists, so the
+  layer order still holds. A failure here prints as `boot failed TypeError`
+  before the re-injection fallback hides it. `tests/styles.test.mjs` builds a
+  document with no `documentElement` at all and watches the stylesheet land.
 
 Build translators, read attributes and observe elements lazily or defensively;
 assume nothing on the page exists yet.
 
-**`runtime went missing after a navigation, re-injecting` is not that bug, and
-is not a bug at all.** It was tempting to blame it for the above; it survived
-the fix, which settled it. `boot()` is async and only assigns
-`window.__betterslack` on its last line, after themes are in and
-`waitForClient` has returned -- seconds later. Slack's load event fires long
-before that, the loader looks for the marker, finds nothing and says so. The
-re-injection it then performs is a no-op, because `boot()` claims
-`window.__BETTERSLACK_BOOTING__` synchronously on the way in. So the line means
+**`runtime went missing after a navigation, re-injecting` is not a bug.**
+`boot()` is async and only assigns `window.__betterslack` on its last line,
+after themes are in and `waitForClient` has returned -- seconds later. Slack's
+load event fires long before that, the loader looks for the marker, finds
+nothing and says so. The re-injection it then performs is a no-op, because
+`boot()` claims `window.__BETTERSLACK_BOOTING__` synchronously. The line means
 "has not finished starting", not "is not there". What tells you a boot really
 failed is a `page error` line, which the loader forwards for exactly that
 reason.
@@ -1875,9 +1695,8 @@ reason.
 **`store.ts` resolves `~/.betterslack` once, when it is imported.** A test that
 wants a scratch home has to set `BETTERSLACK_HOME` *before* importing it —
 `tests/update.test.mjs` does that at module scope, with a comment saying why.
-Getting it the wrong way round runs the test against the real home, and the
-backup test then wrote its empty fixture over a real settings file. It cost
-someone their installed list once; it should not cost it twice.
+The wrong order runs the test against the real home, where a fixture can
+overwrite a real settings file and the user's installed list with it.
 
 ## The start screen
 
@@ -1887,28 +1706,27 @@ and buttons appear one at a time as their mods start; each of those is correct
 and the sequence looks like something going wrong.
 
 `manager.applyInitial(onProgress)` reports the mod it is **about** to start, so
-the name on screen when nothing moves again is the one that is stuck -- which is
-the difference between "it is slow" and "it is that mod".
+the name on screen when nothing moves again is the one that is stuck -- the
+difference between "it is slow" and "it is that mod".
 
 **The animation is `assets/loader.webm`, drawn by the repository owner.** VP9
 with alpha, which Chromium plays and composites over whatever the splash's
-background is. Four things about it that were measured rather than assumed:
+background is.
 
 - **It is delivered over the bridge, not bundled into the runtime.** The
   renderer bundle is a string run at document-start on *every* navigation and
-  its own header says it must be cheap; ~95kB of video in it would be a
-  decoration overruling that. `scripts/build.mjs` inlines the file into the
-  loader bundle instead (`loader: { '.webm': 'base64' }`), the page asks for it
-  with `app.art`, and the still mark is what is on screen for the few
-  milliseconds in between -- and what stays if the answer never comes.
+  its own header says it must be cheap. `scripts/build.mjs` inlines the file
+  into the loader bundle instead (`loader: { '.webm': 'base64' }`), the page
+  asks for it with `app.art`, and the still mark is what is on screen for the
+  few milliseconds in between -- and what stays if the answer never comes.
 - **Slack's policy allows it.** Its CSP names `base-uri`, `object-src` and
   `script-src` and no `default-src`, so media is unrestricted: `data:` and
   `blob:` video both load and both decode the alpha. `data:` is used, since it
   needs nothing revoking afterwards.
 - **Scale premultiplied, or the edges go dark.** The source is 848x848 and 2.4MB;
   rescaling it with plain `scale` bleeds black out of the transparent pixels and
-  every shape comes back with a grey fringe, which is invisible on a dark theme
-  and obvious on a light one. To regenerate:
+  every shape comes back with a grey fringe, invisible on a dark theme and
+  obvious on a light one. To regenerate:
 
   ```bash
   ffmpeg -c:v libvpx-vp9 -i "logo loader.webm" \
@@ -1919,7 +1737,7 @@ background is. Four things about it that were measured rather than assumed:
   `-auto-alt-ref 0` is required for alpha, and `-c:v libvpx-vp9` on the *input*
   is what makes ffmpeg decode the alpha at all -- the native decoder reports
   `yuv420p` and silently drops it. 192 is twice the 88px the screen draws it at.
-  An animated WebP of the same frames came to 267kB against 95, so it is a video.
+  An animated WebP of the same frames is 267kB against 95, so it is a video.
 - **The still mark is the whole fallback**, swapped out only on the video's
   `canplay`. A codec that has gone, a refused request or a screen that has
   already lifted all end with what was already drawn, and there is no second
@@ -1927,13 +1745,11 @@ background is. Four things about it that were measured rather than assumed:
   by never asking for the video -- CSS cannot stop one playing -- and the mark
   breathes instead.
 
-Four rules, and every one of them is about it being a decoration over somebody's
-messaging app rather than about how it looks:
+Four rules, all about it being a decoration over somebody's messaging app:
 
 - **It may never be what traps anybody.** There is a 20s ceiling, it comes down
   in the failure path as well as the success one, and it stops taking pointer
-  events the moment it starts fading. This project has had two ways to be locked
-  out of Slack; a splash that never lifts would be a third.
+  events the moment it starts fading.
 - **`boot()` never awaits it**, and everything inside it is wrapped: a
   decoration with the power to hold up the runtime, or to throw inside it, is
   worse than no decoration.
@@ -1946,15 +1762,6 @@ messaging app rather than about how it looks:
 - **A floor of 500ms.** Safe mode applies nothing at all, and the loader often
   attaches to a client that is already built, so without one the screen appears
   and vanishes inside a frame -- which reads as a flash of something broken.
-
-**A theme's start screen is on its first frame.** A theme declares it with
-`--betterslack-splash-*` properties (see the theme section), and the splash
-does not wait for the theme's stylesheet to reach the document to find them:
-at document-start there is no head to put it in, and for that beat
-BetterSlack's own screen showed before the theme's. `splashVarsFrom` reads the
-declarations out of the enabled themes' source in the boot payload, which
-carries it already, and writes them on the splash's host. Reading the computed
-style stays as the fallback.
 
 It is in a shadow root with its own colours, because at document-start Slack's
 stylesheet has not loaded and its tokens do not exist yet: every colour carries
@@ -1969,8 +1776,8 @@ starting Slack is not.
 never reported itself healthy: the loader writes `~/.betterslack/booting` before
 launching Slack and the runtime clears it with `app.ready` once the panel and
 the mods are in, so a marker left behind means the last run did not get there.
-This is the escape hatch the two renderer freezes did not have -- the only way
-out was killing Slack and editing settings.json by hand.
+This is the way out of a renderer freeze without killing Slack and editing
+`settings.json` by hand.
 
 A mod that throws during `start()` is recorded in `manager.errors` and shown on
 its own row, and the count is kept in `settings.modFailures`: **counted before
@@ -1986,26 +1793,22 @@ against `mods/registry.json` on the default branch. Updating one fetches its
 folder through GitHub's contents API and goes through the same install path the
 Browse shelf uses, which re-validates the manifest loader-side -- files off the
 network are untrusted whichever button asked for them. That separation is the
-whole point: without it, a one-line fix to a theme means pulling the loader and
-the runtime along with it.
+whole point: a one-line fix to a theme does not pull the loader and the runtime
+along with it.
 
 **Both kinds of update are one number on one button.** The loader sweeps for
 both -- its own version and the registry -- at start and every hour after
 (`UPDATE_SWEEP_MS`), and pushes each answer: `update.status` and `mods.updates`.
 `ModManager` holds them, `notify()` repaints the launcher's badge, and the panel
 puts a dot on the tab that owns it: Themes, Plugins or About -- **which is also
-where the notice itself is drawn**, rather than on every tab. Without a badge,
-repeating it everywhere would be the right answer -- a notice you have to go
-looking for is a notice nobody finds -- but with a count on the launcher and a
-dot on the tab, a plugin's update sitting on the Themes tab is the thing that
-reads as a mistake. Safe mode
-stays on every tab; it is not an offer, it is the reason nothing is running. Three things that
-are load-bearing rather than tidy:
+where the notice itself is drawn**, rather than on every tab; the count on the
+launcher and the dot on the tab are what make it findable. Safe mode stays on
+every tab: it is not an offer, it is the reason nothing is running.
 
-- **The count is the manager's, not the panel's.** With the mod list owned by
-  the panel and fetched once, the first time it is opened, the badge can never
-  count a mod, and somebody who never opens the panel never learns one has moved
-  on. State a badge reads cannot live in a window that is shut.
+- **The count is the manager's, not the panel's.** The panel's mod list is
+  fetched only when it is opened, so a badge counted there would miss
+  everything for somebody who never opens the panel. State a badge reads cannot
+  live in a window that is shut.
 - **Hourly, not at boot only.** This is somebody's messaging app, left running
   for days; a check that answers once is a badge that is right for a minute.
   An hour is two requests -- `git fetch` and one registry read -- for a dot.
@@ -2015,25 +1818,20 @@ are load-bearing rather than tidy:
   the Update button's own path. Offline or blocked, the shipped copy stays.
 - **And by hand, from the About tab.** "Check for updates" asks the loader
   for that same sweep now (`updates.check`), so the button and the badge
-  cannot disagree. It exists because a mod installed from Browse is the copy
-  the install shipped with, and the newer one published since is only found
-  by the next sweep -- up to an hour of running a mod that is already fixed.
+  cannot disagree.
 - **The notice names two versions, not a count of commits.** "Four commits
-  behind" is true and means nothing to somebody who has never made one -- and a
-  git checkout is what `install.sh` leaves behind, so it is not a developer's
-  install by any means. Both kinds of install fill in `latest` (the checkout
-  reads `package.json` out of the ref the fetch already brought down, at no
-  extra cost), and the title is `BetterSlack 3.0.0 -> 3.1.0`, the same shape a
-  mod's row uses. `latest` is set **only when it is genuinely newer**: a branch
-  moves without a release on it all the time -- this one's master usually has --
-  and there the count of changes is the only honest measure there is, so that is
+  behind" means nothing to somebody who has never made one, and a git checkout
+  is also what `install.sh` can leave behind. Both kinds of install fill in
+  `latest` (the checkout reads `package.json` out of the ref the fetch already
+  brought down, at no extra cost), and the title is
+  `BetterSlack 3.0.0 -> 3.1.0`, the same shape a mod's row uses. `latest` is set
+  **only when it is genuinely newer**: a branch often moves without a release
+  on it, and there the count of changes is the only honest measure, so that is
   what the fallback says.
 - **`findModUpdates` answers `null` when it could not ask**, and an empty list
-  only when it did. They were the same value, which was harmless while the
-  answer was only ever drawn as rows in an open panel: now one hourly sweep
-  taken offline would clear the dot off a mod that is still out of date. Same
-  rule the app's own check follows -- say nothing rather than say "current" on
-  no evidence.
+  only when it did. An hourly sweep taken offline must not clear the dot off a
+  mod that is still out of date. Same rule the app's own check follows -- say
+  nothing rather than say "current" on no evidence.
 
 `tests/updates.test.mjs` covers the badge against a real `installLauncher`,
 which is why `ui/launcher.ts` is one of the modules the build emits separately.
@@ -2041,23 +1839,21 @@ which is why `ui/launcher.ts` is one of the modules the build emits separately.
 ## A mod may not be installed into a BetterSlack that cannot run it
 
 A mod updates on its own, out of `mods/registry.json` on the default branch,
-into whatever version the reader happens to be running. So a plugin that starts
-calling something added last month breaks on every older install -- at the first
-click, with a `TypeError`, which reads to the person holding it as "this plugin
-is broken" rather than "this plugin is newer than my app".
+into whatever version the reader happens to be running. A plugin calling
+something newer than that version breaks at the first click with a `TypeError`,
+which reads as "this plugin is broken" rather than "this plugin is newer than my
+app".
 
 **The floor is computed, not remembered.** Every entry in `docs/api/` carries
 the release it arrived in; `scripts/api-floor.mjs` reads which of them a mod's
-source touches and takes the highest. That is the only version of this that
-works: a hand-written compatibility field is the field nobody bumps, and the
-release where they forget is the release that needed it. It is possible at all
-because `build-api-page.mjs` already cross-checks that folder against the
-TypeScript interfaces -- a new API member cannot exist without a file, so it
-cannot exist without a version.
+source touches and takes the highest. A hand-written compatibility field is the
+field nobody bumps. It works because `build-api-page.mjs` cross-checks that
+folder against the TypeScript interfaces -- a new API member cannot exist
+without a file, so it cannot exist without a version.
 
 - **`build-registry.mjs` publishes it** as `needsBetterSlack`, because the
   registry is what an older install reads. A floor of nothing is omitted rather
-  than written as `0.0.0`: every theme would carry it and say nothing.
+  than written as `0.0.0`.
 - **`mod-updates.ts` refuses**, twice. The listing marks the update
   `blockedBy` so the panel can say which version is wanted, and `mods.update`
   asks again immediately before writing files, because the panel's list can be
@@ -2069,8 +1865,8 @@ cannot exist without a version.
   that is on the branch and in no release genuinely cannot run on any published
   build, so it is refused everywhere until a release is cut -- `pnpm release`
   stamps every `unreleased` with the version it cuts and rebuilds the registry
-  in the same commit. Miss that step and every mod using a new call stays
-  uninstallable after the release that fixed it.
+  in the same commit. Without that step every mod using a new call stays
+  uninstallable after the release that shipped it.
 - **A manifest may raise the floor and may never lower it.** The scan reads
   source text, not a program: it finds `api.slack.openMessage`, the aliases mods
   really write (`const ui = api.ui.kit(document)`, `const { slack } = api`) and
@@ -2083,39 +1879,34 @@ cannot exist without a version.
 GitHub rather than a bug.** `raw.githubusercontent.com` serves it with
 `max-age=300` and `vary: Accept-Encoding`, so the gzip copy and the identity
 copy are separate cache entries that expire independently -- and Node's `fetch`
-always asks for compression while `curl` without `--compressed` does not.
-Measured minutes after 3.0.0 was tagged: `curl` read `3.0.0` and every Node
-fetch read `unreleased` from the same URL, until the compressed entry caught up
-20 seconds later. It fails in the safe direction -- a mod is refused, never
-wrongly allowed -- and it corrects itself, so it is not worth defeating the
-cache for. Do not debug it as a fetch problem: compare `curl` and `curl
---compressed` before suspecting the code.
+always asks for compression while `curl` without `--compressed` does not. So
+`curl` can read the new version while every Node fetch reads `unreleased` from
+the same URL, until the compressed entry catches up. It fails in the safe
+direction -- a mod is refused, never wrongly allowed -- and corrects itself.
+Do not debug it as a fetch problem: compare `curl` and `curl --compressed`
+before suspecting the code.
 
-**And the two obvious ways round it have been tried, so do not try them again.**
-A cache-busting query string and a `Cache-Control: no-cache` request header both
-come back `x-cache: HIT` -- neither shifts it, and the only thing in that URL's
-`vary` that would is `Authorization`, which means a token an ordinary user has
-no reason to hold.
-
-`api.github.com/repos/.../contents/<file>` **is** fresher: `max-age=60` rather
-than 300, and with `Accept: application/vnd.github.raw` it hands back the file
-itself. It was written, measured, and deliberately taken back out. Unauthenticated
-it allows **60 requests an hour per IP**, and this is a workplace tool: an office
+**Nothing on an anonymous request shifts that cache.** A cache-busting query
+string and a `Cache-Control: no-cache` request header both come back
+`x-cache: HIT`; the only thing in that URL's `vary` that would is
+`Authorization`, which means a token an ordinary user has no reason to hold.
+`api.github.com/repos/.../contents/<file>` is fresher (`max-age=60`, and
+`Accept: application/vnd.github.raw` hands back the file itself) and is not
+used: unauthenticated it allows **60 requests an hour per IP**, and an office
 behind one address is every BetterSlack in the building sharing that allowance,
-where the cost of running out is a check that reports no update at all. Five
-minutes that fails safe beats one minute that fails for everybody at once.
+where running out means a check that reports no update at all. Five minutes
+that fails safe beats one minute that fails for everybody at once.
 
-**The catalogue itself is never at risk**, and that is worth knowing before
-looking for bugs here: `mods/` ships inside the install, so a catalogue mod
-always matches the app it came with. The mismatch exists only along the
-mod-update path, which is the one thing that carries a newer mod into an older
-app.
+**The catalogue itself is never at risk**: `mods/` ships inside the install, so
+a catalogue mod always matches the app it came with. The mismatch exists only
+along the mod-update path, which is the one thing that carries a newer mod into
+an older app.
 
 **`betterslackApi` is a different thing and stays.** It is one integer, checked
 against `MOD_API_VERSION`, and it answers "is this manifest shaped like one this
 build understands" -- not "does this build have the calls this mod makes".
 
-**`slackVersion` is compared now too.** `slackVersion(slackPath)` in `slack.ts`
+**`slackVersion` is compared too.** `slackVersion(slackPath)` in `slack.ts`
 reads the number where it can be read honestly: macOS keeps it in the bundle's
 `Info.plist`, which is XML text and needs no `PlistBuddy`; Windows installs each
 version into its own `app-4.51.191` directory, so the executable's path carries
@@ -2124,17 +1915,16 @@ answers **null**. Null must stay null -- an unknown version compared against
 anything invents a mismatch, and a warning that fires where nothing is wrong
 teaches people to ignore the one that is real. Mods declare two parts (`4.51`)
 and Slack ships three (`4.51.191`), so `slackVersionIsNewer` compares only the
-parts the mod states; a full-length compare called every mod in the catalogue a
-mismatch. It warns on the mod's page rather than blocking: BetterSlack cannot
-update Slack, so refusing would leave nothing to do about it.
+parts the mod states; a full-length compare would call every mod in the
+catalogue a mismatch. It warns on the mod's page rather than blocking:
+BetterSlack cannot update Slack, so refusing would leave nothing to do about it.
 
 ## The panel speaks both languages
 
 `ui/strings.ts` is the panel's dictionary and `tests/i18n.test.mjs` holds it to
 the rule mods are held to: en and fr must cover the same keys, everything the
 panel asks for must exist, and a bare English sentence left in `panel.ts` fails
-the test. The panel is held to it because mods are: an app that asks every mod
-for two languages and ships one itself is not a rule, it is a preference.
+the test. An app that asks every mod for two languages ships two itself.
 
 **The palette is a mod, not the app.** `mods/plugins/command-palette` binds the
 shortcut and assembles the list; the runtime only provides the component
@@ -2145,12 +1935,11 @@ switch off, and the whole thing doubles as the worked example of what the API
 can do.
 
 **⌘K, taken from Slack on purpose.** Slack binds it to its quick switcher, but
-⌘K is the key everyone reaches for and a palette on a key nobody presses is a
-palette nobody uses; Slack's switcher stays reachable from its search field, and
-the plugin's own `shortcut` setting puts it back on ⌘⇧K for anyone who
-disagrees. The
-handler runs in the capture phase, or both open at once. `api.commands.add` is
-how a mod gets in without taking a button in the rail.
+⌘K is the key everyone reaches for; Slack's switcher stays reachable from its
+search field, and the plugin's own `shortcut` setting puts it back on ⌘⇧K for
+anyone who disagrees. The handler runs in the capture phase, or both open at
+once. `api.commands.add` is how a mod gets in without taking a button in the
+rail.
 
 ## The Mods panel
 
@@ -2163,21 +1952,20 @@ The panel and `api.ui.modal` render into the **light DOM** wearing Slack's own
 `c-dialog` / `c-menu` / `c-button` classes, so Slack's stylesheet styles them
 directly and they follow every theme exactly. A shadow root reimplementing the
 look from tokens lands close but never right. The trade-off is deliberate: a
-theme that restyles `.c-dialog` restyles them too. Toasts stay in a shadow root, since Slack has no toast to borrow from and
-an unreadable error message is worse than an off-brand one.
+theme that restyles `.c-dialog` restyles them too. Toasts stay in a shadow root,
+since Slack has no toast to borrow from and an unreadable error message is worse
+than an off-brand one.
 
-**Two shelves, and a sort.** Installed and Browse. There was an Enabled shelf
-between them and it was a filter wearing a tab's clothes: everything on it was
-on Installed as well, so the same mod sat in two places and switching one off
-made it vanish from under the pointer. What it was for is one of the sort orders
-now -- newest first, A-Z, Z-A, switched-on first -- and Browse is offered only
-the two that mean anything for a mod nobody has yet.
+**Two shelves, and a sort.** Installed and Browse. There is no Enabled shelf: a
+filter shown as a tab puts the same mod in two places and makes it vanish from
+under the pointer when switched off. The sort orders cover it -- newest first,
+A-Z, Z-A, switched-on first -- and Browse is offered only the two that mean
+anything for a mod nobody has yet.
 
-- **`recent` needed no timestamp.** `settings.installed` lists ids in the order
-  they were installed, because that is how `setModInstalled` appends them, so
-  the record already existed and nothing had to be migrated for mods installed
-  months before the sort did. A mod not on that list sorts to the *end*:
-  `indexOf` answers -1, and Browse is entirely made of those.
+- **`recent` needs no timestamp.** `settings.installed` lists ids in the order
+  they were installed, because that is how `setModInstalled` appends them. A
+  mod not on that list sorts to the *end*: `indexOf` answers -1, and Browse is
+  entirely made of those.
 - **The sort is a preference, so it is in `settings.json`** -- somebody who
   wants their list alphabetical wants it alphabetical tomorrow. The search box
   and the tag chips stay in the panel: you clear those. `readSettings` builds
@@ -2185,9 +1973,9 @@ the two that mean anything for a mod nobody has yet.
   to be named there or it is written and gone by the next read.
 - **Sorting lives in `ui/sort.ts`**, not in the panel, so it can be tested
   against the real function rather than through assertions on the source of the
-  panel, which is well past a thousand lines. `localeCompare`, never `<`: a code-point compare files every
-  accented name after Z, which reads as a list that is nearly sorted and
-  therefore as one that is broken.
+  panel. `localeCompare`, never `<`: a code-point compare files every accented
+  name after Z, which reads as a list that is nearly sorted and therefore as
+  one that is broken.
 
 **Every mod has a page**, reached by clicking its name: its icon, its version
 and author, its description in the reader's language, a screenshot with a
@@ -2198,12 +1986,12 @@ and nothing else is fetched at all. `panel.openMod(id)` -- what `api.app` and
 the palette call -- opens that page, not the row's settings drawer.
 
 Destructive actions belong behind the row overflow menu, not on the row: a
-Remove button on every line shouted louder than anything else in the dialog.
+Remove button on every line outweighs everything else in the dialog.
 
 The panel re-renders wholesale on every change, and one toggle triggers several
 renders in a frame. Scroll position therefore comes from the user's own scroll
-events, not from reading the DOM at render time — reading it captured a 0 left
-by an earlier render in the same frame.
+events, not from reading the DOM at render time, which can capture a 0 left by
+an earlier render in the same frame.
 
 ## Conventions
 
@@ -2212,29 +2000,26 @@ by an earlier render in the same frame.
 - **Every change updates the documentation in the same commit.** A change that
   leaves `CLAUDE.md`, `docs/`, a mod's README or the site describing something
   else is an incomplete change, not a change plus a follow-up.
-- **Documentation describes the current state, and only that.** No "it used to
-  be", no "this was moved", no before-and-after. A reader wants to know how the
-  thing works now; what it was last month is what `git log` is for, and every
-  sentence spent on it is a sentence they have to decide is irrelevant.
+- **Documentation is functional and describes the current state, and only
+  that.** No mention of an earlier state, no before-and-after, no story of how
+  something was found, no asides. What a thing was last month is what
+  `git log` is for.
 
   The line to hold: **a constraint keeps its evidence, a change does not keep
   its story.** "Never anchor next to `.c-coachmark-anchor` -- it freezes the
   renderer solid, bisected against a running client" is current, and the
-  measurement is why it is believable. "The update notice used to be a stripe
-  and is now a card" is a changelog entry in the wrong file. When a trap is only
-  visible through the failure it causes, name the failure -- "a backtick here
-  closes the string and the runtime throws at boot" -- not the times it
-  happened.
+  measurement is why it is believable. When a trap is only visible through the
+  failure it causes, name the failure -- "a backtick here closes the string and
+  the runtime throws at boot" -- not the times it happened.
 - **Never put a backtick inside `PANEL_CSS`**, comments included. It is a
   template literal, so a backticked `.c-dialog` in a comment closes the string
   and the rest parses as JavaScript — `.c - dialog` — which builds cleanly and
   then throws `ReferenceError: dialog is not defined` at boot, taking the whole
-  runtime down with no styling on the failure. The way it happens is always the
-  same: a comment explaining a CSS property by naming it in backticks. Write the
-  property in words instead -- "sets display flex", not the backticked
-  declaration. `tests/requires.test.mjs` fails if a backtick appears in there,
-  and typecheck usually gets there first with a baffling `',' expected` pointing
-  at the middle of a sentence.
+  runtime down with no styling on the failure. Write a CSS property in words in
+  a comment -- "sets display flex", not the backticked declaration.
+  `tests/requires.test.mjs` fails if a backtick appears in there, and typecheck
+  usually gets there first with a baffling `',' expected` pointing at the
+  middle of a sentence.
 - Mods are distributed through pull requests and reviewed by a human; that
   review is the security model, since plugins run unsandboxed in an
   authenticated Slack tab. `CONTRIBUTING.md` lists what gets rejected.
@@ -2243,5 +2028,4 @@ by an earlier render in the same frame.
 - **Never push without asking.** Commit freely -- finish a piece of work, run
   `pnpm check`, commit -- but `git push` is the owner's call every time, and a
   force-push doubly so. A commit is local and can be rewritten; a push is out in
-  the world, and this repository's history gets rewritten often enough that a
-  push nobody asked for is a push somebody has to undo.
+  the world.

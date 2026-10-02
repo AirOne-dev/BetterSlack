@@ -23,7 +23,7 @@ keystroke, not when the request goes out; a debounce in front of a search is
 part of the wait.
 
 A row is a line of text by default, and sometimes that is a poor version of the
-truth: a message search result had bold in it, a link with a label, an emoji.
+truth: a message search result has bold in it, a link with a label, an emoji.
 `titleNode` and `subtitleNode` are factories that draw those halves instead —
 factories rather than nodes, because the list is rebuilt on every keystroke and
 one node cannot be in two rows. `title` stays required either way: it is what

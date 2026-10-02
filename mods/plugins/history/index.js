@@ -70,6 +70,12 @@ const PEOPLE_MS = 5 * 60 * 1000;
 /** How many of the people you have seen are asked about. */
 const PEOPLE_LIMIT = 60;
 
+/** The name of the conversation on screen, as its header writes it. */
+const shownChannelName = () => document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
+
+/** The user ids a message mentions: `<@U04ED8UPV>` and `<@U04ED8UPV|name>`. */
+const mentionsIn = (text) => [...String(text ?? '').matchAll(/<@([UWB][A-Z0-9]+)(?:\|[^>]*)?>/g)].map((match) => match[1]);
+
 /**
  * What `stop()` has to undo.
  *
@@ -150,6 +156,9 @@ export default {
     const nameKey = (channelId, teamId) => `${teamId ?? api.slack.currentTeamId() ?? '?'}:${channelId}`;
     const nameOfChannel = (channelId, teamId) => channelNames.get(nameKey(channelId, teamId)) ?? null;
 
+    /** A time, the way the page writes one. */
+    const time = (at) => new Date(at).toLocaleTimeString(api.i18n.locale, { hour: '2-digit', minute: '2-digit' });
+
     /**
      * Somebody's message, as Slack would have drawn it.
      *
@@ -163,9 +172,6 @@ export default {
      * characters and a message here has the width of the page, and a link
      * pasted on its own is usually the point of the message.
      */
-    /** A time, the way the page writes one. */
-    const time = (at) => new Date(at).toLocaleTimeString(api.i18n.locale, { hour: '2-digit', minute: '2-digit' });
-
     const drawText = (text, people) => api.slack.renderMrkdwn(text, {
       userName: (id) => people?.get(id)?.name ?? null,
       channelName: (id) => nameOfChannel(id),
@@ -183,6 +189,10 @@ export default {
 
     /** Headstones on screen, keyed the way the watcher keys a message. */
     const headstones = new Map();
+    const clearStones = () => {
+      for (const node of headstones.values()) node.remove();
+      headstones.clear();
+    };
     /** Ones you dismissed: still in the log, never put back on screen. */
     const dismissed = new Set();
 
@@ -190,20 +200,18 @@ export default {
       const stored = api.settings.get('entries', []);
       if (!Array.isArray(stored)) return [];
       /*
-       * Rows written before a reaction could be attributed.
+       * Two kinds of stored row are dropped on the way in, because neither can
+       * be told from noise or repaired.
        *
-       * An emoji, a count and "somebody" -- which is what reading the screen
-       * can know and is not worth a line. They cannot be repaired either:
-       * Slack answers about the reactions on a message now, never about who
-       * was on one yesterday. So they go on the way in.
+       * A reaction with nobody behind it: an emoji, a count and "somebody" is
+       * not worth a line, and Slack answers about who is on a reaction now,
+       * never about who was on one yesterday.
+       *
+       * A section rename: sections are keyed by Slack's own id (see
+       * `readNames`), and a stored `section-renamed` row carries no way to tell
+       * a real rename from a reorder or a workspace switch.
        */
       return stored.filter((entry) => {
-        /*
-         * Sidebar sections used to be told apart by where they sat in the
-         * list, so every reorder -- and every workspace switch, where they are
-         * different sections entirely -- was written down as a rename. Not one
-         * of the stored ones can be told from a real rename, so the class goes.
-         */
         if (entry?.kind === 'section-renamed') return false;
         if (entry?.kind !== 'reaction-added' && entry?.kind !== 'reaction-removed') return true;
         return Boolean(entry.userId || entry.who);
@@ -234,23 +242,13 @@ export default {
      */
     const peopleFor = async (rows) => {
       /*
-       * Both people, not one.
-       *
-       * `userId` is who did the thing and `subjectUser` is who wrote the
-       * message it was done to, and a card is headed by the second. Asking
-       * only about the first left every card whose author had not also reacted
-       * headed by a raw `U04F0LX84H0`.
+       * Everybody a card draws: `userId` is who did the thing, `subjectUser`
+       * who wrote the message it was done to (the card is headed by them), and
+       * every `<@U…>` inside the words. Anyone left out reads as a raw id.
        */
-      /*
-       * And whoever is mentioned inside the words.
-       *
-       * `<@U04ED8UPV>` is a person the row draws just as much as its author
-       * is, and asking only about the two on the entry left every mention in
-       * every message reading as a raw id.
-       */
-      const mentioned = rows.flatMap((entry) => [...String(
+      const mentioned = rows.flatMap((entry) => mentionsIn(
         [entry.subject, entry.before, entry.after].filter(Boolean).join(' '),
-      ).matchAll(/<@([UWB][A-Z0-9]+)(?:\|[^>]*)?>/g)].map((match) => match[1]));
+      ));
       const ids = [...new Set([
         ...rows.flatMap((entry) => [entry.userId, entry.subjectUser]),
         ...mentioned,
@@ -279,7 +277,7 @@ export default {
       tally,
       peopleFor,
       emojiUrl: emojiFor,
-      renderText: (text, people) => drawText(text, people),
+      renderText: drawText,
       openConversation: (channelId) => api.slack.openConversation(channelId),
       openMessage: (channelId, ts) => api.slack.openMessage(channelId, ts),
       forget: async (card) => {
@@ -298,25 +296,22 @@ export default {
       clear: async () => {
         log = [];
         await api.settings.set('entries', log);
-        for (const [key, node] of headstones) { node.remove(); headstones.delete(key); }
+        clearStones();
       },
     });
 
     /*
      * Seen is seen, however you got here.
      *
-     * Stamped from the view's own `onOpen` rather than from a function the
-     * shortcut and the command happen to share: clicking the tab in Slack's
-     * rail goes straight through `addView` and never touched this, so the
-     * count sat on the tab after you had read every line of it. Stamped on the
-     * way out as well, so anything that arrives while you are looking at it is
-     * not waiting for you when you close it.
+     * Stamped from the view's own `onOpen`, which the tab in Slack's rail, the
+     * shortcut and the command all go through. Stamped on the way out as
+     * well, so anything that arrives while you are looking at it is not
+     * waiting for you when you close it.
      */
     const markSeen = () => {
       openedAt = Date.now();
       void api.settings.set('openedAt', openedAt);
     };
-    const open = () => page.open();
 
     // --------------------------------------------------------------- reading
 
@@ -324,7 +319,7 @@ export default {
     const readNames = () => {
       const out = [];
       const channelId = api.slack.currentChannelId();
-      const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim();
+      const channelName = shownChannelName();
       if (channelId && channelName) out.push({ scope: 'channel', key: channelId, name: channelName });
 
       /*
@@ -346,7 +341,7 @@ export default {
       const team = api.slack.currentTeamId() ?? '?';
       for (const heading of document.querySelectorAll(`${SIDEBAR} .p-channel_sidebar__section_heading`)) {
         const id = heading.getAttribute('data-qa-channel-sidebar-section-heading');
-        // No id is no identity, and a guess at one is what this is fixing.
+        // No id is no identity: a heading without one is skipped, not guessed at.
         if (!id) continue;
         out.push({ scope: 'section', key: `${team}:${id}`, name: heading.textContent?.trim() ?? '' });
       }
@@ -544,7 +539,7 @@ export default {
       wantFaces([...wanted.values()].flatMap((entry) => [
         entry.userId,
         // And whoever the message mentioned, so the line reads as it read.
-        ...[...String(entry.before ?? '').matchAll(/<@([UWB][A-Z0-9]+)(?:\|[^>]*)?>/g)].map((m) => m[1]),
+        ...mentionsIn(entry.before),
       ]));
 
       for (const [key, node] of headstones) {
@@ -554,15 +549,11 @@ export default {
       /*
        * A message that is on screen was never deleted.
        *
-       * Whatever wrote that entry was wrong -- and one of them was: working a
-       * deletion out from the screen turned every edit into a deletion, since
-       * Slack takes the message out of the document while you type. The line
-       * it draws then sits beside the message it claims is gone, with the same
-       * words in it, which reads as the message having been posted twice.
-       *
-       * Provably wrong is worth more than not drawn: the entry is on the page
-       * as well, saying the same untrue thing. So it goes, rather than being
-       * quietly skipped here and left there.
+       * An entry that says otherwise is wrong, and its line would sit beside
+       * the message it claims is gone, with the same words in it, reading as
+       * the message posted twice. The entry is on the page as well, saying
+       * the same untrue thing, so it is removed from the log rather than only
+       * skipped here.
        */
       const wrong = [...wanted.values()].filter((entry) => document.querySelector(
         `${MESSAGE}[data-msg-channel-id="${CSS.escape(entry.channelId)}"][data-msg-ts="${CSS.escape(entry.ts)}"]`,
@@ -612,7 +603,7 @@ export default {
 
     const record = (events) => {
       if (events.length === 0) return;
-      const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
+      const channelName = shownChannelName();
       const here = api.slack.currentChannelId();
       if (here && channelName) channelNames.set(nameKey(here), channelName);
       log = add(log, events.map((event) => ({
@@ -673,7 +664,7 @@ export default {
           save();
           page.refresh();
         }
-        const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
+        const channelName = shownChannelName();
         record(catchUp(snapshots.get(channelId) ?? null, list, { channelId, channelName }, { apps: watchApps }));
         snapshots.set(channelId, snapshotOf(list));
       } catch {
@@ -690,10 +681,10 @@ export default {
      * Everything Slack tells this client, for every conversation it is in.
      *
      * This is what makes the mod work in a channel you have not opened. The
-     * screen only ever knew what was drawn, and the catch-up only ever knew
-     * the channels you visited; Slack's own socket carries a message, an edit,
-     * a deletion and a reaction for every conversation you are a member of,
-     * open or not, in every workspace you are signed into.
+     * screen knows only what is drawn, and the catch-up only the channels you
+     * visit; Slack's own socket carries a message, an edit, a deletion and a
+     * reaction for every conversation you are a member of, open or not, in
+     * every workspace you are signed into.
      *
      * **Nothing is marked read by any of it.** Slack marks a conversation read
      * when its client sends `conversations.mark`; being told a message exists
@@ -701,8 +692,7 @@ export default {
      * alternative of opening conversations to look at them, which would empty
      * every unread badge you have.
      *
-     * The screen and the catch-up stay. They are what covers the case this
-     * cannot: a conversation you are *not* in, and anything that happened
+     * The screen and the catch-up cover what this cannot: a conversation you are *not* in, and anything that happened
      * while Slack was closed.
      */
     /*
@@ -858,30 +848,22 @@ export default {
       names.forget();
       customEmoji = null;
       lastChannel = null;
-      for (const [key, node] of headstones) { node.remove(); headstones.delete(key); }
+      clearStones();
       page.refresh();
     });
 
-    /*
-     * Every wording a message has had, in the conversation itself.
+    /**
+     * What a message used to say, oldest first -- and not what it says now.
      *
      * Slack writes "(edited)" and shows you the current wording; what it
-     * replaced is gone. The log has it, and a page you have to go and open is
-     * the wrong place to answer "what did that say before" -- the question is
-     * asked while looking at the message.
+     * replaced is gone. The log has it, and the question "what did that say
+     * before" is asked while looking at the message, so it is answered there.
      *
      * A chain rather than a list of changes: an edit is a pair, so the
      * wordings are the first `before` followed by every `after`. Two edits of
      * one message share a wording, and printing that twice would read as an
-     * edit that changed nothing.
-     */
-    /**
-     * What a message used to say, oldest first -- and not what it says now.
-     *
-     * The current wording is the message this unfolds from, an inch above it.
-     * Repeating it there is the thing that made two nearly identical lines
-     * read as the same line printed twice, which is what this list is for
-     * avoiding.
+     * edit that changed nothing. The current wording is left off: it is the
+     * message this unfolds from, an inch above it.
      */
     const wordingsOf = (channelId, ts) => {
       const edits = log
@@ -913,11 +895,10 @@ export default {
      * Slack's own, and what it opens unfolds under the message instead of over
      * it: a dialog would cover the conversation the wording belongs to.
      *
-     * `helpers.disclosure` owns the hard parts, all four of which were got
-     * wrong here first: Slack replaces the label, Slack tears out what was
-     * opened, which one is open has to survive both, and none of it may be
-     * driven from an observer on the message list. It animates nothing --
-     * Motion is what does that, if it is installed.
+     * `helpers.disclosure` owns the hard parts: Slack replaces the label,
+     * Slack tears out what was opened, which one is open has to survive both,
+     * and none of it may be driven from an observer on the message list. It
+     * animates nothing -- Motion is what does that, if it is installed.
      */
     const EDITED_LABEL = '.c-message__edited_label';
 
@@ -994,7 +975,7 @@ export default {
       }
 
       /*
-       * The sidebar's section names, which is all the screen is read for now.
+       * The sidebar's section names, the one thing the screen is read for.
        *
        * Slack pushes messages, edits, deletions, reactions, renames and people
        * down its socket; it says nothing about the sections *you* made in your
@@ -1031,7 +1012,7 @@ export default {
             const members = await api.slack.web.call('conversations.members', { channel: channelId, limit: 500 });
             const ids = Array.isArray(members?.members) ? members.members : null;
             if (ids) {
-              const channelName = document.querySelector('[data-qa="channel_name"]')?.textContent?.trim() ?? null;
+              const channelName = shownChannelName();
               record(rosterChanges(channelId, channelName, roster.get(channelId), ids));
               roster.set(channelId, ids);
             }
@@ -1089,34 +1070,9 @@ export default {
       return since.length || null;
     });
 
-    // PROBE
-    setTimeout(() => {
-      const byMessage = {};
-      for (const e of log.filter((x) => x.kind === 'edited')) {
-        const key = `${e.channelId}:${e.ts}`;
-        (byMessage[key] ??= []).push({
-          at: e.at,
-          atText: new Date(e.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          id: e.id,
-          before: String(e.before).slice(0, 24),
-          after: String(e.after).slice(0, 24),
-        });
-      }
-      const shown = {};
-      for (const key of Object.keys(byMessage)) {
-        const at = key.lastIndexOf(':');
-        shown[key] = wordingsOf(key.slice(0, at), key.slice(at + 1)).map((w) => ({
-          at: w.at,
-          atText: new Date(w.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          text: String(w.text).slice(0, 24),
-        }));
-      }
-      console.warn('betterslack probe ' + JSON.stringify({ stored: byMessage, shown }));
-    }, 8000);
-
     api.helpers.hotkey(api.settings.get('shortcut', 'mod+shift+h'), () => {
       if (page.isOpen()) page.close();
-      else open();
+      else page.open();
     });
 
     api.commands.add({
@@ -1124,12 +1080,10 @@ export default {
       title: t('title'),
       subtitle: t('buttonHint'),
       icon: '🕘',
-      run: () => open(),
+      run: () => page.open(),
     });
 
-    sweepUp = () => {
-      for (const [key, node] of headstones) { node.remove(); headstones.delete(key); }
-    };
+    sweepUp = clearStones;
   },
 
   stop() {
@@ -1142,9 +1096,9 @@ export default {
  * Somebody's face, at the size a row draws it.
  *
  * `avatarUrl` rewrites the `<base>-<size>` shape a message's avatar has and
- * answers null for anything else -- a profile's `image_72` ends in `.png`, so
- * it comes back null and every row drew a coloured square instead of a face.
- * It is already a URL, so it is used as it is where the rewrite declines.
+ * answers null for anything else, such as a profile's `image_72`, which ends
+ * in `.png`. That is already a URL, so it is used as it is where the rewrite
+ * declines.
  */
 function avatarOf(api, user) {
   const url = user?.profile?.image_72 ?? user?.profile?.image_48 ?? null;
