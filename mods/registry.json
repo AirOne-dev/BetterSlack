@@ -1352,7 +1352,7 @@
       "readmes": {
         "fr": "README.fr.md"
       },
-      "needsBetterSlack": "unreleased",
+      "needsBetterSlack": "3.6.0",
       "path": "plugins/quelio"
     },
     {

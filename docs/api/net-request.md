@@ -3,7 +3,7 @@ name: request
 group: net
 title: api.net
 signature: (url: string, options?: { method?: 'GET' | 'POST'; form?: Record<string, string> }): Promise<NetResult>
-since: unreleased
+since: 3.6.0
 preview: net-request
 control: base | text | https://hours.example.com/api/ | address in the setting
 control: url | text | https://hours.example.com/api/ | address asked for

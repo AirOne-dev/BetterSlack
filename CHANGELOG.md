@@ -4,6 +4,13 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.6.0 — 2026-10-02
+
+### Added
+
+- **Quelio:** the week's progress toward the Quelio objective, today's suggested departure and the state of the lunch break, in a slim bar in Slack's top bar, with the week's details one click away. It talks to a quelio-api server whose address you give it. The company's rules (counted hours, paid breaks, lunch, earliest departure, Friday) are settings, and an afternoon off can be marked. It asks only on working days within the counted hours, at most once an hour, and remembers a server's "wait" across restarts.
+- **`api.net.request`:** a mod can read a server that sends no CORS headers, through the loader, only at an address one of its own settings holds. The mod's page in the panel shows where it talks.
+
 ## 3.5.0 — 2026-10-02
 
 ### Added
