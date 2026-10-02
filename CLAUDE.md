@@ -404,7 +404,7 @@ Rules baked into both, each of which cost a set of pictures:
   and the run fails if it is not. Without it a message action, which only
   exists while the pointer is over a message, photographs as an ordinary
   channel, and fifteen identical pictures go into the catalogue unnoticed.
-- **A mod can want more than one frame**, and six do: the member column and
+- **A mod can want more than one frame**, and several do: the member column and
   the dialog it opens, the palette empty and filtered by `/` and `@`, the
   composer under and over its limit. An entry carries `frames: [...]`, each inheriting the
   entry's staging unless it overrides it, and each filed as
@@ -1096,6 +1096,17 @@ tests fail below it.
   meant to touch channels. `:has()` is supported in Slack 4.51 (measured:
   `CSS.supports('selector(:has(> div))')` is true), so the layout can travel
   with the column rather than with the mod being switched on.
+- **The top bar's right-hand side is a flex row with an auto margin in it.**
+  Measured in Slack 4.51 at 2560px: `.p-ia4_top_nav__right_container` runs from
+  the search's edge to the window's, `justify-content: flex-end`, and holds
+  `.p-ia4_top_nav__right_container--start` -- one 28px button, right after the
+  search, with `margin-right: auto` -- and then the button group
+  (`.display_flex.align_items_center`: `ai-apps-menu-container`, help). That
+  auto margin is what pushes the buttons to the end, so anything inserted with
+  an auto margin of its own splits the free space with it and floats in the
+  middle; first in the row, it pushes Slack's own button over to the others.
+  Quelio sits before the button group and takes that margin over while it is
+  there, scoped with `:has()`, so nothing of Slack's moves.
 - **The member list is a modal**, opened from `[data-qa="avatar_stack"]` in the
   channel header. Slack has no persistent member pane to restyle.
 - **Slack's own "(edited)" is `.c-message__edited_label`**, a visible span

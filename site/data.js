@@ -417,6 +417,22 @@ window.CATALOGUE = {
       "settings": 7
     },
     {
+      "id": "quelio",
+      "name": "Quelio",
+      "description": "A slim bar at the top of Slack showing how far your week is toward its Quelio objective, when to leave today, and where your lunch break stands.",
+      "descriptions": {
+        "fr": "Une fine barre en haut de Slack qui montre où en est votre semaine par rapport à l’objectif Quelio, à quelle heure partir aujourd’hui, et où en est la pause déjeuner."
+      },
+      "version": "1.0.0",
+      "tags": [
+        "productivity",
+        "tools"
+      ],
+      "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" role=\"img\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\" opacity=\".25\"/><path d=\"M12 3a9 9 0 1 1-9 9\" fill=\"none\" stroke=\"#34d399\" stroke-width=\"2.4\" stroke-linecap=\"round\"/><path d=\"M12 7.5V12l3 2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>",
+      "settings": 3
+    },
+    {
       "id": "quote-reply",
       "name": "Quote Reply",
       "description": "Adds a Reply button to the hover actions on a message. It drops a link to that message into the composer as a single \".\" and focuses it, so your answer posts in the channel with Slack's own preview of the message you are answering.",

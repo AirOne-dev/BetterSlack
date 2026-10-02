@@ -206,6 +206,15 @@ const SHOTS = [
   // else and has no messages to hover.
   { id: 'user-inspector', open: 'profile', expect: '.betterslack-user-details' },
   {
+    id: 'quelio',
+    open: 'quelio',
+    frames: [
+      // The details first: the bar is in them too, and they are what it is.
+      { then: 'quelio-details', expect: '#betterslack-quelio-details' },
+      { name: 'bar', expect: '#betterslack-quelio[data-phase="ready"]' },
+    ],
+  },
+  {
     id: 'avatar-downloader',
     frames: [
       { open: 'profile', expect: '.betterslack-profile-row' },
@@ -335,6 +344,80 @@ const openFor = (what) => {
         .then(tab);
     })()`;
   }
+  if (what === 'quelio') {
+    /*
+     * A week of hours that nobody worked, read "just now", so the bar draws at
+     * once and asks no server for anything: its cache is fresh, and a fresh
+     * cache is not refreshed for an hour.
+     *
+     * Today's badges follow the real clock -- the client's own, which the
+     * plugin reads and nothing here can change -- so the picture shows a day
+     * in progress at whatever time it is taken. The week is the plugin's own
+     * shape for it, and a mistake in it shows as a bar that never leaves
+     * "loading", which the frame's expect refuses.
+     */
+    return `(() => {
+      const pick = (n) => window.__betterslackRedactionModule.VOCABULARY[n];
+      const pad = (n) => String(n).padStart(2, '0');
+      const key = (d) => pad(d.getDate()) + '-' + pad(d.getMonth() + 1) + '-' + d.getFullYear();
+      const weekday = (d) => (d.getDay() + 6) % 7;
+      const isoWeek = (d) => {
+        const thursday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 3 - weekday(d));
+        const first = new Date(thursday.getFullYear(), 0, 4);
+        first.setDate(first.getDate() + 3 - weekday(first));
+        return thursday.getFullYear() + '-W' + pad(1 + Math.round((thursday - first) / 604800000));
+      };
+      const now = new Date();
+      const minute = now.getHours() * 60 + now.getMinutes();
+      const today = Math.min(weekday(now), 5);
+      const days = {};
+      for (let i = 0; i < 5; i++) {
+        const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - weekday(now) + i);
+        if (i < today) days[key(day)] = { badges: [522, 737, 801, 1046 + i * 4], paid: 456 + i * 4 };
+        if (i === today) {
+          const badges = [522, 737, 801, 1060].filter((badge) => badge < minute);
+          days[key(day)] = { badges, paid: null };
+        }
+      }
+      const hours = {
+        week: isoWeek(now), fetchedAt: now.getTime(), objective: 2280, objectiveReported: true,
+        days, offset: { day: key(now), minutes: 0 },
+      };
+      const address = 'https://quelio.example.com/api/';
+      const m = window.__betterslack.manager;
+      const ready = () => new Promise((done, fail) => {
+        const started = Date.now();
+        const look = () => {
+          const bar = document.querySelector('#betterslack-quelio');
+          if (bar?.dataset.phase === 'ready') {
+            // Where it landed, against the search and its neighbours, for a log
+            // that answers "is it in the free space" without another launch.
+            const span = (el) => (el ? Math.round(el.getBoundingClientRect().left) + '-'
+              + Math.round(el.getBoundingClientRect().right) : 'none');
+            const slot = bar.parentElement;
+            const search = document.querySelector('[data-qa="top_nav_search"]');
+            return done('seeded, fit ' + bar.dataset.fit + ', bar ' + span(bar) + ', search ' + span(search)
+              + ', slot ' + span(slot) + ' ' + getComputedStyle(slot).display
+              + ', next to ' + (bar.nextElementSibling?.className || 'nothing'));
+          }
+          if (Date.now() - started > 6000) return fail(new Error('the bar never drew the seeded week'));
+          setTimeout(look, 150);
+        };
+        look();
+      });
+      return m.setModSetting('quelio', 'apiUrl', address)
+        .then(() => m.setModSetting('quelio', 'session', { server: address, username: pick(3), token: 'demo' }))
+        .then(() => m.setModSetting('quelio', 'hours', hours))
+        .then(() => m.setEnabled('quelio', false))
+        .then(() => m.setEnabled('quelio', true))
+        .then(ready);
+    })()`;
+  }
+  if (what === 'quelio-details') return `(() => {
+    const bar = document.querySelector('#betterslack-quelio');
+    bar?.click();
+    return Boolean(bar);
+  })()`;
   if (what.startsWith('command:')) {
     const id = what.slice('command:'.length);
     return `(() => {
