@@ -11,6 +11,10 @@
 // Slack.app exactly as it was for the rest of the session -- a custom icon is a
 // file in the bundle root, and `codesign --strict` calls that detritus.
 //
+// Writing into Slack.app is App Management (kTCCServiceSystemPolicyAppBundles),
+// which BetterSlack only has if the user granted it in System Settings; without
+// it tccd refuses and nothing changes. Every step here fails soft for that.
+//
 // The same icon goes on BetterSlack.app, whose own .icns is only rebuilt by
 // install.sh: this is how an install updated from the panel gets it. Measured
 // first that it costs nothing: with the custom icon on, a save into Downloads

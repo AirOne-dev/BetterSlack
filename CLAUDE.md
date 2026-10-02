@@ -1154,6 +1154,13 @@ tests fail below it.
   icon goes on BetterSlack.app, which is how an install updated from the panel
   gets a new icon without re-running `install.sh`; measured first that a save
   into Downloads through BetterSlack's identity is still allowed with it on.
+  **Dressing Slack.app needs App Management, and BetterSlack does not hold
+  it.** Writing into another app's signed bundle is
+  `kTCCServiceSystemPolicyAppBundles`; launched from BetterSlack.app, tccd
+  answered `ReqResult(Auth Right: Unknown (None))` and the icon never landed,
+  silently. The measurement that showed the tile changing was made from a
+  terminal that holds that permission, which is why it looked free. Dressing
+  BetterSlack.app is its own bundle and needs nothing.
   Read the tile in a tight crop of the Dock and compare against a known
   render: the mark without its plate looked "dark" on a dark Dock and was
   misread once as the icon not having taken.
