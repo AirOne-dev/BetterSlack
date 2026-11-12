@@ -4,6 +4,13 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.7.2 — 2026-11-12
+
+### Fixed
+
+- **BetterSlack starts again with Slack 4.53.** Slack 4.53 refuses to start with the debugging pipe BetterSlack relies on when it is pointed at its own profile, so the loader looped on "no Slack client appeared". It now reaches the same profile under its macOS data-volume path, which Slack accepts: your session is kept and nothing is copied. macOS only.
+- **Clicking the icon right after quitting Slack works the first time.** The loader lingered about 22 seconds after Slack quit, long enough for macOS to think the app was still open and answer "BetterSlack.app n'est plus ouverte". It now exits as soon as Slack does.
+
 ## 3.7.1 — 2026-10-09
 
 ### Added
