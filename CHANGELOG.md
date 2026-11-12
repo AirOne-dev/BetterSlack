@@ -4,6 +4,12 @@ Written for the people upgrading. `pnpm release` seeds each section from the
 commits since the last tag; the release then rewrites it into something worth
 reading.
 
+## 3.7.3 — 2026-11-12
+
+### Fixed
+
+- **BetterSlack now finds the App Store build of Slack's profile.** That build is sandboxed and keeps its profile inside its own container rather than in Application Support, so the 3.7.2 fix for Slack 4.53 did nothing there and Slack kept refusing to start with BetterSlack. The loader now looks in the container first, for the launch and for the preferences it writes. Not yet tried against a real App Store install: if Slack still loops on "no Slack client appeared", `~/Library/Logs/BetterSlack.log` is what to send.
+
 ## 3.7.2 — 2026-11-12
 
 ### Fixed
