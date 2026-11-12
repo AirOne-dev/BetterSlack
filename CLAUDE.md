@@ -239,6 +239,15 @@ execs `Contents/Resources/launch.sh`. Consequences:
   as the floor under that: if the helper is ever missing, a call asks for
   BetterSlack's permission instead of killing Slack.
 
+**The loader must exit the moment Slack does.** The stub `exec`s bash which `exec`s
+node, so the bundle's process *is* the loader, and macOS believes BetterSlack.app
+is running for as long as it lives. A click on the icon during that window is a
+"reopen" sent to a process about to die: nothing starts and the Dock says
+"BetterSlack.app n'est plus ouverte". `main()` therefore ends in
+`process.exit(0)` rather than waiting for the event loop to drain. Measured with
+Slack quit by hand: loader gone 22.2s later before, 0.9s after, and the first
+`open` then relaunches Slack.
+
 The app lives in `/Applications`, which is `root:admin` and group-writable, so
 an administrator needs no password; elevation is attempted **only after** an
 ordinary copy has been refused, since asking up front is a password prompt for

@@ -1664,6 +1664,11 @@ async function main(): Promise<void> {
 
   await loader.start();
   loader.dispose();
+  // Slack is gone, so there is nothing left to wait for. Without this the process
+  // lingers until the event loop drains (measured: 22s after Slack quit), and for
+  // that long macOS believes BetterSlack.app is still running: a click on its icon
+  // is a "reopen" sent to a process about to die, and fails with "n'est plus ouverte".
+  process.exit(0);
 }
 
 main().catch((err) => {
