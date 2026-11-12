@@ -816,6 +816,11 @@ tests fail below it.
 
   The last one is what `profileArgs()` in `slack.ts` passes: `realpath` does not
   fold a firmlink, so the check sees another directory and Slack opens its own.
+  The App Store build is sandboxed and keeps its profile in
+  `~/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application
+  Support/Slack`, which is the directory its check protects; `macProfileDir()`
+  picks it when `storage/root-state.json` is there, for the launch and for
+  `slackStatePath()` alike. Not run against an App Store build.
   macOS only; the fuses leave no other way in (`--inspect`, `NODE_OPTIONS` and
   `RunAsNode` are off). It is Slack's own guard against other programs driving
   the session, so expect it to tighten: a refusal shows as `no Slack client

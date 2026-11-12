@@ -28,7 +28,7 @@
 // quit. So the loader applies the wanted state at every launch rather than
 // once.
 
-import { promises as fs } from 'node:fs';
+import { existsSync, promises as fs } from 'node:fs';
 import { homedir, platform } from 'node:os';
 import path from 'node:path';
 import { SLACK_PREFS, type SlackPref } from '../shared/protocol.js';
@@ -39,12 +39,26 @@ const BY_KEY: Record<string, SlackPref> = Object.fromEntries(
   SLACK_PREFS.map((pref) => [pref.key, pref]),
 );
 
+/**
+ * Slack's profile directory on macOS. The App Store build is sandboxed and keeps
+ * it inside its container, so the file is found there when it exists and in
+ * Application Support otherwise (the direct download).
+ */
+export function macProfileDir(home = homedir()): string {
+  const container = path.join(
+    home, 'Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application Support/Slack',
+  );
+  return existsSync(path.join(container, 'storage/root-state.json'))
+    ? container
+    : path.join(home, 'Library/Application Support/Slack');
+}
+
 /** Where Slack keeps the file, per platform. Linux Slack has no vibrancy. */
 export function slackStatePath(): string | null {
   const home = homedir();
   switch (platform()) {
     case 'darwin':
-      return path.join(home, 'Library/Application Support/Slack/storage/root-state.json');
+      return path.join(macProfileDir(home), 'storage/root-state.json');
     case 'win32':
       return path.join(process.env.APPDATA ?? path.join(home, 'AppData/Roaming'),
         'Slack/storage/root-state.json');

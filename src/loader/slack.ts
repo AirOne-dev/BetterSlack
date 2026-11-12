@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sleep } from './cdp.js';
+import { macProfileDir } from './slack-settings.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -170,11 +171,12 @@ function disclaimHelper(): string | null {
  * is not equivalent: a tree of symlinks lands on the sign-in page.
  *
  * Older Slacks accept the switch and open the same directory, so it is passed
- * whenever the alias exists. Other platforms get nothing added.
+ * whenever the alias exists. Other platforms get nothing added. The App Store
+ * build keeps its profile in its container, which `macProfileDir` finds.
  */
 export function profileArgs(home = homedir()): string[] {
   if (process.platform !== 'darwin') return [];
-  const alias = `/System/Volumes/Data${home}/Library/Application Support/Slack`;
+  const alias = `/System/Volumes/Data${macProfileDir(home)}`;
   try {
     accessSync(alias);
   } catch {
