@@ -161,6 +161,28 @@ function disclaimHelper(): string | null {
   }
 }
 
+/**
+ * Slack 4.53 refuses --remote-debugging-pipe unless --user-data-dir names a
+ * directory other than its default profile, and compares the two by realpath.
+ * On macOS the same directory has a second name that realpath does not fold:
+ * the firmlink /System/Volumes/Data/<path>. Same inode, no copy, no symlink --
+ * Slack opens its own profile, session included. A symlinked or copied profile
+ * is not equivalent: a tree of symlinks lands on the sign-in page.
+ *
+ * Older Slacks accept the switch and open the same directory, so it is passed
+ * whenever the alias exists. Other platforms get nothing added.
+ */
+export function profileArgs(home = homedir()): string[] {
+  if (process.platform !== 'darwin') return [];
+  const alias = `/System/Volumes/Data${home}/Library/Application Support/Slack`;
+  try {
+    accessSync(alias);
+  } catch {
+    return [];
+  }
+  return [`--user-data-dir=${alias}`];
+}
+
 export interface LaunchOptions {
   slackPath: string;
   /** Extra switches, e.g. --startup for a tray-only start. */
@@ -175,7 +197,7 @@ export interface LaunchOptions {
  * there is no local endpoint for another process to connect to.
  */
 export function launchSlack({ slackPath, extraArgs = [] }: LaunchOptions): ChildProcess {
-  const args = ['--remote-debugging-pipe', ...extraArgs];
+  const args = ['--remote-debugging-pipe', ...profileArgs(), ...extraArgs];
   const disclaim = disclaimHelper();
   const [command, argv] = disclaim ? [disclaim, [slackPath, ...args]] : [slackPath, args];
   const child = spawn(command, argv, {

@@ -798,6 +798,28 @@ tests fail below it.
   when a window is created needs `api.slack.restart()`; compare
   `desktop.get(key)` with `desktop.launched(key)` to know whether a restart
   would change anything before offering one.
+- **Slack 4.53 refuses `--remote-debugging-pipe` on its own profile, and the way
+  in is the firmlink.** Its main process (`app-arm64.asar`) exits with `Refusing
+  to launch` when a packaged build gets `--remote-debugging-port`, `-pipe` or
+  `-address` and `--user-data-dir` is missing, or resolves (`realpath`,
+  lowercased) to `Slack`, `SlackDevEnv` or `SlackIntegrationTest` under
+  `~/Library/Application Support`. Measured on 4.53.287:
+
+  | `--user-data-dir` | result |
+  | --- | --- |
+  | none, or the real profile | refused |
+  | a symlink to the real profile | refused, `realpath` follows it |
+  | `HOME` changed, real profile named | refused, the default comes from the user database |
+  | a directory of symlinks, one per profile entry | starts, **lands on the sign-in page** |
+  | an APFS clone of the profile | starts, session kept, but a second profile that diverges |
+  | `/System/Volumes/Data/Users/<me>/Library/Application Support/Slack` | starts, **session kept, same inode** |
+
+  The last one is what `profileArgs()` in `slack.ts` passes: `realpath` does not
+  fold a firmlink, so the check sees another directory and Slack opens its own.
+  macOS only; the fuses leave no other way in (`--inspect`, `NODE_OPTIONS` and
+  `RunAsNode` are off). It is Slack's own guard against other programs driving
+  the session, so expect it to tighten: a refusal shows as `no Slack client
+  appeared` in a loop, and the line above is what to look for.
 - **Slack's CDN has no CORS headers.** `fetch('https://ca.slack-edge.com/…')`
   from the renderer always fails; downloads go through `api.files.save`, which
   the loader performs.
