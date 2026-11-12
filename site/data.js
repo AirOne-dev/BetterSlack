@@ -363,6 +363,24 @@ window.CATALOGUE = {
       "settings": 0
     },
     {
+      "id": "gitlab-mrs",
+      "name": "GitLab",
+      "description": "Your open GitLab merge requests by project, with the stages and jobs of each pipeline, in a view of Slack's rail and as a small pipeline summary in its top bar.",
+      "descriptions": {
+        "fr": "Vos merge requests GitLab ouvertes, par projet, avec les étapes et les jobs de chaque pipeline, dans une vue du rail de Slack et en résumé de pipeline dans sa barre du haut."
+      },
+      "version": "1.0.0",
+      "tags": [
+        "tools",
+        "gitlab",
+        "pipelines"
+      ],
+      "requires": [],
+      "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" fill=\"none\">\n  <rect width=\"64\" height=\"64\" rx=\"14\" fill=\"#fc6d26\"/>\n  <g stroke=\"#fff\" stroke-width=\"4.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n    <circle cx=\"20\" cy=\"17\" r=\"5.5\"/>\n    <circle cx=\"20\" cy=\"47\" r=\"5.5\"/>\n    <circle cx=\"44\" cy=\"32\" r=\"5.5\"/>\n    <path d=\"M20 22.5v19M20 32h18.5\"/>\n  </g>\n</svg>",
+      "shot": "shots/mods/gitlab-mrs.webp",
+      "settings": 3
+    },
+    {
       "id": "history",
       "name": "History",
       "description": "Everything Slack changes and never tells you about — edits, deletions, reactions taken back, renames, statuses, arrivals and departures — on one page you can search and sort",

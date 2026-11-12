@@ -141,7 +141,10 @@ among the calls it makes, and an install older than that refuses it.
 
 ## api.net
 
+- [`clearCredential`](api/net-clearcredential.md) — Forget the secret `setCredential` stored. Requests carry no header from then on. Signing out is this call, and so is a token the server has refused. _(unreleased)_
+- [`hasCredential`](api/net-hascredential.md) — Whether a secret is held for the address the mod's settings name right now. A secret stored for another origin is not held for this one, so changing the address reads as signed out. It tells you whether there is a secret, never what it is. _(unreleased)_
 - [`request`](api/net-request.md) — One request to a server that sends no CORS headers, made by the loader because a page can never read such a server's answer. _(since 3.6.0)_
+- [`setCredential`](api/net-setcredential.md) — Hand the loader the secret a server wants in a header -- a GitLab token -- so `api.net.request` can send it and the mod never has to hold it. The manifest declares which header, whichever service it is (`"credential": { "header": "PRIVATE-TOKEN" }`, or `{ "header": "Authorization", "prefix": "Bearer " }`) -- anything but a header that belongs to the transport or the session, such as `Host` or `Cookie`; the secret is bound to the origin of `address`, which has to be one of the mod's `network` settings right now, and the loader attaches it to requests for that origin and for no other. _(unreleased)_
 
 ## api.assets
 

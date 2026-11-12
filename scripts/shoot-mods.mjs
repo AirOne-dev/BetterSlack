@@ -58,8 +58,12 @@ const CHROME = new Set([
   'secondes', 'minutes', 'heures', 'jours', 'semaines', 'semaine', 'heure',
   'janvier', 'février', 'fevrier', 'mars', 'avril', 'juin', 'juillet',
   'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre',
+  // Slack's own words around an attachment, a menu and Preferences.
+  'pièces', 'pieces', 'jointes', 'ouvrir', 'réglages', 'reglages', 'système', 'systeme',
   // A mod's own name, written by the mod in its own interface.
-  'quelio',
+  'quelio', 'gitlab',
+  // The plugin's own copy, in French, where Slack happens to use the same words.
+  'aucune',
 ]);
 
 /*
@@ -214,6 +218,24 @@ const SHOTS = [
       // The details first: the bar is in them too, and they are what it is.
       { then: 'quelio-details', expect: '#betterslack-quelio-details' },
       { name: 'bar', expect: '#betterslack-quelio[data-phase="ready"]' },
+    ],
+  },
+  {
+    /*
+     * Three frames, each a thing the plugin does: the view in the rail with the
+     * projects and their pipelines, one stage opened to its jobs, and the top
+     * bar's list of the latest pipelines. It reads an invented GitLab that
+     * `pnpm shoot` starts (scripts/shoot-gitlab.mjs), so what is drawn is the
+     * plugin really signing in with a token and really reading the answers.
+     */
+    id: 'gitlab-mrs',
+    stage: 'gitlab',
+    open: 'view:gitlab-mrs-merge-requests',
+    frames: [
+      { expect: '.betterslack-gitlab-project .betterslack-gitlab-stage' },
+      { name: 'jobs', then: 'gitlab-stage', expect: '#betterslack-gitlab-layer .betterslack-gitlab-job' },
+      // No view: the bar is what is photographed, and what opens under it.
+      { name: 'bar', open: null, then: 'gitlab-bar', expect: '#betterslack-gitlab-layer .betterslack-gitlab-recent__entry' },
     ],
   },
   {
@@ -432,6 +454,51 @@ const openFor = (what) => {
   }
   if (what === 'quelio-details') return `(() => {
     const bar = document.querySelector('#betterslack-quelio');
+    bar?.click();
+    return Boolean(bar);
+  })()`;
+  if (what === 'gitlab') {
+    /*
+     * Signed in to the invented GitLab, the way a person does it: the address
+     * goes in the plugin's settings and the token to the loader, which keeps it
+     * where the page cannot read it. No files are written for the plugin to
+     * read -- it asks the server, and the picture is the answer.
+     *
+     * The address is read from the environment at the moment this runs, not
+     * when the recipe is loaded: a run for another mod has no GitLab, and this
+     * verb is also checked, before launch, for every mod.
+     */
+    const address = process.env.BETTERSLACK_SHOT_GITLAB ?? '';
+    return `(async () => {
+      const address = ${JSON.stringify(address)};
+      if (!address) return 'no demo GitLab: this is taken through pnpm shoot, which starts one';
+      const m = window.__betterslack.manager;
+      await m.setModSetting('gitlab-mrs', 'gitUrl', address);
+      const stored = await m.bridge.request({ type: 'net.credential', modId: 'gitlab-mrs', action: 'set',
+        secret: ${JSON.stringify('glpat-demo-0000000000000000')}, address });
+      if (!stored?.ok) return 'the loader refused the credential: ' + stored?.error;
+      // Read once, as it starts.
+      await m.setEnabled('gitlab-mrs', false);
+      await m.setEnabled('gitlab-mrs', true);
+      const started = Date.now();
+      while (Date.now() - started < 25000) {
+        // The bar is always there, the view is not yet: its stages are what is waited for.
+        const stages = document.querySelectorAll('.betterslack-gitlab-dot').length;
+        const bar = document.getElementById('betterslack-gitlab');
+        if (stages >= 3 && bar?.dataset.phase === 'ready') return 'signed in, ' + stages + ' stages in the bar';
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      return 'the plugin never drew the answers: ' + (document.getElementById('betterslack-gitlab')?.dataset.phase ?? 'no bar');
+    })()`;
+  }
+  if (what === 'gitlab-stage') return `(() => {
+    // The stage that is going: a mix of what passed, what is running and what waits.
+    const stage = document.querySelector('.betterslack-gitlab-stage[data-stage="test"]');
+    stage?.click();
+    return Boolean(stage);
+  })()`;
+  if (what === 'gitlab-bar') return `(() => {
+    const bar = document.getElementById('betterslack-gitlab');
     bar?.click();
     return Boolean(bar);
   })()`;
@@ -863,6 +930,17 @@ export default async function shootMods({ evaluate, shoot, shootWindow, evaluate
   if (wanted.length && todo.length !== wanted.length) {
     throw new Error(`no such mod to photograph: ${wanted.filter((id) => !SHOTS.some((s) => s.id === id)).join(', ')}`);
   }
+
+  /*
+   * BetterSlack's own dialogs, which open once as the client starts -- the
+   * Dock icon asking for App Management is one -- and sit over whatever is
+   * photographed first. A full run never saw them, because an earlier mod's
+   * frame ended with an Escape that closed it; a run for one mod has no earlier
+   * frame. Closed here, once, before the first picture.
+   */
+  await sleep(1500);
+  await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), window.__betterslack.close(), true`);
+  await sleep(600);
 
   for (const shot of todo) {
     await evaluate(only([shot.id]));

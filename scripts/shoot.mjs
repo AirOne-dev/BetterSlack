@@ -13,6 +13,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { startDemoGitLab } from './shoot-gitlab.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /*
@@ -49,6 +50,13 @@ async function scratchHome() {
 }
 
 const home = await scratchHome();
+/*
+ * The GitLab plugin talks https to an address, so its picture needs a server
+ * to talk to: an invented one on the loopback interface, with a certificate
+ * made for the run that the loader (which makes the requests) is told to trust.
+ * Started only when that picture is among the ones being taken.
+ */
+const demoGitLab = forMods && (!only || only.split(',').includes('gitlab-mrs')) ? await startDemoGitLab() : null;
 await fs.mkdir(out, { recursive: true });
 /*
  * When this run started, so the filing below can tell its own pictures from
@@ -72,10 +80,12 @@ const child = spawn(process.execPath, [path.join(root, 'bin/betterslack.mjs')], 
     BETTERSLACK_SHOT: out,
     BETTERSLACK_SHOT_SCRIPT: path.join(root, recipe),
     BETTERSLACK_SHOT_ONLY: only,
+    ...(demoGitLab ? { NODE_EXTRA_CA_CERTS: demoGitLab.certFile, BETTERSLACK_SHOT_GITLAB: demoGitLab.url } : {}),
   },
 });
 
 const code = await new Promise((resolve) => child.on('exit', resolve));
+await demoGitLab?.close();
 await fs.rm(home, { recursive: true, force: true });
 
 /*

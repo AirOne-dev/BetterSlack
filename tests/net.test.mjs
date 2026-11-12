@@ -193,3 +193,78 @@ test('the manifest names text settings of its own, and only a plugin may', () =>
     /at least one/);
   assert.throws(() => parseManifest(manifest({ network: ['apiUrl'] }), 'mod.json', 'plugin'), /at least one/);
 });
+
+// -- a credential: the one header that is not the mod's ----------------------
+
+const GIT = {
+  id: 'git',
+  type: 'plugin',
+  settings: [{ key: 'gitUrl', type: 'text', label: 'Server', default: '' }],
+  network: { settings: ['gitUrl'], credential: { header: 'private-token' } },
+};
+const GIT_VALUES = { gitUrl: 'https://git.example.com' };
+const HELD = { origin: 'https://git.example.com', secret: 'glpat-secret-value' };
+
+test('a credential travels in the header the manifest names, to its own origin', async () => {
+  const { calls, fetchImpl } = server([]);
+  await netRequest(GIT, true, GIT_VALUES, { url: 'https://git.example.com/api/v4/user' }, fetchImpl, HELD);
+  assert.deepEqual(calls[0].options.headers, { accept: 'application/json', 'private-token': HELD.secret });
+  assert.ok(!calls[0].url.includes(HELD.secret), 'never in the address');
+
+  const bearer = server([]);
+  await netRequest({ ...GIT, network: { settings: ['gitUrl'], credential: { header: 'authorization', prefix: 'Bearer ' } } }, true, GIT_VALUES,
+    { url: 'https://git.example.com/api/v4/user' }, bearer.fetchImpl, HELD);
+  assert.equal(bearer.calls[0].options.headers.authorization, `Bearer ${HELD.secret}`);
+});
+
+test('a credential is never sent to another origin, even where the setting now points', async () => {
+  const { calls, fetchImpl } = server([]);
+  // The address setting was rewritten: the secret was stored for the old one.
+  await netRequest(GIT, true, { gitUrl: 'https://evil.example' }, { url: 'https://evil.example/api/v4/user' },
+    fetchImpl, HELD);
+  assert.deepEqual(Object.keys(calls[0].options.headers), ['accept']);
+  // Same host, another port or scheme-equivalent origin: also another origin.
+  await netRequest(GIT, true, { gitUrl: 'https://git.example.com:8443' }, { url: 'https://git.example.com:8443/x' },
+    fetchImpl, HELD);
+  assert.deepEqual(Object.keys(calls[1].options.headers), ['accept']);
+});
+
+test('a manifest without a credential sends none, whatever is held', async () => {
+  const { calls, fetchImpl } = server([]);
+  await netRequest({ ...GIT, network: { settings: ['gitUrl'] } }, true, GIT_VALUES,
+    { url: 'https://git.example.com/x' }, fetchImpl, HELD);
+  assert.deepEqual(Object.keys(calls[0].options.headers), ['accept']);
+});
+
+test('a refused request carries the credential nowhere, and a redirect is not followed with it', async () => {
+  const { calls, fetchImpl } = server('', { status: 302, headers: { location: 'https://evil.example/' } });
+  assert.deepEqual(await netRequest(GIT, true, GIT_VALUES, { url: 'https://evil.example/' }, fetchImpl, HELD),
+    { error: 'blocked' });
+  assert.equal(calls.length, 0);
+  assert.deepEqual(await netRequest(GIT, true, GIT_VALUES, { url: 'https://git.example.com/old' }, fetchImpl, HELD),
+    { status: 302, json: null });
+  assert.equal(calls[0].options.redirect, 'manual');
+});
+
+test('network.credential names any header a secret may travel in, and refuses the transport\'s own', () => {
+  const manifest = (network) => JSON.stringify({
+    id: 'git', name: 'Git', type: 'plugin', version: '1.0.0', author: 'a', description: 'd',
+    entry: 'index.js', betterslackApi: 1,
+    settings: [{ key: 'gitUrl', type: 'text', label: 'Server' }],
+    network,
+  });
+  const parsed = (credential) =>
+    parseManifest(manifest({ settings: ['gitUrl'], credential }), 'mod.json', 'plugin').network;
+  assert.deepEqual(parsed({ header: 'PRIVATE-TOKEN' }).credential, { header: 'private-token' });
+  assert.deepEqual(parsed({ header: 'Authorization', prefix: 'Bearer ' }).credential,
+    { header: 'authorization', prefix: 'Bearer ' });
+  // A service nobody here has heard of needs nothing added to the loader.
+  assert.deepEqual(parsed({ header: 'X-Some-Service-Key' }).credential, { header: 'x-some-service-key' });
+  assert.equal(parseManifest(manifest({ settings: ['gitUrl'] }), 'mod.json', 'plugin').network.credential, undefined);
+
+  for (const bad of ['PRIVATE-TOKEN', { header: 'Cookie' }, { header: 'host' }, { header: 'Content-Type' },
+    { header: 'Proxy-Authorization' }, { header: 'Sec-Fetch-Mode' }, { header: 'has space' }, { header: 'x\ny' },
+    { header: '' }, { header: 'ok', prefix: 'two\nlines' }, { header: 'ok', extra: 1 }, { prefix: 'Bearer ' }, null, []]) {
+    assert.throws(() => parsed(bad), /network\.credential/, JSON.stringify(bad));
+  }
+});

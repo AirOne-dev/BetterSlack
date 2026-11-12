@@ -1,0 +1,120 @@
+{
+  "id": "gitlab-mrs",
+  "name": "GitLab",
+  "type": "plugin",
+  "version": "1.0.0",
+  "author": "Arthur-MONNET",
+  "description": "Your open GitLab merge requests by project, with the stages and jobs of each pipeline, in a view of Slack's rail and as a small pipeline summary in its top bar.",
+  "descriptions": {
+    "fr": "Vos merge requests GitLab ouvertes, par projet, avec les étapes et les jobs de chaque pipeline, dans une vue du rail de Slack et en résumé de pipeline dans sa barre du haut."
+  },
+  "entry": "index.js",
+  "icon": "icon.svg",
+  "settings": [
+    {
+      "key": "gitUrl",
+      "type": "text",
+      "label": "GitLab address",
+      "hint": "The address you sign in to GitLab at. Your token and your requests go there, and nowhere else.",
+      "placeholder": "https://gitlab.example.com",
+      "default": "https://gitlab.easyflirt.com",
+      "labels": {
+        "fr": "Adresse de GitLab"
+      },
+      "hints": {
+        "fr": "L’adresse à laquelle vous vous connectez à GitLab. Votre jeton et vos requêtes ne vont que là."
+      }
+    },
+    {
+      "key": "topBar",
+      "type": "boolean",
+      "label": "Pipeline in the top bar",
+      "hint": "A small summary of the latest pipeline, which shrinks to fit the room Slack leaves it.",
+      "default": true,
+      "labels": {
+        "fr": "Pipeline dans la barre du haut"
+      },
+      "hints": {
+        "fr": "Un petit résumé de la dernière pipeline, qui se réduit selon la place que Slack lui laisse."
+      }
+    },
+    {
+      "key": "railBadge",
+      "type": "choice",
+      "label": "Badge on the rail icon",
+      "hint": "What the GitLab tab in Slack's rail counts.",
+      "default": "failed",
+      "options": [
+        {
+          "value": "failed",
+          "label": "Failing pipelines",
+          "labels": {
+            "fr": "Pipelines en échec"
+          }
+        },
+        {
+          "value": "count",
+          "label": "Open merge requests",
+          "labels": {
+            "fr": "Merge requests ouvertes"
+          }
+        },
+        {
+          "value": "none",
+          "label": "Nothing",
+          "labels": {
+            "fr": "Rien"
+          }
+        }
+      ],
+      "labels": {
+        "fr": "Badge sur l’icône du rail"
+      },
+      "hints": {
+        "fr": "Ce que compte l’onglet GitLab dans le rail de Slack."
+      }
+    }
+  ],
+  "network": {
+    "settings": [
+      "gitUrl"
+    ],
+    "credential": {
+      "header": "PRIVATE-TOKEN"
+    }
+  },
+  "betterslackApi": 1,
+  "slackVersion": "4.51",
+  "tags": [
+    "tools",
+    "gitlab",
+    "pipelines"
+  ],
+  "readme": "README.md",
+  "readmes": {
+    "fr": "README.fr.md"
+  },
+  "screenshots": [
+    {
+      "file": "screenshot.webp",
+      "captions": {
+        "en": "Open merge requests by project, each with its pipeline as a row of stages.",
+        "fr": "Les merge requests ouvertes par projet, chacune avec sa pipeline en rangée d’étapes."
+      }
+    },
+    {
+      "file": "screenshot-jobs.webp",
+      "captions": {
+        "en": "A click on a stage opens its jobs, each a link to its page on GitLab.",
+        "fr": "Un clic sur une étape ouvre ses jobs, chacun un lien vers sa page GitLab."
+      }
+    },
+    {
+      "file": "screenshot-bar.webp",
+      "captions": {
+        "en": "The top bar keeps the latest pipeline in view; a click lists the newest pipeline of each of the last three branches.",
+        "fr": "La barre du haut garde la dernière pipeline sous les yeux ; un clic liste la pipeline la plus récente de chacune des trois dernières branches."
+      }
+    }
+  ]
+}

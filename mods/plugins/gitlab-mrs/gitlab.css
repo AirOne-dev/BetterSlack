@@ -1,0 +1,615 @@
+/*
+ * The stylesheet, loaded with api.css(api.assets.text('gitlab.css')).
+ *
+ * No colour of its own. The top bar takes Slack's own ink with currentColor; the
+ * view and the popovers are painted from the design tokens Slack paints itself
+ * with, each with a literal fallback that is Slack's, so they follow every
+ * theme. A status is never told apart by colour alone: every status has its own
+ * shape (lib/status.js), and the word is in its aria-label.
+ */
+
+/* ---------------------------------------------------------------- the tones */
+
+#betterslack-gitlab,
+.betterslack-gitlab-view,
+.betterslack-gitlab-layer {
+  --gl-success: var(--dt_color-content-hgl-2, #2bac76);
+  --gl-danger: var(--dt_color-content-imp, #e01e5a);
+  --gl-info: var(--dt_color-content-hgl-1, #1d9bd1);
+  --gl-warning: var(--dt_color-content-hgl-3, #a66d00);
+  --gl-muted: color-mix(in srgb, currentColor 55%, transparent);
+}
+:is(#betterslack-gitlab, .betterslack-gitlab-view, .betterslack-gitlab-layer) [data-tone="success"],
+#betterslack-gitlab[data-tone="success"] { --gl-tone: var(--gl-success); }
+:is(#betterslack-gitlab, .betterslack-gitlab-view, .betterslack-gitlab-layer) [data-tone="danger"],
+#betterslack-gitlab[data-tone="danger"] { --gl-tone: var(--gl-danger); }
+:is(#betterslack-gitlab, .betterslack-gitlab-view, .betterslack-gitlab-layer) [data-tone="info"],
+#betterslack-gitlab[data-tone="info"] { --gl-tone: var(--gl-info); }
+:is(#betterslack-gitlab, .betterslack-gitlab-view, .betterslack-gitlab-layer) [data-tone="warning"],
+#betterslack-gitlab[data-tone="warning"] { --gl-tone: var(--gl-warning); }
+:is(#betterslack-gitlab, .betterslack-gitlab-view, .betterslack-gitlab-layer) [data-tone="muted"],
+#betterslack-gitlab[data-tone="muted"] { --gl-tone: var(--gl-muted); }
+
+.betterslack-gitlab-glyph {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--gl-tone, currentColor);
+}
+.betterslack-gitlab-glyph svg,
+.betterslack-gitlab-icon { display: block; width: 100%; height: 100%; }
+/* The one status that moves: an arc turning. Static under reduced motion -- it is still an arc. */
+.betterslack-gitlab-icon[data-kind="running"] path:last-child {
+  transform-origin: 8px 8px;
+  animation: betterslack-gitlab-spin 1.1s linear infinite;
+}
+@keyframes betterslack-gitlab-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .betterslack-gitlab-icon[data-kind="running"] path:last-child { animation: none; }
+}
+
+/*
+ * `hidden` has to win over every display this stylesheet sets on the same
+ * node: a rule that gives an element display flex outranks the attribute, and
+ * the signed-out view would show the signed-in header.
+ */
+#betterslack-gitlab [hidden],
+.betterslack-gitlab-view [hidden],
+.betterslack-gitlab-view[hidden],
+.betterslack-gitlab-layer [hidden] { display: none !important; }
+
+/* A link with no address of its own is text. */
+[data-inert] { pointer-events: none; text-decoration: none; }
+
+/* ------------------------------------------------------------------ the slot */
+
+/*
+ * The far left of the top bar is two flex containers of equal width -- an empty
+ * one, and one holding the history arrows pushed to its right -- so about half
+ * of the second is empty too. Measured at 2560: 246px each. While the bar is
+ * there the empty one takes the empty part of its neighbour (399px) and the
+ * neighbour shrinks to what it holds (92px): the arrows stay at 475 and the
+ * search at 579, where they were, because the pair keeps its width.
+ *
+ * Slack writes `flex-grow: 1; flex-basis: 0` on both as an inline style, which
+ * no ordinary rule outranks -- hence !important, on exactly these two
+ * properties and only while the bar is in the first.
+ */
+.p-ia4_top_nav__left_container:has(> .p-ia4_top_nav__left_container--start > #betterslack-gitlab)
+  > .p-ia4_top_nav__left_container--start {
+  /* Basis 0: what is left once the arrows' side has what it holds, whatever the bar says it would like. */
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 0;
+  align-items: center;
+  /* Air between the bar and the history arrows beside it. */
+  padding-right: 40px;
+  /*
+   * What the bar would like to be must not decide how wide the top bar's left
+   * side is: its minimum content width made the whole container, and with it the
+   * search, move. Containing the inline size makes this container's intrinsic
+   * width nothing, so only flex sizes it; unlike overflow it clips nothing, and
+   * the bar can still go left of it.
+   */
+  contain: inline-size;
+}
+.p-ia4_top_nav__left_container:has(> .p-ia4_top_nav__left_container--start > #betterslack-gitlab)
+  > .p-ia4_top_nav__left_container--end {
+  flex: 0 0 auto !important;
+  width: auto !important;
+}
+
+/* ------------------------------------------------------------------- the bar */
+
+#betterslack-gitlab {
+  /* Slack's top bar is the window's drag handle: without this, a click on the bar is the start of dragging the window and never reaches it. */
+  -webkit-app-region: no-drag;
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  /*
+   * --gl-bleed is how far into the empty room at the window's left edge the bar
+   * may go (ui/topbar.js): it moves left by that much and may be that much wider.
+   */
+  max-width: calc(100% + var(--gl-bleed, 0px));
+  height: 28px;
+  margin: 0 0 0 calc(-1 * var(--gl-bleed, 0px));
+  padding: 0 8px;
+  border-radius: 6px;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  /* Never spills over Slack's own buttons, whatever room it is given. */
+  overflow: hidden;
+  cursor: pointer;
+  transition: background-color 80ms ease;
+}
+#betterslack-gitlab:hover,
+#betterslack-gitlab[aria-expanded="true"] { background: color-mix(in srgb, currentColor 10%, transparent); }
+#betterslack-gitlab:focus-visible { outline: 2px solid color-mix(in srgb, currentColor 60%, transparent); outline-offset: 1px; }
+
+/* What is on screen is what `data-parts` lists; everything else is in the button and hidden. */
+.betterslack-gitlab-bar__part { display: none; align-items: center; min-width: 0; }
+#betterslack-gitlab[data-parts~="icon"] .betterslack-gitlab-bar__icon { display: inline-flex; }
+#betterslack-gitlab[data-parts~="project"] .betterslack-gitlab-bar__project,
+#betterslack-gitlab[data-parts~="mr"] .betterslack-gitlab-bar__mr,
+#betterslack-gitlab[data-parts~="branch"] .betterslack-gitlab-bar__branch,
+#betterslack-gitlab[data-parts~="progress"] .betterslack-gitlab-bar__progress,
+#betterslack-gitlab[data-parts~="note"] .betterslack-gitlab-bar__note { display: inline-block; }
+#betterslack-gitlab[data-parts~="dots"] .betterslack-gitlab-bar__dots { display: inline-flex; }
+#betterslack-gitlab[data-parts~="stale"] .betterslack-gitlab-bar__stale { display: inline; }
+
+/*
+ * What gives when the room runs short is the branch and the stage's name, and only
+ * down to a few letters: everything else keeps its size, so that a bar which
+ * cannot fit them overflows -- which is what makes it drop a part (ui/topbar.js)
+ * instead of squeezing the project's name to one letter and an ellipsis.
+ */
+.betterslack-gitlab-bar__icon,
+.betterslack-gitlab-bar__project,
+.betterslack-gitlab-bar__mr,
+.betterslack-gitlab-bar__progress,
+.betterslack-gitlab-bar__dots,
+.betterslack-gitlab-bar__stale,
+.betterslack-gitlab-bar__caret { flex-shrink: 0; }
+.betterslack-gitlab-bar__branch,
+.betterslack-gitlab-bar__note { flex-shrink: 1; min-width: 56px; }
+.betterslack-gitlab-bar__icon { width: 14px; height: 14px; }
+/*
+ * The text is centred on the icon's middle, not on its own line box: a font puts
+ * the middle of its letters above the middle of its line, so every text part
+ * is given a fixed line and a pixel under it, which brings the letters level
+ * with the icon beside them.
+ */
+.betterslack-gitlab-bar__project,
+.betterslack-gitlab-bar__mr,
+.betterslack-gitlab-bar__branch,
+.betterslack-gitlab-bar__note,
+.betterslack-gitlab-bar__progress { line-height: 14px; padding-bottom: 1px; }
+.betterslack-gitlab-bar__caret {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  margin: -2px 2px 0 0;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  opacity: .6;
+  transform: rotate(45deg);
+  transition: transform 80ms ease;
+}
+#betterslack-gitlab[aria-expanded="true"] .betterslack-gitlab-bar__caret { transform: translateY(2px) rotate(225deg); }
+/* Nothing to open until there is something to list, and nothing to say it with one mark left. */
+#betterslack-gitlab:not([data-phase="ready"]) .betterslack-gitlab-bar__caret,
+#betterslack-gitlab[data-parts="icon"] .betterslack-gitlab-bar__caret { display: none; }
+.betterslack-gitlab-bar__project { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.betterslack-gitlab-bar__mr,
+.betterslack-gitlab-bar__progress { color: color-mix(in srgb, currentColor 78%, transparent); }
+.betterslack-gitlab-bar__branch {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--sk_monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
+.betterslack-gitlab-bar__note {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+}
+#betterslack-gitlab[data-kind="failed"] .betterslack-gitlab-bar__note { color: var(--gl-danger); }
+.betterslack-gitlab-bar__dots { gap: 3px; align-items: center; }
+.betterslack-gitlab-dot { display: inline-flex; width: 12px; height: 12px; color: var(--gl-tone, currentColor); }
+.betterslack-gitlab-dot .betterslack-gitlab-glyph { width: 12px; height: 12px; }
+/* The numbers are the last known, not the current: one quiet dot says so. */
+.betterslack-gitlab-bar__stale { color: var(--gl-warning); font-size: 14px; line-height: 1; }
+
+/* --------------------------------------------------------------------- the view */
+
+.betterslack-gitlab-view {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  color: var(--dt_color-content-pry, #d1d2d3);
+}
+.betterslack-gitlab-view[hidden] { display: none; }
+
+.betterslack-gitlab-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 49px;
+  padding: 8px 16px 8px 20px;
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+}
+.betterslack-gitlab-header__titles { min-width: 0; }
+.betterslack-gitlab-header__title { margin: 0; font-size: 18px; font-weight: 900; line-height: 1.33; }
+.betterslack-gitlab-header__hint {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.38;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dt_color-content-sec, #ababad);
+}
+.betterslack-gitlab-header__actions { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+.betterslack-gitlab-refresh { display: inline-flex; align-items: center; gap: 6px; }
+.betterslack-gitlab-refresh__icon { display: inline-flex; width: 14px; height: 14px; }
+.betterslack-gitlab-refresh__icon svg { width: 100%; height: 100%; }
+.betterslack-gitlab-refresh[data-busy] .betterslack-gitlab-refresh__icon { animation: betterslack-gitlab-spin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .betterslack-gitlab-refresh[data-busy] .betterslack-gitlab-refresh__icon { animation: none; } }
+
+.betterslack-gitlab-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 0 24px; }
+.betterslack-gitlab-scroll[hidden] { display: none; }
+.betterslack-gitlab-scroll--login { display: flex; justify-content: center; padding: 40px 20px; }
+
+.betterslack-gitlab-banner {
+  margin: 0;
+  padding: 8px 20px;
+  font-size: 13px;
+  line-height: 1.38;
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .2));
+  color: var(--dt_color-content-sec, #ababad);
+}
+.betterslack-gitlab-banner[data-tone="warning"] { color: var(--gl-warning); background: color-mix(in srgb, var(--gl-warning) 9%, transparent); }
+.betterslack-gitlab-banner[hidden] { display: none; }
+
+.betterslack-gitlab-message { padding: 48px 20px; text-align: center; }
+.betterslack-gitlab-message[hidden] { display: none; }
+.betterslack-gitlab-message__title { margin: 0 0 4px; font-size: 15px; font-weight: 900; }
+.betterslack-gitlab-message__hint { margin: 0; font-size: 13px; color: var(--dt_color-content-sec, #ababad); }
+
+/* ----------------------------------------------------------- projects and rows */
+
+.betterslack-gitlab-projects[hidden] { display: none; }
+/*
+ * Two levels, and they have to read as two. A project is a band across the view
+ * -- tinted, with a mark of its own, 16px in Slack's heaviest weight -- and what
+ * is under it is smaller and set in from the band's text, so a merge request
+ * whose title is a branch name is never taken for a project.
+ */
+.betterslack-gitlab-project { margin-top: 14px; }
+.betterslack-gitlab-project:first-child { margin-top: 0; }
+.betterslack-gitlab-project__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px 9px 12px;
+  cursor: pointer;
+  background: var(--dt_color-base-sec, #222529);
+  border-top: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .35));
+}
+/* The caret is drawn with borders, never typed as a glyph: a character sits where its font puts it, never in the middle, so turning it turns it about the wrong point. */
+.betterslack-gitlab-project__toggle {
+  flex: 0 0 auto;
+  position: relative;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dt_color-content-sec, #ababad);
+  cursor: pointer;
+}
+.betterslack-gitlab-project__toggle::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform var(--sm-motion-quick, 80ms) var(--sm-motion-ease, ease);
+}
+.betterslack-gitlab-project[data-collapsed] .betterslack-gitlab-project__toggle::before { transform: translate(-1px, 1px) rotate(-45deg); }
+.betterslack-gitlab-project__toggle:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.betterslack-gitlab-project__toggle:focus-visible { outline: 2px solid var(--dt_color-content-hgl-1, #1d9bd1); outline-offset: 1px; }
+/* A folded project still says what is going on inside it. */
+.betterslack-gitlab-project__summary { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.betterslack-gitlab-project__summary:empty,
+.betterslack-gitlab-project:not([data-collapsed]) .betterslack-gitlab-project__summary { display: none; }
+.betterslack-gitlab-summary { display: inline-flex; align-items: center; gap: 3px; color: var(--gl-tone, currentColor); }
+.betterslack-gitlab-summary .betterslack-gitlab-glyph { width: 14px; height: 14px; }
+.betterslack-gitlab-project__initial {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--dt_color-content-hgl-1, #1d9bd1);
+  background: color-mix(in srgb, var(--dt_color-content-hgl-1, #1d9bd1) 20%, transparent);
+}
+.betterslack-gitlab-project__name { font-size: 16px; font-weight: 900; line-height: 1.25; color: inherit; text-decoration: none; }
+.betterslack-gitlab-project__name:hover { text-decoration: underline; }
+.betterslack-gitlab-project__namespace { font-size: 12px; color: var(--dt_color-content-sec, #ababad); }
+.betterslack-gitlab-project__namespace[hidden] { display: none; }
+.betterslack-gitlab-project__count {
+  margin-left: auto;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dt_color-content-sec, #ababad);
+  background: var(--dt_color-base-pry, #1a1d21);
+}
+
+.betterslack-gitlab-mrs { margin: 0; padding: 0; list-style: none; }
+/*
+ * What a merge request row says is four things -- the title, where it is going,
+ * its pipeline and its number -- and where they go depends on how much room the
+ * view has, which is the view's width and not the window's: Slack's sidebar and
+ * a pane beside it take their share. Stacked when narrow, two lines in the
+ * middle, one line when there is room, in columns that line up from row to row.
+ */
+.betterslack-gitlab-scroll { container: betterslack-gitlab / inline-size; }
+.betterslack-gitlab-mr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "line number" "meta meta" "pipeline pipeline";
+  align-items: center;
+  gap: 3px 16px;
+  /* Set in to where the project's name starts: 20px, its 24px mark and the gap. */
+  padding: 9px 20px 10px 54px;
+  border-bottom: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .14));
+}
+.betterslack-gitlab-mr:hover { background: var(--dt_color-base-sec, rgba(255, 255, 255, .03)); }
+.betterslack-gitlab-mr__line { grid-area: line; display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.betterslack-gitlab-mr__meta { grid-area: meta; }
+.betterslack-gitlab-pipeline { grid-area: pipeline; }
+@container betterslack-gitlab (min-width: 640px) {
+  .betterslack-gitlab-mr {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "line number" "meta pipeline";
+  }
+  .betterslack-gitlab-pipeline { justify-content: flex-end; margin-top: 0; }
+}
+@container betterslack-gitlab (min-width: 1000px) {
+  .betterslack-gitlab-mr {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) 300px 64px;
+    grid-template-areas: "line meta pipeline number";
+    gap: 0 20px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+  .betterslack-gitlab-pipeline { justify-content: flex-start; margin-top: 0; }
+}
+.betterslack-gitlab-mr__title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.33;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+.betterslack-gitlab-mr__title:hover { text-decoration: underline; }
+.betterslack-gitlab-mr__number {
+  grid-area: number;
+  justify-self: end;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dt_color-content-hgl-1, #1d9bd1);
+  text-decoration: none;
+}
+.betterslack-gitlab-mr__number:hover { text-decoration: underline; }
+.betterslack-gitlab-mr__draft {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border: 1px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .5));
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dt_color-content-sec, #ababad);
+}
+.betterslack-gitlab-mr__draft[hidden] { display: none; }
+.betterslack-gitlab-mr__meta {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--dt_color-content-sec, #ababad);
+}
+.betterslack-gitlab-mr__branches { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.betterslack-gitlab-mr__updated { flex: 0 0 auto; white-space: nowrap; }
+
+/* ----------------------------------------------------------- a pipeline's stages */
+
+.betterslack-gitlab-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.betterslack-gitlab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px 1px 4px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dt_color-content-pry, #d1d2d3);
+  text-decoration: none;
+  background: var(--dt_color-base-sec, rgba(255, 255, 255, .06));
+}
+.betterslack-gitlab-chip[hidden] { display: none; }
+.betterslack-gitlab-chip:hover { background: var(--dt_color-base-sec, rgba(255, 255, 255, .12)); }
+.betterslack-gitlab-chip__number { font-weight: 700; }
+.betterslack-gitlab-stages { display: inline-flex; align-items: center; }
+.betterslack-gitlab-stages[hidden] { display: none; }
+/*
+ * Stages are joined by a short rule, the way GitLab draws a pipeline. The rule
+ * fills the whole gap between two buttons and each button's padding is the only
+ * space between it and the mark, so the rule sits 2px from the marks on both
+ * sides.
+ */
+.betterslack-gitlab-stage + .betterslack-gitlab-stage { margin-left: 8px; position: relative; }
+.betterslack-gitlab-stage + .betterslack-gitlab-stage::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 8px;
+  border-top: 1.5px solid var(--dt_color-otl-sec, rgba(94, 93, 96, .7));
+}
+.betterslack-gitlab-stage {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  color: var(--gl-tone, currentColor);
+}
+/* The marks of the stages are the point of the row, so they are bigger than the rest. */
+.betterslack-gitlab-stage .betterslack-gitlab-glyph { width: 20px; height: 20px; }
+.betterslack-gitlab-stage:hover { background: var(--dt_color-base-sec, rgba(255, 255, 255, .1)); }
+.betterslack-gitlab-stage:focus-visible { outline: 2px solid var(--dt_color-content-hgl-1, #1d9bd1); outline-offset: 1px; }
+.betterslack-gitlab-progress {
+  font-variant-numeric: tabular-nums;
+  color: var(--dt_color-content-sec, #ababad);
+}
+.betterslack-gitlab-progress[hidden],
+.betterslack-gitlab-note[hidden] { display: none; }
+.betterslack-gitlab-note { color: var(--dt_color-content-sec, #ababad); }
+.betterslack-gitlab-note[data-tone="warning"] { color: var(--gl-warning); }
+
+/* ---------------------------------------------------------------- sign-in form */
+
+.betterslack-gitlab-login { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 440px; }
+.betterslack-gitlab-login__title { margin: 0; font-size: 22px; font-weight: 900; }
+.betterslack-gitlab-login__intro { margin: 0; font-size: 15px; line-height: 1.46; color: var(--dt_color-content-sec, #ababad); }
+.betterslack-gitlab-login__field { display: flex; flex-direction: column; gap: 4px; }
+.betterslack-gitlab-login__label { font-size: 13px; font-weight: 700; }
+.betterslack-gitlab-login__hint { font-size: 12px; line-height: 1.4; color: var(--dt_color-content-sec, #ababad); }
+/* Slack's field carries margin 0 0 20px, for a column of fields; the class twice, since its stylesheet loads later. */
+.betterslack-gitlab-login__input.betterslack-gitlab-login__input { margin: 0; }
+.betterslack-gitlab-login__notice,
+.betterslack-gitlab-login__error { margin: 0; font-size: 13px; line-height: 1.4; }
+.betterslack-gitlab-login__notice { color: var(--gl-warning); }
+.betterslack-gitlab-login__notice[hidden] { display: none; }
+.betterslack-gitlab-login__error { color: var(--gl-danger); }
+.betterslack-gitlab-login__error:empty { display: none; }
+.betterslack-gitlab-login__actions { display: flex; }
+.betterslack-gitlab-login__privacy { margin: 0; font-size: 12px; color: var(--dt_color-content-sec, #ababad); }
+
+/* ------------------------------------------------------------------ popovers */
+
+.betterslack-gitlab-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  /* Over the client, under Slack's dialogs (1053) and BetterSlack's menus (1015). */
+  z-index: 1014;
+  will-change: transform;
+}
+.betterslack-gitlab-popover {
+  box-sizing: border-box;
+  width: 340px;
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  padding: 10px 6px 8px;
+  border-radius: 8px;
+  outline: none;
+  background: rgba(var(--sk_primary_background, 255, 255, 255), 1);
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 1);
+  box-shadow: 0 0 0 1px rgba(var(--sk_foreground_low, 29, 28, 29), 0.13), 0 4px 12px 0 rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.betterslack-gitlab-jobspopover { width: 360px; }
+.betterslack-gitlab-popover__head { display: flex; align-items: center; gap: 8px; padding: 2px 10px 8px; }
+.betterslack-gitlab-popover__icon { display: inline-flex; flex: 0 0 auto; width: 16px; height: 16px; color: var(--gl-tone, currentColor); }
+.betterslack-gitlab-popover__title { margin: 0; font-size: 15px; font-weight: 900; }
+.betterslack-gitlab-popover__title--lone { padding: 2px 10px 6px; }
+.betterslack-gitlab-popover__head .betterslack-gitlab-popover__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.betterslack-gitlab-popover__link { font-variant-numeric: tabular-nums; color: rgba(var(--sk_highlight, 18, 100, 163), 1); text-decoration: none; }
+.betterslack-gitlab-popover__link:hover { text-decoration: underline; }
+.betterslack-gitlab-popover__empty { margin: 0; padding: 8px 10px; color: rgba(var(--sk_foreground_max_solid, 97, 96, 97), 1); }
+.betterslack-gitlab-popover__rule { margin: 8px 10px; border: 0; border-top: 1px solid rgba(var(--sk_foreground_low, 29, 28, 29), 0.13); }
+
+.betterslack-gitlab-job {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+.betterslack-gitlab-job:hover { background: rgba(var(--sk_foreground_min, 29, 28, 29), 0.06); }
+.betterslack-gitlab-job__icon { display: inline-flex; flex: 0 0 auto; width: 16px; height: 16px; color: var(--gl-tone, currentColor); }
+.betterslack-gitlab-job__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.betterslack-gitlab-job__meta { flex: 0 0 auto; font-size: 12px; font-variant-numeric: tabular-nums; color: rgba(var(--sk_foreground_max_solid, 97, 96, 97), 1); }
+.betterslack-gitlab-job[data-tone="danger"] .betterslack-gitlab-job__meta { color: var(--gl-danger); }
+
+.betterslack-gitlab-recentpopover { width: 380px; }
+.betterslack-gitlab-recent__entry { display: flex; flex-direction: column; gap: 3px; padding: 4px 10px; }
+.betterslack-gitlab-recent__title { font-weight: 900; font-size: 14px; }
+.betterslack-gitlab-recent__mrtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(var(--sk_primary_foreground, 29, 28, 29), 0.9);
+}
+.betterslack-gitlab-recent__branch {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--sk_monospace, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  color: rgba(var(--sk_foreground_max_solid, 97, 96, 97), 1);
+}
+.betterslack-gitlab-recent__status { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-weight: 700; }
+.betterslack-gitlab-recent__number { margin-left: auto; font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(var(--sk_foreground_max_solid, 97, 96, 97), 1); }
+.betterslack-gitlab-recent__failed { font-size: 12px; color: var(--gl-danger); }
+.betterslack-gitlab-recent__stages { display: flex; flex-wrap: wrap; gap: 2px 4px; margin: 2px -4px 0; }
+.betterslack-gitlab-recent__stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.betterslack-gitlab-recent__stage:hover { background: rgba(var(--sk_foreground_min, 29, 28, 29), 0.08); }
+.betterslack-gitlab-recent__stage:focus-visible { outline: 2px solid rgba(var(--sk_highlight, 18, 100, 163), 1); outline-offset: 1px; }
+.betterslack-gitlab-recent__stage .betterslack-gitlab-glyph { width: 16px; height: 16px; }
+.betterslack-gitlab-recent__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.betterslack-gitlab-action { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.betterslack-gitlab-action__icon { display: inline-flex; width: 14px; height: 14px; }
+.betterslack-gitlab-action__icon svg { width: 100%; height: 100%; }
+.betterslack-gitlab-recent__more { margin: 0 10px; }
